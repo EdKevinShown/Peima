@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Peima
 
 AI 关系匹配系统 — 当前为 **工程骨架** 阶段，业务逻辑后续迭代补充。
@@ -105,4 +106,5 @@ docker compose up -d --build api worker web
 3. 验证 Web：
    - 打开 `http://localhost:5173`
    - 访问 `/matching-waiting?userId=xxx` 或 `/final-match?userId=xxx`
+
 
