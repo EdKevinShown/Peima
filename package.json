@@ -1,0 +1,23 @@
+{
+  "name": "peima",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Peima — AI relationship matching system (monorepo)",
+  "scripts": {
+    "dev:web": "pnpm --filter @peima/web dev",
+    "dev:admin": "pnpm --filter @peima/admin dev",
+    "dev:api": "pnpm --filter @peima/api start:dev",
+    "dev:worker": "pnpm --filter @peima/worker dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @peima/web build",
+    "build:admin": "pnpm --filter @peima/admin build",
+    "build:api": "pnpm --filter @peima/api build",
+    "lint": "pnpm -r run lint --if-present",
+    "clean": "pnpm -r exec rimraf dist node_modules/.cache"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

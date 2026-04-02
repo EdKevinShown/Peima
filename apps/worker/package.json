@@ -1,0 +1,21 @@
+{
+  "name": "@peima/worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "batch-match": "tsx src/main.ts --batch-match"
+  },
+  "dependencies": {
+    "@peima/database": "workspace:*",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

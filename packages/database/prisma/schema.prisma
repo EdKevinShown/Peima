@@ -1,0 +1,237 @@
+// Peima — database schema
+// Migrations: pnpm --filter @peima/database db:migrate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// User profile (no auth in this iteration — phone is the natural key).
+model User {
+  id               String   @id @default(cuid())
+  phone            String   @unique
+  nickname         String
+  gender           String   @default("")
+  age              Int?
+  city             String   @default("")
+  height           Int?
+  education        String   @default("")
+  occupation       String   @default("")
+  relationshipGoal String   @default("")
+  bio              String   @default("") @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  preference                   UserPreference?
+  images                       UserImage[]
+  previewPools                 PreviewPool[]
+  previewPoolItemsAsViewer     PreviewPoolItem[] @relation("PreviewPoolItemViewer")
+  previewPoolItemsAsCandidate  PreviewPoolItem[] @relation("PreviewPoolItemCandidate")
+  questionnaireAnswers         QuestionnaireAnswer[]
+  relationProfile              UserProfile?
+  matchQueueEntries            BatchMatchQueue[]
+  matchResultsAsViewer         MatchResult[]       @relation("MatchResultViewer")
+  matchResultsAsCandidate      MatchResult[]       @relation("MatchResultCandidate")
+  conversationEntriesAsViewer Conversation[] @relation("ConversationViewer")
+  conversationEntriesAsCandidate Conversation[] @relation("ConversationCandidate")
+  messagesAsSender Message[] @relation("MessageSender")
+
+  @@map("users")
+}
+
+/// Partner / filter preferences for matching (one row per user; extend with new scalar/array columns or JSON later).
+model UserPreference {
+  id                          String   @id @default(cuid())
+  userId                      String   @unique
+  minAge                      Int?
+  maxAge                      Int?
+  preferredCities             String[] @default([])
+  minHeight                   Int?
+  maxHeight                   Int?
+  educationPreferences        String[] @default([])
+  occupationPreferences       String[] @default([])
+  relationshipGoalPreferences String[] @default([])
+  styleTags                   String[] @default([])
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+/// User photo metadata + analysis snapshot (URL assumed already hosted; no binary stored here).
+model UserImage {
+  id                  String   @id @default(cuid())
+  userId              String
+  imageUrl            String
+  faceEmbedding       Json?
+  attractivenessScore Float?
+  styleTags           String[] @default([])
+  ageEstimate         Int?
+  genderEstimate      String?
+  confidence          Float?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_images")
+}
+
+/// A generated 6-slot preview pool for one viewer user (P0: single active pool per user after latest generate).
+model PreviewPool {
+  id        String   @id @default(cuid())
+  userId    String
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items PreviewPoolItem[]
+
+  @@map("preview_pools")
+}
+
+/// One candidate slot inside a preview pool (layered display: full / blurred / locked).
+model PreviewPoolItem {
+  id              String   @id @default(cuid())
+  previewPoolId   String
+  userId          String
+  candidateUserId String
+  candidateType   String
+  displayMode     String
+  rankInPool      Int
+  baseScore       Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  previewPool PreviewPool @relation(fields: [previewPoolId], references: [id], onDelete: Cascade)
+  viewer      User        @relation("PreviewPoolItemViewer", fields: [userId], references: [id], onDelete: Cascade)
+  candidate   User        @relation("PreviewPoolItemCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
+
+  @@map("preview_pool_items")
+}
+
+/// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).
+model QuestionnaireAnswer {
+  id          String   @id @default(cuid())
+  userId      String
+  questionKey String
+  answerValue String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("questionnaire_answers")
+}
+
+/// Derived relation-style profile from questionnaire (one row per user).
+model UserProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  socialEnergy        Float?
+  emotionalExpression Float?
+  relationshipPace    Float?
+  initiativeLevel     Float?
+  decisionOrientation Float?
+  conflictResponse    Float?
+  confidence          Float?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profile")
+}
+
+/// One daily (or manual) batch run of queue-based matching.
+model MatchBatch {
+  id           String   @id @default(cuid())
+  batchDate    DateTime
+  status       String
+  totalUsers   Int      @default(0)
+  successCount Int      @default(0)
+  failedCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  queueItems BatchMatchQueue[]
+  results    MatchResult[]
+
+  @@map("match_batches")
+}
+
+/// User waiting to be processed in a batch (P0: one waiting row per user at a time).
+model BatchMatchQueue {
+  id        String   @id @default(cuid())
+  userId    String
+  batchId   String?
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch MatchBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@map("batch_match_queue")
+}
+
+/// Final one-to-one match outcome for a viewer in a given batch (multiple historical rows allowed).
+model MatchResult {
+  id              String   @id @default(cuid())
+  userId          String
+  candidateUserId String
+  batchId         String
+  finalScore      Float?
+  reasonSummary   String?
+  status          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user      User       @relation("MatchResultViewer", fields: [userId], references: [id], onDelete: Cascade)
+  candidate User       @relation("MatchResultCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
+  batch     MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@map("match_results")
+}
+
+/// One-to-one chat between two matched users.
+model Conversation {
+  id               String   @id @default(cuid())
+  viewerUserId    String
+  candidateUserId String
+  matchResultId   String?
+  status          String   // active / closed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  viewer     User @relation("ConversationViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  candidate  User @relation("ConversationCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
+  matchResult MatchResult? @relation(fields: [matchResultId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@map("conversations")
+}
+
+/// Persisted messages in a conversation (no websocket in P0).
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderUserId   String
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User        @relation("MessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}

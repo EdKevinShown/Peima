@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: peima-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: peima-api
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: production
+      API_PORT: ${API_PORT}
+      API_HOST: ${API_HOST}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: peima-worker
+    depends_on:
+      - postgres
+      - api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-${DATABASE_URL}}
+      MATCH_CRON: ${MATCH_CRON}
+      TZ: ${TZ}
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Browser runs on the host, so "localhost:3000" points to API port mapping.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    container_name: peima-web
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${WEB_PORT}:5173"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
