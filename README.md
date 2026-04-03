@@ -1,20 +1,31 @@
 # Peima / 配吗
 
-AI 驱动的关系匹配 MVP，包含登录、问卷画像、预览池、批次匹配、最终结果与单对象聊天。
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。洞察、摘要与预览元数据等正文均由 **规则 / 模板 / 占位逻辑** 生成。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
 
-## 当前项目状态
+---
 
-- 当前状态：**P0 已完成**
-- 当前阶段：**P0 验收通过，准备进入 P1**
-- 已跑通能力（端到端）：
-  - JWT 注册/登录与 `/auth/me`
-  - 问卷获取与提交（画像落库）
-  - 6 人预览池生成与前端展示
-  - 入队匹配与 worker 批次匹配（含 cron 注册）
-  - 最终匹配结果展示
-  - 单对象聊天（进入会话 + 发送消息）
-  - Docker Compose 跑通 `postgres / api / web / worker`
-- 当前完成的是 P0 最小可运行 MVP，主流程已验收通过，但仍有生产级优化空间。
+## 当前项目状态（截至 P1-6）
+
+| 维度 | 说明 |
+|------|------|
+| **核心口径** | P0 主链路已稳定；P1 已完成结构化占位版能力建设；真实 AI agent 尚未正式接入。 |
+| **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
+| **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
+
+**P1 已交付能力（摘要）**
+
+- **P1-1**：`MatchResult.matchInsights`（JSON）落库；worker batch-match 写入占位结构；`GET /matching/result/:userId` 向下兼容返回。
+- **P1-2**：`FinalMatchPage` 展示洞察卡片；无合法 `matchInsights` 时回退为 P0 展示。
+- **P1-3**：`GET /chat/conversations/:conversationId/summary` 只读占位摘要（不落库）；`ChatPage` 轻展示，失败则隐藏，**不**影响发消息与 `POST /chat/messages`。
+- **P1-4**：`PreviewPoolItem.itemMeta`（JSON）落库；generate 写入占位；`PreviewPoolPage` 轻展示，无效则隐藏。
+- **P1-5**：worker batch-match 候选侧批量加载；结构化日志（`[batch-match]` 等）。
+- **P1-6**：占位文案与免责声明收敛至 `packages/shared/constants`（需先 build shared）。
+
+**当前仍未纳入（勿与 P1 混淆）**
+
+- 真实大模型调用链、AI Agent、多 Agent 编排、端到端真实 simulation 产品化流水线。
+
+---
 
 ## 技术栈
 
@@ -23,13 +34,14 @@ AI 驱动的关系匹配 MVP，包含登录、问卷画像、预览池、批次�
 - Worker：Node.js + TypeScript + node-cron
 - Database：Prisma + PostgreSQL
 - Auth：JWT（Nest + passport-jwt）
+- Shared：跨包类型与 **运行时常量**（P1-6 起 constants 有编译产物，供 API/worker 引用）
 - Deployment：Docker Compose
 
 ## 环境要求
 
 - Node.js >= 20
 - pnpm >= 9
-- Docker / Docker Compose（用于最小部署与 P0 验收）
+- Docker / Docker Compose（用于最小部署与验收）
 
 ## 快速开始
 
@@ -58,19 +70,20 @@ docker compose up -d --build api worker web
 ## 仓库结构（Monorepo）
 
 | 路径 | 说明 |
-|---|---|
-| `apps/web` | 用户端前端：登录、问卷、预览池、匹配状态/结果、聊天页面 |
-| `apps/admin` | 管理端占位（当前 P0 不强依赖） |
-| `apps/api` | NestJS 后端：auth/users/preferences/images/preview-pool/questionnaire/matching/chat |
-| `apps/worker` | 批处理 worker：cron 注册、batch-match、队列消费 |
-| `packages/database` | Prisma schema、迁移脚本、PrismaClient 导出 |
-| `packages/shared` | 跨包共享类型/常量（基础结构） |
+|------|------|
+| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天 |
+| `apps/admin` | 管理端占位（当前不强依赖） |
+| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat |
+| `apps/worker` | 批处理：cron、batch-match、队列消费 |
+| `packages/database` | Prisma schema、迁移、PrismaClient |
+| `packages/shared` | 共享类型；**P1 起**含 `constants`（如 `P1_DISCLAIMER` 等）及 `dist/constants` 构建产物 |
 | `packages/config` | 共享配置占位 |
-| `packages/ai-prompts` | AI 提示词资产占位 |
-| `packages/scoring` | 评分逻辑占位（P1 可扩展） |
+| `packages/ai-prompts` | AI 提示词资产占位（未接真实推理链） |
+| `packages/scoring` | 评分逻辑占位 |
 | `packages/sdk` | SDK 占位 |
-| `infrastructure` | Docker/Nginx/脚本/监控相关物料 |
-| `docs/P0` | P0 交接、验收清单、bugfix 记录、状态摘要 |
+| `infrastructure` | Docker/Nginx/脚本等物料 |
+| `docs/P0` | P0 交接、验收清单、bugfix、状态摘要 |
+| `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 
 ## 当前已跑通的 P0 主链路
 
@@ -80,17 +93,17 @@ docker compose up -d --build api worker web
 4. `/preview-pool` 生成并展示 6 人预览池
 5. `/matching-waiting` 查看匹配状态
 6. worker 执行 `batch-match`（手动一次或 cron 触发）
-7. `/final-match` 查看最终匹配结果
-8. `/chat` 进入聊天并发送消息
+7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片）
+8. `/chat` 进入聊天并发送消息（**P1**：进入页可请求只读 summary）
 
 ## 关键页面
 
-- `/login`：P0 注册/登录入口，完成 token 与 userId 持久化
-- `/questionnaire`：加载固定题库并提交 12 题答案
-- `/preview-pool`：展示最新 6 人预览池（full / blurred / locked）
-- `/matching-waiting`：查询并展示匹配状态（waiting/processing/ready）
-- `/final-match`：展示最终匹配对象与评分摘要
-- `/chat`：加载会话与消息，支持发送消息
+- `/login`：注册/登录，token 与 userId 持久化
+- `/questionnaire`：固定题库并提交（12 题）
+- `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
+- `/matching-waiting`：匹配状态（waiting / processing / ready）
+- `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）
+- `/chat`：会话与消息、发送消息；**P1**：会话摘要区（条件展示）
 
 ## 关键 API（及 JWT 保护）
 
@@ -106,39 +119,25 @@ docker compose up -d --build api worker web
   - `GET /preview-pool/user/:userId/latest`
   - `POST /matching/enqueue`
   - `GET /matching/status/:userId`
-  - `GET /matching/result/:userId`
+  - `GET /matching/result/:userId`（**P1**：响应含可选 `matchInsights`）
   - `POST /chat/conversations`
-  - `POST /chat/messages`
   - `GET /chat/conversations/:conversationId`
+  - `POST /chat/messages`
+  - `GET /chat/conversations/:conversationId/summary`（**P1**：只读占位摘要，不落库）
 
-> 说明：受保护接口会校验 token 用户与请求中的 `userId/senderUserId` 一致性。
->
-> 前端行为补充：登录后会把 `peimaToken` / `peimaUserId` 写入 `localStorage`，并在核心请求中自动携带 `Authorization: Bearer <token>`。
+> 受保护接口会校验 token 用户与请求中的 `userId` / `senderUserId` 等一致性。  
+> 前端：`peimaToken` / `peimaUserId` 存于 `localStorage`，请求携带 `Authorization: Bearer <token>`。
 
 ### 页面与接口对应关系
 
-- `/login`：
-  - `POST /auth/register`
-  - `POST /auth/login`
-  - `GET /auth/me`
-- `/questionnaire`：
-  - `GET /questionnaire/questions`
-  - `POST /questionnaire/submit`
-- `/preview-pool`：
-  - `POST /preview-pool/generate`
-  - `GET /preview-pool/user/:userId/latest`
-- `/matching-waiting`：
-  - `GET /matching/status/:userId`
-- `/final-match`：
-  - `GET /matching/result/:userId`
-  - （进入聊天入口）`POST /chat/conversations`
-- `/chat`：
-  - `GET /chat/conversations/:conversationId`
-  - `POST /chat/messages`
+- `/login`：`POST /auth/register`、`POST /auth/login`、`GET /auth/me`
+- `/questionnaire`：`GET /questionnaire/questions`、`POST /questionnaire/submit`
+- `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
+- `/matching-waiting`：`GET /matching/status/:userId`
+- `/final-match`：`GET /matching/result/:userId`、`POST /chat/conversations`（进聊天）
+- `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P1**：`GET /chat/conversations/:conversationId/summary`
 
 ## 本地开发启动方式
-
-安装依赖：
 
 ```bash
 pnpm install
@@ -149,11 +148,13 @@ pnpm install
 ```bash
 pnpm dev:web      # 用户端 Web
 pnpm dev:api      # NestJS API
-pnpm dev:worker   # Worker（dev 模式）
+pnpm dev:worker   # Worker（dev）
 pnpm dev:admin    # Admin（占位）
 ```
 
-## 最小 Docker 部署（P0）
+构建 API / Worker 前需生成 Prisma Client；**P1-6 起** API / Worker 的构建链会先构建 `@peima/shared`（constants），详见各包 `package.json` 的 `prebuild` / `build`。
+
+## 最小 Docker 部署
 
 用于本地快速拉起 `postgres / api / worker / web`，非生产级高可用部署。
 
@@ -190,106 +191,79 @@ docker compose logs -f api
 docker compose logs -f web
 ```
 
-worker 正常日志应包含：
-- `worker started`
-- `daily-match.scheduler cron registered: MATCH_CRON=...`
-- 跑批时：`batch started` / `batch completed`（异常时 `batch failed`）
+worker 正常日志应包含：`worker started`、`daily-match.scheduler cron registered: MATCH_CRON=...`；跑批时可见 **`[batch-match]`** 结构化日志（P1-5）及调度器日志。
 
-Web 正常访问地址：
-- `http://localhost:5173`
+Web：`http://localhost:5173`
 
 ### 快速健康检查
 
-用于 1-2 分钟判断四个核心服务是否正常：
-
-1. 服务状态：
-   ```bash
-   docker compose ps
-   ```
-   预期：`postgres / api / web / worker` 都是 `Up`。
-2. Web 可访问：
-   - 打开 `http://localhost:5173`
-   - 可进入 `/login`
-3. API 可响应：
-   ```bash
-   curl -i http://localhost:3000/auth/me
-   ```
-   预期：返回 `401`（说明 API 与鉴权中间件在工作）。
-4. Worker 正常：
-   ```bash
-   docker compose logs --tail=50 worker
-   ```
-   预期：能看到 `worker started` 与 `cron registered`，手动触发后有 `batch started/batch completed`。
+1. `docker compose ps`：`postgres / api / web / worker` 均为 `Up`。
+2. 打开 `http://localhost:5173`，可进 `/login`。
+3. `curl -i http://localhost:3000/auth/me` 预期 `401`（鉴权在工作）。
+4. `docker compose logs --tail=50 worker`：见 `worker started`、cron 注册；手动跑批后见 **`[batch-match]`** `batch_complete` 等。
 
 ## P0 验收方式（简明）
 
-测试数据前置条件：`preview-pool` 生成要求候选池至少有 **6 个带 images 的候选用户**（且不包含当前 viewer）。
+前置：`preview-pool` 需要至少 **6 个带 images 的候选用户**（不含当前 viewer）。
 
-按下列顺序执行：
+顺序：登录 → 问卷 → 生成预览池 → `matching/enqueue` → worker `batch-match` → `/final-match` → `/chat`。
 
-1. 登录：访问 `/login` 完成注册/登录
-2. 问卷：访问 `/questionnaire` 提交 12 题
-3. 预览池：调用/触发 `preview-pool generate`，在 `/preview-pool` 查看 6 人池
-4. 入队（enqueue）：
-   - 使用前端流程进入等待页，或手动调用：
-     ```bash
-     curl -s -X POST http://localhost:3000/matching/enqueue \
-       -H "Authorization: Bearer <TOKEN>" \
-       -H "Content-Type: application/json" \
-       -d "{\"userId\":\"<USER_ID>\"}"
-     ```
-5. 跑批（batch-match）：
-   - 手动触发一次（推荐验收时使用）：
-     ```bash
-     docker compose exec worker node apps/worker/dist/main.js --batch-match
-     ```
-   - 或等待 cron 按 `MATCH_CRON` 自动触发
-6. 结果：访问 `/final-match` 查看结果
-7. 聊天：进入 `/chat` 并发送消息
+手动入队示例：
 
-详细验收与 bug 记录请看：
+```bash
+curl -s -X POST http://localhost:3000/matching/enqueue \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\":\"<USER_ID>\"}"
+```
+
+手动跑批（Docker 内）：
+
+```bash
+docker compose exec worker node apps/worker/dist/main.js --batch-match
+```
+
+**P1 抽检（可选）**：结果接口含 `matchInsights`；预览池条目含 `itemMeta`；`GET .../summary` 返回占位摘要（均需有效 JWT 与数据前置）。
+
+详细清单与 bug 记录：
+
 - `docs/P0/P0-acceptance-checklist.md`
 - `docs/P0/P0-bugfix-list.md`
 
-## 常见问题（P0 部署/验收）
+## 常见问题（部署/验收）
 
-1. worker 执行 batch-match 报 Prisma Client 未初始化  
-   - 现象：`@prisma/client did not initialize yet...`
-   - 处理：重建 worker 镜像，确保构建阶段执行了 `@peima/database` 的 Prisma generate。
-   - 命令：
-     ```bash
-     docker compose up -d --build --force-recreate worker
-     ```
+1. **worker batch-match：Prisma Client 未初始化**  
+   - 重建 worker，确保构建含 `@peima/database` generate。  
+   - `docker compose up -d --build --force-recreate worker`
 
-2. web 端口异常（4173 / 5173 不一致）  
-   - 现象：日志端口与映射不一致，宿主访问不稳定。
-   - 处理：当前已统一为 5173；若仍异常，重建 web 并确认 `docker compose ps` 显示 `0.0.0.0:5173->5173/tcp`。
-   - 命令：
-     ```bash
-     docker compose up -d --build --force-recreate web
-     ```
+2. **Web 端口 5173**  
+   - 确认映射为 `0.0.0.0:5173->5173/tcp`；异常时 `docker compose up -d --build --force-recreate web`
 
-3. preview-pool 生成失败：候选不足  
-   - 现象：`POST /preview-pool/generate` 返回 `not enough candidates`。
-   - 原因：可用候选用户不足 6 个，或候选用户缺少 `images`。
-   - 处理：补齐候选用户与图片数据后再重试。
+3. **preview-pool：`not enough candidates`**  
+   - 候选不足 6 或缺少 `images`，补齐后再试。
 
 ## 当前限制 / 后续方向
 
-- 当前为 P0 最小实现，目标是流程可跑通，不是生产级高可用架构。
-- 暂未覆盖复杂权限/RBAC、实时 WebSocket 聊天、生产级可观测性与弹性治理。
-- P1 建议方向：explanation 层、AI simulation、更强匹配解释与策略升级。
-- 建议 P1 优先起步项：先做 explanation 层，再逐步叠加 simulation 与策略增强。
+- 当前为 **流程可跑通 + P1 占位增强** 的研发形态，非生产级高可用/安全/可观测全套。
+- **未正式接入**：真实 AI Agent、多 Agent、WebSocket 实时聊天、完整生产治理。
+- **后续（高层）**：在保持现有 JSON 字段与路由前提下，按需将占位生成替换为模型或策略服务，并定义来源/版本与降级；chat 摘要若需持久化可单独立项。
 
 ## 文档索引
 
-- `docs/P0/P0-project-handoff.md`：P0 完整交接文档（模块状态、主链路、建议）
-- `docs/P0/P0-acceptance-checklist.md`：P0 验收清单与当前验收结论
-- `docs/P0/P0-bugfix-list.md`：P0 问题与修复记录
-- `docs/P0/P0-status-summary-short.md`：可快速转发的短摘要
+**P0**
+
+- `docs/P0/P0-project-handoff.md`：交接（模块、主链路）
+- `docs/P0/P0-acceptance-checklist.md`：验收清单
+- `docs/P0/P0-bugfix-list.md`：问题与修复
+- `docs/P0/P0-status-summary-short.md`：短摘要
+
+**P1**
+
+- `docs/P1/P1-status-summary.md`：P1 阶段结论与总体状态
+- `docs/P1/P1-feature-scope.md`：P1 做了什么 / 没做什么
+- `docs/P1/P1-architecture-delta.md`：相对 P0 的结构增量
+- `docs/P1/P1-validation-summary.md`：P1-1～P1-6 验证摘要
 
 ## License
 
 Private / TBD
-
-
