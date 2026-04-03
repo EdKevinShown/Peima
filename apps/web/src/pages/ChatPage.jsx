@@ -1,7 +1,13 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import ChatSummaryCard from "../components/chat/ChatSummaryCard";
+import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
+import FeedbackQuickActions from "../components/feedback/FeedbackQuickActions";
+import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
 import { resolveUserId } from "../utils/resolveUserId";
+import { getCopilotInsights } from "../api/copilot";
+import { listMyProfileSuggestions } from "../api/profile";
 import { getConversation, getConversationSummary, sendMessage } from "../api/chat";
 
 export default function ChatPage() {
@@ -17,6 +23,10 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
 
   const [conversationSummary, setConversationSummary] = useState(null);
+  const [copilotInsights, setCopilotInsights] = useState(null);
+  const [profileSuggestions, setProfileSuggestions] = useState([]);
+  /** Bump after send to refresh summary + copilot without touching profile list every time */
+  const [p2RefreshKey, setP2RefreshKey] = useState(0);
 
   const load = useCallback(async () => {
     if (!conversationId) {
@@ -62,7 +72,58 @@ export default function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, p2RefreshKey]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setCopilotInsights(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getCopilotInsights(conversationId);
+        if (!cancelled) {
+          setCopilotInsights(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setCopilotInsights(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, p2RefreshKey]);
+
+  useEffect(() => {
+    if (!conversationId || !userId) {
+      setProfileSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await listMyProfileSuggestions();
+        if (!cancelled) {
+          setProfileSuggestions(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setProfileSuggestions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, userId]);
+
+  const pendingProfileSuggestions = useMemo(
+    () => profileSuggestions.filter((s) => s.status === "pending"),
+    [profileSuggestions],
+  );
 
   const onSend = useCallback(async () => {
     if (!conversationId || !userId) {
@@ -82,6 +143,7 @@ export default function ChatPage() {
       });
       setContent("");
       await load();
+      setP2RefreshKey((k) => k + 1);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -111,38 +173,11 @@ export default function ChatPage() {
         </p>
       )}
 
-      {conversationSummary && conversationId && (
-        <aside
-          style={{
-            marginBottom: "1rem",
-            padding: "0.85rem 1rem",
-            border: "1px solid #e0e0e0",
-            borderRadius: 8,
-            background: "#f9fafb",
-            fontSize: "0.92rem",
-            lineHeight: 1.5,
-          }}
-          aria-label="会话摘要占位"
-        >
-          <div style={{ fontWeight: 600, marginBottom: "0.35rem" }}>
-            会话摘要（占位）
-          </div>
-          <p style={{ margin: "0 0 0.5rem" }}>{conversationSummary.summary}</p>
-          <p style={{ margin: "0 0 0.5rem", color: "#444" }}>
-            {conversationSummary.chatStageHint}
-          </p>
-          <div style={{ fontSize: "0.8rem", color: "#666" }}>
-            生成时间（占位·每次请求现算）：{" "}
-            {(() => {
-              try {
-                return new Date(conversationSummary.generatedAt).toLocaleString();
-              } catch {
-                return conversationSummary.generatedAt;
-              }
-            })()}
-          </div>
-        </aside>
-      )}
+      {conversationId ? <ChatSummaryCard summary={conversationSummary} /> : null}
+      {conversationId ? <CopilotInsightCard insights={copilotInsights} /> : null}
+      {conversationId ? (
+        <ProfileSuggestionCard pendingSuggestions={pendingProfileSuggestions} />
+      ) : null}
 
       {!loading && !error && conversation && (
         <section style={{ border: "1px solid #ddd", borderRadius: 8 }}>
@@ -208,6 +243,11 @@ export default function ChatPage() {
               background: "#fafafa",
             }}
           >
+            <FeedbackQuickActions
+              conversationId={conversationId}
+              userId={userId}
+              disabled={sending || !conversationId}
+            />
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}

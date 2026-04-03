@@ -3,3 +3,14 @@
 export type Empty = Record<string, never>;
 
 export type { MatchInsights } from "./match-p1";
+
+export type {
+  P2SourceMetadata,
+  P2ChatSummarySnapshot,
+} from "./p2-chat-summary";
+export type {
+  P2FeedbackSubjectKind,
+  P2UserFeedback,
+} from "./p2-feedback";
+export type { P2ProfileUpdateSuggestion } from "./p2-profile-suggestion";
+export type { P2BehaviorSignal } from "./p2-signal";

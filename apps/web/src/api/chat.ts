@@ -1,31 +1,4 @@
-import { authHeaders } from "./auth";
-
-const baseUrl =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
-
-async function handleJson(res: Response) {
-  const text = await res.text();
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("未登录或 token 无效，请先登录（/login）");
-    }
-    let detail = text;
-    try {
-      const body = JSON.parse(text) as { message?: string | string[] };
-      if (Array.isArray(body.message)) {
-        detail = body.message.join(", ");
-      } else if (body.message) {
-        detail = String(body.message);
-      }
-    } catch {
-      /* use raw text */
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
-  }
-  if (!text) return {};
-  return JSON.parse(text);
-}
+import { authHeaders, baseUrl, handleJson } from "./auth";
 
 export type Conversation = {
   id: string;
@@ -54,13 +27,16 @@ export async function createConversation(userId: string) {
     },
     body: JSON.stringify({ userId }),
   });
-  return handleJson(res);
+  return handleJson<unknown>(res);
 }
 
 export type ConversationSummaryResponse = {
   summary: string;
   chatStageHint: string;
   generatedAt: string;
+  sourceType?: string;
+  sourceVersion?: string;
+  persisted?: boolean;
 };
 
 export async function getConversation(conversationId: string) {
@@ -70,10 +46,10 @@ export async function getConversation(conversationId: string) {
       headers: authHeaders(),
     },
   );
-  return handleJson(res);
+  return handleJson<Conversation>(res);
 }
 
-/** P1-3: read-only placeholder summary (not persisted). */
+/** P1/P2: summary（优先持久化行，否则内联规则摘要） */
 export async function getConversationSummary(conversationId: string) {
   const res = await fetch(
     `${baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}/summary`,
@@ -81,7 +57,7 @@ export async function getConversationSummary(conversationId: string) {
       headers: authHeaders(),
     },
   );
-  return handleJson(res) as Promise<ConversationSummaryResponse>;
+  return handleJson<ConversationSummaryResponse>(res);
 }
 
 export async function sendMessage(payload: {
@@ -97,5 +73,5 @@ export async function sendMessage(payload: {
     },
     body: JSON.stringify(payload),
   });
-  return handleJson(res);
+  return handleJson<unknown>(res);
 }

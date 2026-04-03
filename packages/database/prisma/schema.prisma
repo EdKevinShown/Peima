@@ -39,6 +39,9 @@ model User {
   conversationEntriesAsViewer Conversation[] @relation("ConversationViewer")
   conversationEntriesAsCandidate Conversation[] @relation("ConversationCandidate")
   messagesAsSender Message[] @relation("MessageSender")
+  structuredFeedbacks      UserFeedback[]
+  profileUpdateSuggestions ProfileUpdateSuggestion[]
+  behaviorSignals          BehaviorSignal[]
 
   @@map("users")
 }
@@ -218,7 +221,9 @@ model Conversation {
   candidate  User @relation("ConversationCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
   matchResult MatchResult? @relation(fields: [matchResultId], references: [id], onDelete: SetNull)
 
-  messages Message[]
+  messages        Message[]
+  chatSummaries   ConversationSummary[]
+  behaviorSignals BehaviorSignal[]
 
   @@map("conversations")
 }
@@ -236,4 +241,84 @@ model Message {
   sender       User        @relation("MessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
 
   @@map("messages")
+}
+
+// --- P2: minimal persistence (rule/template/placeholder/hybrid; no silent UserProfile writes) ---
+
+/// Persisted chat summary snapshots per conversation (latest row by createdAt until API defines otherwise).
+model ConversationSummary {
+  id             String   @id @default(cuid())
+  conversationId String
+  summary        String   @db.Text
+  chatStageHint  String?
+  sourceType     String
+  sourceVersion  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_summaries")
+}
+
+/// Structured feedback (subjectKind/subjectId align with shared P2FeedbackSubjectKind + opaque ids).
+model UserFeedback {
+  id            String   @id @default(cuid())
+  userId        String
+  subjectKind   String
+  subjectId     String
+  sourceType    String
+  sourceVersion String
+  rating        Int?
+  tags          String[] @default([])
+  comment       String?  @db.Text
+  recordedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+  @@map("user_feedbacks")
+}
+
+/// Proposed patch to questionnaire-derived profile — only materialized onto UserProfile after explicit accept.
+model ProfileUpdateSuggestion {
+  id            String    @id @default(cuid())
+  userId        String
+  status        String // pending | accepted | dismissed
+  sourceType    String
+  sourceVersion String
+  proposedPatch Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  resolvedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("profile_update_suggestions")
+}
+
+/// Append-oriented behavior / analytics-oriented events (no separate analytics dimension table in P2 v1).
+model BehaviorSignal {
+  id             String   @id @default(cuid())
+  userId         String
+  eventType      String
+  sourceType     String
+  sourceVersion  String
+  occurredAt     DateTime @default(now())
+  conversationId String?
+  sessionId      String?
+  properties     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt])
+  @@index([conversationId])
+  @@map("behavior_signals")
 }

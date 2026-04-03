@@ -49,6 +49,21 @@ export class ChatController {
     );
   }
 
+  @Post("conversations/:conversationId/summary/generate")
+  generateConversationSummary(
+    @Param("conversationId") conversationId: string,
+    @Req() req: JwtReq,
+  ) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.chatService.generateConversationSummaryPersisted(
+      conversationId,
+      tokenUserId,
+    );
+  }
+
   @Get("conversations/:conversationId")
   getConversation(
     @Param("conversationId") conversationId: string,

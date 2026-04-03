@@ -8,6 +8,11 @@ import { QuestionnaireModule } from "./modules/questionnaire/questionnaire.modul
 import { UsersModule } from "./modules/users/users.module";
 import { ChatModule } from "./modules/chat/chat.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { FeedbackModule } from "./modules/feedback/feedback.module";
+import { ProfileSuggestionModule } from "./modules/profile-suggestion/profile-suggestion.module";
+import { BehaviorSignalModule } from "./modules/behavior-signal/behavior-signal.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { CopilotModule } from "./modules/copilot/copilot.module";
 
 @Module({
   imports: [
@@ -19,6 +24,11 @@ import { AuthModule } from "./modules/auth/auth.module";
     QuestionnaireModule,
     MatchingModule,
     ChatModule,
+    FeedbackModule,
+    ProfileSuggestionModule,
+    BehaviorSignalModule,
+    AnalyticsModule,
+    CopilotModule,
     AuthModule,
   ],
   controllers: [],
