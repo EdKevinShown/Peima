@@ -37,6 +37,19 @@ export type MatchingStatusResponse = {
   status: MatchingStatus;
 };
 
+/** P1-1 optional JSON on MatchResult; keys are API contract. */
+export type MatchInsights = {
+  explanation: {
+    whyMatch: string;
+    strengths: string[];
+    cautions: string[];
+    rhythmPrediction: string;
+  };
+  riskFlags: string[];
+  openingTopics: string[];
+  chatSimulationSummary: string;
+};
+
 export type MatchingResultResponse = {
   id: string;
   userId: string;
@@ -47,6 +60,7 @@ export type MatchingResultResponse = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  matchInsights?: MatchInsights | null;
 };
 
 export async function getMatchingStatus(userId: string) {

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { PreviewPool, PreviewPoolItem } from "@peima/database";
+import { P1_DISCLAIMER, P1_MARK } from "@peima/shared/constants";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { GeneratePreviewPoolDto } from "./dto/generate-preview-pool.dto";
 
@@ -25,6 +26,36 @@ const LAYER_SPECS: ReadonlyArray<{
   { rankInPool: 5, candidateType: "backup", displayMode: "locked", baseScore: 0.6 },
   { rankInPool: 6, candidateType: "backup", displayMode: "locked", baseScore: 0.59 },
 ];
+
+/** P1-4 JSON on PreviewPoolItem; generated only from slot fields (no AI). */
+export type PreviewPoolItemMeta = {
+  slotReason: string;
+  shortHint?: string;
+  tags?: string[];
+};
+
+function buildItemMetaPlaceholder(spec: {
+  rankInPool: number;
+  candidateType: string;
+  displayMode: string;
+}): PreviewPoolItemMeta {
+  const tags = [spec.candidateType, spec.displayMode];
+  let slotReason: string;
+  if (spec.candidateType === "preference") {
+    slotReason = `偏好优先槽${P1_MARK}：rank ${spec.rankInPool}，展示模式为 ${spec.displayMode}。${P1_DISCLAIMER}`;
+  } else if (spec.candidateType === "visual") {
+    slotReason = `视觉分层槽${P1_MARK}：rank ${spec.rankInPool}，展示模式为 ${spec.displayMode}。${P1_DISCLAIMER}`;
+  } else {
+    slotReason = `备选槽${P1_MARK}：rank ${spec.rankInPool}，展示模式为 ${spec.displayMode}。${P1_DISCLAIMER}`;
+  }
+  const shortHint =
+    spec.displayMode === "full"
+      ? `本槽为完整展示层${P1_MARK}。`
+      : spec.displayMode === "blurred"
+        ? `本槽为弱化展示层${P1_MARK}。`
+        : `本槽为锁定占位层${P1_MARK}。`;
+  return { slotReason, shortHint, tags };
+}
 
 export type PreviewPoolBundle = {
   previewPool: PreviewPool;
@@ -84,6 +115,7 @@ export class PreviewPoolService {
             displayMode: spec.displayMode,
             rankInPool: spec.rankInPool,
             baseScore: spec.baseScore,
+            itemMeta: buildItemMetaPlaceholder(spec),
           })),
         },
       },

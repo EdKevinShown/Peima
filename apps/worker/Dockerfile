@@ -6,5 +6,6 @@ COPY apps ./apps
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @peima/database build
+RUN pnpm --filter @peima/shared build
 RUN pnpm --filter @peima/worker build
 CMD ["node", "apps/worker/dist/main.js"]

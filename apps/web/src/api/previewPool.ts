@@ -27,6 +27,12 @@ async function handleJson<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+export type PreviewPoolItemMeta = {
+  slotReason: string;
+  shortHint?: string;
+  tags?: string[];
+};
+
 export type PreviewPoolItem = {
   id: string;
   previewPoolId: string;
@@ -36,6 +42,7 @@ export type PreviewPoolItem = {
   displayMode: string;
   rankInPool: number;
   baseScore: number | null;
+  itemMeta?: PreviewPoolItemMeta | null;
   createdAt: string;
   updatedAt: string;
 };

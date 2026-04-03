@@ -107,6 +107,7 @@ model PreviewPoolItem {
   displayMode     String
   rankInPool      Int
   baseScore       Float?
+  itemMeta        Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -190,6 +191,7 @@ model MatchResult {
   batchId         String
   finalScore      Float?
   reasonSummary   String?
+  matchInsights   Json?
   status          String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -8,6 +8,20 @@ function sortedItems(items) {
   return [...items].sort((a, b) => a.rankInPool - b.rankInPool);
 }
 
+function isStringArray(x) {
+  return Array.isArray(x) && x.every((i) => typeof i === "string");
+}
+
+function isValidItemMeta(m) {
+  if (m == null || typeof m !== "object" || Array.isArray(m)) return false;
+  if (typeof m.slotReason !== "string") return false;
+  if (m.shortHint !== undefined && typeof m.shortHint !== "string") {
+    return false;
+  }
+  if (m.tags !== undefined && !isStringArray(m.tags)) return false;
+  return true;
+}
+
 export default function PreviewPoolPage() {
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
@@ -129,6 +143,31 @@ export default function PreviewPoolPage() {
                     rank #{it.rankInPool} · {it.displayMode} ·{" "}
                     {it.candidateType}
                   </div>
+                  {isValidItemMeta(it.itemMeta) && (
+                    <div
+                      style={{
+                        marginBottom: "0.45rem",
+                        padding: "0.45rem 0.55rem",
+                        background: "#f5f7fa",
+                        borderRadius: 6,
+                        fontSize: "0.82rem",
+                        lineHeight: 1.45,
+                        color: "#333",
+                      }}
+                    >
+                      <div>{it.itemMeta.slotReason}</div>
+                      {it.itemMeta.shortHint ? (
+                        <div style={{ marginTop: "0.25rem", color: "#555" }}>
+                          {it.itemMeta.shortHint}
+                        </div>
+                      ) : null}
+                      {it.itemMeta.tags && it.itemMeta.tags.length > 0 ? (
+                        <div style={{ marginTop: "0.35rem", color: "#666" }}>
+                          tags: {it.itemMeta.tags.join(" · ")}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                   <div style={{ fontFamily: "monospace", fontSize: "0.9rem" }}>
                     candidateUserId: {it.candidateUserId}
                   </div>

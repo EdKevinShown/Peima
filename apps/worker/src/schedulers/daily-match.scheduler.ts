@@ -1,17 +1,29 @@
 import { runBatchMatch } from "../jobs/batch-match.processor.js";
 import cron from "node-cron";
 
+function schedulerLog(parts: Record<string, string | undefined>) {
+  const ts = new Date().toISOString();
+  const kv = Object.entries({ ts, ...parts })
+    .filter(([, v]) => v !== undefined && v !== "")
+    .map(([k, v]) => `${k}=${v}`);
+  console.log(`[daily-match.scheduler] ${kv.join(" ")}`);
+}
+
 /**
  * P0: no real cron here — call this from CLI, a hosted scheduler, or `main` when wiring production.
  */
 export async function runDailyMatchOnce(): Promise<void> {
-  console.log("[daily-match.scheduler] runDailyMatchOnce → runBatchMatch()");
+  schedulerLog({ event: "run_once_start", note: "runDailyMatchOnce→runBatchMatch" });
   try {
-    console.log("[daily-match.scheduler] batch started");
+    schedulerLog({ event: "batch_invoke", source: "runDailyMatchOnce" });
     await runBatchMatch();
-    console.log("[daily-match.scheduler] batch completed");
+    schedulerLog({ event: "batch_done", source: "runDailyMatchOnce", outcome: "ok" });
   } catch (e) {
-    console.error("[daily-match.scheduler] batch failed");
+    schedulerLog({
+      event: "batch_done",
+      source: "runDailyMatchOnce",
+      outcome: "fail",
+    });
     throw e;
   }
 }
@@ -30,12 +42,22 @@ export function registerDailyMatchCron(): void {
   job = cron.schedule(
     expr,
     async () => {
-      console.log("[daily-match.scheduler] batch started");
+      schedulerLog({ event: "batch_invoke", source: "cron", cronExpr: expr });
       try {
         await runBatchMatch();
-        console.log("[daily-match.scheduler] batch completed");
-      } catch (e) {
-        console.error("[daily-match.scheduler] batch failed");
+        schedulerLog({
+          event: "batch_done",
+          source: "cron",
+          outcome: "ok",
+          cronExpr: expr,
+        });
+      } catch {
+        schedulerLog({
+          event: "batch_done",
+          source: "cron",
+          outcome: "fail",
+          cronExpr: expr,
+        });
       }
     },
     { timezone },

@@ -34,6 +34,21 @@ export class ChatController {
     return this.chatService.createOrReuseConversation(tokenUserId);
   }
 
+  @Get("conversations/:conversationId/summary")
+  getConversationSummary(
+    @Param("conversationId") conversationId: string,
+    @Req() req: JwtReq,
+  ) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.chatService.getConversationSummaryPlaceholder(
+      conversationId,
+      tokenUserId,
+    );
+  }
+
   @Get("conversations/:conversationId")
   getConversation(
     @Param("conversationId") conversationId: string,

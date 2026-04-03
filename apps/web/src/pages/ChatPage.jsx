@@ -2,7 +2,7 @@
 import { useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import { resolveUserId } from "../utils/resolveUserId";
-import { getConversation, sendMessage } from "../api/chat";
+import { getConversation, getConversationSummary, sendMessage } from "../api/chat";
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
@@ -15,6 +15,8 @@ export default function ChatPage() {
 
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
+
+  const [conversationSummary, setConversationSummary] = useState(null);
 
   const load = useCallback(async () => {
     if (!conversationId) {
@@ -38,6 +40,29 @@ export default function ChatPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setConversationSummary(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getConversationSummary(conversationId);
+        if (!cancelled) {
+          setConversationSummary(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setConversationSummary(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
 
   const onSend = useCallback(async () => {
     if (!conversationId || !userId) {
@@ -84,6 +109,39 @@ export default function ChatPage() {
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
         </p>
+      )}
+
+      {conversationSummary && conversationId && (
+        <aside
+          style={{
+            marginBottom: "1rem",
+            padding: "0.85rem 1rem",
+            border: "1px solid #e0e0e0",
+            borderRadius: 8,
+            background: "#f9fafb",
+            fontSize: "0.92rem",
+            lineHeight: 1.5,
+          }}
+          aria-label="会话摘要占位"
+        >
+          <div style={{ fontWeight: 600, marginBottom: "0.35rem" }}>
+            会话摘要（占位）
+          </div>
+          <p style={{ margin: "0 0 0.5rem" }}>{conversationSummary.summary}</p>
+          <p style={{ margin: "0 0 0.5rem", color: "#444" }}>
+            {conversationSummary.chatStageHint}
+          </p>
+          <div style={{ fontSize: "0.8rem", color: "#666" }}>
+            生成时间（占位·每次请求现算）：{" "}
+            {(() => {
+              try {
+                return new Date(conversationSummary.generatedAt).toLocaleString();
+              } catch {
+                return conversationSummary.generatedAt;
+              }
+            })()}
+          </div>
+        </aside>
       )}
 
       {!loading && !error && conversation && (

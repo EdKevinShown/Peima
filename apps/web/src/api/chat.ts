@@ -57,6 +57,12 @@ export async function createConversation(userId: string) {
   return handleJson(res);
 }
 
+export type ConversationSummaryResponse = {
+  summary: string;
+  chatStageHint: string;
+  generatedAt: string;
+};
+
 export async function getConversation(conversationId: string) {
   const res = await fetch(
     `${baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}`,
@@ -65,6 +71,17 @@ export async function getConversation(conversationId: string) {
     },
   );
   return handleJson(res);
+}
+
+/** P1-3: read-only placeholder summary (not persisted). */
+export async function getConversationSummary(conversationId: string) {
+  const res = await fetch(
+    `${baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}/summary`,
+    {
+      headers: authHeaders(),
+    },
+  );
+  return handleJson(res) as Promise<ConversationSummaryResponse>;
 }
 
 export async function sendMessage(payload: {
