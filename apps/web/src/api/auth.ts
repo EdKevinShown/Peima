@@ -14,9 +14,37 @@ export function authHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
-export const baseUrl =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
+const DEFAULT_API_BASE = "http://localhost:3000";
+
+/**
+ * API 根地址（与 chat / copilot 等共用）。
+ * 若误将 VITE_API_BASE_URL 指到 Vite 开发端口，会导致 fetch 打到前端 dev server 并出现 Cannot GET。
+ */
+export function getApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL;
+  if (raw == null || typeof raw !== "string") {
+    return DEFAULT_API_BASE;
+  }
+  const trimmed = raw.trim().replace(/\/$/, "");
+  if (!trimmed) {
+    return DEFAULT_API_BASE;
+  }
+  try {
+    const u = new URL(trimmed);
+    const host = u.hostname.toLowerCase();
+    const port = u.port || (u.protocol === "https:" ? "443" : "80");
+    if (host === "localhost" || host === "127.0.0.1") {
+      if (port === "5173" || port === "5174" || port === "4173") {
+        return DEFAULT_API_BASE;
+      }
+    }
+  } catch {
+    return DEFAULT_API_BASE;
+  }
+  return trimmed;
+}
+
+export const baseUrl = getApiBaseUrl();
 
 export async function handleJson<T>(res: Response): Promise<T> {
   const text = await res.text();

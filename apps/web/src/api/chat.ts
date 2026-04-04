@@ -1,4 +1,4 @@
-import { authHeaders, baseUrl, handleJson } from "./auth";
+import { authHeaders, baseUrl, getApiBaseUrl, handleJson } from "./auth";
 
 export type Conversation = {
   id: string;
@@ -86,4 +86,58 @@ export async function sendMessage(payload: {
     body: JSON.stringify(payload),
   });
   return handleJson<unknown>(res);
+}
+
+export type ConversationTimelineEventType =
+  | "conversation_opened"
+  | "message_sent"
+  | "summary_snapshot"
+  | "behavior_signal"
+  | "feedback_on_conversation";
+
+export type ConversationTimelineItem = {
+  id: string;
+  type: ConversationTimelineEventType;
+  occurredAt: string;
+  title: string;
+  detail?: string;
+  meta?: {
+    sourceId?: string;
+    actorUserId?: string;
+    rating?: number;
+  };
+};
+
+export type ConversationTimelineMessagePagination = {
+  skip: number;
+  limit: number;
+  hasMore: boolean;
+};
+
+export type ConversationTimelineResponse = {
+  conversationId: string;
+  generatedAt: string;
+  items: ConversationTimelineItem[];
+  messagePagination?: ConversationTimelineMessagePagination;
+};
+
+/** P3-C：只读关系时间线；P3-3：可选 messageSkip / messageLimit */
+export async function getConversationTimeline(
+  conversationId: string,
+  opts?: { messageSkip?: number; messageLimit?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.messageSkip != null && opts.messageSkip > 0) {
+    params.set("messageSkip", String(opts.messageSkip));
+  }
+  if (opts?.messageLimit != null) {
+    params.set("messageLimit", String(opts.messageLimit));
+  }
+  const q = params.toString();
+  const path = `/chat/conversations/${encodeURIComponent(conversationId)}/timeline${q ? `?${q}` : ""}`;
+  const url = new URL(path, getApiBaseUrl()).href;
+  const res = await fetch(url, {
+    headers: authHeaders(),
+  });
+  return handleJson<ConversationTimelineResponse>(res);
 }

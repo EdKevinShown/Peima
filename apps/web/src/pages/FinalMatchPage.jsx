@@ -93,6 +93,19 @@ export default function FinalMatchPage() {
     }
   }, [userId, navigate]);
 
+  const onViewTimeline = useCallback(async () => {
+    if (!userId) return;
+    try {
+      localStorage.setItem("peimaUserId", userId);
+      const conv = await createConversation(userId);
+      navigate(
+        `/chat/timeline?conversationId=${encodeURIComponent(conv.id)}&userId=${encodeURIComponent(userId)}`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    }
+  }, [userId, navigate]);
+
   return (
     <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.35rem" }}>你的当前最终匹配结果</h1>
@@ -208,9 +221,20 @@ export default function FinalMatchPage() {
             </section>
           )}
 
-          <div style={{ marginTop: "1rem" }}>
+          <div
+            style={{
+              marginTop: "1rem",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.5rem",
+              alignItems: "center",
+            }}
+          >
             <button type="button" onClick={onEnterChat} disabled={!userId}>
               进入聊天
+            </button>
+            <button type="button" onClick={onViewTimeline} disabled={!userId}>
+              查看关系时间线（只读）
             </button>
           </div>
         </article>

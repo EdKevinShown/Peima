@@ -1,18 +1,19 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。正文与建议仍主要由 **规则 / 模板 / 占位逻辑** 生成，**不是**真实大模型生产链路。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。正文与建议仍主要由 **规则 / 模板 / 占位逻辑** 生成，**不是**真实大模型生产链路。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
 
 ---
 
-## 当前项目状态（截至 P2.5）
+## 当前项目状态（截至 P3 关系时间线收口）
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；真实 AI agent / 生产级模型链 **未** 正式接入。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；真实 AI agent / 生产级模型链 **未** 正式接入。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；**不**改变「非真实大模型生产链路」口径。 |
+| **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
 
 **P1 已交付能力（摘要）**
 
@@ -40,11 +41,21 @@
 - **Migration**：P2 持久化表纳入正式 Prisma migration 历史（见上）。
 - **联调/验收**：`docs/P2/P2.5-integration-checklist.md`（命令 + 手动勾选清单）。
 
-**当前仍未纳入（勿与 P2-MVP / P2.5 混淆）**
+**P3 关系时间线（摘要，与 `docs/P3/P3-relationship-timeline.md` 一致）**
 
+- **P3-1 / API 首屏**：`GET /chat/conversations/:conversationId/timeline`（JWT；仅参与者）；`messageSkip=0`（默认）时返回完整混合时间线：会话开始、**首屏消息窗口**（默认最多 200 条，升序）、本会话全部摘要快照、双方行为信号、**当前用户**会话反馈；响应含 **`messagePagination`**；只读 DTO。
+- **P3-3 / 消息追加**：可选 Query **`messageSkip`**、**`messageLimit`**（默认 0 / 200，**上限 200**）；**`messageSkip>0`** 时仅返回 **`message_sent`** 切片 + **`messagePagination`**；时间线页 **「加载更多消息」** 合并排序去重。
+- **Web 入口**：`/chat/timeline?conversationId=&userId=`；**`ChatPage`** 与 **`FinalMatchPage`**（P3-2）「查看关系时间线（只读）」；FinalMatch 与「进入聊天」共用 **`createConversation(userId)`** 同一会话。
+- **联调注意**：时间线请求须与 chat/copilot **同一 API 基址**（默认 `http://localhost:3000`）；勿将 `VITE_API_BASE_URL` 指到 Vite dev 端口，否则浏览器会出现 **`Cannot GET .../timeline`** 而直连 API 正常（详见 P3 文档 §6）。
+- **收口文档**：整阶段说明、验收 checklist、联调备忘、已知限制、Git 推送前清单、提交用语见 **`docs/P3/P3-relationship-timeline.md`**。
+
+**当前仍未纳入（勿与 P2-MVP / P2.5 / 本阶段 P3 混淆）**
+
+- **本阶段 P3（关系时间线）已完成**；下列条目 **不属于** 该 P3 切片，属后续产品方向或中长期能力。
 - 真实大模型调用链、AI Agent、多 Agent 编排、端到端真实 simulation **产品化**流水线。
 - Copilot / 摘要的 **Worker 自动生成**、历史版本产品化、完整建议治理后台。
 - 独立「设置 / 建议中心」页（当前建议能力集中在 **ChatPage** 与 **CopilotPage**）。
+- **Analytics** 更细粒度治理、缓存与大盘产品化（当前仅有计数级只读接口 + P2.5 全局白名单）。
 
 ---
 
@@ -92,9 +103,9 @@ docker compose up -d --build api worker web
 
 | 路径 | 说明 |
 |------|------|
-| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天 |
+| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口） |
 | `apps/admin` | 管理端占位（当前不强依赖） |
-| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关） |
+| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`） |
 | `apps/worker` | 批处理：cron、batch-match、队列消费 |
 | `packages/database` | Prisma schema、迁移、PrismaClient |
 | `packages/shared` | 共享类型；**P1 起**含 `constants`（如 `P1_DISCLAIMER` 等）及 `dist/constants` 构建产物；**P2** 增量类型/常量（`P2SourceType`、反馈 subject、suggestion 状态等） |
@@ -106,8 +117,10 @@ docker compose up -d --build api worker web
 | `docs/P0` | P0 交接、验收清单、bugfix、状态摘要 |
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
+| `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
+| `docs/P4`～`docs/P6` | **后续阶段规划（未实现）**：P4 产品化补完、P5 治理与历史化、P6 AI 生产链演进（见下文文档索引） |
 
-## 当前项目结构（P0 / P1 / P2-MVP / P2.5）
+## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3）
 
 以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位与 P2 相关核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动**；**[P2.5]** 在 P2 基础上的 Web/迁移/权限等小步补完（见树内标注）。
 
@@ -184,11 +197,19 @@ docker compose up -d --build api worker web
 │           ├── schema.prisma                    [P0] 数据模型；[P1/P2] 增量表与字段
 │           └── migrations/                      Prisma 迁移历史；含 P2 四表正式迁移（P2.5）
 └── docs/
-    └── P2/
-        ├── P2-scope-notes.md                    P2 范围与设计原则
-        ├── P2-status-summary.md                 P2-MVP 状态与边界
-        ├── P2-validation-summary.md             验证方式与已知限制
-        └── P2.5-integration-checklist.md        P2.5 联调命令与手动验收清单
+    ├── P2/
+    │   ├── P2-scope-notes.md                    P2 范围与设计原则
+    │   ├── P2-status-summary.md                 P2-MVP 状态与边界
+    │   ├── P2-validation-summary.md             验证方式与已知限制
+    │   └── P2.5-integration-checklist.md        P2.5 联调命令与手动验收清单
+    ├── P3/
+    │   └── P3-relationship-timeline.md          P3 关系时间线整阶段收口、联调备忘、验收与推送前清单
+    ├── P4/
+    │   └── P4-productization-plan.md            P4 规划：聊天周边体验与联动收口（未开工）
+    ├── P5/
+    │   └── P5-operations-and-history-plan.md    P5 规划：治理、历史化、Analytics、运营工具（未开工）
+    └── P6/
+        └── P6-ai-production-evolution-plan.md    P6 规划：真实 AI 生产链演进，中远期（未开工）
 ```
 
 ## 当前已跑通的 P0 主链路
@@ -210,6 +231,7 @@ docker compose up -d --build api worker web
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
 - `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）
 - `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要（条件展示）；**P2-MVP**：Copilot 卡片、快捷反馈；**P2.5**：摘要「生成并更新」、画像建议列表与操作、链至完整 Copilot 页
+- `/chat/timeline`：**P3** 关系时间线只读页；支持首屏时间线展示与长会话消息分页加载（需 `?conversationId=`，建议同时带 `userId=`）
 - `/copilot`：**P2.5** 独立页，需 `?conversationId=`（建议同时带 `userId=` 以便返回聊天）；只读 insights，不代发消息
 
 ## 关键 API（及 JWT 保护）
@@ -229,6 +251,7 @@ docker compose up -d --build api worker web
   - `GET /matching/result/:userId`（**P1**：响应含可选 `matchInsights`）
   - `POST /chat/conversations`
   - `GET /chat/conversations/:conversationId`
+  - `GET /chat/conversations/:conversationId/timeline`（**P3**：关系时间线；支持可选 `messageSkip` / `messageLimit`）
   - `POST /chat/messages`
   - `GET /chat/conversations/:conversationId/summary`（**P1/P2**：优先持久化行，否则规则摘要）
   - `POST /chat/conversations/:conversationId/summary/generate`（**P2**：生成并落库快照）
@@ -251,6 +274,7 @@ docker compose up -d --build api worker web
 - `/matching-waiting`：`GET /matching/status/:userId`
 - `/final-match`：`GET /matching/result/:userId`、`POST /chat/conversations`（进聊天）
 - `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P2**：`GET .../summary`、`POST .../summary/generate`（手动生成）、`GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine`、accept/dismiss 等（见 `apps/web/src/api`）
+- `/chat/timeline`：`GET /chat/conversations/:conversationId/timeline`
 - `/copilot`：Web 仅调 `GET /copilot/.../insights`（与聊天内同源接口）
 
 ## 本地开发启动方式
@@ -345,6 +369,8 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 **P2.5 抽检（可选）**：按步骤命令与勾选清单执行 `docs/P2/P2.5-integration-checklist.md`（含 `/mine` 与全局 overview **403/200**、CopilotPage、`ChatPage` 摘要按钮与画像建议操作等）。
 
+**P3 抽检（可选）**：按 `docs/P3/P3-relationship-timeline.md` 内「手动验收 Checklist」执行（`/chat/timeline`、`/final-match` 入口、`GET .../timeline` 首屏与 `messageSkip>0`、加载更多）。
+
 详细清单与 bug 记录：
 
 - `docs/P0/P0-acceptance-checklist.md`
@@ -364,9 +390,11 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 ## 当前限制 / 后续方向
 
-- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完** 的研发形态，非生产级高可用/安全/可观测全套。
+- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口** 的研发形态，非生产级高可用/安全/可观测全套。
 - **未正式接入**：真实 AI Agent、多 Agent、WebSocket 实时聊天、完整生产治理、大模型生产推理链。
-- **P3（高层建议）**：Analytics 更细粒度 RBAC / 缓存；Worker 侧摘要与信号策略；Copilot / 摘要 **历史版本** 与运营工具；独立建议中心或后台；在 **不破坏 P0 契约** 前提下将规则生成替换为模型或策略服务，并延续 `sourceType` / `sourceVersion` 溯源。（**P2.5 已做**：全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成。）
+- **P3（关系时间线）**：**已完成**（P3-1 只读聚合 + `/chat/timeline`、P3-2 FinalMatch 第二入口、P3-3 消息分页）；**仅指该切片**，见 `docs/P3/P3-relationship-timeline.md`。
+- **后续阶段规划（P4～P6，仅文档、未开工）**：新能力 **从 P4 起编号**，与 P3 无续接关系。粗粒度路线：**P4** 聊天周边体验与联动收口；**P5** 历史化、Analytics/权限演进、建议中心与轻量运营工具；**P6** 真实 AI 生产链（Worker/模型/Agent/simulation）**中远期**，**非当前已承诺开发**。详见 `docs/P4/P4-productization-plan.md`、`docs/P5/P5-operations-and-history-plan.md`、`docs/P6/P6-ai-production-evolution-plan.md`。
+- **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 模型替换等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
 
 ## 文档索引
 
@@ -390,6 +418,16 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P2/P2-status-summary.md`：P2-MVP 状态、边界、结论（成文于 MVP；**P2.5 增量以 README 与本清单为准**）
 - `docs/P2/P2-validation-summary.md`：分模块验证方式、结论与已知限制（文首链至 P2.5 联调清单）
 - `docs/P2/P2.5-integration-checklist.md`：**P2.5** 联调命令与手动验收 checklist（推荐回归时优先使用）
+
+**P3（关系时间线 — 已完成）**
+
+- `docs/P3/P3-relationship-timeline.md`：**整阶段收口文档**（目标与范围、交付结果、联调与验收结论、**排查过程关键问题**、已知限制、轻量后续、提交用语）；附录含能力细节、代码入口、**Git 推送前收尾清单**、手动验收 checklist
+
+**P4～P6（后续规划 — 未实现）**
+
+- `docs/P4/P4-productization-plan.md`：**P4** 产品化补完（摘要 / Copilot / 反馈 / 建议联动与体验；**不**含后台与模型链）
+- `docs/P5/P5-operations-and-history-plan.md`：**P5** 治理与历史化（版本与审计、Analytics/权限、建议中心与轻量运营工具）
+- `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 真实 AI 生产链演进（Worker、模型替换规则层、多 Agent/simulation；**中远期、非已承诺开发**）
 
 ## License
 

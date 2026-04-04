@@ -5,6 +5,7 @@ import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
 import ChatPage from "../pages/ChatPage";
 import CopilotPage from "../pages/CopilotPage";
+import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
 import LoginPage from "../pages/LoginPage";
 
 function HomePage() {
@@ -36,6 +37,10 @@ function HomePage() {
           <Link to="/copilot">/copilot</Link>
           <span style={{ color: "#666" }}>（需 ?conversationId=，只读建议）</span>
         </li>
+        <li>
+          <Link to="/chat/timeline">/chat/timeline</Link>
+          <span style={{ color: "#666" }}>（需 ?conversationId=，只读时间线）</span>
+        </li>
       </ul>
     </main>
   );
@@ -49,6 +54,7 @@ export default function AppRoutes() {
       <Route path="/final-match" element={<FinalMatchPage />} />
       <Route path="/preview-pool" element={<PreviewPoolPage />} />
       <Route path="/questionnaire" element={<QuestionnairePage />} />
+      <Route path="/chat/timeline" element={<RelationshipTimelinePage />} />
       <Route path="/chat" element={<ChatPage />} />
       <Route path="/copilot" element={<CopilotPage />} />
       <Route path="/login" element={<LoginPage />} />

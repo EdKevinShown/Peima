@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -8,10 +9,25 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import type { ConversationSummaryResponse } from "./dto/conversation-summary.response";
+import type {
+  ConversationTimelineItemDto,
+  ConversationTimelineResponseDto,
+} from "./dto/conversation-timeline.response";
+import {
+  compareTimelineItems,
+  FEEDBACK_SUBJECT_CONVERSATION,
+  mapBehaviorSignal,
+  mapConversationOpened,
+  mapFeedbackOnConversation,
+  mapMessage,
+  mapSummarySnapshot,
+} from "./chat-timeline.mapper";
 import { ChatSummaryService } from "./chat-summary.service";
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatSummaryService: ChatSummaryService,
@@ -119,6 +135,219 @@ export class ChatService {
       conversationId,
       tokenUserId,
     );
+  }
+
+  /**
+   * Read-only relationship timeline for one conversation (P3-C).
+   * Feedback entries: only the current user's feedback on this conversation.
+   * P3-3: optional messageSkip/messageLimit — skip>0 returns message_sent items only.
+   */
+  async getRelationshipTimeline(
+    conversationId: string,
+    tokenUserId: string,
+    opts: { messageSkip: number; messageLimit: number },
+  ): Promise<ConversationTimelineResponseDto> {
+    const { messageSkip, messageLimit } = opts;
+
+    const shell = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        id: true,
+        viewerUserId: true,
+        candidateUserId: true,
+        createdAt: true,
+      },
+    });
+
+    if (!shell) {
+      throw new NotFoundException(`Conversation ${conversationId} not found`);
+    }
+
+    if (
+      shell.viewerUserId !== tokenUserId &&
+      shell.candidateUserId !== tokenUserId
+    ) {
+      throw new UnauthorizedException(
+        "conversation not accessible by this user",
+      );
+    }
+
+    const messageSelect = {
+      id: true,
+      senderUserId: true,
+      content: true,
+      createdAt: true,
+    } as const;
+
+    if (messageSkip > 0) {
+      const takeFetch = messageLimit + 1;
+      const rows = await this.prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "asc" },
+        skip: messageSkip,
+        take: takeFetch,
+        select: messageSelect,
+      });
+      const hasMore = rows.length > messageLimit;
+      const slice = hasMore ? rows.slice(0, messageLimit) : rows;
+      const items: ConversationTimelineItemDto[] = slice.map((m) =>
+        mapMessage({
+          messageId: m.id,
+          senderUserId: m.senderUserId,
+          tokenUserId,
+          content: m.content,
+          createdAt: m.createdAt,
+        }),
+      );
+      return {
+        conversationId,
+        generatedAt: new Date().toISOString(),
+        items,
+        messagePagination: {
+          skip: messageSkip,
+          limit: messageLimit,
+          hasMore,
+        },
+      };
+    }
+
+    const participantIds = [shell.viewerUserId, shell.candidateUserId];
+
+    const takeFetch = messageLimit + 1;
+    const messageRows = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
+      take: takeFetch,
+      select: messageSelect,
+    });
+    const hasMoreMessages = messageRows.length > messageLimit;
+    const messages = hasMoreMessages
+      ? messageRows.slice(0, messageLimit)
+      : messageRows;
+
+    const p2Agg = await Promise.allSettled([
+      this.prisma.conversationSummary.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          summary: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.behaviorSignal.findMany({
+        where: {
+          conversationId,
+          userId: { in: participantIds },
+        },
+        orderBy: { occurredAt: "asc" },
+        select: {
+          id: true,
+          userId: true,
+          eventType: true,
+          occurredAt: true,
+          properties: true,
+        },
+      }),
+      this.prisma.userFeedback.findMany({
+        where: {
+          userId: tokenUserId,
+          subjectKind: FEEDBACK_SUBJECT_CONVERSATION,
+          subjectId: conversationId,
+        },
+        orderBy: { recordedAt: "asc" },
+        select: {
+          id: true,
+          recordedAt: true,
+          rating: true,
+          comment: true,
+        },
+      }),
+    ]);
+
+    const summaries =
+      p2Agg[0].status === "fulfilled"
+        ? p2Agg[0].value
+        : [];
+    const signals =
+      p2Agg[1].status === "fulfilled" ? p2Agg[1].value : [];
+    const feedbacks =
+      p2Agg[2].status === "fulfilled" ? p2Agg[2].value : [];
+
+    p2Agg.forEach((r, i) => {
+      if (r.status === "rejected") {
+        this.logger.warn(
+          `Timeline P2 query ${i} failed (conversationId=${conversationId}): ${String(r.reason)}`,
+        );
+      }
+    });
+
+    const items: ConversationTimelineItemDto[] = [];
+
+    items.push(
+      mapConversationOpened({
+        conversationId: shell.id,
+        createdAt: shell.createdAt,
+      }),
+    );
+
+    for (const m of messages) {
+      items.push(
+        mapMessage({
+          messageId: m.id,
+          senderUserId: m.senderUserId,
+          tokenUserId,
+          content: m.content,
+          createdAt: m.createdAt,
+        }),
+      );
+    }
+
+    for (const row of summaries) {
+      items.push(
+        mapSummarySnapshot({
+          summaryId: row.id,
+          createdAt: row.createdAt,
+          summary: row.summary,
+        }),
+      );
+    }
+
+    for (const s of signals) {
+      items.push(
+        mapBehaviorSignal({
+          signalId: s.id,
+          userId: s.userId,
+          eventType: s.eventType,
+          occurredAt: s.occurredAt,
+          properties: s.properties,
+        }),
+      );
+    }
+
+    for (const f of feedbacks) {
+      items.push(
+        mapFeedbackOnConversation({
+          feedbackId: f.id,
+          recordedAt: f.recordedAt,
+          rating: f.rating,
+          comment: f.comment,
+        }),
+      );
+    }
+
+    items.sort(compareTimelineItems);
+
+    return {
+      conversationId,
+      generatedAt: new Date().toISOString(),
+      items,
+      messagePagination: {
+        skip: 0,
+        limit: messageLimit,
+        hasMore: hasMoreMessages,
+      },
+    };
   }
 
   private isSenderInConversation(conversation: {

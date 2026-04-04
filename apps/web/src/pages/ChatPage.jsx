@@ -185,6 +185,14 @@ export default function ChatPage() {
     return `/copilot?${q.toString()}`;
   }, [conversationId, userId]);
 
+  const timelineHref = useMemo(() => {
+    if (!conversationId) return "/chat/timeline";
+    const q = new URLSearchParams();
+    q.set("conversationId", conversationId);
+    if (userId) q.set("userId", userId);
+    return `/chat/timeline?${q.toString()}`;
+  }, [conversationId, userId]);
+
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>聊天</h1>
@@ -240,8 +248,13 @@ export default function ChatPage() {
       ) : null}
       {conversationId ? <CopilotInsightCard insights={copilotInsights} /> : null}
       {conversationId ? (
-        <p style={{ fontSize: "0.85rem", margin: "0 0 1rem" }}>
+        <p style={{ fontSize: "0.85rem", margin: "0 0 0.35rem" }}>
           <Link to={copilotFullHref}>查看本会话完整沟通建议（只读）</Link>
+        </p>
+      ) : null}
+      {conversationId ? (
+        <p style={{ fontSize: "0.85rem", margin: "0 0 1rem" }}>
+          <Link to={timelineHref}>查看关系时间线（只读）</Link>
         </p>
       ) : null}
       {conversationId ? (
