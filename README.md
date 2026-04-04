@@ -1,17 +1,18 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）；正文与建议仍主要由 **规则 / 模板 / 占位逻辑** 生成，**不是**真实大模型生产链路。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。正文与建议仍主要由 **规则 / 模板 / 占位逻辑** 生成，**不是**真实大模型生产链路。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
 
 ---
 
-## 当前项目状态（截至 P2-MVP）
+## 当前项目状态（截至 P2.5）
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；真实 AI agent / 生产级模型链 **未** 正式接入。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；真实 AI agent / 生产级模型链 **未** 正式接入。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
-| **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库），analytics 仅为 **计数级** 只读接口。 |
+| **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
+| **P2.5（已完成）** | 见下文「P2.5 产品化补完」；**不**改变「非真实大模型生产链路」口径。 |
 
 **P1 已交付能力（摘要）**
 
@@ -25,17 +26,25 @@
 **P2-MVP 已交付能力（摘要）**
 
 - **数据**：`conversation_summaries`、`user_feedbacks`、`profile_update_suggestions`、`behavior_signals`（及既有 `UserProfile` 等）；无独立 `copilot_insights` 表。
-- **API（均需 JWT，风格与 chat 对齐）**：chat 摘要读/可选生成落库；`POST/GET /feedback`；profile 建议创建/我的列表/accept/dismiss；behavior-signal 追加与我的列表；`GET /analytics/p2-overview`（*）与 `.../mine`；`GET /copilot/conversations/:id/insights`（只读规则聚合）。
-- **Web**：`ChatPage` 条件展示摘要、Copilot 卡片、待处理画像建议提示、会话快捷反馈（👍/😐/👎）；失败降级，不阻塞发消息。
+- **API（均需 JWT，风格与 chat 对齐）**：chat 摘要读/可选生成落库；`POST/GET /feedback`；profile 建议创建/我的列表/accept/dismiss；behavior-signal 追加与我的列表；`GET /analytics/p2-overview/mine`；`GET /analytics/p2-overview`（**P2.5**：仅 env 白名单用户，否则 **403**）；`GET /copilot/conversations/:id/insights`（只读规则聚合）。
+- **Web**：`ChatPage` 条件展示摘要、摘要「生成并更新」、Copilot 卡片与跳转完整建议页、画像建议待处理/已处理分区、会话快捷反馈（👍/😐/👎）；失败降级，不阻塞发消息。
 - **Shared**：P2 相关类型与常量（`sourceType` / `sourceVersion`、建议状态、反馈 subject 等）。
+- **DB（P2.5）**：P2 四表见迁移 `20260405100000_p2_persistence_mvp`，空库 `migrate deploy` 可复现（曾用 `db push` 的库需自行 baseline）。
 
-> （*）全局 `p2-overview` 当前对 **任意登录用户** 可读，适用于研发/内测；多租户或对外部署前需另加权限策略。
+**P2.5 产品化补完（摘要）**
 
-**当前仍未纳入（勿与 P2-MVP 混淆）**
+- **画像建议**：`ChatPage` 内列表 + **接受 / 忽略**，成功后刷新列表；已处理默认折叠。
+- **Copilot**：路由 **`/copilot?conversationId=`**（`CopilotPage`），只读展示 insights（含 `basedOn`）；聊天内仍保留轻量卡片。
+- **摘要**：`ChatPage` **生成并更新摘要** 按钮，调用 `POST .../summary/generate` 并刷新展示（不依赖发消息刷新 Copilot）。
+- **Analytics**：`GET .../p2-overview/mine` 任意登录用户可读；**全局** `GET .../p2-overview` 由环境变量 **`P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS`**（用户 id 列表）控制，未列入则 **403**。
+- **Migration**：P2 持久化表纳入正式 Prisma migration 历史（见上）。
+- **联调/验收**：`docs/P2/P2.5-integration-checklist.md`（命令 + 手动勾选清单）。
+
+**当前仍未纳入（勿与 P2-MVP / P2.5 混淆）**
 
 - 真实大模型调用链、AI Agent、多 Agent 编排、端到端真实 simulation **产品化**流水线。
-- Copilot / 摘要的 **Worker 自动生成**、历史版本产品化、独立 Copilot 页与完整建议治理 UI。
-- 画像 **accept/dismiss** 在 Web 上的完整闭环（聊天页目前仅 **提示** 待处理条数）。
+- Copilot / 摘要的 **Worker 自动生成**、历史版本产品化、完整建议治理后台。
+- 独立「设置 / 建议中心」页（当前建议能力集中在 **ChatPage** 与 **CopilotPage**）。
 
 ---
 
@@ -96,11 +105,11 @@ docker compose up -d --build api worker web
 | `infrastructure` | Docker/Nginx/脚本等物料 |
 | `docs/P0` | P0 交接、验收清单、bugfix、状态摘要 |
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
-| `docs/P2` | **P2 范围、状态摘要、验证摘要**（P2-MVP 收口） |
+| `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 
-## 当前项目结构（P0 / P1 / P2-MVP）
+## 当前项目结构（P0 / P1 / P2-MVP / P2.5）
 
-以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位与 P2-MVP 相关的核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动** 的文件与模块。
+以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位与 P2 相关核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动**；**[P2.5]** 在 P2 基础上的 Web/迁移/权限等小步补完（见树内标注）。
 
 ```
 .
@@ -124,20 +133,20 @@ docker compose up -d --build api worker web
 │   │           ├── feedback/                    [P2] 结构化反馈 API
 │   │           ├── profile-suggestion/          [P2] 画像建议创建/列表/accept/dismiss
 │   │           ├── behavior-signal/             [P2] 行为信号追加与我的列表
-│   │           ├── analytics/                   [P2] P2 只读概览计数
+│   │           ├── analytics/                   [P2] 只读概览；[P2.5] 全局 overview 白名单
 │   │           └── copilot/                     [P2] 会话级规则建议（只读、不落库）
 │   ├── web/
 │   │   └── src/
 │   │       ├── main.jsx / App.jsx               [P0]
 │   │       ├── router/index.jsx                 [P0] 路由
-│   │       ├── pages/                           [P0] Login / Questionnaire / PreviewPool / MatchingWaiting / FinalMatch / Chat
+│   │       ├── pages/                           [P0] Login / Questionnaire / … / Chat；[P2.5] CopilotPage
 │   │       ├── api/                             [P0] auth、questionnaire、previewPool、matching、chat；[P2] feedback、profile、copilot
 │   │       ├── components/
 │   │       │   ├── common/LoadingState.jsx      [P0]
 │   │       │   ├── chat/ChatSummaryCard.jsx     [P2] 会话摘要展示
 │   │       │   ├── copilot/CopilotInsightCard.jsx    [P2]
 │   │       │   ├── feedback/FeedbackQuickActions.jsx [P2]
-│   │       │   └── profile/ProfileSuggestionCard.jsx [P2]
+│   │       │   └── profile/ProfileSuggestionCard.jsx [P2] [P2.5] 待处理/已处理分区与折叠
 │   │       └── utils/resolveUserId.js           [P0]
 │   └── worker/
 │       ├── Dockerfile
@@ -173,12 +182,13 @@ docker compose up -d --build api worker web
 │       ├── src/index.ts                         [P0] Prisma Client 再导出
 │       └── prisma/
 │           ├── schema.prisma                    [P0] 数据模型；[P1/P2] 增量表与字段
-│           └── migrations/                      Prisma 迁移历史（随 schema 演进）
+│           └── migrations/                      Prisma 迁移历史；含 P2 四表正式迁移（P2.5）
 └── docs/
     └── P2/
         ├── P2-scope-notes.md                    P2 范围与设计原则
         ├── P2-status-summary.md                 P2-MVP 状态与边界
-        └── P2-validation-summary.md             验证方式与已知限制
+        ├── P2-validation-summary.md             验证方式与已知限制
+        └── P2.5-integration-checklist.md        P2.5 联调命令与手动验收清单
 ```
 
 ## 当前已跑通的 P0 主链路
@@ -190,7 +200,7 @@ docker compose up -d --build api worker web
 5. `/matching-waiting` 查看匹配状态
 6. worker 执行 `batch-match`（手动一次或 cron 触发）
 7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片）
-8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：可选持久化摘要、Copilot 只读建议、反馈与待处理建议轻提示，均条件展示）
+8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页）
 
 ## 关键页面
 
@@ -199,7 +209,8 @@ docker compose up -d --build api worker web
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
 - `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）
-- `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要区（条件展示）；**P2-MVP**：Copilot 建议条、快捷反馈、待处理画像建议提示（条件展示）
+- `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要（条件展示）；**P2-MVP**：Copilot 卡片、快捷反馈；**P2.5**：摘要「生成并更新」、画像建议列表与操作、链至完整 Copilot 页
+- `/copilot`：**P2.5** 独立页，需 `?conversationId=`（建议同时带 `userId=` 以便返回聊天）；只读 insights，不代发消息
 
 ## 关键 API（及 JWT 保护）
 
@@ -224,11 +235,13 @@ docker compose up -d --build api worker web
   - `POST /feedback`、`GET /feedback/mine`（**P2**）
   - `POST /profile-suggestions`、`GET /profile-suggestions/mine`、`POST /profile-suggestions/:id/accept|dismiss`（**P2**）
   - `POST /behavior-signals`、`GET /behavior-signals/mine`（**P2**）
-  - `GET /analytics/p2-overview`、`GET /analytics/p2-overview/mine`（**P2**，只读计数）
+  - `GET /analytics/p2-overview/mine`（**P2**，只读计数，**任意登录用户**）
+  - `GET /analytics/p2-overview`（**P2**，只读全局计数；**P2.5**：**仅** `P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS` 白名单内用户，否则 **403**）
   - `GET /copilot/conversations/:conversationId/insights`（**P2**，只读规则建议，不落库）
 
 > 受保护接口会校验 token 用户与请求中的 `userId` / `senderUserId` 等一致性。  
-> 前端：`peimaToken` / `peimaUserId` 存于 `localStorage`，请求携带 `Authorization: Bearer <token>`。
+> 前端：`peimaToken` / `peimaUserId` 存于 `localStorage`，请求携带 `Authorization: Bearer <token>`。  
+> 全局 analytics 白名单见根目录 `.env.example` 中 `P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS`。
 
 ### 页面与接口对应关系
 
@@ -237,7 +250,8 @@ docker compose up -d --build api worker web
 - `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
 - `/matching-waiting`：`GET /matching/status/:userId`
 - `/final-match`：`GET /matching/result/:userId`、`POST /chat/conversations`（进聊天）
-- `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P1/P2**：`GET .../summary`；**P2**：可选 `POST .../summary/generate`；Web 另调 `GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine` 等（见 `apps/web/src/api`）
+- `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P2**：`GET .../summary`、`POST .../summary/generate`（手动生成）、`GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine`、accept/dismiss 等（见 `apps/web/src/api`）
+- `/copilot`：Web 仅调 `GET /copilot/.../insights`（与聊天内同源接口）
 
 ## 本地开发启动方式
 
@@ -327,7 +341,9 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 **P1 抽检（可选）**：结果接口含 `matchInsights`；预览池条目含 `itemMeta`；`GET .../summary` 返回摘要（均需有效 JWT 与数据前置）。
 
-**P2-MVP 抽检（可选）**：`POST .../summary/generate` 后摘要带持久化标记；`POST /feedback` 与 `GET /feedback/mine`；画像建议 accept 后 `UserProfile` 更新；`GET /analytics/p2-overview`；`GET /copilot/.../insights`；Web `/chat` 条件展示增强层。详见 `docs/P2/P2-validation-summary.md`。
+**P2-MVP 抽检（可选）**：`POST .../summary/generate` 后摘要带持久化标记；`POST /feedback` 与 `GET /feedback/mine`；画像建议 accept 后 `UserProfile` 更新；`GET /copilot/.../insights`；Web `/chat` 条件展示增强层。详见 `docs/P2/P2-validation-summary.md`。
+
+**P2.5 抽检（可选）**：按步骤命令与勾选清单执行 `docs/P2/P2.5-integration-checklist.md`（含 `/mine` 与全局 overview **403/200**、CopilotPage、`ChatPage` 摘要按钮与画像建议操作等）。
 
 详细清单与 bug 记录：
 
@@ -348,9 +364,9 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 ## 当前限制 / 后续方向
 
-- 当前为 **P0 稳定 + P1 占位 + P2-MVP 最小闭环** 的研发形态，非生产级高可用/安全/可观测全套。
+- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完** 的研发形态，非生产级高可用/安全/可观测全套。
 - **未正式接入**：真实 AI Agent、多 Agent、WebSocket 实时聊天、完整生产治理、大模型生产推理链。
-- **P2.5 / P3（高层建议）**：Analytics / Copilot 权限与缓存；Worker 侧摘要与信号策略；Web 建议完整闭环与独立入口；在 **不破坏 P0 契约** 前提下将规则生成替换为模型或策略服务，并延续 `sourceType` / `sourceVersion` 溯源。
+- **P3（高层建议）**：Analytics 更细粒度 RBAC / 缓存；Worker 侧摘要与信号策略；Copilot / 摘要 **历史版本** 与运营工具；独立建议中心或后台；在 **不破坏 P0 契约** 前提下将规则生成替换为模型或策略服务，并延续 `sourceType` / `sourceVersion` 溯源。（**P2.5 已做**：全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成。）
 
 ## 文档索引
 
@@ -368,11 +384,12 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P1/P1-architecture-delta.md`：相对 P0 的结构增量
 - `docs/P1/P1-validation-summary.md`：P1-1～P1-6 验证摘要
 
-**P2（P2-MVP 收口）**
+**P2（MVP + P2.5 收口）**
 
 - `docs/P2/P2-scope-notes.md`：P2 范围与设计原则（含 MVP 状态引用）
-- `docs/P2/P2-status-summary.md`：P2-MVP 状态、边界、结论
-- `docs/P2/P2-validation-summary.md`：分模块验证方式、结论与已知限制
+- `docs/P2/P2-status-summary.md`：P2-MVP 状态、边界、结论（成文于 MVP；**P2.5 增量以 README 与本清单为准**）
+- `docs/P2/P2-validation-summary.md`：分模块验证方式、结论与已知限制（文首链至 P2.5 联调清单）
+- `docs/P2/P2.5-integration-checklist.md`：**P2.5** 联调命令与手动验收 checklist（推荐回归时优先使用）
 
 ## License
 

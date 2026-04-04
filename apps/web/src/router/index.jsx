@@ -4,6 +4,7 @@ import MatchingWaitingPage from "../pages/MatchingWaitingPage";
 import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
 import ChatPage from "../pages/ChatPage";
+import CopilotPage from "../pages/CopilotPage";
 import LoginPage from "../pages/LoginPage";
 
 function HomePage() {
@@ -31,6 +32,10 @@ function HomePage() {
           <Link to="/login">/login</Link>
           <span style={{ color: "#666" }}>（手机号直登，JWT）</span>
         </li>
+        <li>
+          <Link to="/copilot">/copilot</Link>
+          <span style={{ color: "#666" }}>（需 ?conversationId=，只读建议）</span>
+        </li>
       </ul>
     </main>
   );
@@ -45,7 +50,8 @@ export default function AppRoutes() {
       <Route path="/preview-pool" element={<PreviewPoolPage />} />
       <Route path="/questionnaire" element={<QuestionnairePage />} />
       <Route path="/chat" element={<ChatPage />} />
-        <Route path="/login" element={<LoginPage />} />
+      <Route path="/copilot" element={<CopilotPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

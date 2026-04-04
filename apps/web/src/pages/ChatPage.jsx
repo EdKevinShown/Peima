@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
@@ -8,7 +8,12 @@ import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
 import { listMyProfileSuggestions } from "../api/profile";
-import { getConversation, getConversationSummary, sendMessage } from "../api/chat";
+import {
+  generateConversationSummary,
+  getConversation,
+  getConversationSummary,
+  sendMessage,
+} from "../api/chat";
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
@@ -23,8 +28,12 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
 
   const [conversationSummary, setConversationSummary] = useState(null);
+  const [summaryGenerating, setSummaryGenerating] = useState(false);
+  const [summaryActionError, setSummaryActionError] = useState(null);
+  const [summaryActionOk, setSummaryActionOk] = useState(null);
   const [copilotInsights, setCopilotInsights] = useState(null);
   const [profileSuggestions, setProfileSuggestions] = useState([]);
+  const [profileSuggestionsError, setProfileSuggestionsError] = useState(null);
   /** Bump after send to refresh summary + copilot without touching profile list every time */
   const [p2RefreshKey, setP2RefreshKey] = useState(0);
 
@@ -97,33 +106,27 @@ export default function ChatPage() {
     };
   }, [conversationId, p2RefreshKey]);
 
-  useEffect(() => {
+  const loadProfileSuggestions = useCallback(async () => {
     if (!conversationId || !userId) {
       setProfileSuggestions([]);
+      setProfileSuggestionsError(null);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await listMyProfileSuggestions();
-        if (!cancelled) {
-          setProfileSuggestions(Array.isArray(data) ? data : []);
-        }
-      } catch {
-        if (!cancelled) {
-          setProfileSuggestions([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setProfileSuggestionsError(null);
+    try {
+      const data = await listMyProfileSuggestions();
+      setProfileSuggestions(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setProfileSuggestions([]);
+      setProfileSuggestionsError(
+        e instanceof Error ? e.message : String(e),
+      );
+    }
   }, [conversationId, userId]);
 
-  const pendingProfileSuggestions = useMemo(
-    () => profileSuggestions.filter((s) => s.status === "pending"),
-    [profileSuggestions],
-  );
+  useEffect(() => {
+    void loadProfileSuggestions();
+  }, [loadProfileSuggestions]);
 
   const onSend = useCallback(async () => {
     if (!conversationId || !userId) {
@@ -151,7 +154,36 @@ export default function ChatPage() {
     }
   }, [conversationId, userId, content, load]);
 
+  const onGenerateSummary = useCallback(async () => {
+    if (!conversationId) return;
+    setSummaryActionError(null);
+    setSummaryActionOk(null);
+    setSummaryGenerating(true);
+    try {
+      const data = await generateConversationSummary(conversationId);
+      setConversationSummary(data);
+      setSummaryActionOk("摘要已更新");
+      window.setTimeout(() => {
+        setSummaryActionOk(null);
+      }, 2500);
+    } catch (e) {
+      setSummaryActionError(
+        e instanceof Error ? e.message : String(e),
+      );
+    } finally {
+      setSummaryGenerating(false);
+    }
+  }, [conversationId]);
+
   const messages = conversation?.messages ?? [];
+
+  const copilotFullHref = useMemo(() => {
+    if (!conversationId) return "/copilot";
+    const q = new URLSearchParams();
+    q.set("conversationId", conversationId);
+    if (userId) q.set("userId", userId);
+    return `/copilot?${q.toString()}`;
+  }, [conversationId, userId]);
 
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
@@ -173,10 +205,51 @@ export default function ChatPage() {
         </p>
       )}
 
-      {conversationId ? <ChatSummaryCard summary={conversationSummary} /> : null}
+      {conversationId ? (
+        <div style={{ marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: "0.5rem 0.75rem",
+              marginBottom: "0.45rem",
+              fontSize: "0.88rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onGenerateSummary}
+              disabled={summaryGenerating}
+            >
+              {summaryGenerating ? "生成中…" : "生成并更新摘要"}
+            </button>
+            {summaryActionOk ? (
+              <span style={{ color: "#0d6832" }} role="status">
+                {summaryActionOk}
+              </span>
+            ) : null}
+            {summaryActionError ? (
+              <span style={{ color: "#b00020" }} role="alert">
+                {summaryActionError}
+              </span>
+            ) : null}
+          </div>
+          <ChatSummaryCard summary={conversationSummary} />
+        </div>
+      ) : null}
       {conversationId ? <CopilotInsightCard insights={copilotInsights} /> : null}
       {conversationId ? (
-        <ProfileSuggestionCard pendingSuggestions={pendingProfileSuggestions} />
+        <p style={{ fontSize: "0.85rem", margin: "0 0 1rem" }}>
+          <Link to={copilotFullHref}>查看本会话完整沟通建议（只读）</Link>
+        </p>
+      ) : null}
+      {conversationId ? (
+        <ProfileSuggestionCard
+          suggestions={profileSuggestions}
+          loadError={profileSuggestionsError}
+          onRefresh={loadProfileSuggestions}
+        />
       ) : null}
 
       {!loading && !error && conversation && (

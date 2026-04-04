@@ -60,6 +60,18 @@ export async function getConversationSummary(conversationId: string) {
   return handleJson<ConversationSummaryResponse>(res);
 }
 
+/** P2：规则摘要写入持久化行，返回最新快照（与 GET 结构一致） */
+export async function generateConversationSummary(conversationId: string) {
+  const res = await fetch(
+    `${baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}/summary/generate`,
+    {
+      method: "POST",
+      headers: authHeaders(),
+    },
+  );
+  return handleJson<ConversationSummaryResponse>(res);
+}
+
 export async function sendMessage(payload: {
   conversationId: string;
   senderUserId: string;

@@ -1,9 +1,95 @@
-/**
- * Chat 页只做「有待处理建议」轻提示；accept/dismiss 留给专门入口，避免在聊天主流程里误触。
- */
-export default function ProfileSuggestionCard({ pendingSuggestions }) {
-  const list = Array.isArray(pendingSuggestions) ? pendingSuggestions : [];
-  if (list.length === 0) return null;
+import { useCallback, useMemo, useState } from "react";
+import {
+  acceptProfileSuggestion,
+  dismissProfileSuggestion,
+} from "../../api/profile";
+
+function patchPreview(patch) {
+  if (patch == null) return "（无补丁内容）";
+  try {
+    const s = JSON.stringify(patch, null, 0);
+    return s.length > 280 ? `${s.slice(0, 280)}…` : s;
+  } catch {
+    return String(patch);
+  }
+}
+
+function StatusBadge({ status }) {
+  const accepted = status === "accepted";
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "0.12rem 0.4rem",
+        borderRadius: 4,
+        fontSize: "0.7rem",
+        fontWeight: 600,
+        flexShrink: 0,
+        background: accepted ? "#d1fae5" : "#f3f4f6",
+        color: accepted ? "#065f46" : "#4b5563",
+        border: `1px solid ${accepted ? "#6ee7b7" : "#e5e7eb"}`,
+      }}
+    >
+      {accepted ? "已接受" : "已忽略"}
+    </span>
+  );
+}
+
+export default function ProfileSuggestionCard({
+  suggestions,
+  loadError,
+  onRefresh,
+}) {
+  const list = Array.isArray(suggestions) ? suggestions : [];
+  const [pendingActionId, setPendingActionId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [processedOpen, setProcessedOpen] = useState(false);
+
+  const pending = useMemo(
+    () => list.filter((s) => s.status === "pending"),
+    [list],
+  );
+  const processed = useMemo(() => {
+    const rows = list.filter(
+      (s) => s.status === "accepted" || s.status === "dismissed",
+    );
+    return [...rows].sort((a, b) => {
+      const ta = a.resolvedAt ? new Date(a.resolvedAt).getTime() : 0;
+      const tb = b.resolvedAt ? new Date(b.resolvedAt).getTime() : 0;
+      return tb - ta;
+    });
+  }, [list]);
+
+  const processedAccepted = useMemo(
+    () => processed.filter((s) => s.status === "accepted").length,
+    [processed],
+  );
+  const processedDismissed = useMemo(
+    () => processed.filter((s) => s.status === "dismissed").length,
+    [processed],
+  );
+
+  const runAction = useCallback(
+    async (suggestionId, fn) => {
+      setActionError(null);
+      setPendingActionId(suggestionId);
+      try {
+        await fn(suggestionId);
+        await onRefresh?.();
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : typeof e === "string" ? e : "操作失败";
+        setActionError(msg);
+      } finally {
+        setPendingActionId(null);
+      }
+    },
+    [onRefresh],
+  );
+
+  if (list.length === 0 && !loadError) {
+    return null;
+  }
 
   return (
     <aside
@@ -19,12 +105,185 @@ export default function ProfileSuggestionCard({ pendingSuggestions }) {
       aria-label="画像更新建议"
     >
       <div style={{ fontWeight: 600, marginBottom: "0.35rem" }}>画像更新建议</div>
-      <p style={{ margin: 0, color: "#444" }}>
-        你有 <strong>{list.length}</strong> 条待处理的画像更新建议，可在后续「建议」入口查看并确认。
+      <p style={{ margin: "0 0 0.5rem", fontSize: "0.8rem", color: "#666" }}>
+        {processed.length > 0
+          ? "待处理可在此确认；已处理记录默认折叠，点击展开查看。"
+          : "待处理可在此接受或忽略。"}
       </p>
-      <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#666" }}>
-        首版聊天页仅提示，不在此直接接受/忽略，避免与发消息主流程混淆。
-      </p>
+
+      {loadError ? (
+        <p style={{ margin: "0 0 0.5rem", color: "#b00020" }} role="alert">
+          加载建议列表失败：{loadError}
+        </p>
+      ) : null}
+
+      {actionError ? (
+        <p style={{ margin: "0 0 0.5rem", color: "#b00020" }} role="alert">
+          {actionError}
+        </p>
+      ) : null}
+
+      <div style={{ marginBottom: processed.length > 0 ? "0.65rem" : 0 }}>
+        <div
+          style={{
+            fontSize: "0.82rem",
+            color: "#444",
+            marginBottom: "0.4rem",
+            fontWeight: 600,
+          }}
+        >
+          待处理
+          {pending.length > 0 ? `（${pending.length}）` : ""}
+        </div>
+        {pending.length > 0 ? (
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.55rem",
+            }}
+          >
+            {pending.map((s) => {
+              const busy = pendingActionId === s.id;
+              return (
+                <li
+                  key={s.id}
+                  style={{
+                    border: "1px solid #fcd34d",
+                    borderRadius: 6,
+                    padding: "0.5rem 0.6rem",
+                    background: "#fff",
+                  }}
+                >
+                  <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: 4 }}>
+                    {s.sourceType} · {s.sourceVersion}
+                  </div>
+                  <pre
+                    style={{
+                      margin: "0 0 0.45rem",
+                      fontSize: "0.72rem",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      maxHeight: 72,
+                      overflow: "auto",
+                    }}
+                  >
+                    {patchPreview(s.proposedPatch)}
+                  </pre>
+                  <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      disabled={busy || pendingActionId != null}
+                      onClick={() => runAction(s.id, acceptProfileSuggestion)}
+                    >
+                      {busy ? "处理中…" : "接受"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || pendingActionId != null}
+                      onClick={() => runAction(s.id, dismissProfileSuggestion)}
+                    >
+                      {busy ? "处理中…" : "忽略"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p style={{ margin: 0, color: "#666", fontSize: "0.82rem" }}>
+            当前没有待处理的画像建议。
+          </p>
+        )}
+      </div>
+
+      {processed.length > 0 ? (
+        <div
+          style={{
+            borderTop: "1px dashed #fcd34d",
+            paddingTop: "0.55rem",
+            marginTop: "0.15rem",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setProcessedOpen((o) => !o)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              textAlign: "left",
+              padding: "0.35rem 0.4rem",
+              marginBottom: processedOpen ? "0.45rem" : 0,
+              background: "#fff",
+              border: "1px solid #fcd34d",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: "0.82rem",
+              color: "#374151",
+            }}
+            aria-expanded={processedOpen}
+          >
+            <span>
+              <strong>已处理</strong>
+              <span style={{ color: "#6b7280", fontWeight: 400 }}>
+                {" "}
+                · 共 {processed.length} 条（已接受 {processedAccepted} · 已忽略{" "}
+                {processedDismissed}）
+              </span>
+            </span>
+            <span style={{ color: "#9ca3af", flexShrink: 0, marginLeft: 8 }}>
+              {processedOpen ? "收起 ▲" : "展开 ▼"}
+            </span>
+          </button>
+          {processedOpen ? (
+            <ul
+              style={{
+                margin: 0,
+                padding: 0,
+                listStyle: "none",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+              }}
+            >
+              {processed.map((s) => (
+                <li
+                  key={s.id}
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "#4b5563",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "0.45rem",
+                    flexWrap: "wrap",
+                    padding: "0.35rem 0.45rem",
+                    background: "#fff",
+                    borderRadius: 6,
+                    border: "1px solid #fef3c7",
+                  }}
+                >
+                  <StatusBadge status={s.status} />
+                  <span style={{ flex: "1 1 120px", minWidth: 0 }}>
+                    <code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>
+                      {s.id.slice(0, 10)}…
+                    </code>
+                    {s.resolvedAt ? (
+                      <span style={{ display: "block", color: "#888", marginTop: 2 }}>
+                        {new Date(s.resolvedAt).toLocaleString()}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </aside>
   );
 }

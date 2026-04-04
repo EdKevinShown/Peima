@@ -14,10 +14,26 @@ function ListBlock({ title, items }) {
   );
 }
 
+function BasedOnLine({ basedOn }) {
+  if (!basedOn || typeof basedOn !== "object") return null;
+  const parts = [];
+  if (basedOn.summary) parts.push("会话摘要");
+  if (basedOn.feedbackOnConversation) parts.push("会话反馈");
+  if (basedOn.behaviorSignals) parts.push("行为信号");
+  if (basedOn.pendingProfileSuggestions) parts.push("待处理画像建议");
+  if (parts.length === 0) return null;
+  return (
+    <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "0.45rem" }}>
+      <span style={{ fontWeight: 600 }}>依据</span>（摘要来源）：{parts.join(" · ")}
+    </div>
+  );
+}
+
 /**
  * Rule-based Copilot strip — not auto-chat; parent hides on failure / empty.
+ * @param {{ showBasedOn?: boolean }} [opts]
  */
-export default function CopilotInsightCard({ insights }) {
+export default function CopilotInsightCard({ insights, showBasedOn = false }) {
   if (!insights?.conversationId) return null;
 
   return (
@@ -46,6 +62,7 @@ export default function CopilotInsightCard({ insights }) {
       <ListBlock title="建议" items={insights.communicationAdvice} />
       <ListBlock title="风险提示" items={insights.riskHints} />
       <ListBlock title="可聊方向" items={insights.suggestedTopics} />
+      {showBasedOn ? <BasedOnLine basedOn={insights.basedOn} /> : null}
       <div style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.5rem" }}>
         仅供参考，不会代你发消息 ·{" "}
         {(() => {

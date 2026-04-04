@@ -19,3 +19,19 @@ export async function listMyProfileSuggestions() {
   });
   return handleJson<ProfileSuggestionRow[]>(res);
 }
+
+export async function acceptProfileSuggestion(suggestionId: string) {
+  const res = await fetch(
+    `${baseUrl}/profile-suggestions/${encodeURIComponent(suggestionId)}/accept`,
+    { method: "POST", headers: authHeaders() },
+  );
+  return handleJson<ProfileSuggestionRow>(res);
+}
+
+export async function dismissProfileSuggestion(suggestionId: string) {
+  const res = await fetch(
+    `${baseUrl}/profile-suggestions/${encodeURIComponent(suggestionId)}/dismiss`,
+    { method: "POST", headers: authHeaders() },
+  );
+  return handleJson<ProfileSuggestionRow>(res);
+}

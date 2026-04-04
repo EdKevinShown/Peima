@@ -1,5 +1,6 @@
 import {
   Controller,
+  ForbiddenException,
   Get,
   Req,
   UnauthorizedException,
@@ -12,6 +13,16 @@ import type { P2OverviewMineStats, P2OverviewStats } from "./p2-overview.types";
 type JwtReq = {
   user?: { userId: string };
 };
+
+/** User ids (JWT `sub`) allowed to read GET /analytics/p2-overview. Empty env → no one. */
+function globalP2OverviewAllowedUserIds(): Set<string> {
+  const raw = process.env.P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS ?? "";
+  const ids = raw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return new Set(ids);
+}
 
 @Controller("analytics")
 @UseGuards(JwtAuthGuard)
@@ -29,7 +40,17 @@ export class AnalyticsController {
   }
 
   @Get("p2-overview")
-  p2Overview(): Promise<P2OverviewStats> {
+  p2Overview(@Req() req: JwtReq): Promise<P2OverviewStats> {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    const allowed = globalP2OverviewAllowedUserIds();
+    if (!allowed.has(tokenUserId)) {
+      throw new ForbiddenException(
+        "global P2 overview is restricted to internal allowlist",
+      );
+    }
     return this.analyticsService.getP2Overview();
   }
 }
