@@ -50,3 +50,6 @@ Desktop.ini
 .temp
 tmp
 *.local
+
+# API local image uploads (see UPLOAD_DIR)
+**/uploads/

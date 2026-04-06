@@ -8,7 +8,7 @@
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；真实 AI agent / 生产级模型链 **未** 正式接入。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P4（产品化补完）**：聊天周边摘要 / Copilot / 反馈 / 画像建议 **体验与联动收口** 见 `docs/P4/P4-productization-plan.md` 与 `docs/P4/P4-ux-checklist.md`；真实 AI agent / 生产级模型链 **未** 正式接入。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
@@ -226,6 +226,7 @@ docker compose up -d --build api worker web
 ## 关键页面
 
 - `/login`：注册/登录，token 与 userId 持久化
+- `/my-images`：为**当前登录用户**添加图片记录（粘贴可访问的 **HTTPS 图片直链**；需 JWT）；用于预览池「至少 6 名带图候选」数据准备
 - `/questionnaire`：固定题库并提交（12 题）
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
@@ -243,6 +244,7 @@ docker compose up -d --build api worker web
 
 - 需要 JWT：
   - `GET /auth/me`
+  - `POST /images`（`body.userId` 须与 token 用户一致）、`GET /images/user/:userId`、`GET /images/:id`、`DELETE /images/:id`
   - `POST /questionnaire/submit`
   - `POST /preview-pool/generate`
   - `GET /preview-pool/user/:userId/latest`
@@ -269,6 +271,7 @@ docker compose up -d --build api worker web
 ### 页面与接口对应关系
 
 - `/login`：`POST /auth/register`、`POST /auth/login`、`GET /auth/me`
+- `/my-images`：`POST /images`、`GET /images/user/:userId`、`DELETE /images/:id`
 - `/questionnaire`：`GET /questionnaire/questions`、`POST /questionnaire/submit`
 - `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
 - `/matching-waiting`：`GET /matching/status/:userId`
@@ -291,6 +294,14 @@ pnpm dev:api      # NestJS API
 pnpm dev:worker   # Worker（dev）
 pnpm dev:admin    # Admin（占位）
 ```
+
+**本地开发补充（与「快速开始」一致，但原文未逐条写出）：**
+
+- **`pnpm dev:api`**（根目录）会通过 **`dotenv-cli`** 读取根目录 **`.env`** 并 **`--override`**，因此 **`DATABASE_URL` 以 `.env` 为准**；需保证 Postgres 在本机 **可访问**（若在 Docker 中，须有 **宿主机端口映射**，且 `DATABASE_URL` 使用 **`localhost:<映射端口>`**，不要用容器名 `postgres`）。
+- **首次克隆 / 清过 `node_modules` 后**：建议先执行一次 **`pnpm --filter @peima/database build`** 与 **`pnpm --filter @peima/shared build`**（或 **`pnpm build:api`**，会顺带执行上述依赖），再 **`pnpm dev:api`**，否则易出现 Prisma Client / `shared` 的 `dist` 缺失。
+- **Web**：`apps/web` 的 Vite 已配置从 **monorepo 根目录**加载 **`VITE_*`**，与 **`.env`** 中 **`VITE_API_BASE_URL`** 对齐即可；勿把 API 基址指到 Vite 自己的端口（见上文 P3 联调注意）。
+- **Windows**：若 Docker 或 Node 出现 **`bind` / `EACCES` / 端口无权限**，多为 **Hyper-V 保留端口区间**；可提高 **`.env`** 中的 **`API_PORT`、`POSTGRES_PORT`**，并同步 **`DATABASE_URL`、`VITE_API_BASE_URL`**（以及改 API 后 **`docker compose up -d --build web`**）。
+- **API e2e**：`pnpm --filter @peima/api test:e2e` 会通过 `apps/api/test/jest-e2e-env.ts` **自动加载** monorepo 根目录 **`.env`**（或 `apps/api/.env`），需其中 **`DATABASE_URL`** 指向 **已 migrate** 且 **当前可连** 的 Postgres；亦可继续在 shell 里导出 `DATABASE_URL` 覆盖。
 
 构建 API / Worker 前需生成 Prisma Client；**P1-6 起** API / Worker 的构建链会先构建 `@peima/shared`（constants，含 P2 增量），详见各包 `package.json` 的 `prebuild` / `build`。
 
@@ -339,7 +350,7 @@ Web：`http://localhost:5173`
 
 1. `docker compose ps`：`postgres / api / web / worker` 均为 `Up`。
 2. 打开 `http://localhost:5173`，可进 `/login`。
-3. `curl -i http://localhost:3000/auth/me` 预期 `401`（鉴权在工作）。
+3. `curl -i http://localhost:<API_PORT>/auth/me`（端口见 `.env` 中 **`API_PORT`**，默认常为 `3000`）预期 `401`（鉴权在工作）。
 4. `docker compose logs --tail=50 worker`：见 `worker started`、cron 注册；手动跑批后见 **`[batch-match]`** `batch_complete` 等。
 
 ## P0 验收方式（简明）
@@ -351,6 +362,7 @@ Web：`http://localhost:5173`
 手动入队示例：
 
 ```bash
+# 若 API_PORT 非 3000，请替换下面 URL 中的端口（与 .env 一致）
 curl -s -X POST http://localhost:3000/matching/enqueue \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
@@ -423,9 +435,14 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 - `docs/P3/P3-relationship-timeline.md`：**整阶段收口文档**（目标与范围、交付结果、联调与验收结论、**排查过程关键问题**、已知限制、轻量后续、提交用语）；附录含能力细节、代码入口、**Git 推送前收尾清单**、手动验收 checklist
 
-**P4～P6（后续规划 — 未实现）**
+**P4（产品化补完 — 体验与联动；规划 + 落地文档）**
 
-- `docs/P4/P4-productization-plan.md`：**P4** 产品化补完（摘要 / Copilot / 反馈 / 建议联动与体验；**不**含后台与模型链）
+- `docs/P4/P4-productization-plan.md`：P4 范围与边界（规划）
+- `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
+- `docs/P4/P4-ux-checklist.md`：手动验收清单
+
+**P5～P6（后续规划 — 未实现）**
+
 - `docs/P5/P5-operations-and-history-plan.md`：**P5** 治理与历史化（版本与审计、Analytics/权限、建议中心与轻量运营工具）
 - `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 真实 AI 生产链演进（Worker、模型替换规则层、多 Agent/simulation；**中远期、非已承诺开发**）
 

@@ -13,6 +13,7 @@ export default function CopilotPage() {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const chatBackHref = useMemo(() => {
     const q = new URLSearchParams();
@@ -53,7 +54,7 @@ export default function CopilotPage() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, refreshNonce]);
 
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
@@ -68,13 +69,34 @@ export default function CopilotPage() {
         ) : null}
       </p>
 
-      <div style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
-        <Link to={chatBackHref}>返回聊天</Link>
+      <div
+        style={{
+          marginBottom: "1rem",
+          fontSize: "0.9rem",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "0.65rem",
+        }}
+      >
+        <Link to={chatBackHref}>← 返回聊天</Link>
+        {conversationId ? (
+          <button
+            type="button"
+            onClick={() => setRefreshNonce((n) => n + 1)}
+            disabled={loading}
+          >
+            {loading ? "刷新中…" : "刷新沟通建议"}
+          </button>
+        ) : null}
       </div>
 
       {!conversationId ? (
         <p style={{ color: "#666" }} role="status">
-          缺少 conversationId。请从聊天页入口进入，或使用 <code>?conversationId=…</code>。
+          缺少 conversationId。请从{" "}
+          <Link to="/chat">聊天页</Link> 入口进入（需已打开会话），或在地址栏使用{" "}
+          <code>?conversationId=…</code>
+          （建议同时带上 <code>userId=…</code> 以便返回时状态一致）。
         </p>
       ) : null}
 
@@ -88,7 +110,8 @@ export default function CopilotPage() {
 
       {conversationId && !loading && !error && !insights ? (
         <p style={{ color: "#666" }} role="status">
-          暂无可展示的建议数据。
+          暂无可展示的建议数据。可返回聊天生成或更新摘要、提交快捷反馈，或处理待办画像建议后，再点「刷新沟通建议」。
+          建议为规则层输出，不通知对方。
         </p>
       ) : null}
 

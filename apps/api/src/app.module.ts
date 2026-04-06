@@ -13,6 +13,8 @@ import { ProfileSuggestionModule } from "./modules/profile-suggestion/profile-su
 import { BehaviorSignalModule } from "./modules/behavior-signal/behavior-signal.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
+import { AdminModule } from "./modules/admin/admin.module";
+import { TestModule } from "./modules/test/test.module";
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { CopilotModule } from "./modules/copilot/copilot.module";
     BehaviorSignalModule,
     AnalyticsModule,
     CopilotModule,
+    AdminModule,
+    TestModule,
     AuthModule,
   ],
   controllers: [],

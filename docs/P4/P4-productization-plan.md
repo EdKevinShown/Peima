@@ -59,8 +59,9 @@ P2 / P2.5 已把 **数据与 API** 和 **ChatPage / CopilotPage** 的主要入�
 ## 7. 预期产出物
 
 - 合并后的 **Web 改动**（以 PR 为单位，可多个 PR）。  
-- **可选**：`docs/P4/P4-ux-checklist.md` 或本文件 §5 的 **手动验收表**（勾选式）。  
-- README **状态表** 中增加一行「P4 进行中 / 已完成」时，**引用本规划文件** 并更新摘要（由后续 PR 执行）。  
+- **手动验收表**：`docs/P4/P4-ux-checklist.md`（勾选式）。  
+- **Web 约定**：`docs/P4/P4-web-conventions.md`（API 基址、`handleJson`、文案口径）。  
+- README **状态表** 已引用 P4 与上述文档（随迭代更新完成度即可）。  
 
 ---
 

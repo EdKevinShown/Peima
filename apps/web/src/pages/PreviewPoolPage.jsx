@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getLatestPreviewPool } from "../api/previewPool";
+import { generatePreviewPool, getLatestPreviewPool } from "../api/previewPool";
 import LoadingState from "../components/common/LoadingState";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -28,7 +28,9 @@ export default function PreviewPoolPage() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [generateHint, setGenerateHint] = useState(null);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -57,6 +59,24 @@ export default function PreviewPoolPage() {
     load();
   }, [load]);
 
+  const onGenerate = useCallback(async () => {
+    if (!userId) return;
+    setGenerating(true);
+    setGenerateHint(null);
+    setError(null);
+    try {
+      const res = await generatePreviewPool(userId);
+      setData(res);
+      setGenerateHint("已生成新的预览池");
+      window.setTimeout(() => setGenerateHint(null), 4000);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+      setData(null);
+    } finally {
+      setGenerating(false);
+    }
+  }, [userId]);
+
   const items = data?.items ? sortedItems(data.items) : [];
 
   return (
@@ -64,6 +84,11 @@ export default function PreviewPoolPage() {
       <h1 style={{ fontSize: "1.25rem" }}>预览池（6 人）</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
         userId: <code>{userId || "（未设置）"}</code>
+      </p>
+      <p style={{ color: "#666", fontSize: "0.82rem", marginBottom: "0.75rem" }}>
+        若从未生成过，请先点下方「生成预览池」。规则是：除当前登录用户外，库中至少要有{" "}
+        <strong>6 个用户各自在「用户图片」表里有一条及以上记录</strong>（仅注册用户不够，需通过图片接口上传）。
+        报错里的 <code>others_with_images</code> 即符合条件的人数。
       </p>
       <p style={{ marginBottom: "1rem" }}>
         <Link to="/">首页</Link>
@@ -181,10 +206,30 @@ export default function PreviewPoolPage() {
         </>
       )}
 
-      <div style={{ marginTop: "1.25rem" }}>
-        <button type="button" onClick={load} disabled={loading || !userId}>
+      <div
+        style={{
+          marginTop: "1.25rem",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.65rem",
+          alignItems: "center",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={loading || generating || !userId}
+        >
+          {generating ? "生成中…" : "生成预览池"}
+        </button>
+        <button type="button" onClick={load} disabled={loading || generating || !userId}>
           刷新
         </button>
+        {generateHint ? (
+          <span style={{ color: "#0d6832", fontSize: "0.88rem" }} role="status">
+            {generateHint}
+          </span>
+        ) : null}
       </div>
     </main>
   );

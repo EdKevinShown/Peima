@@ -23,3 +23,10 @@ export async function submitFeedback(payload: SubmitFeedbackPayload) {
   });
   return handleJson(res);
 }
+
+export async function listMyFeedback() {
+  const res = await fetch(`${baseUrl}/feedback/mine`, {
+    headers: authHeaders(),
+  });
+  return handleJson<unknown[]>(res);
+}

@@ -98,7 +98,16 @@ export class PreviewPoolService {
 
     const candidates = await this.pickSixCandidatesWithImages(userId);
     if (candidates.length < 6) {
-      throw new BadRequestException("not enough candidates");
+      const otherUserCount = await this.prisma.user.count({
+        where: { id: { not: userId } },
+      });
+      const othersWithImageCount = await this.prisma.user.count({
+        where: { id: { not: userId }, images: { some: {} } },
+      });
+      throw new BadRequestException(
+        `not enough candidates: need 6 other users each with at least one row in user_images; ` +
+          `eligible=${candidates.length}, others_with_images=${othersWithImageCount}, other_users_total=${otherUserCount}.`,
+      );
     }
 
     await this.archiveActivePoolsForUser(userId);

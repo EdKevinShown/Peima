@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
@@ -36,6 +36,10 @@ export default function ChatPage() {
   const [profileSuggestionsError, setProfileSuggestionsError] = useState(null);
   /** Bump after send to refresh summary + copilot without touching profile list every time */
   const [p2RefreshKey, setP2RefreshKey] = useState(0);
+  const [summaryRetryNonce, setSummaryRetryNonce] = useState(0);
+  const [copilotRetryNonce, setCopilotRetryNonce] = useState(0);
+  const [summaryLoadError, setSummaryLoadError] = useState(null);
+  const [copilotLoadError, setCopilotLoadError] = useState(null);
 
   const load = useCallback(async () => {
     if (!conversationId) {
@@ -63,48 +67,60 @@ export default function ChatPage() {
   useEffect(() => {
     if (!conversationId) {
       setConversationSummary(null);
+      setSummaryLoadError(null);
       return;
     }
     let cancelled = false;
+    setSummaryLoadError(null);
     (async () => {
       try {
         const data = await getConversationSummary(conversationId);
         if (!cancelled) {
           setConversationSummary(data);
+          setSummaryLoadError(null);
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
           setConversationSummary(null);
+          setSummaryLoadError(
+            e instanceof Error ? e.message : String(e),
+          );
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [conversationId, p2RefreshKey]);
+  }, [conversationId, p2RefreshKey, summaryRetryNonce]);
 
   useEffect(() => {
     if (!conversationId) {
       setCopilotInsights(null);
+      setCopilotLoadError(null);
       return;
     }
     let cancelled = false;
+    setCopilotLoadError(null);
     (async () => {
       try {
         const data = await getCopilotInsights(conversationId);
         if (!cancelled) {
           setCopilotInsights(data);
+          setCopilotLoadError(null);
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
           setCopilotInsights(null);
+          setCopilotLoadError(
+            e instanceof Error ? e.message : String(e),
+          );
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [conversationId, p2RefreshKey]);
+  }, [conversationId, p2RefreshKey, copilotRetryNonce]);
 
   const loadProfileSuggestions = useCallback(async () => {
     if (!conversationId || !userId) {
@@ -162,10 +178,12 @@ export default function ChatPage() {
     try {
       const data = await generateConversationSummary(conversationId);
       setConversationSummary(data);
-      setSummaryActionOk("摘要已更新");
+      setSummaryLoadError(null);
+      setCopilotRetryNonce((n) => n + 1);
+      setSummaryActionOk("摘要已更新；沟通建议已尝试刷新");
       window.setTimeout(() => {
         setSummaryActionOk(null);
-      }, 2500);
+      }, 3200);
     } catch (e) {
       setSummaryActionError(
         e instanceof Error ? e.message : String(e),
@@ -214,39 +232,83 @@ export default function ChatPage() {
       )}
 
       {conversationId ? (
-        <div style={{ marginBottom: "1rem" }}>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: "0.5rem 0.75rem",
-              marginBottom: "0.45rem",
-              fontSize: "0.88rem",
-            }}
-          >
-            <button
-              type="button"
-              onClick={onGenerateSummary}
-              disabled={summaryGenerating}
+        <section
+          style={{
+            marginBottom: "1.25rem",
+            padding: "0.75rem 0.85rem",
+            border: "1px solid #e8e8e8",
+            borderRadius: 10,
+            background: "#fcfcfc",
+          }}
+          aria-label="会话周边：摘要与沟通建议（规则层，只读）"
+        >
+          <h2 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", fontWeight: 600 }}>
+            会话周边（规则层 · 只读）
+          </h2>
+          <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", color: "#666" }}>
+            摘要、沟通建议、快捷反馈与画像建议由规则/占位逻辑生成，不代发消息、不向对方推送通知。
+          </p>
+          <div style={{ marginBottom: "0.85rem" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: "0.5rem 0.75rem",
+                marginBottom: "0.45rem",
+                fontSize: "0.88rem",
+              }}
             >
-              {summaryGenerating ? "生成中…" : "生成并更新摘要"}
-            </button>
-            {summaryActionOk ? (
-              <span style={{ color: "#0d6832" }} role="status">
-                {summaryActionOk}
-              </span>
+              <button
+                type="button"
+                onClick={onGenerateSummary}
+                disabled={summaryGenerating}
+              >
+                {summaryGenerating ? "生成中…" : "生成并更新摘要"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSummaryRetryNonce((n) => n + 1)}
+                disabled={summaryGenerating}
+              >
+                重试加载摘要
+              </button>
+              {summaryActionOk ? (
+                <span style={{ color: "#0d6832" }} role="status">
+                  {summaryActionOk}
+                </span>
+              ) : null}
+              {summaryActionError ? (
+                <span style={{ color: "#b00020" }} role="alert">
+                  {summaryActionError}
+                </span>
+              ) : null}
+            </div>
+            {summaryLoadError ? (
+              <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                摘要加载失败：{summaryLoadError}
+              </p>
             ) : null}
-            {summaryActionError ? (
-              <span style={{ color: "#b00020" }} role="alert">
-                {summaryActionError}
-              </span>
-            ) : null}
+            <ChatSummaryCard summary={conversationSummary} />
           </div>
-          <ChatSummaryCard summary={conversationSummary} />
-        </div>
+          <div style={{ marginBottom: "0.35rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+              <button
+                type="button"
+                onClick={() => setCopilotRetryNonce((n) => n + 1)}
+              >
+                重试加载沟通建议
+              </button>
+            </div>
+            {copilotLoadError ? (
+              <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                沟通建议加载失败：{copilotLoadError}
+              </p>
+            ) : null}
+            <CopilotInsightCard insights={copilotInsights} />
+          </div>
+        </section>
       ) : null}
-      {conversationId ? <CopilotInsightCard insights={copilotInsights} /> : null}
       {conversationId ? (
         <p style={{ fontSize: "0.85rem", margin: "0 0 0.35rem" }}>
           <Link to={copilotFullHref}>查看本会话完整沟通建议（只读）</Link>

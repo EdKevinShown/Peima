@@ -87,10 +87,6 @@ export default function ProfileSuggestionCard({
     [onRefresh],
   );
 
-  if (list.length === 0 && !loadError) {
-    return null;
-  }
-
   return (
     <aside
       style={{
@@ -108,7 +104,7 @@ export default function ProfileSuggestionCard({
       <p style={{ margin: "0 0 0.5rem", fontSize: "0.8rem", color: "#666" }}>
         {processed.length > 0
           ? "待处理可在此确认；已处理记录默认折叠，点击展开查看。"
-          : "待处理可在此接受或忽略。"}
+          : "待处理可在此接受或忽略。与摘要、沟通建议同为规则层提示，不向对方推送。"}
       </p>
 
       {loadError ? (

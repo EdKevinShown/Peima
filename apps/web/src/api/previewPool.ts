@@ -1,31 +1,4 @@
-import { authHeaders } from "./auth";
-
-const baseUrl =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
-
-async function handleJson<T>(res: Response): Promise<T> {
-  const text = await res.text();
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("未登录或 token 无效，请先登录（/login）");
-    }
-    let detail = text;
-    try {
-      const body = JSON.parse(text) as { message?: string | string[] };
-      if (Array.isArray(body.message)) {
-        detail = body.message.join(", ");
-      } else if (body.message) {
-        detail = String(body.message);
-      }
-    } catch {
-      /* use raw text */
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
-  }
-  if (!text) return {} as T;
-  return JSON.parse(text) as T;
-}
+import { authHeaders, baseUrl, handleJson } from "./auth";
 
 export type PreviewPoolItemMeta = {
   slotReason: string;
@@ -63,5 +36,18 @@ export type LatestPreviewPoolResponse = {
 export async function getLatestPreviewPool(userId: string) {
   const url = `${baseUrl}/preview-pool/user/${encodeURIComponent(userId)}/latest`;
   const res = await fetch(url, { headers: authHeaders() });
+  return handleJson<LatestPreviewPoolResponse>(res);
+}
+
+/** POST /preview-pool/generate — requires JWT userId === body.userId; needs ≥6 other users with images. */
+export async function generatePreviewPool(userId: string) {
+  const res = await fetch(`${baseUrl}/preview-pool/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ userId }),
+  });
   return handleJson<LatestPreviewPoolResponse>(res);
 }

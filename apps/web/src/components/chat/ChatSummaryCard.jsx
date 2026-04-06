@@ -37,6 +37,9 @@ export default function ChatSummaryCard({ summary }) {
         生成时间：{timeLabel}
         {meta.length > 0 ? ` · ${meta.join(" · ")}` : null}
       </div>
+      <p style={{ fontSize: "0.75rem", color: "#777", margin: "0.5rem 0 0" }}>
+        摘要为规则生成，不代发消息、不自动通知对方。
+      </p>
     </aside>
   );
 }
