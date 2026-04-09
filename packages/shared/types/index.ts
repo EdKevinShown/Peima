@@ -14,3 +14,11 @@ export type {
 } from "./p2-feedback";
 export type { P2ProfileUpdateSuggestion } from "./p2-profile-suggestion";
 export type { P2BehaviorSignal } from "./p2-signal";
+export type {
+  P5SuggestionCenterItem,
+  P5SuggestionCenterQueryFilter,
+  P5SuggestionCenterStats,
+  P5SuggestionCenterListResponse,
+  P5PermissionContext,
+  P5AuditLog,
+} from "./p5-operations";

@@ -52,6 +52,9 @@ export async function handleJson<T>(res: Response): Promise<T> {
     if (res.status === 401) {
       throw new Error("未登录或 token 无效，请先登录（/login）");
     }
+    if (res.status === 403) {
+      throw new Error("没有权限执行此操作（403）。若需全局数据，请确认账号是否在白名单内。");
+    }
 
     let detail = text;
     try {

@@ -1,0 +1,158 @@
+/* Admin：建议统计卡片样式 */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  border-left: 4px solid #1976d2;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.stat-card.total {
+  border-left-color: #1976d2;
+}
+
+.stat-card.pending {
+  border-left-color: #ff9800;
+}
+
+.stat-card.accepted {
+  border-left-color: #4caf50;
+}
+
+.stat-card.dismissed {
+  border-left-color: #f44336;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+}
+
+.stat-subtitle {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+}
+
+.breakdown-section {
+  margin-top: 30px;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.breakdown-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.breakdown-label {
+  font-size: 13px;
+  color: #666;
+  flex: 1;
+}
+
+.breakdown-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-left: 10px;
+}
+
+.priority-high {
+  border-left: 3px solid #c62828;
+}
+
+.priority-medium {
+  border-left: 3px solid #e65100;
+}
+
+.priority-low {
+  border-left: 3px solid #1565c0;
+}
+
+.category-item {
+  border-left: 3px solid #1976d2;
+}
+
+.no-data-message {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-size: 13px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .breakdown-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .breakdown-section {
+    padding: 15px;
+  }
+
+  .breakdown-item {
+    padding: 10px;
+  }
+}

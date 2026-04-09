@@ -6,7 +6,7 @@
   "scripts": {
     "dev:web": "pnpm --filter @peima/web dev",
     "dev:admin": "pnpm --filter @peima/admin dev",
-    "dev:api": "pnpm --filter @peima/api start:dev",
+    "dev:api": "dotenv -e .env --override -- pnpm --filter @peima/api start:dev",
     "dev:worker": "pnpm --filter @peima/worker dev",
     "build": "pnpm -r run build",
     "build:web": "pnpm --filter @peima/web build",
@@ -19,5 +19,9 @@
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "dotenv-cli": "^8.0.0"
+  }
 }

@@ -1,5 +1,8 @@
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { AppModule } from "./app.module";
 
 function collectExpressRouteLines(stack: unknown, prefix = ""): string[] {
@@ -24,7 +27,14 @@ function collectExpressRouteLines(stack: unknown, prefix = ""): string[] {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const uploadDir =
+    process.env.UPLOAD_DIR ?? join(process.cwd(), "uploads", "user-images");
+  if (!existsSync(uploadDir)) {
+    mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useStaticAssets(uploadDir, { prefix: "/uploads/user-images/" });
   app.enableCors({ origin: true });
   app.useGlobalPipes(
     new ValidationPipe({

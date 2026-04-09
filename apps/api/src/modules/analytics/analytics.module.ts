@@ -2,8 +2,10 @@ import { Module } from "@nestjs/common";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsRepository } from "./analytics.repository";
 import { AnalyticsService } from "./analytics.service";
+import { RbacModule } from "../../common/rbac/rbac.module";
 
 @Module({
+  imports: [RbacModule],
   controllers: [AnalyticsController],
   providers: [AnalyticsService, AnalyticsRepository],
 })

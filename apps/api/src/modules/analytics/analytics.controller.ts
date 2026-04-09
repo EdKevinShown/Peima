@@ -8,7 +8,10 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AnalyticsService } from "./analytics.service";
+import { RbacService } from "../../common/rbac/rbac.service";
+import { Permission } from "@peima/shared/constants";
 import type { P2OverviewMineStats, P2OverviewStats } from "./p2-overview.types";
+import type { AdminDashboardStats } from "./admin-dashboard.types";
 
 type JwtReq = {
   user?: { userId: string };
@@ -27,7 +30,20 @@ function globalP2OverviewAllowedUserIds(): Set<string> {
 @Controller("analytics")
 @UseGuards(JwtAuthGuard)
 export class AnalyticsController {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    private readonly rbacService: RbacService,
+  ) {}
+
+  /** Admin dashboard - requires MANAGE_PERMISSIONS (admin-only) */
+  @Get("admin-dashboard")
+  async adminDashboard(@Req() req: JwtReq): Promise<AdminDashboardStats> {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException("not authenticated");
+    const canView = await this.rbacService.checkPermission(userId, Permission.MANAGE_PERMISSIONS);
+    if (!canView) throw new ForbiddenException("admin access required");
+    return this.analyticsService.getAdminDashboard();
+  }
 
   /** More specific route first. */
   @Get("p2-overview/mine")

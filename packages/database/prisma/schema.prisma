@@ -42,6 +42,11 @@ model User {
   structuredFeedbacks      UserFeedback[]
   profileUpdateSuggestions ProfileUpdateSuggestion[]
   behaviorSignals          BehaviorSignal[]
+  suggestionHistoryChanges SuggestionHistory[] @relation("SuggestionHistoryChangedBy") // P5：历史变更记录
+  auditLogs                AuditLog[] // P5 Phase 2：审计日志记录
+  rolesAssigned            UserRole[] @relation("UserRolesAssigned") // P5 Phase 2.2：分配给该用户的角色
+  rolesGrantedByMe         UserRole[] @relation("UserRolesGrantedBy") // P5 Phase 2.2：由该用户授予的角色
+  notifications            Notification[] // P5 Phase 2.3：通知记录
 
   @@map("users")
 }
@@ -287,18 +292,132 @@ model UserFeedback {
 model ProfileUpdateSuggestion {
   id            String    @id @default(cuid())
   userId        String
-  status        String // pending | accepted | dismissed
+  status        String @default("pending") // pending | accepted | dismissed
   sourceType    String
   sourceVersion String
   proposedPatch Json
+  // P5: 运营与优先级字段
+  priority      String @default("medium") // low | medium | high
+  category      String @default("profile_refinement") // profile_refinement | behavioral_insight | communication_style
+  assignedToOperatorId String? // P5：运营人员分配（可选）
+  operatorNotes String? @db.Text // P5：运营备注
+  versionNumber Int @default(1) // P5：版本号，用于跟踪历史
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   resolvedAt    DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history SuggestionHistory[] // P5：历史记录关系
 
   @@index([userId, status])
+  @@index([status, priority])
+  @@index([assignedToOperatorId])
+  @@index([versionNumber])
   @@map("profile_update_suggestions")
+}
+
+// P5：建议版本历史记录
+model SuggestionHistory {
+  id            String    @id @default(cuid())
+  suggestionId  String
+  version       Int       // 版本号
+  previousVersion Int?    // 前一个版本号
+  changes       Json      // 变更内容：{ fieldName: { old, new } }
+  changedFields String[]  // 变更字段列表
+  changedByUserId String  // 谁做的变更
+  changeReason  String?   // 变更原因/备注
+  changeType    String @default("UPDATE") // UPDATE | ACCEPT | DISMISS | ASSIGN
+  createdAt     DateTime  @default(now())
+
+  suggestion ProfileUpdateSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  changedByUser User @relation("SuggestionHistoryChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([suggestionId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+  @@index([suggestionId, createdAt(sort: Desc)])
+  @@map("suggestion_history")
+}
+
+// P5 Phase 2：审计日志表，记录所有关键操作
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String
+  action        String    // CREATE | READ | UPDATE | DELETE | EXPORT | BULK_OPERATE | ROLE_ASSIGN
+  entityType    String    // SUGGESTION | USER | ROLE | PERMISSION | SYSTEM
+  entityId      String?   // 被操作的对象ID
+  oldValues     Json?     // 变更前的值 (JSONB)
+  newValues     Json?     // 变更后的值 (JSONB)
+  ipAddress     String?   // IP地址
+  userAgent     String?   // User-Agent字符串
+  changeReason  String?   // 用户填写的原因
+  status        String @default("SUCCESS") // SUCCESS | FAILED
+  errorMessage  String?   // 错误信息
+  duration      Int?      // 操作耗时 (ms)
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("audit_logs")
+}
+
+// P5 Phase 2.2: 角色分配表 - 将用户与角色绑定（支持角色过期时间）
+model UserRole {
+  id          String    @id @default(cuid())
+  userId      String
+  roleCode    String    // ADMIN | OPERATOR | DATA_ANALYST | REGULAR_USER
+  grantedAt   DateTime  @default(now())
+  grantedBy   String?   // 谁授予的这个角色（可选）
+  expiresAt   DateTime? // 角色过期时间（可选，为null则永不过期）
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user       User  @relation("UserRolesAssigned", fields: [userId], references: [id], onDelete: Cascade)
+  grantedByUser User? @relation("UserRolesGrantedBy", fields: [grantedBy], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleCode]) // 一个用户一个角色只能有一份
+  @@index([userId])
+  @@index([roleCode])
+  @@index([expiresAt])
+  @@map("user_roles")
+}
+
+// P5 Phase 2.2: 角色权限映射表 - 定义每个角色具有哪些权限
+model RolePermission {
+  id              String    @id @default(cuid())
+  roleCode        String    // ADMIN | OPERATOR | DATA_ANALYST | REGULAR_USER
+  permissionCode  String    // view_all_suggestions | manage_all_suggestions | etc
+  resource        String?   // 资源类型（可选，用于细粒度权限控制）
+  conditions      Json?     // 条件权限（如时间限制、IP限制等，JSONB格式）
+  createdAt       DateTime  @default(now())
+
+  @@unique([roleCode, permissionCode]) // 一个角色一个权限只能有一份
+  @@index([roleCode])
+  @@index([permissionCode])
+  @@map("role_permissions")
+}
+
+// P5 Phase 2.3: 通知表 - 持久化通知消息，支持实时推送与离线查看
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // role_change | permission_update | suggestion_update | system_message | audit_alert | export_completed
+  title     String
+  message   String   @db.Text
+  actionUrl String?  // 前端深链接，如 /permissions, /audit-logs
+  read      Boolean  @default(false)
+  metadata  Json?    // 额外结构化数据 (entityId, roleCode, etc)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
 }
 
 /// Append-oriented behavior / analytics-oriented events (no separate analytics dimension table in P2 v1).

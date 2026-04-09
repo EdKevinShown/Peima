@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { ImagesModule } from "./modules/images/images.module";
 import { MatchingModule } from "./modules/matching/matching.module";
@@ -13,10 +13,20 @@ import { ProfileSuggestionModule } from "./modules/profile-suggestion/profile-su
 import { BehaviorSignalModule } from "./modules/behavior-signal/behavior-signal.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
+import { AdminModule } from "./modules/admin/admin.module";
+import { TestModule } from "./modules/test/test.module";
+import { RbacModule } from "./common/rbac/rbac.module";
+import { SuggestionCenterModule } from "./modules/suggestion-center/suggestion-center.module";
+import { AuditModule } from "./common/audit/audit.module";
+import { AuditMiddleware } from "./common/middleware/audit.middleware";
+import { EventsModule } from "./common/events/events.module";
+import { NotificationModule } from "./modules/notifications/notification.module";
 
 @Module({
   imports: [
     PrismaModule,
+    EventsModule,
+    RbacModule,
     UsersModule,
     PreferencesModule,
     ImagesModule,
@@ -29,9 +39,18 @@ import { CopilotModule } from "./modules/copilot/copilot.module";
     BehaviorSignalModule,
     AnalyticsModule,
     CopilotModule,
+    AdminModule,
+    TestModule,
+    SuggestionCenterModule,
     AuthModule,
+    AuditModule,
+    NotificationModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuditMiddleware).forRoutes('*');
+  }
+}

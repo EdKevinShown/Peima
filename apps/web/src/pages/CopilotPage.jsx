@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import ConversationContextBar from "../components/common/ConversationContextBar";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import { getCopilotInsights } from "../api/copilot";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -13,6 +14,10 @@ export default function CopilotPage() {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  const [refreshSource, setRefreshSource] = useState("unknown");
+  const [nextRefreshSource, setNextRefreshSource] = useState("initial");
 
   const chatBackHref = useMemo(() => {
     const q = new URLSearchParams();
@@ -22,14 +27,35 @@ export default function CopilotPage() {
     return s ? `/chat?${s}` : "/chat";
   }, [conversationId, userId]);
 
+  const timelineHref = useMemo(() => {
+    const q = new URLSearchParams();
+    if (conversationId) q.set("conversationId", conversationId);
+    if (userId) q.set("userId", userId);
+    const s = q.toString();
+    return s ? `/chat/timeline?${s}` : "/chat/timeline";
+  }, [conversationId, userId]);
+
+  const copilotSelfHref = useMemo(() => {
+    const q = new URLSearchParams();
+    if (conversationId) q.set("conversationId", conversationId);
+    if (userId) q.set("userId", userId);
+    const s = q.toString();
+    return s ? `/copilot?${s}` : "/copilot";
+  }, [conversationId, userId]);
+
+  const freshnessHint = "聊天页有新消息或摘要更新后，建议在当前页手动刷新查看最新状态。";
+
   useEffect(() => {
     if (!conversationId) {
       setInsights(null);
       setError(null);
       setLoading(false);
+      setLastRefreshedAt(null);
+      setRefreshSource("unknown");
       return;
     }
     let cancelled = false;
+    const sourceForThisLoad = nextRefreshSource || "initial";
     setLoading(true);
     setError(null);
     setInsights(null);
@@ -38,6 +64,9 @@ export default function CopilotPage() {
         const data = await getCopilotInsights(conversationId);
         if (!cancelled) {
           setInsights(data?.conversationId ? data : null);
+          setLastRefreshedAt(Date.now());
+          setRefreshSource(sourceForThisLoad);
+          setNextRefreshSource("manual");
         }
       } catch (e) {
         if (!cancelled) {
@@ -53,28 +82,47 @@ export default function CopilotPage() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, refreshNonce, nextRefreshSource]);
 
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>沟通建议（只读）</h1>
       <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "0.75rem" }}>
-        基于当前会话的规则化建议，不代发消息、不推送提醒。
-        {conversationId ? (
-          <>
-            {" "}
-            conversationId: <code>{conversationId}</code>
-          </>
-        ) : null}
+        沟通洞察基于当前会话快照生成，不代发消息、不推送提醒。
       </p>
 
-      <div style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
-        <Link to={chatBackHref}>返回聊天</Link>
-      </div>
+      <ConversationContextBar
+        pageKey="copilot"
+        conversationId={conversationId}
+        userId={userId}
+        chatHref={chatBackHref}
+        copilotHref={copilotSelfHref}
+        timelineHref={timelineHref}
+        freshnessHint={freshnessHint}
+        lastRefreshedAt={lastRefreshedAt}
+        refreshSource={refreshSource}
+      />
+
+      {conversationId ? (
+        <div style={{ marginBottom: "0.95rem", fontSize: "0.9rem" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setNextRefreshSource("manual");
+              setRefreshNonce((n) => n + 1);
+            }}
+            disabled={loading}
+          >
+            {loading ? "刷新中…" : "刷新沟通洞察"}
+          </button>
+        </div>
+      ) : null}
 
       {!conversationId ? (
         <p style={{ color: "#666" }} role="status">
-          缺少 conversationId。请从聊天页入口进入，或使用 <code>?conversationId=…</code>。
+          缺少 conversationId。请从 <Link to="/chat">聊天页</Link> 进入会话后再查看洞察，或在地址栏使用{" "}
+          <code>?conversationId=…</code>
+          （建议同时带上 <code>userId=…</code> 以保持回跳状态一致）。
         </p>
       ) : null}
 
@@ -82,13 +130,13 @@ export default function CopilotPage() {
 
       {conversationId && error ? (
         <p style={{ color: "#b00020" }} role="alert">
-          {error.message}
+          沟通洞察加载失败：{error.message}
         </p>
       ) : null}
 
       {conversationId && !loading && !error && !insights ? (
         <p style={{ color: "#666" }} role="status">
-          暂无可展示的建议数据。
+          当前暂无可展示的沟通洞察。可返回聊天补充互动或更新摘要后，再点击「刷新沟通洞察」。
         </p>
       ) : null}
 

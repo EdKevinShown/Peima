@@ -1,31 +1,4 @@
-import { authHeaders } from "./auth";
-
-const baseUrl =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
-
-async function handleJson<T>(res: Response): Promise<T> {
-  const text = await res.text();
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("未登录或 token 无效，请先登录（/login）");
-    }
-    let detail = text;
-    try {
-      const body = JSON.parse(text) as { message?: string | string[] };
-      if (Array.isArray(body.message)) {
-        detail = body.message.join(", ");
-      } else if (body.message) {
-        detail = String(body.message);
-      }
-    } catch {
-      /* use raw text */
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
-  }
-  if (!text) return {} as T;
-  return JSON.parse(text) as T;
-}
+import { authHeaders, baseUrl, handleJson } from "./auth";
 
 export type MatchingStatus =
   | "not_queued"
@@ -62,6 +35,18 @@ export type MatchingResultResponse = {
   updatedAt: string;
   matchInsights?: MatchInsights | null;
 };
+
+export async function enqueueMatching(userId: string) {
+  const res = await fetch(`${baseUrl}/matching/enqueue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ userId }),
+  });
+  return handleJson<unknown>(res);
+}
 
 export async function getMatchingStatus(userId: string) {
   const url = `${baseUrl}/matching/status/${encodeURIComponent(userId)}`;

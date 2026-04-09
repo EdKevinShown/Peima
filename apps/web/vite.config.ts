@@ -1,7 +1,12 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// Load `VITE_*` from monorepo root `.env` (same as docker-compose build args).
+const envDir = resolve(__dirname, "../..");
+
 export default defineConfig({
+  envDir,
   plugins: [react()],
   server: {
     port: 5173,

@@ -31,8 +31,8 @@ export default function FeedbackQuickActions({
         sourceType: SOURCE_TYPE,
         sourceVersion: SOURCE_VERSION,
       });
-      setHint("已记录，感谢反馈");
-      setTimeout(() => setHint(""), 4000);
+      setHint("已记录，感谢反馈（仅用于产品与体验改进，不通知对方）");
+      setTimeout(() => setHint(""), 5000);
     } catch (e) {
       setHint(e instanceof Error ? e.message : "提交失败");
     } finally {
@@ -42,7 +42,7 @@ export default function FeedbackQuickActions({
 
   return (
     <div style={{ marginBottom: "0.75rem", fontSize: "0.9rem" }}>
-      <span style={{ color: "#555", marginRight: "0.5rem" }}>本会话反馈</span>
+      <span style={{ color: "#555", marginRight: "0.5rem" }}>本会话快捷反馈</span>
       <button
         type="button"
         disabled={busy || disabled}
@@ -75,6 +75,7 @@ export default function FeedbackQuickActions({
             marginLeft: "0.6rem",
             color: hint.includes("失败") || hint.includes("未登录") ? "#b00020" : "#2e7d32",
           }}
+          role={hint.includes("失败") || hint.includes("未登录") ? "alert" : "status"}
         >
           {hint}
         </span>
