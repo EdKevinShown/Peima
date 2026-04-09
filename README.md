@@ -385,7 +385,7 @@ node scripts/seed-users.js
 
 ```bash
 # 给 6 个用户各上传一张测试图片（生成最小 JPEG）
-# 需保证 API 在 http://localhost:3000 正常运行
+# 需保证 API 正常运行（默认常用 http://localhost:3000；以 .env 的 API_PORT 为准）
 bash scripts/upload-images.sh
 ```
 
@@ -393,13 +393,15 @@ bash scripts/upload-images.sh
 
 ### 3) Web 端快速调试
 
-用户端：
-1. 打开 `http://localhost:5174`，选一个测试手机号登录（如 `13008517773`）
+用户端（Web，默认端口 `5173`）：
+1. 打开 `http://localhost:5173`，选一个测试手机号登录（如 `13008517773`）
 2. `/my-images` 确认图片已上传（可选验证）
 3. `/preview-pool` 点「生成预览池」，应显示 6 人池
 4. 点用户进入匹配等待
 5. 手动跑批（见下文「手动跑批」）后查看 `/final-match`
 6. `/chat` 进入聊天测试 **P0/P1/P2** 能力（摘要、Copilot、建议等）
+
+管理员端（Admin，默认端口 `5174`）可用于后台能力验证；普通用户链路不依赖 admin 页面。
 
 > 测试用户手机号（执行 seed-users.js 后自动创建，可直接用）：  
 > `13008517773` / `16846531247` / `16898806368` / `17930489006` / `16760022595` / `18221207794`
@@ -410,6 +412,7 @@ bash scripts/upload-images.sh
 
 ```bash
 # 假设 admin 用户 ID 已在 .env 配置
+# 若 API_PORT 非 3000，请替换 URL 端口（以 .env / 实际启动为准）
 curl -s -X POST http://localhost:3000/admin/batch-match/run-once \
   -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
@@ -432,7 +435,7 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 手动入队示例：
 
 ```bash
-# 若 API_PORT 非 3000，请替换下面 URL 中的端口（与 .env 一致）
+# 若 API_PORT 非 3000，请替换下面 URL 中的端口（以 .env / 实际启动为准）
 curl -s -X POST http://localhost:3000/matching/enqueue \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
@@ -466,6 +469,11 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 2. **Web 端口 5173**  
    - 确认映射为 `0.0.0.0:5173->5173/tcp`；异常时 `docker compose up -d --build --force-recreate web`
+
+4. **端口口径（避免开错服务）**  
+   - `5173 = web`（用户端）  
+   - `5174 = admin`（管理端）  
+   - API 端口以 `.env` 的 `API_PORT` 和实际启动日志为准（示例常用 `3000`）
 
 3. **preview-pool：`not enough candidates`**  
    - 候选不足 6 或缺少 `images`，补齐后再试。

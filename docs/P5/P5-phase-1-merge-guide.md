@@ -1,5 +1,6 @@
 # P5 Phase 1：合并与部署指南
 
+> Status: Historical / Archived
 > **针对**：Team 同学在合并 P5 Phase 1 代码时的完整清单与命令参考  
 > **难度**：低（顺序执行即可）  
 > **预计时间**：10-15 分钟
@@ -226,8 +227,8 @@ pnpm --filter @peima/api build
 pnpm --filter @peima/worker build  # 若 worker 依赖 shared
 
 # 2. 数据库迁移（在 API 启动前）
-# 使用 Prisma migrate deploy（生产推荐）
-pnpm --filter @peima/database db:migrate:deploy
+# 以仓库当前 scripts 为准（@peima/database 仅提供 db:migrate / db:push / db:generate）
+pnpm --filter @peima/database db:migrate
 
 # 3. API 启动（热启）
 # 若使用 PM2/Docker/K8s，按各自流程
