@@ -1,7 +1,7 @@
 /**
  * P2: lightweight summary strip; parent hides when no data / load failed.
  */
-export default function ChatSummaryCard({ summary }) {
+export default function ChatSummaryCard({ summary, footerNote }) {
   if (!summary?.summary) return null;
 
   let timeLabel = summary.generatedAt;
@@ -38,7 +38,8 @@ export default function ChatSummaryCard({ summary }) {
         {meta.length > 0 ? ` · ${meta.join(" · ")}` : null}
       </div>
       <p style={{ fontSize: "0.75rem", color: "#777", margin: "0.5rem 0 0" }}>
-        摘要为规则生成，不代发消息、不自动通知对方。
+        {footerNote ??
+          "摘要为规则生成，不代发消息、不自动通知对方。"}
       </p>
     </aside>
   );

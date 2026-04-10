@@ -19,6 +19,7 @@ import {
   getConversationSummary,
   sendMessage,
 } from "../api/chat";
+import { getSummaryAi } from "../api/summary-ai";
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
@@ -44,6 +45,9 @@ export default function ChatPage() {
   const [summaryRetryNonce, setSummaryRetryNonce] = useState(0);
   const [copilotRetryNonce, setCopilotRetryNonce] = useState(0);
   const [summaryLoadError, setSummaryLoadError] = useState(null);
+  const [summaryAiResult, setSummaryAiResult] = useState(null);
+  const [summaryAiLoading, setSummaryAiLoading] = useState(false);
+  const [summaryAiError, setSummaryAiError] = useState(null);
   const [copilotLoadError, setCopilotLoadError] = useState(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [refreshSource, setRefreshSource] = useState("unknown");
@@ -83,12 +87,31 @@ export default function ChatPage() {
     load("initial");
   }, [load]);
 
+  const onFetchSummaryAi = useCallback(async () => {
+    if (!conversationId) return;
+    setSummaryAiError(null);
+    setSummaryAiLoading(true);
+    try {
+      const data = await getSummaryAi(conversationId);
+      setSummaryAiResult(data);
+    } catch (e) {
+      setSummaryAiResult(null);
+      setSummaryAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSummaryAiLoading(false);
+    }
+  }, [conversationId]);
+
   useEffect(() => {
     if (!conversationId) {
       setConversationSummary(null);
       setSummaryLoadError(null);
+      setSummaryAiResult(null);
+      setSummaryAiError(null);
       return;
     }
+    setSummaryAiResult(null);
+    setSummaryAiError(null);
     let cancelled = false;
     setSummaryLoadError(null);
     (async () => {
@@ -481,6 +504,36 @@ export default function ChatPage() {
               </p>
             ) : null}
             <ChatSummaryCard summary={conversationSummary} />
+            <div
+              style={{
+                marginTop: "0.75rem",
+                paddingTop: "0.65rem",
+                borderTop: "1px dashed #e5e7eb",
+              }}
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                <button type="button" onClick={onFetchSummaryAi} disabled={summaryAiLoading}>
+                  {summaryAiLoading ? "拉取中…" : "拉取 AI 摘要（试点）"}
+                </button>
+                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  独立接口，不写入聊天摘要持久化；失败不影响发消息与沟通洞察。
+                </span>
+              </div>
+              {summaryAiError ? (
+                <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                  AI 摘要请求失败：{summaryAiError}
+                </p>
+              ) : null}
+              {summaryAiResult ? (
+                <ChatSummaryCard
+                  summary={{
+                    ...summaryAiResult,
+                    persisted: false,
+                  }}
+                  footerNote="P6.5 AI 摘要试点：成功时为模型输出；失败时为规则占位。不写入持久化、不代发消息。"
+                />
+              ) : null}
+            </div>
           </div>
           <div style={{ marginBottom: "0.85rem" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
