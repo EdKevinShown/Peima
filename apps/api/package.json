@@ -35,6 +35,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@angular-devkit/schematics-cli": "^17.3.17",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.15",
