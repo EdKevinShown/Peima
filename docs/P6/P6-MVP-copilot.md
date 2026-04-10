@@ -26,6 +26,8 @@
 - **任何降级路径**（开关关闭、密钥缺失、超时、错误、输出无法安全映射回 DTO 等）：对外返回 **与当前一致** 的规则层结果，`sourceType` **保留为 `rule_based`**（与现有 `P2SourceType.RuleBased` 一致）。
 - **`sourceVersion`**：用于标识 **规则模板版本**（如现有 `COPILOT_RULE_VERSION`）或 **模型侧版本/快照**（如模型名 + prompt 版本号）；成功走模型与走规则时应 **分别可区分**，便于排障与审计。
 
+**P6.2 收口（实现与运维）**：`model_<slug>` 中 `slug` 优先取 **`AI_PROVIDER`**，未设置时按 **`AI_BASE_URL` 主机名** 推断（避免 DeepSeek 等误显示为 `openai`）；无法识别时用 `openai_compatible` 表示「协议兼容、厂商未标注」。模型成功时 `sourceVersion` 采用 **`slug|model|prompt 版本`** 三节格式。详见 `docs/P6/P6.2-copilot-llm-runbook.md`。
+
 ---
 
 ## 3. 不做什么（严格排除）

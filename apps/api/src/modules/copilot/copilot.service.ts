@@ -230,8 +230,9 @@ export class CopilotService {
       return ruleInsights;
     }
 
-    const sourceType = `model_${this.copilotAiConfig.providerSlug}`;
-    const sourceVersion = `${this.copilotAiConfig.model}|${COPILOT_AI_PROMPT_VERSION}`;
+    const slug = this.copilotAiConfig.providerSlug;
+    const sourceType = `model_${slug}`;
+    const sourceVersion = `${slug}|${this.copilotAiConfig.model}|${COPILOT_AI_PROMPT_VERSION}`;
 
     this.logger.log(
       JSON.stringify({
