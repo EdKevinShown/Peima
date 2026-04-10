@@ -1,6 +1,6 @@
 # P6-MVP：真实 AI Copilot（只读，失败可回退）
 
-> **Status: Plan**
+> **Status: 已落地（Copilot 切片；首轮验收见 `docs/P6/P6.3-acceptance-round1.md`）**
 
 面向当前 Peima / 配吗 仓库真实状态：**项目整体已到 P5**；后端仍以规则 / 模板 / 占位逻辑为主，**真实 AI 生产链尚未正式接入**；前端已有聊天内 Copilot 卡片与独立 `CopilotPage`。  
 **P6-MVP** 仅为完整 P6 中的 **最小切片**：真实 AI Copilot，**只读**，**失败可回退**。本文档 **不构成** `docs/P6/P6-ai-production-evolution-plan.md` 中梯队 A/B/C 的全量承诺。
@@ -108,3 +108,5 @@
 ## 9. 阶段摘要
 
 **P6-MVP**：在仓库已到 P5、仍以规则/模板为主、Copilot UI/API 已存在的前提下，**只把「真实模型」接到这一条只读洞察链路上**，并保持失败即回退到今日规则层；**完整 P6** 仍以 `docs/P6/P6-ai-production-evolution-plan.md` 为准，**未因本文自动扩展范围**。
+
+**里程碑（文档收口）**：P6-MVP 已定义；P6.1 已实现；P6.2 已收口；**P6.3 首轮验收通过**（见 `docs/P6/P6.3-acceptance-round1.md`）。
