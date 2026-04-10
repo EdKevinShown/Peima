@@ -39,6 +39,9 @@ function inferProviderSlugFromHost(baseUrl: string): string {
   return "openai_compatible";
 }
 
+/**
+ * Copilot LLM 环境配置。`providerSlug` / host 推断语义见 docs/P6/P6.2-copilot-llm-runbook.md §4、§13。
+ */
 @Injectable()
 export class CopilotAiConfigService {
   get copilotEnabled(): boolean {

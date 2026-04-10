@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { CopilotAiConfigService } from "./copilot-ai.config.service";
 
+/**
+ * Copilot Chat Completions 客户端。失败时 `kind` 写入服务日志 `reason` 字段。
+ * 原因码表与排查：docs/P6/P6.2-copilot-llm-runbook.md §10。
+ */
 export type CopilotChatFailureKind =
   | "disabled"
   | "missing_api_key"

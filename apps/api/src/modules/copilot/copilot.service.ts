@@ -183,6 +183,7 @@ export class CopilotService {
           conversationId,
           outcome: "fallback",
           reason: "missing_api_key",
+          providerSlug: this.copilotAiConfig.providerSlug,
         }),
       );
       return ruleInsights;
@@ -208,6 +209,7 @@ export class CopilotService {
           conversationId,
           outcome: "fallback",
           reason: result.kind,
+          providerSlug: this.copilotAiConfig.providerSlug,
           status: result.status,
           detail: result.detail,
           durationMs,
@@ -224,6 +226,7 @@ export class CopilotService {
           conversationId,
           outcome: "fallback",
           reason: "invalid_model_payload",
+          providerSlug: this.copilotAiConfig.providerSlug,
           durationMs,
         }),
       );
@@ -240,6 +243,7 @@ export class CopilotService {
         conversationId,
         outcome: "model_ok",
         sourceType,
+        providerSlug: slug,
         durationMs,
       }),
     );

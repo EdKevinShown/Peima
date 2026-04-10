@@ -20,7 +20,7 @@ function CopilotSourceHint({ sourceType }) {
   if (sourceType === "rule_based") {
     return (
       <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
-        来源：规则建议（模型未开启或调用失败时已回退，内容仍可用作参考）
+        来源：规则建议（模型未启用、未配置密钥或调用失败时已回退，内容仍可用作参考）
       </div>
     );
   }
