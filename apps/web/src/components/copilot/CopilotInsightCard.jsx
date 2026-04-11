@@ -14,6 +14,36 @@ function ListBlock({ title, items }) {
   );
 }
 
+/** P6.2: one-line hint; does not change layout structure. */
+function CopilotSourceHint({ sourceType }) {
+  if (!sourceType) return null;
+  if (sourceType === "rule_based") {
+    return (
+      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
+        来源：规则建议（模型未启用、未配置密钥或调用失败时已回退，内容仍可用作参考）
+      </div>
+    );
+  }
+  if (sourceType.startsWith("model_")) {
+    const slug = sourceType.slice("model_".length);
+    const labels = {
+      deepseek: "DeepSeek",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
+      azure_openai: "Azure OpenAI",
+      openai_compatible: "OpenAI 兼容 API",
+      unknown: "LLM",
+    };
+    const label = labels[slug] || slug.replace(/_/g, " ");
+    return (
+      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
+        来源：模型建议（{label}，OpenAI 兼容协议）
+      </div>
+    );
+  }
+  return null;
+}
+
 function BasedOnLine({ basedOn }) {
   if (!basedOn || typeof basedOn !== "object") return null;
   const parts = [];
@@ -59,6 +89,7 @@ export default function CopilotInsightCard({ insights, showBasedOn = false }) {
           </>
         ) : null}
       </div>
+      <CopilotSourceHint sourceType={insights.sourceType} />
       <ListBlock title="建议" items={insights.communicationAdvice} />
       <ListBlock title="风险提示" items={insights.riskHints} />
       <ListBlock title="可聊方向" items={insights.suggestedTopics} />

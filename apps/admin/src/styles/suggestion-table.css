@@ -1,0 +1,273 @@
+/* Admin：建议表格样式 */
+
+.table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: #e8f4f8;
+  border-bottom: 1px solid #d0e8f0;
+  font-size: 14px;
+  color: #333;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.action-btn.accept {
+  background: #4caf50;
+  color: white;
+}
+
+.action-btn.accept:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.action-btn.dismiss {
+  background: #f44336;
+  color: white;
+}
+
+.action-btn.dismiss:hover:not(:disabled) {
+  background: #da190b;
+}
+
+.action-btn.cancel {
+  background: #999;
+  color: white;
+}
+
+.action-btn.cancel:hover:not(:disabled) {
+  background: #666;
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.suggestions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.suggestions-table thead {
+  background: #f9f9f9;
+  border-bottom: 2px solid #ddd;
+}
+
+.suggestions-table th {
+  padding: 12px;
+  text-align: left;
+  color: #333;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.suggestions-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestions-table tbody tr {
+  transition: background 0.2s;
+}
+
+.suggestions-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.checkbox-col {
+  width: 50px;
+  text-align: center;
+}
+
+.checkbox-col input {
+  cursor: pointer;
+}
+
+.user-cell {
+  font-size: 13px;
+}
+
+.user-cell small {
+  color: #999;
+  display: block;
+  margin-top: 4px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.accepted {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.dismissed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.priority-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.priority-badge.high {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.priority-badge.medium {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.priority-badge.low {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #f0f0f0;
+  color: #666;
+  white-space: nowrap;
+}
+
+.content-cell {
+  max-width: 250px;
+}
+
+.content-preview {
+  font-size: 12px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content-full {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.content-full pre {
+  margin: 0;
+  font-size: 12px;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.time-cell {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-small:hover {
+  background: #e0e0e0;
+}
+
+.empty-row {
+  text-align: center;
+  color: #999;
+  padding: 40px 12px !important;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+  background: #f9f9f9;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.page-btn:disabled {
+  background: #f9f9f9;
+  color: #999;
+  cursor: not-allowed;
+  border-color: #eee;
+}
+
+.page-info {
+  color: #666;
+  font-size: 13px;
+}

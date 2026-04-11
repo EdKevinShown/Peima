@@ -6,7 +6,9 @@ export type CopilotInsightsResponse = {
   communicationAdvice: string[];
   riskHints: string[];
   suggestedTopics: string[];
+  /** rule_based | model_<slug> — see docs/P6/P6.2-copilot-llm-runbook.md */
   sourceType: string;
+  /** Rules: rule template id. Model: slug|model|promptVersion */
   sourceVersion: string;
   generatedAt: string;
   basedOn: {

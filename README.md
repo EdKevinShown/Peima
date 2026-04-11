@@ -4,16 +4,17 @@
 
 ---
 
-## 当前项目状态（截至 P3 关系时间线收口）
+## 当前项目状态（截至 P5 治理与运营收口）
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P4（产品化补完）**：聊天周边摘要 / Copilot / 反馈 / 画像建议 **体验与联动收口** 见 `docs/P4/P4-productization-plan.md` 与 `docs/P4/P4-ux-checklist.md`；真实 AI agent / 生产级模型链 **未** 正式接入。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**当前阶段重点是收口，不是扩功能**；P6（AI 生产链演进）仍为中远期方向；真实 AI 生产链尚未正式接入。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；**不**改变「非真实大模型生产链路」口径。 |
 | **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
+| **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。|
 
 **P1 已交付能力（摘要）**
 
@@ -114,15 +115,16 @@ docker compose up -d --build api worker web
 | `packages/scoring` | 评分逻辑占位 |
 | `packages/sdk` | SDK 占位 |
 | `infrastructure` | Docker/Nginx/脚本等物料 |
+| `scripts` | 本地开发脚本（`seed-users.js` 创建 6 个测试用户；`upload-images.sh` 给用户上传测试图片） |
 | `docs/P0` | P0 交接、验收清单、bugfix、状态摘要 |
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
-| `docs/P4`～`docs/P6` | **后续阶段规划（未实现）**：P4 产品化补完、P5 治理与历史化、P6 AI 生产链演进（见下文文档索引） |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；P6 为中远期规划（未实现） |
 
-## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3）
+## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5）
 
-以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位与 P2 相关核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动**；**[P2.5]** 在 P2 基础上的 Web/迁移/权限等小步补完（见树内标注）。
+以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位、P2 相关核心、P5 治理与运营等核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动**；**[P2.5]** 在 P2 基础上的 Web/迁移/权限等小步补完；**[P5]** 权限、审计、通知、分析与建议治理（见树内标注）。
 
 ```
 .
@@ -131,9 +133,10 @@ docker compose up -d --build api worker web
 │   │   ├── package.json
 │   │   └── src/
 │   │       ├── main.ts                          [P0] Nest 入口
-│   │       ├── app.module.ts                    [P0] 根模块；[P2] 挂接 feedback / profile-suggestion / behavior-signal / analytics / copilot
+│   │       ├── app.module.ts                    [P0] 根模块；[P2] 挂接 feedback / profile-suggestion / behavior-signal / analytics / copilot；[P5] 挂接 RbacModule + SuggestionCenterModule
 │   │       ├── common/
-│   │       │   └── prisma/                      [P0] PrismaModule / PrismaService
+│   │       │   ├── prisma/                      [P0] PrismaModule / PrismaService
+│   │       │   └── rbac/                        [P5] RBAC 守卫、装饰器、服务
 │   │       └── modules/
 │   │           ├── auth/                        [P0] 注册登录、JWT
 │   │           ├── users/                       [P0] 用户与画像
@@ -146,8 +149,9 @@ docker compose up -d --build api worker web
 │   │           ├── feedback/                    [P2] 结构化反馈 API
 │   │           ├── profile-suggestion/          [P2] 画像建议创建/列表/accept/dismiss
 │   │           ├── behavior-signal/             [P2] 行为信号追加与我的列表
-│   │           ├── analytics/                   [P2] 只读概览；[P2.5] 全局 overview 白名单
-│   │           └── copilot/                     [P2] 会话级规则建议（只读、不落库）
+│   │           ├── analytics/                   [P2] 只读概览；[P2.5] 全局 overview 白名单；[P5] 权限控制
+│   │           ├── copilot/                     [P2] 会话级规则建议（只读、不落库）
+│   │           └── suggestion-center/           [P5] 建议中心聚合 API（列表、统计、批量操作、导出）
 │   ├── web/
 │   │   └── src/
 │   │       ├── main.jsx / App.jsx               [P0]
@@ -205,9 +209,9 @@ docker compose up -d --build api worker web
     ├── P3/
     │   └── P3-relationship-timeline.md          P3 关系时间线整阶段收口、联调备忘、验收与推送前清单
     ├── P4/
-    │   └── P4-productization-plan.md            P4 规划：聊天周边体验与联动收口（未开工）
+    │   └── P4-productization-plan.md            P4 规划与收口参考（已完成 5 个最小切片）
     ├── P5/
-    │   └── P5-operations-and-history-plan.md    P5 规划：治理、历史化、Analytics、运营工具（未开工）
+    │   └── P5-operations-and-history-plan.md    P5 总体规划与后续演进背景（当前仓库已有主要治理与运营能力落地）
     └── P6/
         └── P6-ai-production-evolution-plan.md    P6 规划：真实 AI 生产链演进，中远期（未开工）
 ```
@@ -295,7 +299,19 @@ pnpm dev:worker   # Worker（dev）
 pnpm dev:admin    # Admin（占位）
 ```
 
-**本地开发补充（与「快速开始」一致，但原文未逐条写出）：**
+### 环境变量配置
+
+根目录 **`.env`** 包含关键配置（参考 **`.env.example`**）；重要字段：
+
+| 字段 | 说明 |
+|------|------|
+| `DATABASE_URL` | PostgreSQL 连接串（本地需 `localhost`；Docker 需宿主机端口映射） |
+| `JWT_SECRET` | JWT 签名密钥 |
+| `VITE_API_BASE_URL` | Web 前端 API 基址（默认 `http://localhost:3000`） |
+| `PEIMA_ADMIN_USER_IDS` | 逗号分隔的管理员用户 ID 列表；可在 admin UI 触发手动 batch-match |
+| `P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS` | **P2.5**：全局 analytics 白名单用户 ID（默认仅自己可读；白名单用户可见全局统计） |
+
+### 启动注意事项
 
 - **`pnpm dev:api`**（根目录）会通过 **`dotenv-cli`** 读取根目录 **`.env`** 并 **`--override`**，因此 **`DATABASE_URL` 以 `.env` 为准**；需保证 Postgres 在本机 **可访问**（若在 Docker 中，须有 **宿主机端口映射**，且 `DATABASE_URL` 使用 **`localhost:<映射端口>`**，不要用容器名 `postgres`）。
 - **首次克隆 / 清过 `node_modules` 后**：建议先执行一次 **`pnpm --filter @peima/database build`** 与 **`pnpm --filter @peima/shared build`**（或 **`pnpm build:api`**，会顺带执行上述依赖），再 **`pnpm dev:api`**，否则易出现 Prisma Client / `shared` 的 `dist` 缺失。
@@ -353,16 +369,73 @@ Web：`http://localhost:5173`
 3. `curl -i http://localhost:<API_PORT>/auth/me`（端口见 `.env` 中 **`API_PORT`**，默认常为 `3000`）预期 `401`（鉴权在工作）。
 4. `docker compose logs --tail=50 worker`：见 `worker started`、cron 注册；手动跑批后见 **`[batch-match]`** `batch_complete` 等。
 
+## 快速本地测试（创建 6 个测试用户）
+
+为快速验证 P0 主链路，可使用如下脚本自动生成 6 个测试用户、上传图片、生成预览池：
+
+### 1) 创建 6 个测试用户与问卷
+
+```bash
+# 创建 6 个测试用户，自动注册、登录、提交问卷
+# 结果：6 个 User + 对应 UserProfile（见脚本输出的 userId 列表）
+node scripts/seed-users.js
+```
+
+### 2) 为用户上传图片
+
+```bash
+# 给 6 个用户各上传一张测试图片（生成最小 JPEG）
+# 需保证 API 正常运行（默认常用 http://localhost:3000；以 .env 的 API_PORT 为准）
+bash scripts/upload-images.sh
+```
+
+执行完后，6 个用户将各有 1 张图片，可进行预览池生成。
+
+### 3) Web 端快速调试
+
+用户端（Web，默认端口 `5173`）：
+1. 打开 `http://localhost:5173`，选一个测试手机号登录（如 `13008517773`）
+2. `/my-images` 确认图片已上传（可选验证）
+3. `/preview-pool` 点「生成预览池」，应显示 6 人池
+4. 点用户进入匹配等待
+5. 手动跑批（见下文「手动跑批」）后查看 `/final-match`
+6. `/chat` 进入聊天测试 **P0/P1/P2** 能力（摘要、Copilot、建议等）
+
+管理员端（Admin，默认端口 `5174`）可用于后台能力验证；普通用户链路不依赖 admin 页面。
+
+> 测试用户手机号（执行 seed-users.js 后自动创建，可直接用）：  
+> `13008517773` / `16846531247` / `16898806368` / `17930489006` / `16760022595` / `18221207794`
+
+### 4) 管理员操作（可选）
+
+根目录 `.env` 中配置 `PEIMA_ADMIN_USER_IDS`（用户 ID 列表），即可在 admin 端手动触发 batch-match：
+
+```bash
+# 假设 admin 用户 ID 已在 .env 配置
+# 若 API_PORT 非 3000，请替换 URL 端口（以 .env / 实际启动为准）
+curl -s -X POST http://localhost:3000/admin/batch-match/run-once \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+若仅需命令行跑批（无需 admin UI）：
+
+```bash
+# Docker 内运行
+docker compose exec worker node apps/worker/dist/main.js --batch-match
+```
+
 ## P0 验收方式（简明）
 
 前置：`preview-pool` 需要至少 **6 个带 images 的候选用户**（不含当前 viewer）。
+
+> 本地快速测试可用上文「快速本地测试」章节的脚本一键创建。
 
 顺序：登录 → 问卷 → 生成预览池 → `matching/enqueue` → worker `batch-match` → `/final-match` → `/chat`。
 
 手动入队示例：
 
 ```bash
-# 若 API_PORT 非 3000，请替换下面 URL 中的端口（与 .env 一致）
+# 若 API_PORT 非 3000，请替换下面 URL 中的端口（以 .env / 实际启动为准）
 curl -s -X POST http://localhost:3000/matching/enqueue \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
@@ -397,16 +470,22 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 2. **Web 端口 5173**  
    - 确认映射为 `0.0.0.0:5173->5173/tcp`；异常时 `docker compose up -d --build --force-recreate web`
 
+4. **端口口径（避免开错服务）**  
+   - `5173 = web`（用户端）  
+   - `5174 = admin`（管理端）  
+   - API 端口以 `.env` 的 `API_PORT` 和实际启动日志为准（示例常用 `3000`）
+
 3. **preview-pool：`not enough candidates`**  
    - 候选不足 6 或缺少 `images`，补齐后再试。
 
 ## 当前限制 / 后续方向
 
-- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口** 的研发形态，非生产级高可用/安全/可观测全套。
+- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口 + P5（治理与运营）完成** 的研发形态，非生产级高可用/安全/可观测全套。
 - **未正式接入**：真实 AI Agent、多 Agent、WebSocket 实时聊天、完整生产治理、大模型生产推理链。
 - **P3（关系时间线）**：**已完成**（P3-1 只读聚合 + `/chat/timeline`、P3-2 FinalMatch 第二入口、P3-3 消息分页）；**仅指该切片**，见 `docs/P3/P3-relationship-timeline.md`。
-- **后续阶段规划（P4～P6，仅文档、未开工）**：新能力 **从 P4 起编号**，与 P3 无续接关系。粗粒度路线：**P4** 聊天周边体验与联动收口；**P5** 历史化、Analytics/权限演进、建议中心与轻量运营工具；**P6** 真实 AI 生产链（Worker/模型/Agent/simulation）**中远期**，**非当前已承诺开发**。详见 `docs/P4/P4-productization-plan.md`、`docs/P5/P5-operations-and-history-plan.md`、`docs/P6/P6-ai-production-evolution-plan.md`。
-- **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 模型替换等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
+- **P5（已完成）**：轻量 RBAC 权限模型、建议中心查询/管理 API、**Admin UI 建议中心管理界面**、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、通知中心（WebSocket + REST）、分析仪表板，以及 code review 后的 audit/history/notification/export 修复。见 `docs/P5/` 与当前仓库实现。
+- **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主；P6 真实 AI 生产链仍为中远期方向，非当前已承诺开发。详见 `docs/P4/P4-productization-plan.md`、`docs/P6/P6-ai-production-evolution-plan.md`。
+- **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 权限系统等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P5 已做** 者（权限、建议中心、审计、通知、分析）与 **P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
 
 ## 文档索引
 
@@ -435,15 +514,23 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 - `docs/P3/P3-relationship-timeline.md`：**整阶段收口文档**（目标与范围、交付结果、联调与验收结论、**排查过程关键问题**、已知限制、轻量后续、提交用语）；附录含能力细节、代码入口、**Git 推送前收尾清单**、手动验收 checklist
 
-**P4（产品化补完 — 体验与联动；规划 + 落地文档）**
+**P4（产品化补完 — 已完成 5 个最小切片，当前阶段收口）**
 
-- `docs/P4/P4-productization-plan.md`：P4 范围与边界（规划）
+- `docs/P4/P4-productization-plan.md`：P4 范围与边界（历史规划参考，当前以切片收口文档为准）
+- `docs/P4/P4-current-slice-status.md`：当前 P4 五个切片的阶段收口文档（当前阶段口径以此文档为准）
 - `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
 
-**P5～P6（后续规划 — 未实现）**
+**P5（治理与运营 — 已完成）**
 
-- `docs/P5/P5-operations-and-history-plan.md`：**P5** 治理与历史化（版本与审计、Analytics/权限、建议中心与轻量运营工具）
+- `docs/P5/P5-phase-1-implementation.md`：P5 第一阶段交付物（权限模型、API 端点、使用指南、验收清单）
+- `docs/P5/P5-phase-1-merge-guide.md`：P5 第一阶段合并指南（环境验证、数据库迁移、部署检查）
+- `docs/P5/P5-PHASE-2-1-COMPLETION.md`：审计日志系统交付记录
+- `docs/P5/P5-PHASE-2-ARCHITECTURE.md`：P5 Phase 2 架构与实现计划
+- `docs/P5/P5-operations-and-history-plan.md`：总体规划与后续演进背景
+
+**P6（后续规划 — 未实现）**
+
 - `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 真实 AI 生产链演进（Worker、模型替换规则层、多 Agent/simulation；**中远期、非已承诺开发**）
 
 ## License

@@ -20,3 +20,20 @@ export {
   P2SuggestionStatus,
   type P2SuggestionStatusId,
 } from "./p2-suggestion-status";
+export {
+  UserRole,
+  Permission,
+  ROLE_PERMISSIONS_MAP,
+  getPermissionsForRoles,
+  hasPermission,
+  getRolesFromEnv,
+} from "./p5-rbac";
+
+export {
+  P5_SUGGESTION_PRIORITY,
+  P5_SUGGESTION_CATEGORY,
+  PRIORITY_WEIGHT,
+  CATEGORY_LABELS,
+  type P5SuggestionPriorityId,
+  type P5SuggestionCategoryId,
+} from "./p5-suggestion-center";

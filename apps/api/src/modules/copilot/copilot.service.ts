@@ -1,7 +1,12 @@
 import { HttpException, Injectable, Logger } from "@nestjs/common";
 import { Prisma } from "@peima/database";
+import { COPILOT_AI_PROMPT_VERSION } from "./copilot-ai.constants";
 import { ChatService } from "../chat/chat.service";
-import { buildCopilotInsights } from "./copilot-rules";
+import { CopilotAiConfigService } from "./copilot-ai.config.service";
+import { CopilotChatCompletionsClient } from "./copilot-chat-completions.client";
+import { mapModelJsonToInsights } from "./copilot-model.mapper";
+import { COPILOT_MODEL_SYSTEM_PROMPT } from "./copilot-model.prompt";
+import { buildCopilotInsights, type CopilotRuleContext } from "./copilot-rules";
 import type { CopilotInsightsResponse } from "./dto/copilot-response.dto";
 import { CopilotRepository } from "./copilot.repository";
 
@@ -12,6 +17,8 @@ export class CopilotService {
   constructor(
     private readonly chatService: ChatService,
     private readonly copilotRepo: CopilotRepository,
+    private readonly copilotAiConfig: CopilotAiConfigService,
+    private readonly copilotChatClient: CopilotChatCompletionsClient,
   ) {}
 
   /**
@@ -106,7 +113,7 @@ export class CopilotService {
       .map((r) => r.rating)
       .filter((r): r is number => r !== null && r !== undefined);
 
-    return buildCopilotInsights(conversationId, {
+    const ctx: CopilotRuleContext = {
       messageCount: messages.length,
       viewerMsgCount,
       candidateMsgCount,
@@ -115,6 +122,142 @@ export class CopilotService {
       feedbackRatingsThisConv,
       userSignalCountWindow,
       pendingProfileSuggestionsCount,
-    });
+    };
+
+    const ruleInsights = buildCopilotInsights(conversationId, ctx);
+
+    return this.maybeEnrichWithModel(
+      conversationId,
+      ctx,
+      messages,
+      vId,
+      cId,
+      ruleInsights,
+    );
+  }
+
+  private buildCopilotModelUserPayload(
+    ctx: CopilotRuleContext,
+    messages: Array<{ senderUserId: string; content: string | null }>,
+    viewerId: string,
+    candidateId: string,
+  ) {
+    const maxSummary = 2000;
+    const recent = messages.slice(-12).map((m) => ({
+      role:
+        m.senderUserId === viewerId
+          ? ("me" as const)
+          : m.senderUserId === candidateId
+            ? ("them" as const)
+            : ("other" as const),
+      text: (m.content ?? "").slice(0, 240),
+    }));
+    return {
+      messageCount: ctx.messageCount,
+      viewerMsgCount: ctx.viewerMsgCount,
+      candidateMsgCount: ctx.candidateMsgCount,
+      summaryBody: ctx.summaryBody.slice(0, maxSummary),
+      summaryHint: ctx.summaryHint.slice(0, maxSummary),
+      feedbackRatingsThisConv: ctx.feedbackRatingsThisConv,
+      userSignalCountWindow: ctx.userSignalCountWindow,
+      pendingProfileSuggestionsCount: ctx.pendingProfileSuggestionsCount,
+      recentMessages: recent,
+    };
+  }
+
+  private async maybeEnrichWithModel(
+    conversationId: string,
+    ctx: CopilotRuleContext,
+    messages: Array<{ senderUserId: string; content: string | null }>,
+    viewerId: string,
+    candidateId: string,
+    ruleInsights: CopilotInsightsResponse,
+  ): Promise<CopilotInsightsResponse> {
+    if (!this.copilotAiConfig.copilotEnabled) {
+      return ruleInsights;
+    }
+    if (!this.copilotAiConfig.apiKey) {
+      this.logger.warn(
+        JSON.stringify({
+          event: "copilot_ai",
+          conversationId,
+          outcome: "fallback",
+          reason: "missing_api_key",
+          providerSlug: this.copilotAiConfig.providerSlug,
+        }),
+      );
+      return ruleInsights;
+    }
+
+    const userPayload = this.buildCopilotModelUserPayload(
+      ctx,
+      messages,
+      viewerId,
+      candidateId,
+    );
+    const t0 = Date.now();
+    const result = await this.copilotChatClient.complete(
+      COPILOT_MODEL_SYSTEM_PROMPT,
+      JSON.stringify(userPayload),
+    );
+    const durationMs = Date.now() - t0;
+
+    if (!result.ok) {
+      this.logger.warn(
+        JSON.stringify({
+          event: "copilot_ai",
+          conversationId,
+          outcome: "fallback",
+          reason: result.kind,
+          providerSlug: this.copilotAiConfig.providerSlug,
+          status: result.status,
+          detail: result.detail,
+          durationMs,
+        }),
+      );
+      return ruleInsights;
+    }
+
+    const mapped = mapModelJsonToInsights(conversationId, result.content);
+    if (!mapped) {
+      this.logger.warn(
+        JSON.stringify({
+          event: "copilot_ai",
+          conversationId,
+          outcome: "fallback",
+          reason: "invalid_model_payload",
+          providerSlug: this.copilotAiConfig.providerSlug,
+          durationMs,
+        }),
+      );
+      return ruleInsights;
+    }
+
+    const slug = this.copilotAiConfig.providerSlug;
+    const sourceType = `model_${slug}`;
+    const sourceVersion = `${slug}|${this.copilotAiConfig.model}|${COPILOT_AI_PROMPT_VERSION}`;
+
+    this.logger.log(
+      JSON.stringify({
+        event: "copilot_ai",
+        conversationId,
+        outcome: "model_ok",
+        sourceType,
+        providerSlug: slug,
+        durationMs,
+      }),
+    );
+
+    return {
+      conversationId,
+      relationshipState: mapped.relationshipState,
+      communicationAdvice: mapped.communicationAdvice,
+      riskHints: mapped.riskHints,
+      suggestedTopics: mapped.suggestedTopics,
+      basedOn: ruleInsights.basedOn,
+      sourceType,
+      sourceVersion,
+      generatedAt: new Date().toISOString(),
+    };
   }
 }
