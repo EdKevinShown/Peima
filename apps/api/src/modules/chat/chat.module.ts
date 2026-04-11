@@ -8,6 +8,6 @@ import { ChatSummaryService } from "./chat-summary.service";
 @Module({
   controllers: [ChatController, ChatTimelineController],
   providers: [ChatService, ChatSummaryRepository, ChatSummaryService],
-  exports: [ChatService],
+  exports: [ChatService, ChatSummaryService],
 })
 export class ChatModule {}
