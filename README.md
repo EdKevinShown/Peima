@@ -1,20 +1,122 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。正文与建议仍主要由 **规则 / 模板 / 占位逻辑** 生成，**不是**真实大模型生产链路。**真实 AI Agent、多 Agent 编排与真实 simulation 流水线尚未在本仓库正式接入。**
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）与 **P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。
 
 ---
 
-## 当前项目状态（截至 P5 治理与运营收口）
+## 当前项目状态（截至 P5 治理与运营收口；P6 Copilot 模型化与独立 AI 切片已落地）
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**当前阶段重点是收口，不是扩功能**；P6（AI 生产链演进）仍为中远期方向；真实 AI 生产链尚未正式接入。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）** 与 **三条独立 AI 结果层切片（P6.5～P6.7）**，**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
-| **P2.5（已完成）** | 见下文「P2.5 产品化补完」；**不**改变「非真实大模型生产链路」口径。 |
+| **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.7** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
 | **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
-| **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。|
+| **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。 |
+| **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
+
+**P6（Copilot 模型化 + 独立 AI 结果层）**
+
+### P6 当前进展
+
+当前 **P6** 已完成两组交付，**并列存在、互不替代**：
+
+1. **Copilot 模型化与运行收口（P6.1～P6.4）**：在既有 **`GET /copilot/conversations/:conversationId/insights`** 契约下接入真实 LLM，失败回退规则层，并完成运行手册、首轮验收与稳定性口径收口。
+2. **独立 AI 结果层切片（P6.5～P6.7）**：会话摘要、匹配解释、最终匹配主结论；各自独立配置前缀、调用链、来源标记与日志事件。
+
+**P6** 整体仍**不是**统一 Agent / multi-agent / simulation 产品化主链。
+
+### P6.1～P6.4 Copilot 线
+
+- **P6.1**：真实 AI Copilot **最小实现**；**接口路径不变**（仍为 `GET /copilot/conversations/:conversationId/insights`）；配置可用且调用成功时走模型，否则回退 **P2** 规则聚合层；只读、不落库。
+- **P6.2**：**Copilot 真实 LLM 运行手册**（OpenAI-compatible、provider、环境变量、`sourceType` / `sourceVersion`、fallback 与排查口径）。文档：`docs/P6/P6.2-copilot-llm-runbook.md`。
+- **P6.3**：Copilot **首轮验收收口**（Accepted）。文档：`docs/P6/P6.3-acceptance-round1.md`。
+- **P6.4**：**运行稳定性收口**（日志、`fallback` 原因码、配置与运行口径对齐）；**非**新功能扩展。文档：`docs/P6/P6.4-stability-closure.md`。
+
+实现与首轮落地说明见 **`docs/P6/P6.1-implementation-round1.md`**。
+
+### P6.5 Summary AI
+
+- 独立接口：`GET /summary-ai/conversations/:conversationId`（JWT）
+- 独立配置前缀：`SUMMARY_AI_*`
+- 独立 `sourceType` / `sourceVersion`
+- 独立日志事件：`summary_ai`
+- 模型主路径 + 规则 fallback
+- 不阻断原主链路
+
+### P6.6 Match Explanation AI
+
+- 独立接口：`GET /match-explanation-ai/match-results/:matchResultId`（JWT）
+- 独立配置前缀：`MATCH_EXPLANATION_AI_*`
+- 独立 `sourceType` / `sourceVersion`
+- 独立日志事件：`match_explanation_ai`
+- 模型主路径 + 规则 fallback
+- 不改 matching 分数与主决策
+
+### P6.7 Final Match Primary Conclusion
+
+- 挂载位置：`GET /matching/result/:userId`（**读路径附加**，不写回 `MatchResult`）
+- 新增字段：`primaryConclusion`
+- 最小字段：`content`、`sourceType`、`sourceVersion`、`fallbackUsed`
+- **不改** matching 决策、worker 写库、`finalScore`、既有 `reasonSummary` / `matchInsights`
+
+具体实现：`MatchingService.getLatestResultForUser` 在查出最新 `MatchResult` 后调用 `FinalMatchConclusionService.generate`，将结果合并进响应返回；不改动批处理与主匹配链路。
+
+特点：
+
+- 只作用于最终匹配结果页主结论展示
+- 不参与打分、排序或匹配决策
+- 规则基线来自已有 `reasonSummary` 与 `matchInsights.explanation.whyMatch`
+- AI 成功时返回模型文案；失败时 fallback 到规则基线
+- 主链路保持可用，HTTP 仍返回 **200**（失败体现在 `primaryConclusion` 归因字段中）
+
+当前 `sourceType` 三态：
+
+- 规则直出：`final_match_conclusion_rule_based`
+- 模型成功：`final_match_conclusion_model_<provider>`（实现中为 `final_match_conclusion_model_<slug>`）
+- 失败回退：`final_match_conclusion_fallback_rule_based`
+
+当前日志事件：`final_match_conclusion`
+
+已验证：**A1** 规则直出、**A2** 模型成功、**A3** 模型失败回退均已通过。首轮验证中，**Kimi** provider 下 **A2（模型成功）** 路径已打通。
+
+首轮收口记录：**`docs/P6/P6.7-final-match-primary-conclusion-round1.md`**
+
+### P6 当前结论
+
+截至目前，**P6** 在仓库内包含两层已完成内容：
+
+- **Copilot 模型化线（P6.1～P6.4）**：真实 LLM 接入既有 Copilot 只读接口 + 运行与稳定性收口。
+- **独立 AI 结果层切片（P6.5～P6.7）**：摘要、匹配解释、最终匹配主结论；独立入口、独立配置、独立来源标记、独立日志、模型主路径 + 规则 fallback、不阻断原主链路、可独立验收与归因。
+
+当前阶段**仍不是**统一 AI orchestration / 全仓单一编排平台阶段；已交付项均为**边界清晰**的切片与 Copilot 子链。
+
+### P6 暂未展开的内容
+
+以下内容仍不属于当前已完成范围：
+
+- Worker 侧全自动大模型生成与统一编排
+- 多 Agent / simulation 一体化流水线
+- 主匹配决策层直接模型替换
+- 通用 AI 编排平台
+- 更重的生产化治理（与当前切片级交付区分）
+- （补充）多场景复杂模拟、全局模型优化等产品化层
+
+当前策略：在**非**统一编排前提下，将 Copilot 与各结果层切片做稳后，再评估更重生产化形态（演进背景仍见 **`docs/P6/P6-ai-production-evolution-plan.md`**）。
+
+### P6.7 环境变量示例
+
+```env
+FINAL_MATCH_CONCLUSION_AI_ENABLED=true
+FINAL_MATCH_CONCLUSION_AI_PROVIDER=kimi
+FINAL_MATCH_CONCLUSION_AI_BASE_URL=https://api.moonshot.cn
+FINAL_MATCH_CONCLUSION_AI_MODEL=kimi-k2.5
+FINAL_MATCH_CONCLUSION_AI_API_KEY=your_kimi_api_key
+```
+
+当前实现下，`FINAL_MATCH_CONCLUSION_AI_BASE_URL` 应填写**供应商根域名**（如 `https://api.moonshot.cn`）；客户端会自行拼接 **`/v1/chat/completions`**，**请勿**在 BASE_URL 末尾再手动追加 `/v1`。
 
 **P1 已交付能力（摘要）**
 
@@ -28,7 +130,7 @@
 **P2-MVP 已交付能力（摘要）**
 
 - **数据**：`conversation_summaries`、`user_feedbacks`、`profile_update_suggestions`、`behavior_signals`（及既有 `UserProfile` 等）；无独立 `copilot_insights` 表。
-- **API（均需 JWT，风格与 chat 对齐）**：chat 摘要读/可选生成落库；`POST/GET /feedback`；profile 建议创建/我的列表/accept/dismiss；behavior-signal 追加与我的列表；`GET /analytics/p2-overview/mine`；`GET /analytics/p2-overview`（**P2.5**：仅 env 白名单用户，否则 **403**）；`GET /copilot/conversations/:id/insights`（只读规则聚合）。
+- **API（均需 JWT，风格与 chat 对齐）**：chat 摘要读/可选生成落库；`POST/GET /feedback`；profile 建议创建/我的列表/accept/dismiss；behavior-signal 追加与我的列表；`GET /analytics/p2-overview/mine`；`GET /analytics/p2-overview`（**P2.5**：仅 env 白名单用户，否则 **403**）；`GET /copilot/conversations/:id/insights`（**P2** 规则聚合基线；**P6.1～P6.4** 可选真实 LLM，失败回退规则层；只读）。
 - **Web**：`ChatPage` 条件展示摘要、摘要「生成并更新」、Copilot 卡片与跳转完整建议页、画像建议待处理/已处理分区、会话快捷反馈（👍/😐/👎）；失败降级，不阻塞发消息。
 - **Shared**：P2 相关类型与常量（`sourceType` / `sourceVersion`、建议状态、反馈 subject 等）。
 - **DB（P2.5）**：P2 四表见迁移 `20260405100000_p2_persistence_mvp`，空库 `migrate deploy` 可复现（曾用 `db push` 的库需自行 baseline）。
@@ -47,13 +149,13 @@
 - **P3-1 / API 首屏**：`GET /chat/conversations/:conversationId/timeline`（JWT；仅参与者）；`messageSkip=0`（默认）时返回完整混合时间线：会话开始、**首屏消息窗口**（默认最多 200 条，升序）、本会话全部摘要快照、双方行为信号、**当前用户**会话反馈；响应含 **`messagePagination`**；只读 DTO。
 - **P3-3 / 消息追加**：可选 Query **`messageSkip`**、**`messageLimit`**（默认 0 / 200，**上限 200**）；**`messageSkip>0`** 时仅返回 **`message_sent`** 切片 + **`messagePagination`**；时间线页 **「加载更多消息」** 合并排序去重。
 - **Web 入口**：`/chat/timeline?conversationId=&userId=`；**`ChatPage`** 与 **`FinalMatchPage`**（P3-2）「查看关系时间线（只读）」；FinalMatch 与「进入聊天」共用 **`createConversation(userId)`** 同一会话。
-- **联调注意**：时间线请求须与 chat/copilot **同一 API 基址**（默认 `http://localhost:3000`）；勿将 `VITE_API_BASE_URL` 指到 Vite dev 端口，否则浏览器会出现 **`Cannot GET .../timeline`** 而直连 API 正常（详见 P3 文档 §6）。
+- **联调注意**：时间线请求须与 chat/copilot **同一 API 基址**（以 **`.env`** 中 **`VITE_API_BASE_URL`** / **`API_PORT`** 及 **API 实际启动日志**为准，**勿将某一固定端口当作仓库默认值**）；勿将 `VITE_API_BASE_URL` 指到 Vite dev 端口，否则浏览器会出现 **`Cannot GET .../timeline`** 而直连 API 正常（详见 P3 文档 §6）。
 - **收口文档**：整阶段说明、验收 checklist、联调备忘、已知限制、Git 推送前清单、提交用语见 **`docs/P3/P3-relationship-timeline.md`**。
 
 **当前仍未纳入（勿与 P2-MVP / P2.5 / 本阶段 P3 混淆）**
 
 - **本阶段 P3（关系时间线）已完成**；下列条目 **不属于** 该 P3 切片，属后续产品方向或中长期能力。
-- 真实大模型调用链、AI Agent、多 Agent 编排、端到端真实 simulation **产品化**流水线。
+- **统一** AI Agent、多 Agent 编排、端到端 simulation **一体化**产品化流水线（**P6.1～P6.7** 已交付者为 Copilot 子链与独立 HTTP/读路径切片，**不是**该一体化主链，见上文「P6」）。
 - Copilot / 摘要的 **Worker 自动生成**、历史版本产品化、完整建议治理后台。
 - 独立「设置 / 建议中心」页（当前建议能力集中在 **ChatPage** 与 **CopilotPage**）。
 - **Analytics** 更细粒度治理、缓存与大盘产品化（当前仅有计数级只读接口 + P2.5 全局白名单）。
@@ -106,7 +208,7 @@ docker compose up -d --build api worker web
 |------|------|
 | `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口） |
 | `apps/admin` | 管理端占位（当前不强依赖） |
-| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`） |
+| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成 |
 | `apps/worker` | 批处理：cron、batch-match、队列消费 |
 | `packages/database` | Prisma schema、迁移、PrismaClient |
 | `packages/shared` | 共享类型；**P1 起**含 `constants`（如 `P1_DISCLAIMER` 等）及 `dist/constants` 构建产物；**P2** 增量类型/常量（`P2SourceType`、反馈 subject、suggestion 状态等） |
@@ -120,9 +222,9 @@ docker compose up -d --build api worker web
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
-| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；P6 为中远期规划（未实现） |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
 
-## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5）
+## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5 / P6 切片）
 
 以下目录树按**当前仓库真实路径**整理，仅收录 P0 主链路、P1 结构化占位、P2 相关核心、P5 治理与运营等核心源码与约定入口，**不是**完整文件系统导出（已省略 `node_modules`、`dist` 等依赖与编译产物）。**[P0]** 主链路基础能力；**[P1]** P1 结构化占位（洞察、只读摘要、预览元数据等）；**[P2]** P2-MVP **新增或显著改动**；**[P2.5]** 在 P2 基础上的 Web/迁移/权限等小步补完；**[P5]** 权限、审计、通知、分析与建议治理（见树内标注）。
 
@@ -133,7 +235,7 @@ docker compose up -d --build api worker web
 │   │   ├── package.json
 │   │   └── src/
 │   │       ├── main.ts                          [P0] Nest 入口
-│   │       ├── app.module.ts                    [P0] 根模块；[P2] 挂接 feedback / profile-suggestion / behavior-signal / analytics / copilot；[P5] 挂接 RbacModule + SuggestionCenterModule
+│   │       ├── app.module.ts                    [P0] 根模块；[P2] 挂接 feedback / profile-suggestion / behavior-signal / analytics / copilot；[P5] 挂接 RbacModule + SuggestionCenterModule；[P6] 挂接 summary-ai、match-explanation-ai
 │   │       ├── common/
 │   │       │   ├── prisma/                      [P0] PrismaModule / PrismaService
 │   │       │   └── rbac/                        [P5] RBAC 守卫、装饰器、服务
@@ -144,13 +246,13 @@ docker compose up -d --build api worker web
 │   │           ├── images/                      [P0] 用户图片
 │   │           ├── preferences/                 [P0] 偏好
 │   │           ├── preview-pool/                [P0] 预览池；[P1] itemMeta
-│   │           ├── matching/                    [P0] 入队与状态；[P1] matchInsights 读出
+│   │           ├── matching/                    [P0] 入队与状态；[P1] matchInsights 读出；[P6.7] Final Match Primary Conclusion（读路径 `primaryConclusion`）
 │   │           ├── chat/                        [P0] 会话与消息；[P1] 摘要只读；[P2] ChatSummary* 持久化、summary DTO
 │   │           ├── feedback/                    [P2] 结构化反馈 API
 │   │           ├── profile-suggestion/          [P2] 画像建议创建/列表/accept/dismiss
 │   │           ├── behavior-signal/             [P2] 行为信号追加与我的列表
 │   │           ├── analytics/                   [P2] 只读概览；[P2.5] 全局 overview 白名单；[P5] 权限控制
-│   │           ├── copilot/                     [P2] 会话级规则建议（只读、不落库）
+│   │           ├── copilot/                     [P2] 会话级建议（只读、不落库）；[P6.1～P6.4] 真实 LLM 路径，失败回退规则层
 │   │           └── suggestion-center/           [P5] 建议中心聚合 API（列表、统计、批量操作、导出）
 │   ├── web/
 │   │   └── src/
@@ -213,7 +315,14 @@ docker compose up -d --build api worker web
     ├── P5/
     │   └── P5-operations-and-history-plan.md    P5 总体规划与后续演进背景（当前仓库已有主要治理与运营能力落地）
     └── P6/
-        └── P6-ai-production-evolution-plan.md    P6 规划：真实 AI 生产链演进，中远期（未开工）
+        ├── P6-ai-production-evolution-plan.md    P6 演进规划（Worker/编排等中远期）
+        ├── P6.1-implementation-round1.md         P6.1 Copilot 真实 AI 最小实现
+        ├── P6.2-copilot-llm-runbook.md           P6.2 Copilot LLM 运行手册
+        ├── P6.3-acceptance-round1.md           P6.3 Copilot 首轮验收收口
+        ├── P6.4-stability-closure.md           P6.4 Copilot 运行稳定性收口
+        ├── P6.5-summary-ai-slice.md / P6.5-summary-ai-acceptance-round1.md
+        ├── P6.6-match-explanation-ai-slice.md / P6.6-match-explanation-ai-acceptance-round1.md
+        └── P6.7-final-match-primary-conclusion-round1.md   P6.7 首轮收口记录
 ```
 
 ## 当前已跑通的 P0 主链路
@@ -224,8 +333,8 @@ docker compose up -d --build api worker web
 4. `/preview-pool` 生成并展示 6 人预览池
 5. `/matching-waiting` 查看匹配状态
 6. worker 执行 `batch-match`（手动一次或 cron 触发）
-7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片）
-8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页）
+7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片；**P6.7**：条件展示 `primaryConclusion` 主结论区块）
+8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页；**P6.1～P6.4**：Copilot insights 可选真实 LLM，失败回退规则层）
 
 ## 关键页面
 
@@ -234,10 +343,10 @@ docker compose up -d --build api worker web
 - `/questionnaire`：固定题库并提交（12 题）
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
-- `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）
+- `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）；**P6.7**：`primaryConclusion` 主结论（形状合法时展示）
 - `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要（条件展示）；**P2-MVP**：Copilot 卡片、快捷反馈；**P2.5**：摘要「生成并更新」、画像建议列表与操作、链至完整 Copilot 页
 - `/chat/timeline`：**P3** 关系时间线只读页；支持首屏时间线展示与长会话消息分页加载（需 `?conversationId=`，建议同时带 `userId=`）
-- `/copilot`：**P2.5** 独立页，需 `?conversationId=`（建议同时带 `userId=` 以便返回聊天）；只读 insights，不代发消息
+- `/copilot`：**P2.5** 独立页，需 `?conversationId=`（建议同时带 `userId=` 以便返回聊天）；只读 insights，不代发消息；**P6.1～P6.4** 与聊天内同源 Copilot 接口，可选真实 LLM
 
 ## 关键 API（及 JWT 保护）
 
@@ -254,7 +363,9 @@ docker compose up -d --build api worker web
   - `GET /preview-pool/user/:userId/latest`
   - `POST /matching/enqueue`
   - `GET /matching/status/:userId`
-  - `GET /matching/result/:userId`（**P1**：响应含可选 `matchInsights`）
+  - `GET /matching/result/:userId`（**P1**：响应含可选 `matchInsights`；**P6.7**：响应含 `primaryConclusion`）
+  - `GET /summary-ai/conversations/:conversationId`（**P6.5**，JWT；会话摘要 AI，独立于 P2 摘要持久化链路）
+  - `GET /match-explanation-ai/match-results/:matchResultId`（**P6.6**，JWT；匹配解释 AI）
   - `POST /chat/conversations`
   - `GET /chat/conversations/:conversationId`
   - `GET /chat/conversations/:conversationId/timeline`（**P3**：关系时间线；支持可选 `messageSkip` / `messageLimit`）
@@ -266,7 +377,7 @@ docker compose up -d --build api worker web
   - `POST /behavior-signals`、`GET /behavior-signals/mine`（**P2**）
   - `GET /analytics/p2-overview/mine`（**P2**，只读计数，**任意登录用户**）
   - `GET /analytics/p2-overview`（**P2**，只读全局计数；**P2.5**：**仅** `P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS` 白名单内用户，否则 **403**）
-  - `GET /copilot/conversations/:conversationId/insights`（**P2**，只读规则建议，不落库）
+  - `GET /copilot/conversations/:conversationId/insights`（**P2** 规则基线；**P6.1～P6.4** 可选真实 LLM，失败回退规则层；只读、不落库）
 
 > 受保护接口会校验 token 用户与请求中的 `userId` / `senderUserId` 等一致性。  
 > 前端：`peimaToken` / `peimaUserId` 存于 `localStorage`，请求携带 `Authorization: Bearer <token>`。  
@@ -279,7 +390,7 @@ docker compose up -d --build api worker web
 - `/questionnaire`：`GET /questionnaire/questions`、`POST /questionnaire/submit`
 - `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
 - `/matching-waiting`：`GET /matching/status/:userId`
-- `/final-match`：`GET /matching/result/:userId`、`POST /chat/conversations`（进聊天）
+- `/final-match`：`GET /matching/result/:userId`（**P6.7** `primaryConclusion`）、`POST /chat/conversations`（进聊天）
 - `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P2**：`GET .../summary`、`POST .../summary/generate`（手动生成）、`GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine`、accept/dismiss 等（见 `apps/web/src/api`）
 - `/chat/timeline`：`GET /chat/conversations/:conversationId/timeline`
 - `/copilot`：Web 仅调 `GET /copilot/.../insights`（与聊天内同源接口）
@@ -307,7 +418,7 @@ pnpm dev:admin    # Admin（占位）
 |------|------|
 | `DATABASE_URL` | PostgreSQL 连接串（本地需 `localhost`；Docker 需宿主机端口映射） |
 | `JWT_SECRET` | JWT 签名密钥 |
-| `VITE_API_BASE_URL` | Web 前端 API 基址（默认 `http://localhost:3000`） |
+| `VITE_API_BASE_URL` | Web 访问 API 的基址，须与 **`API_PORT`** 及当前运行实例一致，以 **`.env`** 为准（**勿**在文档层面预设固定端口） |
 | `PEIMA_ADMIN_USER_IDS` | 逗号分隔的管理员用户 ID 列表；可在 admin UI 触发手动 batch-match |
 | `P2_ANALYTICS_GLOBAL_OVERVIEW_USER_IDS` | **P2.5**：全局 analytics 白名单用户 ID（默认仅自己可读；白名单用户可见全局统计） |
 
@@ -366,7 +477,7 @@ Web：`http://localhost:5173`
 
 1. `docker compose ps`：`postgres / api / web / worker` 均为 `Up`。
 2. 打开 `http://localhost:5173`，可进 `/login`。
-3. `curl -i http://localhost:<API_PORT>/auth/me`（端口见 `.env` 中 **`API_PORT`**，默认常为 `3000`）预期 `401`（鉴权在工作）。
+3. `curl -i http://localhost:<API_PORT>/auth/me`（将 `<API_PORT>` 换为 **`.env`** 中 **`API_PORT`** 与 **API 启动日志**所示实际监听端口）预期 `401`（鉴权在工作）。
 4. `docker compose logs --tail=50 worker`：见 `worker started`、cron 注册；手动跑批后见 **`[batch-match]`** `batch_complete` 等。
 
 ## 快速本地测试（创建 6 个测试用户）
@@ -385,7 +496,7 @@ node scripts/seed-users.js
 
 ```bash
 # 给 6 个用户各上传一张测试图片（生成最小 JPEG）
-# 需保证 API 正常运行（默认常用 http://localhost:3000；以 .env 的 API_PORT 为准）
+# 需保证 API 正常运行；根 URL 以 .env / API_PORT / 实际启动日志为准
 bash scripts/upload-images.sh
 ```
 
@@ -412,8 +523,8 @@ bash scripts/upload-images.sh
 
 ```bash
 # 假设 admin 用户 ID 已在 .env 配置
-# 若 API_PORT 非 3000，请替换 URL 端口（以 .env / 实际启动为准）
-curl -s -X POST http://localhost:3000/admin/batch-match/run-once \
+# 将 <API_PORT> 换为 .env 与 API 启动日志中的实际端口
+curl -s -X POST http://localhost:<API_PORT>/admin/batch-match/run-once \
   -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
 
@@ -435,8 +546,8 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 手动入队示例：
 
 ```bash
-# 若 API_PORT 非 3000，请替换下面 URL 中的端口（以 .env / 实际启动为准）
-curl -s -X POST http://localhost:3000/matching/enqueue \
+# 将 <API_PORT> 换为 .env 与 API 启动日志中的实际端口
+curl -s -X POST http://localhost:<API_PORT>/matching/enqueue \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d "{\"userId\":\"<USER_ID>\"}"
@@ -473,18 +584,18 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 4. **端口口径（避免开错服务）**  
    - `5173 = web`（用户端）  
    - `5174 = admin`（管理端）  
-   - API 端口以 `.env` 的 `API_PORT` 和实际启动日志为准（示例常用 `3000`）
+   - API 端口以 **`.env`** 的 **`API_PORT`** 与 **API 实际启动日志**为准，**勿**将某一数值当作固定默认
 
 3. **preview-pool：`not enough candidates`**  
    - 候选不足 6 或缺少 `images`，补齐后再试。
 
 ## 当前限制 / 后续方向
 
-- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口 + P5（治理与运营）完成** 的研发形态，非生产级高可用/安全/可观测全套。
-- **未正式接入**：真实 AI Agent、多 Agent、WebSocket 实时聊天、完整生产治理、大模型生产推理链。
+- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口 + P5（治理与运营）完成 + P6（Copilot P6.1～P6.4 + 结果层 P6.5～P6.7）** 的研发形态，非生产级高可用/安全/可观测全套。
+- **未正式接入**：统一 AI Agent、多 Agent 编排、WebSocket 实时聊天、完整生产治理、**由 Worker 驱动的全链路大模型编排**（**P6.1～P6.7** 为 Copilot 子链、读路径或独立 GET，**不是**该编排形态）。
 - **P3（关系时间线）**：**已完成**（P3-1 只读聚合 + `/chat/timeline`、P3-2 FinalMatch 第二入口、P3-3 消息分页）；**仅指该切片**，见 `docs/P3/P3-relationship-timeline.md`。
 - **P5（已完成）**：轻量 RBAC 权限模型、建议中心查询/管理 API、**Admin UI 建议中心管理界面**、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、通知中心（WebSocket + REST）、分析仪表板，以及 code review 后的 audit/history/notification/export 修复。见 `docs/P5/` 与当前仓库实现。
-- **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主；P6 真实 AI 生产链仍为中远期方向，非当前已承诺开发。详见 `docs/P4/P4-productization-plan.md`、`docs/P6/P6-ai-production-evolution-plan.md`。
+- **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主。**P6.1～P6.4**（Copilot）与 **P6.5～P6.7**（独立结果层）已按文档收口交付；**仍未完成**者见上文「P6 暂未展开的内容」。演进规划中 Worker 自动生成、决策层模型替换、多 Agent/simulation 等仍见 `docs/P6/P6-ai-production-evolution-plan.md`。详见 `docs/P4/P4-productization-plan.md`。
 - **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 权限系统等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P5 已做** 者（权限、建议中心、审计、通知、分析）与 **P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
 
 ## 文档索引
@@ -529,9 +640,16 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P5/P5-PHASE-2-ARCHITECTURE.md`：P5 Phase 2 架构与实现计划
 - `docs/P5/P5-operations-and-history-plan.md`：总体规划与后续演进背景
 
-**P6（后续规划 — 未实现）**
+**P6（Copilot 线 + 独立切片 + 演进规划）**
 
-- `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 真实 AI 生产链演进（Worker、模型替换规则层、多 Agent/simulation；**中远期、非已承诺开发**）
+- `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 演进规划（Worker 侧编排、决策层模型替换、多 Agent/simulation 等；与 **P6.1～P6.7** 已交付内容区分）
+- `docs/P6/P6.1-implementation-round1.md`：**P6.1** Copilot 真实 AI 最小实现
+- `docs/P6/P6.2-copilot-llm-runbook.md`：**P6.2** Copilot 真实 LLM 运行手册
+- `docs/P6/P6.3-acceptance-round1.md`：**P6.3** Copilot 首轮验收收口
+- `docs/P6/P6.4-stability-closure.md`：**P6.4** Copilot 运行稳定性收口
+- `docs/P6/P6.5-summary-ai-slice.md`、`docs/P6/P6.5-summary-ai-acceptance-round1.md`：**P6.5** Summary AI
+- `docs/P6/P6.6-match-explanation-ai-slice.md`、`docs/P6/P6.6-match-explanation-ai-acceptance-round1.md`：**P6.6** Match Explanation AI
+- `docs/P6/P6.7-final-match-primary-conclusion-round1.md`：**P6.7** Final Match Primary Conclusion 首轮收口记录
 
 ## License
 
