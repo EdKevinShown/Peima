@@ -1,32 +1,33 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。
 
 ---
 
-## 当前项目状态（截至 P5 治理与运营收口；P6 含 Copilot 线、独立 AI 结果层切片、P6.8 聊天画像补全与 P6.9 该链路治理已落地）
+## 当前项目状态（截至 P5 治理与运营收口；P6 含 Copilot 线、独立 AI 结果层切片、P6.8 聊天画像补全、P6.9 该链路治理与 P6.10 ChatPage UX hinting 已落地）
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）**、**三条独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**（聊天驱动画像补全建议，pending 闭环）与 **P6.9**（P6.8 **唯一 POST** 上最小治理），**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）**、**三条独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**（聊天驱动画像补全建议，pending 闭环）、**P6.9**（P6.8 **唯一 POST** 上最小治理）与 **P6.10**（ChatPage 体验增强，**不**改后端治理），**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
-| **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.9** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
+| **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.10** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
 | **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
 | **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。 |
-| **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）；**P6.8**：聊天驱动画像补全建议（`POST .../profile-completion-suggestion`，pending → accept/dismiss）；**P6.9**：该 POST 上最小治理（消息门槛、pending 门禁、冷却）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
+| **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）；**P6.8**：聊天驱动画像补全建议（`POST .../profile-completion-suggestion`，pending → accept/dismiss）；**P6.9**：该 POST 上最小治理（消息门槛、pending 门禁、冷却）；**P6.10**：ChatPage 上该按钮的事前提示与 **400 / 409 / 429** 事后文案统一（**不**改后端规则）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
 
-**P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9）**
+**P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9 + P6.10）**
 
 ### P6 当前进展
 
-当前 **P6** 已完成四组交付，**并列存在、互不替代**：
+当前 **P6** 已完成五组交付，**并列存在、互不替代**：
 
 1. **P6.1～P6.4（Copilot 线）**：在既有 **`GET /copilot/conversations/:conversationId/insights`** 契约下接入真实 LLM，失败回退规则层，并完成运行手册、首轮验收与稳定性口径收口。
 2. **P6.5～P6.7（独立 AI 结果层切片）**：会话摘要、匹配解释、最终匹配主结论；各自独立配置前缀、调用链、来源标记与日志事件。
 3. **P6.8（聊天驱动画像补全建议）**：基于当前会话近期消息调用独立 LLM，创建 **pending** `ProfileUpdateSuggestion`，复用既有 mine / accept / dismiss；仅 **ChatPage** 接入；详见下文「P6.8」。
 4. **P6.9（P6.8 生成链路治理）**：**仅**作用于 P6.8 **唯一 POST**；消息条数门槛（首轮 **6** 条）、`sourceVersion = p6.8-profile-completion-ai-v1` 的 **pending** 门禁、**1 小时**冷却；**400 / 409 / 429**；被挡请求不调 LLM；详见下文「P6.9」。
+5. **P6.10（ChatPage UX hinting）**：**仅** **ChatPage**；依赖既有 **messages** 与 **`GET /profile-suggestions/mine`** 做可推导的事前禁用/说明，并与 P6.9 状态码事后文案对齐；**不**加新接口、**不**改后端治理；详见下文「P6.10」。
 
 **P6** 整体仍**不是**统一 Agent / multi-agent / simulation 产品化主链。
 
@@ -109,14 +110,26 @@
 
 首轮收口记录：**`docs/P6/P6.9-conversation-profile-suggestion-governance-round1.md`**
 
+### P6.10 Conversation Profile Suggestion UX Hinting
+
+- **作用范围**：**仅** **ChatPage**「根据本轮对话生成画像建议」；**不**扩到 CopilotPage、admin、timeline、suggestion center。
+- **数据依赖**：当前页已加载会话 **messages**；**`GET /profile-suggestions/mine`**（status / sourceVersion / createdAt）；**无**新 REST 接口。
+- **事前提示**（可推导时按钮禁用 + **单行**原因，优先级固定：消息不足 → 已有 P6.8 **pending** → 冷却）：冷却仅在前端可据 `mine` **可靠**推导时事前禁用；否则依赖 **429** 与事后文案。
+- **事后文案**（与事前口径一致）：**400** → 当前会话用于生成的消息不足 6 条；**409** → 已有一条待处理的画像补全建议；**429** → 当前画像补全建议仍在冷却时间内。
+- **边界**：**不改** P6.8 / P6.9 后端治理语义；**不改** schema；**不改** accept / dismiss 主流程；**无** worker / 多 Agent / simulation；**无**倒计时、轮询、全局通知。
+- **首轮已验证**：消息不足可事前禁用且与 **400** 文案一致；已有 pending 可事前禁用且与 **409** 一致；冷却可推导时可事前禁用，否则 **429** 事后文案一致；条件满足时仍可 **200** 创建 pending。
+
+首轮收口记录：**`docs/P6/P6.10-conversation-profile-suggestion-ux-hinting-round1.md`**
+
 ### P6 当前结论
 
-截至目前，**P6** 在仓库内包含四层已完成内容：
+截至目前，**P6** 在仓库内包含五层已完成内容：
 
 - **Copilot 模型化线（P6.1～P6.4）**：真实 LLM 接入既有 Copilot 只读接口 + 运行与稳定性收口。
 - **独立 AI 结果层切片（P6.5～P6.7）**：摘要、匹配解释、最终匹配主结论；独立入口、独立配置、独立来源标记、独立日志、模型主路径 + 规则 fallback、不阻断原主链路、可独立验收与归因。
 - **P6.8**：聊天驱动画像补全建议；独立 Chat POST 入口 + 独立 env；pending suggestion + 既有 accept/dismiss；不改 matching、不自动写画像（生成侧）。
 - **P6.9**：P6.8 生成链路最小治理；无 schema 变更；不改 accept/dismiss；挡流请求不调 LLM。
+- **P6.10**：ChatPage 展示层 UX hinting；不增接口、不改服务端治理规则；与 P6.9 状态码展示对齐。
 
 当前阶段**仍不是**统一 AI orchestration / 全仓单一编排平台阶段；已交付项均为**边界清晰**的切片与 Copilot 子链。
 
@@ -182,7 +195,7 @@ FINAL_MATCH_CONCLUSION_AI_API_KEY=your_kimi_api_key
 **当前仍未纳入（勿与 P2-MVP / P2.5 / 本阶段 P3 混淆）**
 
 - **本阶段 P3（关系时间线）已完成**；下列条目 **不属于** 该 P3 切片，属后续产品方向或中长期能力。
-- **统一** AI Agent、多 Agent 编排、端到端 simulation **一体化**产品化流水线（**P6.1～P6.9** 已交付者为 Copilot 子链、独立 HTTP/读路径切片、**P6.8** 聊天画像建议 POST 与 **P6.9** 同 POST 治理，**不是**该一体化主链，见上文「P6」）。
+- **统一** AI Agent、多 Agent 编排、端到端 simulation **一体化**产品化流水线（**P6.1～P6.10** 已交付者为 Copilot 子链、独立 HTTP/读路径切片、**P6.8** 聊天画像建议 POST、**P6.9** 同 POST 治理与 **P6.10** ChatPage 体验增强（**不**增接口），**不是**该一体化主链，见上文「P6」）。
 - Copilot / 摘要的 **Worker 自动生成**、历史版本产品化、完整建议治理后台。
 - 独立「设置 / 建议中心」页（当前建议能力集中在 **ChatPage** 与 **CopilotPage**）。
 - **Analytics** 更细粒度治理、缓存与大盘产品化（当前仅有计数级只读接口 + P2.5 全局白名单）。
@@ -233,9 +246,9 @@ docker compose up -d --build api worker web
 
 | 路径 | 说明 |
 |------|------|
-| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口） |
+| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口）；**P6.10**：ChatPage 上 P6.8/P6.9 相关按钮 UX hinting（仅前端，不改 API） |
 | `apps/admin` | 管理端占位（当前不强依赖） |
-| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成；chat 内 **P6.8** `POST .../profile-completion-suggestion`、**P6.9** 同路径治理 |
+| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成；chat 内 **P6.8** `POST .../profile-completion-suggestion`、**P6.9** 同路径治理（**P6.10** 无服务端增量，见 `apps/web` ChatPage） |
 | `apps/worker` | 批处理：cron、batch-match、队列消费 |
 | `packages/database` | Prisma schema、迁移、PrismaClient |
 | `packages/shared` | 共享类型；**P1 起**含 `constants`（如 `P1_DISCLAIMER` 等）及 `dist/constants` 构建产物；**P2** 增量类型/常量（`P2SourceType`、反馈 subject、suggestion 状态等） |
@@ -249,7 +262,7 @@ docker compose up -d --build api worker web
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
-| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
 
 ## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5 / P6 切片）
 
@@ -285,7 +298,7 @@ docker compose up -d --build api worker web
 │   │   └── src/
 │   │       ├── main.jsx / App.jsx               [P0]
 │   │       ├── router/index.jsx                 [P0] 路由
-│   │       ├── pages/                           [P0] Login / Questionnaire / … / Chat；[P2.5] CopilotPage
+│   │       ├── pages/                           [P0] Login / Questionnaire / … / Chat；[P2.5] CopilotPage；[P6.10] ChatPage 画像补全按钮 UX hinting
 │   │       ├── api/                             [P0] auth、questionnaire、previewPool、matching、chat；[P2] feedback、profile、copilot
 │   │       ├── components/
 │   │       │   ├── common/LoadingState.jsx      [P0]
@@ -351,7 +364,8 @@ docker compose up -d --build api worker web
         ├── P6.6-match-explanation-ai-slice.md / P6.6-match-explanation-ai-acceptance-round1.md
         ├── P6.7-final-match-primary-conclusion-round1.md   P6.7 首轮收口记录
         ├── P6.8-conversation-profile-completion-round1.md   P6.8 首轮收口记录
-        └── P6.9-conversation-profile-suggestion-governance-round1.md   P6.9 首轮收口记录
+        ├── P6.9-conversation-profile-suggestion-governance-round1.md   P6.9 首轮收口记录
+        └── P6.10-conversation-profile-suggestion-ux-hinting-round1.md   P6.10 首轮收口记录
 ```
 
 ## 当前已跑通的 P0 主链路
@@ -363,7 +377,7 @@ docker compose up -d --build api worker web
 5. `/matching-waiting` 查看匹配状态
 6. worker 执行 `batch-match`（手动一次或 cron 触发）
 7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片；**P6.7**：条件展示 `primaryConclusion` 主结论区块）
-8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页；**P6.1～P6.4**：Copilot insights 可选真实 LLM，失败回退规则层；**P6.8** + **P6.9**：可选「根据本轮对话生成画像建议」→ 满足治理时 **pending** suggestion）
+8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页；**P6.1～P6.4**：Copilot insights 可选真实 LLM，失败回退规则层；**P6.8** + **P6.9**：可选「根据本轮对话生成画像建议」→ 满足治理时 **pending** suggestion；**P6.10**：该按钮事前提示与 **400/409/429** 事后文案统一，**不**改后端治理）
 
 ## 关键页面
 
@@ -373,7 +387,7 @@ docker compose up -d --build api worker web
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
 - `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）；**P6.7**：`primaryConclusion` 主结论（形状合法时展示）
-- `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要（条件展示）；**P2-MVP**：Copilot 卡片、快捷反馈；**P2.5**：摘要「生成并更新」、画像建议列表与操作、链至完整 Copilot 页；**P6.8** / **P6.9**：聊天内触发画像补全（`POST .../profile-completion-suggestion`，**P6.9** 治理）
+- `/chat`：会话与消息、发送消息；**P1/P2**：会话摘要（条件展示）；**P2-MVP**：Copilot 卡片、快捷反馈；**P2.5**：摘要「生成并更新」、画像建议列表与操作、链至完整 Copilot 页；**P6.8** / **P6.9**：聊天内触发画像补全（`POST .../profile-completion-suggestion`，**P6.9** 治理）；**P6.10**：同页该按钮 UX hinting（**不**增接口）
 - `/chat/timeline`：**P3** 关系时间线只读页；支持首屏时间线展示与长会话消息分页加载（需 `?conversationId=`，建议同时带 `userId=`）
 - `/copilot`：**P2.5** 独立页，需 `?conversationId=`（建议同时带 `userId=` 以便返回聊天）；只读 insights，不代发消息；**P6.1～P6.4** 与聊天内同源 Copilot 接口，可选真实 LLM
 
@@ -398,7 +412,7 @@ docker compose up -d --build api worker web
   - `POST /chat/conversations`
   - `GET /chat/conversations/:conversationId`
   - `GET /chat/conversations/:conversationId/timeline`（**P3**：关系时间线；支持可选 `messageSkip` / `messageLimit`）
-  - `POST /chat/conversations/:conversationId/profile-completion-suggestion`（**P6.8** 生成 + **P6.9** 治理，JWT；满足条件 → pending `ProfileUpdateSuggestion`；**400/409/429** 见「P6.9」）
+  - `POST /chat/conversations/:conversationId/profile-completion-suggestion`（**P6.8** 生成 + **P6.9** 治理，JWT；满足条件 → pending `ProfileUpdateSuggestion`；**400/409/429** 见「P6.9」；**P6.10** 在 ChatPage 对该 POST 错误做固定中文映射，**不**改接口语义）
   - `POST /chat/messages`
   - `GET /chat/conversations/:conversationId/summary`（**P1/P2**：优先持久化行，否则规则摘要）
   - `POST /chat/conversations/:conversationId/summary/generate`（**P2**：生成并落库快照）
@@ -421,7 +435,7 @@ docker compose up -d --build api worker web
 - `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
 - `/matching-waiting`：`GET /matching/status/:userId`
 - `/final-match`：`GET /matching/result/:userId`（**P6.7** `primaryConclusion`）、`POST /chat/conversations`（进聊天）
-- `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P2**：`GET .../summary`、`POST .../summary/generate`（手动生成）、`GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine`、accept/dismiss 等（见 `apps/web/src/api`）；**P6.8** / **P6.9**：`POST .../profile-completion-suggestion`
+- `/chat`：`GET /chat/conversations/:conversationId`、`POST /chat/messages`；**P2**：`GET .../summary`、`POST .../summary/generate`（手动生成）、`GET /copilot/.../insights`、`POST /feedback`、`GET /profile-suggestions/mine`、accept/dismiss 等（见 `apps/web/src/api`）；**P6.8** / **P6.9**：`POST .../profile-completion-suggestion`；**P6.10**：同页结合 messages + `mine` 的事前提示与上述 POST 事后文案
 - `/chat/timeline`：`GET /chat/conversations/:conversationId/timeline`
 - `/copilot`：Web 仅调 `GET /copilot/.../insights`（与聊天内同源接口）
 
@@ -621,11 +635,11 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 ## 当前限制 / 后续方向
 
-- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口 + P5（治理与运营）完成 + P6（Copilot P6.1～P6.4 + 结果层 P6.5～P6.7 + P6.8 聊天画像补全 + P6.9 该 POST 治理）** 的研发形态，非生产级高可用/安全/可观测全套。
-- **未正式接入**：统一 AI Agent、多 Agent 编排、WebSocket 实时聊天、完整生产治理、**由 Worker 驱动的全链路大模型编排**（**P6.1～P6.9** 为 Copilot 子链、读路径、独立 GET、**P6.8** 单次 POST 与 **P6.9** 同路径治理，**不是**该编排形态）。
+- 当前为 **P0 稳定 + P1 占位 + P2-MVP + P2.5 产品化补完 + P3（关系时间线）收口 + P5（治理与运营）完成 + P6（Copilot P6.1～P6.4 + 结果层 P6.5～P6.7 + P6.8 聊天画像补全 + P6.9 该 POST 治理 + P6.10 ChatPage UX hinting）** 的研发形态，非生产级高可用/安全/可观测全套。
+- **未正式接入**：统一 AI Agent、多 Agent 编排、WebSocket 实时聊天、完整生产治理、**由 Worker 驱动的全链路大模型编排**（**P6.1～P6.10** 为 Copilot 子链、读路径、独立 GET、**P6.8** 单次 POST、**P6.9** 同路径治理与 **P6.10** ChatPage 展示层增强，**不是**该编排形态）。
 - **P3（关系时间线）**：**已完成**（P3-1 只读聚合 + `/chat/timeline`、P3-2 FinalMatch 第二入口、P3-3 消息分页）；**仅指该切片**，见 `docs/P3/P3-relationship-timeline.md`。
 - **P5（已完成）**：轻量 RBAC 权限模型、建议中心查询/管理 API、**Admin UI 建议中心管理界面**、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、通知中心（WebSocket + REST）、分析仪表板，以及 code review 后的 audit/history/notification/export 修复。见 `docs/P5/` 与当前仓库实现。
-- **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主。**P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立结果层）、**P6.8**（聊天画像补全）与 **P6.9**（P6.8 生成治理）已按文档收口交付；**仍未完成**者见上文「P6 暂未展开的内容」。演进规划中 Worker 自动生成、决策层模型替换、多 Agent/simulation 等仍见 `docs/P6/P6-ai-production-evolution-plan.md`。详见 `docs/P4/P4-productization-plan.md`。
+- **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主。**P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立结果层）、**P6.8**（聊天画像补全）、**P6.9**（P6.8 生成治理）与 **P6.10**（ChatPage UX hinting，**不**改后端治理）已按文档收口交付；**仍未完成**者见上文「P6 暂未展开的内容」。演进规划中 Worker 自动生成、决策层模型替换、多 Agent/simulation 等仍见 `docs/P6/P6-ai-production-evolution-plan.md`。详见 `docs/P4/P4-productization-plan.md`。
 - **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 权限系统等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P5 已做** 者（权限、建议中心、审计、通知、分析）与 **P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
 
 ## 文档索引
@@ -670,9 +684,9 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P5/P5-PHASE-2-ARCHITECTURE.md`：P5 Phase 2 架构与实现计划
 - `docs/P5/P5-operations-and-history-plan.md`：总体规划与后续演进背景
 
-**P6（Copilot 线 + 独立切片 + P6.8 + P6.9 + 演进规划）**
+**P6（Copilot 线 + 独立切片 + P6.8 + P6.9 + P6.10 + 演进规划）**
 
-- `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 演进规划（Worker 侧编排、决策层模型替换、多 Agent/simulation 等；与 **P6.1～P6.9** 已交付内容区分）
+- `docs/P6/P6-ai-production-evolution-plan.md`：**P6** 演进规划（Worker 侧编排、决策层模型替换、多 Agent/simulation 等；与 **P6.1～P6.10** 已交付内容区分）
 - `docs/P6/P6.1-implementation-round1.md`：**P6.1** Copilot 真实 AI 最小实现
 - `docs/P6/P6.2-copilot-llm-runbook.md`：**P6.2** Copilot 真实 LLM 运行手册
 - `docs/P6/P6.3-acceptance-round1.md`：**P6.3** Copilot 首轮验收收口
@@ -682,6 +696,7 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P6/P6.7-final-match-primary-conclusion-round1.md`：**P6.7** Final Match Primary Conclusion 首轮收口记录
 - `docs/P6/P6.8-conversation-profile-completion-round1.md`：**P6.8** Conversation Profile Completion AI 首轮收口记录
 - `docs/P6/P6.9-conversation-profile-suggestion-governance-round1.md`：**P6.9** Conversation Profile Suggestion Governance 首轮收口记录
+- `docs/P6/P6.10-conversation-profile-suggestion-ux-hinting-round1.md`：**P6.10** Conversation Profile Suggestion UX Hinting 首轮收口记录
 
 ## License
 
