@@ -90,6 +90,7 @@
 - **唯一入口**：`POST /chat/conversations/:conversationId/profile-completion-suggestion`（JWT；可选 body `messageLimit`）
 - **前端**：仅 **ChatPage** 人工触发；成功后刷新 `GET /profile-suggestions/mine`
 - **行为**：基于当前会话**近期消息**调用独立配置的 LLM（`PROFILE_COMPLETION_AI_*`，**不**使用 `SUMMARY_AI_*`）；成功时创建一条 **pending** 的 `ProfileUpdateSuggestion`；复用既有 **accept / dismiss** 闭环写入 `UserProfile`（仅当用户接受且 `proposedPatch` 含有效字段时，按既有逻辑更新）
+- **生成白名单（当前）**：`proposedPatch` 仅允许 **initiativeLevel**、**socialEnergy**、**emotionalExpression**、**relationshipPace**；**confidence**、**decisionOrientation**、**conflictResponse** 已从 P6.8 生成路径排除（prompt + 服务端过滤）。**既有**历史 suggestion **不**回溯清洗；**仅新生成**受该白名单约束。
 - **边界**：**不改** matching；生成接口**不**自动写 `UserProfile`；**无** Worker / 多 Agent / simulation
 - **归因**：`sourceType` 固定 **`hybrid`**；`sourceVersion` 固定 **`p6.8-profile-completion-ai-v1`**
 - **首轮已验证**：生成 pending、mine 可见、accept、dismiss、无有效维度时 **422**、非 pending 再 accept/dismiss **400**
