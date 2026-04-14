@@ -1,5 +1,5 @@
 import {
-  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -48,39 +48,52 @@ export class ProfileSuggestionService {
     return this.repo.findByUserId(tokenUserId, MINE_MAX_ROWS);
   }
 
+  private async loadSuggestionForUserOrThrow(
+    tx: Prisma.TransactionClient,
+    suggestionId: string,
+    tokenUserId: string,
+  ) {
+    const row = await tx.profileUpdateSuggestion.findUnique({
+      where: { id: suggestionId },
+    });
+
+    if (!row || row.userId !== tokenUserId) {
+      throw new NotFoundException(`Suggestion ${suggestionId} not found`);
+    }
+
+    return row;
+  }
+
   async accept(suggestionId: string, tokenUserId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const row = await tx.profileUpdateSuggestion.findFirst({
+      const row = await this.loadSuggestionForUserOrThrow(
+        tx,
+        suggestionId,
+        tokenUserId,
+      );
+
+      if (row.status !== P2SuggestionStatus.Pending) {
+        throw new ConflictException("suggestion is not pending");
+      }
+
+      const patch = parseProfileProposedPatch(row.proposedPatch);
+      const resolvedAt = new Date();
+
+      const claimed = await tx.profileUpdateSuggestion.updateMany({
         where: {
           id: suggestionId,
           userId: tokenUserId,
           status: P2SuggestionStatus.Pending,
         },
-      });
-
-      if (!row) {
-        const any = await tx.profileUpdateSuggestion.findFirst({
-          where: { id: suggestionId, userId: tokenUserId },
-        });
-        if (!any) {
-          throw new NotFoundException(
-            `Suggestion ${suggestionId} not found`,
-          );
-        }
-        throw new BadRequestException(
-          "suggestion is not pending",
-        );
-      }
-
-      const patch = parseProfileProposedPatch(row.proposedPatch);
-
-      await tx.profileUpdateSuggestion.update({
-        where: { id: suggestionId },
         data: {
           status: P2SuggestionStatus.Accepted,
-          resolvedAt: new Date(),
+          resolvedAt,
         },
       });
+
+      if (claimed.count !== 1) {
+        throw new ConflictException("suggestion is not pending");
+      }
 
       if (Object.keys(patch).length > 0) {
         await tx.userProfile.upsert({
@@ -101,35 +114,31 @@ export class ProfileSuggestionService {
 
   async dismiss(suggestionId: string, tokenUserId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const row = await tx.profileUpdateSuggestion.findFirst({
+      const row = await this.loadSuggestionForUserOrThrow(
+        tx,
+        suggestionId,
+        tokenUserId,
+      );
+
+      if (row.status !== P2SuggestionStatus.Pending) {
+        throw new ConflictException("suggestion is not pending");
+      }
+
+      const claimed = await tx.profileUpdateSuggestion.updateMany({
         where: {
           id: suggestionId,
           userId: tokenUserId,
           status: P2SuggestionStatus.Pending,
         },
-      });
-
-      if (!row) {
-        const any = await tx.profileUpdateSuggestion.findFirst({
-          where: { id: suggestionId, userId: tokenUserId },
-        });
-        if (!any) {
-          throw new NotFoundException(
-            `Suggestion ${suggestionId} not found`,
-          );
-        }
-        throw new BadRequestException(
-          "suggestion is not pending",
-        );
-      }
-
-      await tx.profileUpdateSuggestion.update({
-        where: { id: suggestionId },
         data: {
           status: P2SuggestionStatus.Dismissed,
           resolvedAt: new Date(),
         },
       });
+
+      if (claimed.count !== 1) {
+        throw new ConflictException("suggestion is not pending");
+      }
 
       return tx.profileUpdateSuggestion.findUniqueOrThrow({
         where: { id: suggestionId },

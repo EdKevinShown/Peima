@@ -165,6 +165,30 @@ export class ChatSummaryService {
       cid,
       tokenUserId,
     );
+    const latestPersisted =
+      await this.summaryRepo.findLatestByConversationId(cid);
+    const latestMessageCreatedAt =
+      conversation.messages[conversation.messages.length - 1]?.createdAt ?? null;
+
+    const canReuseLatest =
+      latestPersisted !== null &&
+      latestPersisted.sourceType === P2SourceType.RuleBased &&
+      latestPersisted.sourceVersion ===
+        ChatSummaryService.RULE_SUMMARY_VERSION &&
+      (latestMessageCreatedAt === null ||
+        latestPersisted.createdAt >= latestMessageCreatedAt);
+
+    if (canReuseLatest) {
+      return {
+        summary: latestPersisted.summary,
+        chatStageHint: latestPersisted.chatStageHint ?? "",
+        generatedAt: latestPersisted.createdAt.toISOString(),
+        sourceType: latestPersisted.sourceType,
+        sourceVersion: latestPersisted.sourceVersion,
+        persisted: true,
+      };
+    }
+
     const computed = this.computeRuleBasedSummary(conversation);
 
     const row = await this.summaryRepo.create({
