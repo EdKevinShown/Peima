@@ -334,7 +334,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["18C", "13C"], ["18B", "13B"], ["18A", "13B"], ["18A", "13A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q17",
     "initiativeLevel",
     "需要一起完成一件麻烦事（搬家/办事），你更倾向？",
@@ -373,7 +373,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["6B", "4B"], ["6A", "11B"], ["6A", "3A"], ["3A", "7B"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q20",
     "conflictResponse",
     "对方在朋友面前否定你的一个小习惯，你会？",
@@ -386,7 +386,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["4B", "10B"], ["4A", "3A"], ["4A", "7A"], ["4C", "15A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q21",
     "socialEnergy",
     "长假更愿意把大块时间花在？",
@@ -399,7 +399,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["14C", "13B"], ["14B", "13B"], ["14B", "13A"], ["14A", "13A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q22",
     "emotionalExpression",
     "对方忘记你们的小约定（非原则），你更可能？",
