@@ -184,7 +184,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q07",
     "conflictResponse",
     "吵架时, 你属于：",
@@ -202,7 +202,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q08",
     "emotionalExpression",
     "对象不回消息：",
@@ -220,7 +220,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q09",
     "decisionOrientation",
     "对象想要查你手机：",
@@ -233,7 +233,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q10",
     "relationshipPace",
     "你想要的恋爱节奏：",
@@ -246,7 +246,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q11",
     "initiativeLevel",
     "关于未来规划：",
@@ -264,7 +264,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q12",
     "conflictResponse",
     "关于对象和异性接触：",
