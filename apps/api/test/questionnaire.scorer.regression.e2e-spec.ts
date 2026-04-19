@@ -1,5 +1,5 @@
 /**
- * questionnaire.scorer 受控回归（G-q25 / draft 闸门 / q01–q15+q17+q20+q21+q22+q25 canonical=20 与 q06 的 5D·5E）。
+ * questionnaire.scorer 受控回归（G-q25 / draft 闸门 / q01–q23（除 q24）+q25+q26+q27 canonical=26 与 q06 的 5D·5E）。
  * 运行：pnpm --filter @peima/api run test:e2e -- questionnaire.scorer.regression
  * （无需 DATABASE_URL；不启动 Nest 应用。）
  */
@@ -73,7 +73,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q25", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       emotionalExpression: 1,
       communicationStyle: 1,
@@ -82,14 +82,14 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
     });
   });
 
-  /** G-draft-only-q01to12：q16、q18、q19、q23+ 仍为 draft；本用例仅答 canonical 的 q01+q06 */
+  /** G-draft-only-q01to12：q24、q28–q30 仍为 draft；本用例仅答 canonical 的 q01+q06 */
   it("G-draft-only-q01to12", () => {
     const out = scoreQuestionnaireG1r([
       { questionKey: "q01", answerValue: "A" },
       { questionKey: "q06", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(2 / 20);
+    expect(out.confidence).toBe(2 / 26);
     expectAllNullExcept(out, {
       attachmentStyle: 0.25,
       emotionalExpression: 0.5,
@@ -101,7 +101,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
     });
   });
 
-  /** G-draft-plus-q25：q01 与 q25 一并参与聚合（confidence 分母=20） */
+  /** G-draft-plus-q25：q01 与 q25 一并参与聚合（confidence 分母=26） */
   it("G-draft-plus-q25", () => {
     const only25 = scoreQuestionnaireG1r([
       { questionKey: "q25", answerValue: "A" },
@@ -132,7 +132,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       marriageExpectation: null,
       childrenIntent: null,
       riskPreference: null,
-      confidence: 1 / 20,
+      confidence: 1 / 26,
     });
     expect(mixed).toEqual({
       attachmentStyle: 0,
@@ -155,7 +155,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       marriageExpectation: null,
       childrenIntent: null,
       riskPreference: null,
-      confidence: 2 / 20,
+      confidence: 2 / 26,
     });
   });
 
@@ -166,7 +166,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q06", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 0.5,
         loveLanguage: 0.625,
@@ -182,7 +182,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q01", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 0,
         emotionalExpression: 0.5,
@@ -200,7 +200,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q03", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 0.5,
         loveLanguage: 0,
@@ -220,7 +220,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q06", answerValue: "C" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 1,
         communicationStyle: 1,
@@ -237,7 +237,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q06", answerValue: "B" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         emotionalExpression: 1,
         communicationStyle: 0.5,
@@ -254,7 +254,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q02", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 0,
         emotionalExpression: 0.5,
@@ -273,7 +273,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q04", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         moneyAttitude: 1,
         lifePace: 1,
@@ -289,7 +289,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q05", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 1,
         loveLanguage: 0,
@@ -307,7 +307,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q07", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         emotionalExpression: 1,
         communicationStyle: 1,
@@ -325,7 +325,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q08", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 0,
         securityNeed: 0,
@@ -342,7 +342,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q09", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 1,
         loyaltyView: 1,
@@ -358,7 +358,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q10", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         lifePace: 0,
         emotionalStability: 0.5,
@@ -374,7 +374,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q11", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         securityNeed: 1,
         marriageExpectation: 1,
@@ -390,7 +390,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
         { questionKey: "q12", answerValue: "A" },
       ]);
 
-      expect(out.confidence).toBe(1 / 20);
+      expect(out.confidence).toBe(1 / 26);
       expectAllNullExcept(out, {
         attachmentStyle: 1,
         independence: 0,
@@ -405,7 +405,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q13", answerValue: "D" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {});
   });
 
@@ -418,8 +418,8 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q13", answerValue: "A" },
     ]);
 
-    expect(outD.confidence).toBe(1 / 20);
-    expect(outA.confidence).toBe(1 / 20);
+    expect(outD.confidence).toBe(1 / 26);
+    expect(outA.confidence).toBe(1 / 26);
     expectAllNullExcept(outD, {});
 
     let differs = false;
@@ -459,7 +459,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q14", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       attachmentStyle: 0.5,
       securityNeed: 0.5,
@@ -472,7 +472,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q15", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       emotionalExpression: 0.5,
       jealousyTendency: 0.5,
@@ -485,7 +485,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q17", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       controlNeed: 0.5,
       independence: 0,
@@ -498,7 +498,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q20", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       conflictHandling: 0.5,
       jealousyTendency: 0.5,
@@ -511,7 +511,7 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q21", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       lifePace: 0.5,
       socialNeed: 0,
@@ -524,10 +524,88 @@ describe("questionnaire.scorer regression (G-q25 / draft / q06-5E)", () => {
       { questionKey: "q22", answerValue: "A" },
     ]);
 
-    expect(out.confidence).toBe(1 / 20);
+    expect(out.confidence).toBe(1 / 26);
     expectAllNullExcept(out, {
       emotionalExpression: 0.5,
       jealousyTendency: 1,
+    });
+  });
+
+  /** G-q16-option-A：18C/13C */
+  it("G-q16-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q16", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      lifePace: 0,
+      marriageExpectation: 0,
+    });
+  });
+
+  /** G-q18-option-A：11B/7B */
+  it("G-q18-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q18", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      controlNeed: 0.5,
+      moneyAttitude: 0.5,
+    });
+  });
+
+  /** G-q19-option-A：6B/4B */
+  it("G-q19-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q19", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      conflictHandling: 0.5,
+      securityNeed: 0.5,
+    });
+  });
+
+  /** G-q23-option-A：17B/13C */
+  it("G-q23-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q23", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      familyView: 0.5,
+      lifePace: 0,
+    });
+  });
+
+  /** G-q26-option-A：12B/18B */
+  it("G-q26-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q26", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      careerPriority: 0.5,
+      marriageExpectation: 0.5,
+    });
+  });
+
+  /** G-q27-option-A：4A/3A */
+  it("G-q27-option-A", () => {
+    const out = scoreQuestionnaireG1r([
+      { questionKey: "q27", answerValue: "A" },
+    ]);
+
+    expect(out.confidence).toBe(1 / 26);
+    expectAllNullExcept(out, {
+      communicationStyle: 1,
+      conflictHandling: 1,
     });
   });
 });

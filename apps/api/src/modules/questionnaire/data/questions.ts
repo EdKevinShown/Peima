@@ -321,7 +321,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["2B", "10B"], ["2B", "3A"], ["2A", "4A"], ["2A", "15A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q16",
     "relationshipPace",
     "认识不久对方就聊结婚时间表，你会？",
@@ -347,7 +347,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["8C", "7B"], ["8B", "3B"], ["8A", "7A"], ["8B", "3A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q18",
     "decisionOrientation",
     "大额共同支出（旅行/家电）意见不一致时，你更可能？",
@@ -360,7 +360,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["11B", "7B"], ["11B", "3A"], ["11A", "7A"], ["11A", "4A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q19",
     "decisionOrientation",
     "聊到「安全感」时，对方说你「想太多」，你更可能？",
@@ -412,7 +412,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["2B", "10A"], ["2B", "3A"], ["2A", "4A"], ["2C", "15A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q23",
     "relationshipPace",
     "对方想把你介绍给家人，你的第一反应更接近？",
@@ -451,7 +451,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["2A", "3A", "4A", "10A"], ["1B", "10B", "2B", "15A"], ["1C", "8C", "10C"], ["1A", "20B", "3A", "7B"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q26",
     "decisionOrientation",
     "对未来居住地（城市/国家）分歧很大时，你更可能？",
@@ -464,7 +464,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["12B", "18B"], ["12A", "7A"], ["12A", "13B"], ["12B", "18A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q27",
     "conflictResponse",
     "对方用讽刺语气说你「太敏感」，你更可能？",
