@@ -24,8 +24,8 @@ export class SubmitQuestionnaireDto {
   userId!: string;
 
   @IsArray()
-  @ArrayMinSize(12)
-  @ArrayMaxSize(12)
+  @ArrayMinSize(30)
+  @ArrayMaxSize(30)
   @ValidateNested({ each: true })
   @Type(() => QuestionnaireAnswerItemDto)
   answers!: QuestionnaireAnswerItemDto[];

@@ -12,7 +12,11 @@ import {
   QUESTIONNAIRE_VERSION,
 } from "./data/questions";
 import { SubmitQuestionnaireDto } from "./dto/submit-questionnaire.dto";
-import { scoreQuestionnaire } from "./questionnaire.scorer";
+import {
+  G1R_PROFILE_KEYS,
+  type G1rProfileKey,
+  scoreQuestionnaireG1r,
+} from "./questionnaire.scorer";
 
 export type QuestionsPayload = {
   version: string;
@@ -51,7 +55,7 @@ export class QuestionnaireService {
       expected.some((k, i) => k !== got[i])
     ) {
       throw new BadRequestException(
-        "answers must include exactly the 12 fixed question keys, no extras",
+        `answers must match the full current question key set exactly (version ${QUESTIONNAIRE_VERSION}), no duplicates or extras`,
       );
     }
 
@@ -81,7 +85,11 @@ export class QuestionnaireService {
     await this.ensureUserExists(dto.userId);
     this.validateAnswersOrThrow(dto.answers);
 
-    const scored = scoreQuestionnaire(dto.answers);
+    const scored = scoreQuestionnaireG1r(dto.answers);
+
+    const g1rUpsert = Object.fromEntries(
+      G1R_PROFILE_KEYS.map((k) => [k, scored[k]]),
+    ) as Record<G1rProfileKey, number | null>;
 
     const profile = await this.prisma.$transaction(async (tx) => {
       await tx.questionnaireAnswer.deleteMany({
@@ -100,21 +108,11 @@ export class QuestionnaireService {
         where: { userId: dto.userId },
         create: {
           userId: dto.userId,
-          socialEnergy: scored.socialEnergy,
-          emotionalExpression: scored.emotionalExpression,
-          relationshipPace: scored.relationshipPace,
-          initiativeLevel: scored.initiativeLevel,
-          decisionOrientation: scored.decisionOrientation,
-          conflictResponse: scored.conflictResponse,
+          ...g1rUpsert,
           confidence: scored.confidence,
         },
         update: {
-          socialEnergy: scored.socialEnergy,
-          emotionalExpression: scored.emotionalExpression,
-          relationshipPace: scored.relationshipPace,
-          initiativeLevel: scored.initiativeLevel,
-          decisionOrientation: scored.decisionOrientation,
-          conflictResponse: scored.conflictResponse,
+          ...g1rUpsert,
           confidence: scored.confidence,
         },
       });

@@ -75,12 +75,26 @@ function toCandidateUser(row: User): CandidateUserLike {
 function toProfileLike(row: UserProfile | null): UserProfileLike {
   if (!row) return null;
   return {
-    socialEnergy: row.socialEnergy,
+    attachmentStyle: row.attachmentStyle,
     emotionalExpression: row.emotionalExpression,
-    relationshipPace: row.relationshipPace,
-    initiativeLevel: row.initiativeLevel,
-    decisionOrientation: row.decisionOrientation,
-    conflictResponse: row.conflictResponse,
+    communicationStyle: row.communicationStyle,
+    conflictHandling: row.conflictHandling,
+    loveLanguage: row.loveLanguage,
+    securityNeed: row.securityNeed,
+    controlNeed: row.controlNeed,
+    independence: row.independence,
+    loyaltyView: row.loyaltyView,
+    jealousyTendency: row.jealousyTendency,
+    moneyAttitude: row.moneyAttitude,
+    careerPriority: row.careerPriority,
+    lifePace: row.lifePace,
+    socialNeed: row.socialNeed,
+    emotionalStability: row.emotionalStability,
+    sexualValues: row.sexualValues,
+    familyView: row.familyView,
+    marriageExpectation: row.marriageExpectation,
+    childrenIntent: row.childrenIntent,
+    riskPreference: row.riskPreference,
   };
 }
 

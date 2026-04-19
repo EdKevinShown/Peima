@@ -48,10 +48,39 @@ export type SubmitQuestionnairePayload = {
   answers: { questionKey: string; answerValue: string }[];
 };
 
+/** 与 API `UserProfile`（G1-R 问卷 v2）JSON 对齐：20 轴 + confidence；不含旧六维。 */
+export type QuestionnaireUserProfile = {
+  id: string;
+  userId: string;
+  attachmentStyle: number | null;
+  emotionalExpression: number | null;
+  communicationStyle: number | null;
+  conflictHandling: number | null;
+  loveLanguage: number | null;
+  securityNeed: number | null;
+  controlNeed: number | null;
+  independence: number | null;
+  loyaltyView: number | null;
+  jealousyTendency: number | null;
+  moneyAttitude: number | null;
+  careerPriority: number | null;
+  lifePace: number | null;
+  socialNeed: number | null;
+  emotionalStability: number | null;
+  sexualValues: number | null;
+  familyView: number | null;
+  marriageExpectation: number | null;
+  childrenIntent: number | null;
+  riskPreference: number | null;
+  confidence: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SubmitQuestionnaireResponse = {
   userId: string;
   answersSaved: number;
-  profile: Record<string, unknown>;
+  profile: QuestionnaireUserProfile;
 };
 
 export async function getQuestionnaireQuestions() {
