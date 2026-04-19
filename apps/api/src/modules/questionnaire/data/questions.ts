@@ -282,7 +282,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q13",
     "conflictResponse",
     "当你和伴侣对同一件事的优先级完全相反、又必须表态时，你更可能？",
