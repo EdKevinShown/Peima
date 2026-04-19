@@ -10,12 +10,16 @@
 |------|------|
 | **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）**、**三条独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**（聊天驱动画像补全建议，pending 闭环）、**P6.9**（P6.8 **唯一 POST** 上最小治理）与 **P6.10**（ChatPage 体验增强，**不**改后端治理），**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
+| **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分）、submit 写 **`user_profile` 20 G1-R + `confidence`**（旧六维已停写）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`q01`–`q12` 与 `q25` 已为 `canonical`**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** 固定 **17** 条用例与当前闸门一致。（摘要；**全文与六条核心口径**见下「权威说明」。） |
+| **问卷 / G1-R — 尚未完成** | **`q13`–`q30` 仍未全部 `canonical`**（除 **`q25`** 外该段其余题当前多为 **`draft`**）→ **不能**宣称「**30 题**全 `canonical` / 全量正式生产真源与计分已结案」；**`confidence`** 分母含全部 canonical 题，未升格题仍会稀释比例；v2 轴上仍可能因 **`draft`** 题无贡献而为 **`null`**。**worker / matching** 与 **20 维 G1-R** 全链路消费对齐**不在本 README 问卷线本轮扩写**（见快照「下一轮」）；全仓 **e2e** 若仍有旧题数假设需另任务跟进。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.10** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
 | **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
 | **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。 |
 | **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）；**P6.8**：聊天驱动画像补全建议（`POST .../profile-completion-suggestion`，pending → accept/dismiss）；**P6.9**：该 POST 上最小治理（消息门槛、pending 门禁、冷却）；**P6.10**：ChatPage 上该按钮的事前提示与 **400 / 409 / 429** 事后文案统一（**不**改后端规则）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
+
+**问卷 / G1-R（权威说明）**：`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md` — 含 **核心口径（六条）**、Batch 2-A / 2-B 状态、very short test record、下一轮待办及 **controller 为何零改动通过**；上表「已完成 / 尚未完成」两行为摘要。
 
 **P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9 + P6.10）**
 
@@ -246,7 +250,7 @@ docker compose up -d --build api worker web
 
 | 路径 | 说明 |
 |------|------|
-| `apps/web` | 用户端：登录、问卷、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口）；**P6.10**：ChatPage 上 P6.8/P6.9 相关按钮 UX hinting（仅前端，不改 API） |
+| `apps/web` | 用户端：登录、问卷（**Batch 2-B**：题数随 `GET /questionnaire/questions`）、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口）；**P6.10**：ChatPage 上 P6.8/P6.9 相关按钮 UX hinting（仅前端，不改 API） |
 | `apps/admin` | 管理端占位（当前不强依赖） |
 | `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成；chat 内 **P6.8** `POST .../profile-completion-suggestion`、**P6.9** 同路径治理（**P6.10** 无服务端增量，见 `apps/web` ChatPage） |
 | `apps/worker` | 批处理：cron、batch-match、队列消费 |
@@ -262,7 +266,7 @@ docker compose up -d --build api worker web
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
-| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；**另含** **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**（G1-R 问卷 Batch 2 状态与测试记录；**`q01`–`q12`+`q25` canonical** 与 **17** 条 scorer 回归口径；**非**「30 题全 `canonical` / 全量正式生产」宣称）；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
 
 ## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5 / P6 切片）
 
@@ -282,7 +286,7 @@ docker compose up -d --build api worker web
 │   │       └── modules/
 │   │           ├── auth/                        [P0] 注册登录、JWT
 │   │           ├── users/                       [P0] 用户与画像
-│   │           ├── questionnaire/               [P0] 问卷与评分
+│   │           ├── questionnaire/               [P0] 问卷与评分；[Batch2] G1-R 30 题、`sourceTier`、v2 scorer 写 20 维+confidence（见 `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`）
 │   │           ├── images/                      [P0] 用户图片
 │   │           ├── preferences/                 [P0] 偏好
 │   │           ├── preview-pool/                [P0] 预览池；[P1] itemMeta
@@ -371,7 +375,7 @@ docker compose up -d --build api worker web
 ## 当前已跑通的 P0 主链路
 
 1. `/login` 登录（注册/登录，保存 `peimaToken` 与 `peimaUserId`）
-2. `/questionnaire` 提交问卷（生成/更新用户画像）
+2. `/questionnaire` 提交问卷（生成/更新用户画像；须答满**当前版本**全部题目，**现为 30**；画像写入为 **G1-R v2**，生产计分仅来自 **`canonical`** 题；**`q01`–`q12` 与 `q25` 已 canonical**，**`q13`–`q30` 仍未全部 canonical**，**`confidence`** 按全部 canonical 题数为分母，见上表「问卷 / G1-R」）
 3. 准备候选用户和图片数据（候选用户需有 images）
 4. `/preview-pool` 生成并展示 6 人预览池
 5. `/matching-waiting` 查看匹配状态
@@ -383,7 +387,7 @@ docker compose up -d --build api worker web
 
 - `/login`：注册/登录，token 与 userId 持久化
 - `/my-images`：为**当前登录用户**添加图片记录（粘贴可访问的 **HTTPS 图片直链**；需 JWT）；用于预览池「至少 6 名带图候选」数据准备
-- `/questionnaire`：固定题库并提交（12 题）
+- `/questionnaire`：**GET** 拉取当前版本题库（题数随版本变化，**现为 30**）；**POST** 须答满全部题目后提交；公开题面无 `tags`/`sourceTier`；**v2 画像**见上表「问卷 / G1-R」（**`q01`–`q12` 与 `q25` 已 canonical**；**30 题全 `canonical` 未完成**）
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
 - `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）；**P6.7**：`primaryConclusion` 主结论（形状合法时展示）
@@ -533,6 +537,7 @@ Web：`http://localhost:5173`
 ```bash
 # 创建 6 个测试用户，自动注册、登录、提交问卷
 # 结果：6 个 User + 对应 UserProfile（见脚本输出的 userId 列表）
+# 注意：脚本内提交条数须与当前 API 问卷题数一致（当前主链为 30）；若不一致请先改脚本再跑
 node scripts/seed-users.js
 ```
 
@@ -675,6 +680,7 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P4/P4-current-slice-status.md`：当前 P4 五个切片的阶段收口文档（当前阶段口径以此文档为准）
 - `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
+- `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**`q01`–`q12`+`q25` canonical**、**17** 条 `questionnaire.scorer.regression` 口径、controller 零改动说明与「**非**30 题全 `canonical` / 全量正式生产」边界
 
 **P5（治理与运营 — 已完成）**
 
