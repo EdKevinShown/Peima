@@ -425,7 +425,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["17B", "13C"], ["17B", "13B"], ["17A", "13B"], ["17A", "13A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q24",
     "initiativeLevel",
     "发现对方手机里有暧昧聊天记录（未证实出轨），你会？",
@@ -477,7 +477,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["4A", "3A"], ["4B", "2B"], ["4A", "2A"], ["4B", "15A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q28",
     "initiativeLevel",
     "对方需要和异性同事单独加班很晚，你更可能？",
