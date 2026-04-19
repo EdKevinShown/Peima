@@ -94,7 +94,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q02",
     "relationshipPace",
     "你理想中的恋爱状态更像是：",
@@ -130,7 +130,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q04",
     "decisionOrientation",
     "对于消费你更偏向：",
@@ -148,7 +148,7 @@ export const QUESTIONS: QuestionDef[] = [
     ],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q05",
     "socialEnergy",
     "如果伴侣突然变得很成功你会：",
