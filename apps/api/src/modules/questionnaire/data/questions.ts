@@ -295,7 +295,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["4A", "7B"], ["3A", "7A"], ["13B", "4B"], []],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q14",
     "socialEnergy",
     "对方出差一周几乎不回消息，你更容易？",
@@ -308,7 +308,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["1B", "6B"], ["1B", "3A"], ["1C", "8A"], ["1A", "3A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q15",
     "emotionalExpression",
     "被当众调侃你和对方的关系，你更可能？",
