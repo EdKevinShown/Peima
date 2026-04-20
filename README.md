@@ -21,6 +21,34 @@
 
 **问卷 / G1-R（权威说明）**：`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md` — 含 **核心口径（六条）**、Batch 2-A / 2-B 状态、very short test record、下一轮待办及 **controller 为何零改动通过**；**只读画像 v3** 见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**；上表「已完成 / 尚未完成」两行为摘要。
 
+## 问卷画像 v3（已合入 main；能力与边界）
+
+专篇与字段级说明见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。本节只固定 **可交接口径**（与当前 `main` 实现一致；**不**超前宣称）。
+
+### 已完成（代码与页面已交付）
+
+- **第一层分支画像**：轴 **1–20**、分支 **A–E**，每分支 **hits / opportunities / rate / adjustedScore**（`opportunities` 来自 **canonical** 题库按题统计）。
+- **dominantBranch / uncertainBranches**：由 **adjustedScore** 排序与间距阈值决定唯一 dominant 或并列不确定。
+- **主标签 / 候选标签 / 风格标签**：`labels.primary`（强主，可为 **null**）、`labels.candidates`、`labels.styleLabels`。
+- **displayPrimary**：展示用主标签 **永不为空**（`source`：`primary` | `candidate` | `fallback`）。
+- **风格对外至多 3 条**（`MAX_STYLE_LABELS = 3`）。
+- **HTTP**：`GET /questionnaire/profile/:userId`（`QuestionnaireController.getProfile`；**未**挂 `JwtAuthGuard`，与 `POST /questionnaire/submit` 不同；**无 `UserProfile`** 等 **404**；无答卷行时仍可能 **200**，见 **`docs/P4/P4.3-questionnaire-profile-v3.md`** § 九）。
+- **Web**：**`/questionnaire-profile`**（`QuestionnaireProfilePage`；路由已恢复）。
+- **overallExplanation**：`{ title, paragraph }`，**规则模板拼装、非 LLM**。
+- **`user_profile` 二十轴 float**：页面 **次级折叠展示**；**不参与**主/候选/风格判定，**不作为** `overallExplanation` 主依据。
+
+### 未完成 / 仍以其它文档为准
+
+- **`q13`–`q30` 尚未全部 `canonical`**（除 **`q25`** 外该段多为 **`draft`**）→ **不能**写「30 题全 canonical / 全量正式生产计分已结案」；见 **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**。
+- **P6.8** 为 **P6 线下一条业务切片**（聊天会话驱动画像补全建议），**不是**问卷画像 v3 已交付内容；**未**与 v3 只读 API 做自动联动；见 **`docs/P6/P6.8-conversation-profile-completion-round1.md`**。
+
+### 文档中不应写成的口径（与当前仓库不符）
+
+- matching / worker **已消费** v3 分支画像或 `displayPrimary` 参与决策。
+- `overallExplanation` **已接 LLM** 或由模型主写。
+- 问卷画像 v3 **已与 P6.8 自动联动**。
+- **30 题已全 `canonical`**。
+
 **P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9 + P6.10）**
 
 ### P6 当前进展
@@ -404,7 +432,7 @@ docker compose up -d --build api worker web
   - `POST /auth/register`
   - `POST /auth/login`
   - `GET /questionnaire/questions`
-  - `GET /questionnaire/profile/:userId`（**问卷画像 v3 只读**；**注意**：`QuestionnaireController` 上该路径 **未**声明 `JwtAuthGuard`，与 `POST /questionnaire/submit` 不同；前端惯例仍带 `Authorization`；无画像或无答卷时 **404**）
+  - `GET /questionnaire/profile/:userId`（**问卷画像 v3 只读**；**注意**：`QuestionnaireController` 上该路径 **未**声明 `JwtAuthGuard`，与 `POST /questionnaire/submit` 不同；前端惯例仍带 `Authorization`；**无 `UserProfile`** 等 **404**；无答卷行时仍可能 **200**，见 **`docs/P4/P4.3-questionnaire-profile-v3.md`** § 九）
 
 - 需要 JWT：
   - `GET /auth/me`
@@ -686,7 +714,7 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
 - `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**`q01`–`q12`+`q25` canonical**、**17** 条 `questionnaire.scorer.regression` 口径、controller 零改动说明与「**非**30 题全 `canonical` / 全量正式生产」边界
-- `docs/P4/P4.3-questionnaire-profile-v3.md`：**问卷画像 v3 只读** — 目标、运行逻辑、分支累计、dominant/uncertain、主/候选/风格、`displayPrimary`、风格 top3、`overallExplanation`、`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、二十轴 float 定位、边界（**不含** matching/worker 消费 v3、**不含** P6.8 联动实现）
+- `docs/P4/P4.3-questionnaire-profile-v3.md`：**问卷画像 v3 只读** — 目标、运行逻辑、分支累计、dominant/uncertain、主/候选/风格、`displayPrimary`、风格 top3、`overallExplanation`、`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、二十轴 float 定位、边界、**与 P6.8 一句关系**、附录代码入口与 Jest（**不含** matching/worker 消费 v3、**不含** P6.8 联动实现）
 
 **P5（治理与运营 — 已完成）**
 
