@@ -48,7 +48,7 @@ export type SubmitQuestionnairePayload = {
   answers: { questionKey: string; answerValue: string }[];
 };
 
-/** 与 API `UserProfile`（G1-R 问卷 v2）JSON 对齐：20 轴 + confidence；不含旧六维。 */
+/** 与 API `UserProfile`（G1-R v2 + 并存旧五维）JSON 对齐。 */
 export type QuestionnaireUserProfile = {
   id: string;
   userId: string;
@@ -73,6 +73,11 @@ export type QuestionnaireUserProfile = {
   childrenIntent: number | null;
   riskPreference: number | null;
   confidence: number | null;
+  socialEnergy: number | null;
+  relationshipPace: number | null;
+  initiativeLevel: number | null;
+  decisionOrientation: number | null;
+  conflictResponse: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -81,6 +86,57 @@ export type SubmitQuestionnaireResponse = {
   userId: string;
   answersSaved: number;
   profile: QuestionnaireUserProfile;
+};
+
+export type MatchedAxis = { axisId: number; branch: string };
+
+export type PersonalityLabelPrimary = {
+  id: string;
+  name: string;
+  ruleTokens: string[];
+  matchedAxes: MatchedAxis[];
+};
+
+export type PersonalityLabelCandidate = PersonalityLabelPrimary & {
+  matchRatio: number;
+  matchedCount: number;
+  requiredCount: number;
+};
+
+export type PersonalityStyleLabel = {
+  id: string;
+  name: string;
+  ruleTokens: string[];
+  matchedAxes: MatchedAxis[];
+};
+
+export type PersonalityLabelsResult = {
+  primary: PersonalityLabelPrimary | null;
+  candidates: PersonalityLabelCandidate[];
+  styleLabels: PersonalityStyleLabel[];
+};
+
+export type BranchMetricV3 = {
+  hits: number;
+  opportunities: number;
+  rate: number | null;
+  adjustedScore: number | null;
+};
+
+export type AxisBranchProfileV3Json = {
+  branches: Record<string, BranchMetricV3>;
+  dominantBranch: string | null;
+  uncertainBranches: string[];
+};
+
+/** GET /questionnaire/profile/:userId 完整载荷（v3 分支画像 + 标签）。 */
+export type QuestionnaireProfileResponse = {
+  profile: QuestionnaireUserProfile;
+  dimensionBranchProfiles: Record<string, AxisBranchProfileV3Json>;
+  byDimensionBranchScores: Record<string, Record<string, number>>;
+  dominantBranches: Record<string, string | null>;
+  uncertainBranchesByAxis: Record<string, string[]>;
+  labels: PersonalityLabelsResult;
 };
 
 export async function getQuestionnaireQuestions() {
@@ -100,4 +156,18 @@ export async function submitQuestionnaire(
     body: JSON.stringify(payload),
   });
   return handleJson<SubmitQuestionnaireResponse>(res);
+}
+
+/** GET /questionnaire/profile/:userId；无画像行时后端 404，此处返回 null。 */
+export async function getQuestionnaireProfile(
+  userId: string,
+): Promise<QuestionnaireProfileResponse | null> {
+  const res = await fetch(
+    `${baseUrl}/questionnaire/profile/${encodeURIComponent(userId)}`,
+    { headers: authHeaders() },
+  );
+  if (res.status === 404) {
+    return null;
+  }
+  return handleJson<QuestionnaireProfileResponse>(res);
 }
