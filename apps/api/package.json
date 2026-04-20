@@ -9,6 +9,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "test": "jest --config ./jest.config.cjs",
     "test:e2e": "jest --config ./jest-e2e.config.cjs --runInBand"
   },
   "dependencies": {
