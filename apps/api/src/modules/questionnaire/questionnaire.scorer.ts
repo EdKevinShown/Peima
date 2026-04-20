@@ -4,6 +4,8 @@ import {
   isQuestionProductionReady,
   QUESTIONS,
 } from "./data/questions";
+import type { DimensionBranchChatHintItem } from "./dimension-branch-chat-hints";
+import { mergeQuestionnaireHitsWithChatHintSupplements } from "./dimension-branch-chat-hints";
 
 export type AnswerInput = { questionKey: string; answerValue: string };
 
@@ -281,12 +283,21 @@ export type AxisBranchProfileV3 = {
 
 /**
  * 合并 hits、题库 opportunities、rate / adjustedScore，并按 v3 规则输出 dominant 或 uncertain。
+ *
+ * `chatHints`：仅在对问卷累计 hits 之后做**补充**加分，不修改 `questionnaire_answer` 或
+ * {@link collectBranchScoresFromAnswers} 的真源累计。
  */
 export function buildAxisBranchProfilesV3(
   answers: ReadonlyArray<AnswerInput>,
+  chatHints?: ReadonlyArray<DimensionBranchChatHintItem>,
 ): Record<number, AxisBranchProfileV3> {
-  const hits = collectBranchScoresFromAnswers(answers);
+  const questionnaireHits = collectBranchScoresFromAnswers(answers);
   const opps = computeBranchOpportunitiesFromQuestionBank();
+  const hits = mergeQuestionnaireHitsWithChatHintSupplements(
+    questionnaireHits,
+    chatHints,
+    opps,
+  );
   const out: Record<number, AxisBranchProfileV3> = {};
 
   for (let axis = 1; axis <= 20; axis += 1) {

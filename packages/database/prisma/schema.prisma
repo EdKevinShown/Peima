@@ -150,7 +150,29 @@ model UserProfile {
   initiativeLevel     Float?
   decisionOrientation Float?
   conflictResponse    Float?
+  /// G1-R 轴 1–20（与 `G1R_PROFILE_KEYS` / `scoreQuestionnaireG1r` 一致）；`emotionalExpression` 与 legacy 列复用。
+  attachmentStyle       Float?
+  communicationStyle    Float?
+  conflictHandling        Float?
+  loveLanguage            Float?
+  securityNeed            Float?
+  controlNeed             Float?
+  independence            Float?
+  loyaltyView             Float?
+  jealousyTendency        Float?
+  moneyAttitude           Float?
+  careerPriority          Float?
+  lifePace                Float?
+  socialNeed              Float?
+  emotionalStability      Float?
+  sexualValues            Float?
+  familyView              Float?
+  marriageExpectation     Float?
+  childrenIntent          Float?
+  riskPreference          Float?
   confidence          Float?
+  /// Accepted P6.8 chat-based dimension-branch hints (supplement to questionnaire layer1; not answer SOT).
+  dimensionBranchChatHints Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -297,6 +319,8 @@ model ProfileUpdateSuggestion {
   status        String @default("pending") // pending | accepted | dismissed
   sourceType    String
   sourceVersion String
+  /// Optional: chat conversation that produced this row (e.g. P6.8 duplicate guard).
+  sourceConversationId String?
   proposedPatch Json
   // P5: 运营与优先级字段
   priority      String @default("medium") // low | medium | high
@@ -312,6 +336,7 @@ model ProfileUpdateSuggestion {
   history SuggestionHistory[] // P5：历史记录关系
 
   @@index([userId, status])
+  @@index([userId, sourceConversationId, sourceVersion, status])
   @@index([status, priority])
   @@index([assignedToOperatorId])
   @@index([versionNumber])

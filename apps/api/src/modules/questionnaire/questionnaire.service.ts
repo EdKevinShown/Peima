@@ -12,6 +12,7 @@ import {
   QUESTIONNAIRE_VERSION,
 } from "./data/questions";
 import { SubmitQuestionnaireDto } from "./dto/submit-questionnaire.dto";
+import { parseDimensionBranchChatHintsFromUserProfileJson } from "./dimension-branch-chat-hints";
 import {
   buildAxisBranchProfilesV3,
   type AxisBranchProfileV3,
@@ -221,7 +222,10 @@ export class QuestionnaireService {
       answerValue: r.answerValue,
     }));
 
-    const layer1 = buildAxisBranchProfilesV3(answers);
+    const chatHints = parseDimensionBranchChatHintsFromUserProfileJson(
+      profile.dimensionBranchChatHints,
+    );
+    const layer1 = buildAxisBranchProfilesV3(answers, chatHints);
     const labels = matchPersonalityLabelsV3(layer1);
     const displayPrimary = resolveDisplayPrimary(labels);
     const uncertainBranchesByAxis = serializeUncertainBranches(layer1);

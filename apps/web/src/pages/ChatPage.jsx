@@ -5,6 +5,7 @@ import ConversationContextBar from "../components/common/ConversationContextBar"
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
+import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
 import {
@@ -17,14 +18,22 @@ import {
   generateConversationSummary,
   getConversation,
   getConversationSummary,
+  postProfileCompletionSuggestion,
+  ProfileCompletionSuggestionRequestError,
   sendMessage,
 } from "../api/chat";
 import { getSummaryAi } from "../api/summary-ai";
+
+/** P6.8 chat 生成落库的 sourceVersion（与后端一致）。 */
+const P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION =
+  "p6.8-profile-completion-chat-ai-v1";
 
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const { ensureConversationError, shouldHoldForConversationBootstrap } =
+    useEnsureConversationInUrl(searchParams);
 
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -59,9 +68,26 @@ export default function ChatPage() {
   const [suggestionActionBusy, setSuggestionActionBusy] = useState(false);
   const [suggestionActionError, setSuggestionActionError] = useState(null);
   const [suggestionActionResult, setSuggestionActionResult] = useState(null);
+  const [profileCompletionSuggestBusy, setProfileCompletionSuggestBusy] = useState(false);
+  const [profileCompletionSuggestOk, setProfileCompletionSuggestOk] = useState(null);
+  const [profileCompletionSuggestErr, setProfileCompletionSuggestErr] = useState(null);
 
   const load = useCallback(async (source = "manual") => {
     if (!conversationId) {
+      if (shouldHoldForConversationBootstrap) {
+        setError(null);
+        setConversation(null);
+        setLastRefreshedAt(null);
+        setRefreshSource("unknown");
+        return;
+      }
+      if (userId && ensureConversationError) {
+        setError(ensureConversationError);
+        setConversation(null);
+        setLastRefreshedAt(null);
+        setRefreshSource("unknown");
+        return;
+      }
       setError(new Error("缺少 conversationId。请先从聊天入口进入会话后再进行跨页查看。"));
       setConversation(null);
       setLastRefreshedAt(null);
@@ -81,7 +107,12 @@ export default function ChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [
+    conversationId,
+    userId,
+    ensureConversationError,
+    shouldHoldForConversationBootstrap,
+  ]);
 
   useEffect(() => {
     load("initial");
@@ -248,6 +279,49 @@ export default function ChatPage() {
     )[0];
   }, [profileSuggestions]);
 
+  const hasP6ChatPendingForThisConversation = useMemo(() => {
+    if (!conversationId) return false;
+    return (profileSuggestions ?? []).some(
+      (s) =>
+        s.status === "pending" &&
+        s.sourceVersion === P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION &&
+        s.sourceConversationId === conversationId,
+    );
+  }, [profileSuggestions, conversationId]);
+
+  const profileCompletionNoMessagesBlock = useMemo(() => {
+    if (!conversationId || !conversation) return false;
+    if (!Array.isArray(conversation.messages)) return false;
+    return conversation.messages.length === 0;
+  }, [conversationId, conversation]);
+
+  const profileCompletionButtonDisabled = useMemo(
+    () =>
+      !conversationId ||
+      profileCompletionSuggestBusy ||
+      hasP6ChatPendingForThisConversation ||
+      profileCompletionNoMessagesBlock,
+    [
+      conversationId,
+      profileCompletionSuggestBusy,
+      hasP6ChatPendingForThisConversation,
+      profileCompletionNoMessagesBlock,
+    ],
+  );
+
+  const profileCompletionContextLine = useMemo(() => {
+    if (!conversationId) return "需先进入会话";
+    if (profileCompletionSuggestBusy) return "正在生成画像建议";
+    if (hasP6ChatPendingForThisConversation) return "已有待处理建议，请先审阅";
+    if (profileCompletionNoMessagesBlock) return "建议先发送几条消息再试";
+    return null;
+  }, [
+    conversationId,
+    profileCompletionSuggestBusy,
+    hasP6ChatPendingForThisConversation,
+    profileCompletionNoMessagesBlock,
+  ]);
+
   const workflowSteps = useMemo(
     () => [
       {
@@ -357,6 +431,63 @@ export default function ChatPage() {
     [latestPendingSuggestion, suggestionActionBusy, loadProfileSuggestions],
   );
 
+  const onGenerateProfileCompletionSuggestion = useCallback(async () => {
+    if (
+      !conversationId ||
+      profileCompletionSuggestBusy ||
+      hasP6ChatPendingForThisConversation ||
+      profileCompletionNoMessagesBlock
+    ) {
+      return;
+    }
+    setProfileCompletionSuggestErr(null);
+    setProfileCompletionSuggestOk(null);
+    setProfileCompletionSuggestBusy(true);
+    try {
+      await postProfileCompletionSuggestion(conversationId);
+      await loadProfileSuggestions();
+      setProfileCompletionSuggestOk("已生成待审阅建议");
+      window.setTimeout(() => setProfileCompletionSuggestOk(null), 3200);
+    } catch (e) {
+      if (e instanceof ProfileCompletionSuggestionRequestError) {
+        switch (e.status) {
+          case 401:
+            setProfileCompletionSuggestErr("请先登录后再生成画像建议");
+            break;
+          case 403:
+            setProfileCompletionSuggestErr("你无权为这轮对话生成画像建议");
+            break;
+          case 409:
+            setProfileCompletionSuggestErr("本轮对话已有待处理建议，请先审阅");
+            break;
+          case 422:
+            setProfileCompletionSuggestErr("当前对话暂时无法生成有效画像建议");
+            break;
+          case 503:
+            setProfileCompletionSuggestErr("画像建议生成功能暂未启用");
+            break;
+          case 502:
+            setProfileCompletionSuggestErr("生成失败，请稍后重试");
+            break;
+          default:
+            setProfileCompletionSuggestErr(e.message || "请求失败，请稍后重试");
+        }
+      } else {
+        setProfileCompletionSuggestErr(
+          e instanceof Error ? e.message : "请求失败，请稍后重试",
+        );
+      }
+    } finally {
+      setProfileCompletionSuggestBusy(false);
+    }
+  }, [
+    conversationId,
+    profileCompletionSuggestBusy,
+    hasP6ChatPendingForThisConversation,
+    profileCompletionNoMessagesBlock,
+    loadProfileSuggestions,
+  ]);
+
   const copilotFullHref = useMemo(() => {
     if (!conversationId) return "/copilot";
     const q = new URLSearchParams();
@@ -399,6 +530,9 @@ export default function ChatPage() {
         refreshSource={refreshSource}
       />
 
+      {shouldHoldForConversationBootstrap && (
+        <LoadingState label="正在准备会话…" />
+      )}
       {loading && <LoadingState label="加载对话…" />}
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
@@ -599,6 +733,55 @@ export default function ChatPage() {
             <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.35rem" }}>
               处理最新画像建议（最小动作）
             </h3>
+            <p
+              style={{
+                margin: "0 0 0.35rem",
+                fontSize: "0.75rem",
+                color: "#666",
+              }}
+            >
+              生成的是待审阅的问卷维度分支建议，不是人格标签结论。
+            </p>
+            {profileCompletionContextLine ? (
+              <p
+                style={{
+                  margin: "0 0 0.4rem",
+                  fontSize: "0.75rem",
+                  color: "#7a4a00",
+                }}
+              >
+                {profileCompletionContextLine}
+              </p>
+            ) : null}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                flexWrap: "wrap",
+                marginBottom: "0.45rem",
+              }}
+            >
+              <button
+                type="button"
+                onClick={onGenerateProfileCompletionSuggestion}
+                disabled={profileCompletionButtonDisabled}
+              >
+                {profileCompletionSuggestBusy
+                  ? "生成中…"
+                  : "根据本轮对话生成画像建议"}
+              </button>
+              {profileCompletionSuggestOk ? (
+                <span style={{ color: "#0d6832", fontSize: "0.8rem" }}>
+                  {profileCompletionSuggestOk}
+                </span>
+              ) : null}
+              {profileCompletionSuggestErr ? (
+                <span style={{ color: "#b00020", fontSize: "0.8rem" }} role="alert">
+                  {profileCompletionSuggestErr}
+                </span>
+              ) : null}
+            </div>
             {latestPendingSuggestion ? (
               <>
                 <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "#555" }}>
