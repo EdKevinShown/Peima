@@ -21,8 +21,14 @@ import {
 } from "./questionnaire.scorer";
 import {
   matchPersonalityLabelsV3,
+  type DisplayPrimary,
   type PersonalityLabelsResult,
 } from "./questionnaire-personality-labels";
+import {
+  buildOverallExplanation,
+  resolveDisplayPrimary,
+  type OverallExplanation,
+} from "./questionnaire-overall-explanation";
 
 export type QuestionsPayload = {
   version: string;
@@ -49,6 +55,10 @@ export type QuestionnaireProfileView = {
   dominantBranches: Record<string, string | null>;
   uncertainBranchesByAxis: Record<string, string[]>;
   labels: PersonalityLabelsResult;
+  /** 展示用主标签（永不为空），与 labels.primary（强主）分离 */
+  displayPrimary: DisplayPrimary;
+  /** 规则拼装的整体解释（非 AI） */
+  overallExplanation: OverallExplanation;
 };
 
 function serializeLayer1(
@@ -213,14 +223,23 @@ export class QuestionnaireService {
 
     const layer1 = buildAxisBranchProfilesV3(answers);
     const labels = matchPersonalityLabelsV3(layer1);
+    const displayPrimary = resolveDisplayPrimary(labels);
+    const uncertainBranchesByAxis = serializeUncertainBranches(layer1);
+    const overallExplanation = buildOverallExplanation({
+      labels,
+      displayPrimary,
+      uncertainBranchesByAxis,
+    });
 
     return {
       profile,
       dimensionBranchProfiles: serializeLayer1(layer1),
       byDimensionBranchScores: serializeHitsOnly(layer1),
       dominantBranches: serializeDominantBranches(layer1),
-      uncertainBranchesByAxis: serializeUncertainBranches(layer1),
+      uncertainBranchesByAxis,
       labels,
+      displayPrimary,
+      overallExplanation,
     };
   }
 }

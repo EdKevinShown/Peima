@@ -1,6 +1,6 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、第一层分支累计 + 主/候选/风格标签（风格对外 ≤3）+ **`displayPrimary`（永非空）** + 规则化 **`overallExplanation`（title + paragraph，非 AI）**；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。
 
 ---
 
@@ -10,8 +10,8 @@
 |------|------|
 | **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）**、**三条独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**（聊天驱动画像补全建议，pending 闭环）、**P6.9**（P6.8 **唯一 POST** 上最小治理）与 **P6.10**（ChatPage 体验增强，**不**改后端治理），**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
-| **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分）、submit 写 **`user_profile` 20 G1-R + `confidence`**（旧六维已停写）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`q01`–`q12` 与 `q25` 已为 `canonical`**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** 固定 **17** 条用例与当前闸门一致。（摘要；**全文与六条核心口径**见下「权威说明」。） |
-| **问卷 / G1-R — 尚未完成** | **`q13`–`q30` 仍未全部 `canonical`**（除 **`q25`** 外该段其余题当前多为 **`draft`**）→ **不能**宣称「**30 题**全 `canonical` / 全量正式生产真源与计分已结案」；**`confidence`** 分母含全部 canonical 题，未升格题仍会稀释比例；v2 轴上仍可能因 **`draft`** 题无贡献而为 **`null`**。**worker / matching** 与 **20 维 G1-R** 全链路消费对齐**不在本 README 问卷线本轮扩写**（见快照「下一轮」）；全仓 **e2e** 若仍有旧题数假设需另任务跟进。 |
+| **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分）、submit 写 **`user_profile` 20 G1-R + `confidence`**（旧六维已停写）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`q01`–`q12` 与 `q25` 已为 `canonical`**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** 固定 **17** 条用例与当前闸门一致。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId` 返回第一层分支画像（hits / 按题 opportunities / rate / adjustedScore）、dominant / uncertain、**`labels`**（`primary` 可为 null / `candidates` / `styleLabels` 对外 ≤3）、**`displayPrimary`（永非空）**、**`overallExplanation`**（`title` + `paragraph`，规则拼装、非 AI）；Web **`/questionnaire-profile`**；二十轴 float 仍为 `user_profile` **次级**连续值，**不参与**标签与总体解释主依据。专篇 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。（摘要；**全文与六条核心口径**见下「权威说明」。） |
+| **问卷 / G1-R — 尚未完成** | **`q13`–`q30` 仍未全部 `canonical`**（除 **`q25`** 外该段其余题当前多为 **`draft`**）→ **不能**宣称「**30 题**全 `canonical` / 全量正式生产真源与计分已结案」；**`confidence`** 分母含全部 canonical 题，未升格题仍会稀释比例；v2 轴上仍可能因 **`draft`** 题无贡献而为 **`null`**。问卷画像 **v3 只读层**依赖已存答卷与上述闸门，**不**改变本行事实。**worker / matching** 与 **20 维 G1-R** 全链路消费对齐、**matching/worker 读取 v3 分支画像**等 **未**作为已交付能力写入本 README；**P6.8** 聊天驱动画像补全等 **仍属 P6 线**（见下文「P6.8」与 `docs/P6/`），**未**与问卷 v3 只读 API 自动联动。全仓 **e2e** 若仍有旧题数假设需另任务跟进。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.10** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
@@ -19,7 +19,7 @@
 | **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。 |
 | **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）；**P6.8**：聊天驱动画像补全建议（`POST .../profile-completion-suggestion`，pending → accept/dismiss）；**P6.9**：该 POST 上最小治理（消息门槛、pending 门禁、冷却）；**P6.10**：ChatPage 上该按钮的事前提示与 **400 / 409 / 429** 事后文案统一（**不**改后端规则）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
 
-**问卷 / G1-R（权威说明）**：`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md` — 含 **核心口径（六条）**、Batch 2-A / 2-B 状态、very short test record、下一轮待办及 **controller 为何零改动通过**；上表「已完成 / 尚未完成」两行为摘要。
+**问卷 / G1-R（权威说明）**：`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md` — 含 **核心口径（六条）**、Batch 2-A / 2-B 状态、very short test record、下一轮待办及 **controller 为何零改动通过**；**只读画像 v3** 见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**；上表「已完成 / 尚未完成」两行为摘要。
 
 **P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9 + P6.10）**
 
@@ -250,9 +250,9 @@ docker compose up -d --build api worker web
 
 | 路径 | 说明 |
 |------|------|
-| `apps/web` | 用户端：登录、问卷（**Batch 2-B**：题数随 `GET /questionnaire/questions`）、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口）；**P6.10**：ChatPage 上 P6.8/P6.9 相关按钮 UX hinting（仅前端，不改 API） |
+| `apps/web` | 用户端：登录、问卷（**Batch 2-B**：题数随 `GET /questionnaire/questions`）、**`/questionnaire-profile`（问卷画像 v3 只读）**、预览池、匹配状态/结果、聊天、**关系时间线**（`/chat/timeline`；`/final-match` 第二入口）；**P6.10**：ChatPage 上 P6.8/P6.9 相关按钮 UX hinting（仅前端，不改 API） |
 | `apps/admin` | 管理端占位（当前不强依赖） |
-| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成；chat 内 **P6.8** `POST .../profile-completion-suggestion`、**P6.9** 同路径治理（**P6.10** 无服务端增量，见 `apps/web` ChatPage） |
+| `apps/api` | NestJS：auth/users/preferences/images/preview-pool/questionnaire/matching/chat；questionnaire 含 **`GET /questionnaire/profile/:userId`（画像 v3 只读聚合）**；**P2**：feedback、profile-suggestion、behavior-signal、analytics、copilot（及 chat summary 持久化相关）；**P3**：chat 关系时间线 `GET .../timeline`（可选 `messageSkip` / `messageLimit`）；**P6**：copilot 模块 **P6.1～P6.4** 真实 LLM 路径；`summary-ai`、`match-explanation-ai`；matching 内 **P6.7** `primaryConclusion` 读路径生成；chat 内 **P6.8** `POST .../profile-completion-suggestion`、**P6.9** 同路径治理（**P6.10** 无服务端增量，见 `apps/web` ChatPage） |
 | `apps/worker` | 批处理：cron、batch-match、队列消费 |
 | `packages/database` | Prisma schema、迁移、PrismaClient |
 | `packages/shared` | 共享类型；**P1 起**含 `constants`（如 `P1_DISCLAIMER` 等）及 `dist/constants` 构建产物；**P2** 增量类型/常量（`P2SourceType`、反馈 subject、suggestion 状态等） |
@@ -266,7 +266,7 @@ docker compose up -d --build api worker web
 | `docs/P1` | **P1 状态、范围、架构增量、验证摘要**（见下文文档索引） |
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
-| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；**另含** **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**（G1-R 问卷 Batch 2 状态与测试记录；**`q01`–`q12`+`q25` canonical** 与 **17** 条 scorer 回归口径；**非**「30 题全 `canonical` / 全量正式生产」宣称）；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；**另含** **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**（G1-R 问卷 Batch 2 状态与测试记录；**`q01`–`q12`+`q25` canonical** 与 **17** 条 scorer 回归口径；**非**「30 题全 `canonical` / 全量正式生产」宣称）与 **`docs/P4/P4.3-questionnaire-profile-v3.md`**（问卷画像 v3 只读：分支累计、标签、`displayPrimary`、`overallExplanation`、API 与页面边界）；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
 
 ## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5 / P6 切片）
 
@@ -286,7 +286,7 @@ docker compose up -d --build api worker web
 │   │       └── modules/
 │   │           ├── auth/                        [P0] 注册登录、JWT
 │   │           ├── users/                       [P0] 用户与画像
-│   │           ├── questionnaire/               [P0] 问卷与评分；[Batch2] G1-R 30 题、`sourceTier`、v2 scorer 写 20 维+confidence（见 `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`）
+│   │           ├── questionnaire/               [P0] 问卷与评分；[Batch2] G1-R 30 题、`sourceTier`、v2 scorer 写 20 维+confidence（见 `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`）；[v3] `GET .../profile/:userId` 只读分支画像 + 标签 + 总体解释（见 `docs/P4/P4.3-questionnaire-profile-v3.md`）
 │   │           ├── images/                      [P0] 用户图片
 │   │           ├── preferences/                 [P0] 偏好
 │   │           ├── preview-pool/                [P0] 预览池；[P1] itemMeta
@@ -302,8 +302,8 @@ docker compose up -d --build api worker web
 │   │   └── src/
 │   │       ├── main.jsx / App.jsx               [P0]
 │   │       ├── router/index.jsx                 [P0] 路由
-│   │       ├── pages/                           [P0] Login / Questionnaire / … / Chat；[P2.5] CopilotPage；[P6.10] ChatPage 画像补全按钮 UX hinting
-│   │       ├── api/                             [P0] auth、questionnaire、previewPool、matching、chat；[P2] feedback、profile、copilot
+│   │       ├── pages/                           [P0] Login / Questionnaire / **QuestionnaireProfilePage**（`/questionnaire-profile`）/ … / Chat；[P2.5] CopilotPage；[P6.10] ChatPage 画像补全按钮 UX hinting
+│   │       ├── api/                             [P0] auth、questionnaire（含 `getQuestionnaireProfile`）、previewPool、matching、chat；[P2] feedback、profile、copilot
 │   │       ├── components/
 │   │       │   ├── common/LoadingState.jsx      [P0]
 │   │       │   ├── chat/ChatSummaryCard.jsx     [P2] 会话摘要展示
@@ -355,7 +355,8 @@ docker compose up -d --build api worker web
     ├── P3/
     │   └── P3-relationship-timeline.md          P3 关系时间线整阶段收口、联调备忘、验收与推送前清单
     ├── P4/
-    │   └── P4-productization-plan.md            P4 规划与收口参考（已完成 5 个最小切片）
+    │   ├── P4-productization-plan.md            P4 规划与收口参考（已完成 5 个最小切片）
+    │   └── P4.3-questionnaire-profile-v3.md     问卷画像 v3 只读：分支累计、标签、displayPrimary、overallExplanation、API 与页面
     ├── P5/
     │   └── P5-operations-and-history-plan.md    P5 总体规划与后续演进背景（当前仓库已有主要治理与运营能力落地）
     └── P6/
@@ -376,18 +377,20 @@ docker compose up -d --build api worker web
 
 1. `/login` 登录（注册/登录，保存 `peimaToken` 与 `peimaUserId`）
 2. `/questionnaire` 提交问卷（生成/更新用户画像；须答满**当前版本**全部题目，**现为 30**；画像写入为 **G1-R v2**，生产计分仅来自 **`canonical`** 题；**`q01`–`q12` 与 `q25` 已 canonical**，**`q13`–`q30` 仍未全部 canonical**，**`confidence`** 按全部 canonical 题数为分母，见上表「问卷 / G1-R」）
-3. 准备候选用户和图片数据（候选用户需有 images）
-4. `/preview-pool` 生成并展示 6 人预览池
-5. `/matching-waiting` 查看匹配状态
-6. worker 执行 `batch-match`（手动一次或 cron 触发）
-7. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片；**P6.7**：条件展示 `primaryConclusion` 主结论区块）
-8. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页；**P6.1～P6.4**：Copilot insights 可选真实 LLM，失败回退规则层；**P6.8** + **P6.9**：可选「根据本轮对话生成画像建议」→ 满足治理时 **pending** suggestion；**P6.10**：该按钮事前提示与 **400/409/429** 事后文案统一，**不**改后端治理）
+3. （可选）`/questionnaire-profile` 查看 **问卷画像 v3 只读**（须已有 `UserProfile` 与答卷；`?userId=` 或登录态与 `getQuestionnaireProfile` 一致；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**）
+4. 准备候选用户和图片数据（候选用户需有 images）
+5. `/preview-pool` 生成并展示 6 人预览池
+6. `/matching-waiting` 查看匹配状态
+7. worker 执行 `batch-match`（手动一次或 cron 触发）
+8. `/final-match` 查看最终匹配结果（**P1**：有 `matchInsights` 时展示洞察卡片；**P6.7**：条件展示 `primaryConclusion` 主结论区块）
+9. `/chat` 进入聊天并发送消息（**P1**：summary；**P2-MVP**：持久化摘要、Copilot、反馈与画像建议；**P2.5**：摘要手动生成、建议 accept/dismiss、跳转 Copilot 页；**P6.1～P6.4**：Copilot insights 可选真实 LLM，失败回退规则层；**P6.8** + **P6.9**：可选「根据本轮对话生成画像建议」→ 满足治理时 **pending** suggestion；**P6.10**：该按钮事前提示与 **400/409/429** 事后文案统一，**不**改后端治理）
 
 ## 关键页面
 
 - `/login`：注册/登录，token 与 userId 持久化
 - `/my-images`：为**当前登录用户**添加图片记录（粘贴可访问的 **HTTPS 图片直链**；需 JWT）；用于预览池「至少 6 名带图候选」数据准备
 - `/questionnaire`：**GET** 拉取当前版本题库（题数随版本变化，**现为 30**）；**POST** 须答满全部题目后提交；公开题面无 `tags`/`sourceTier`；**v2 画像**见上表「问卷 / G1-R」（**`q01`–`q12` 与 `q25` 已 canonical**；**30 题全 `canonical` 未完成**）
+- `/questionnaire-profile`：**问卷画像 v3 只读**；调用 `GET /questionnaire/profile/:userId`；展示分支累计、标签、`displayPrimary`、`overallExplanation`、次级二十轴 float（见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**）
 - `/preview-pool`：最新 6 人池（full / blurred / locked）；**P1**：条目可展示 `itemMeta` 占位文案
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
 - `/final-match`：最终结果与评分摘要；**P1**：洞察卡片（条件展示）；**P6.7**：`primaryConclusion` 主结论（形状合法时展示）
@@ -401,6 +404,7 @@ docker compose up -d --build api worker web
   - `POST /auth/register`
   - `POST /auth/login`
   - `GET /questionnaire/questions`
+  - `GET /questionnaire/profile/:userId`（**问卷画像 v3 只读**；**注意**：`QuestionnaireController` 上该路径 **未**声明 `JwtAuthGuard`，与 `POST /questionnaire/submit` 不同；前端惯例仍带 `Authorization`；无画像或无答卷时 **404**）
 
 - 需要 JWT：
   - `GET /auth/me`
@@ -436,6 +440,7 @@ docker compose up -d --build api worker web
 - `/login`：`POST /auth/register`、`POST /auth/login`、`GET /auth/me`
 - `/my-images`：`POST /images`、`GET /images/user/:userId`、`DELETE /images/:id`
 - `/questionnaire`：`GET /questionnaire/questions`、`POST /questionnaire/submit`
+- `/questionnaire-profile`：`GET /questionnaire/profile/:userId`（只读 v3 聚合）
 - `/preview-pool`：`POST /preview-pool/generate`、`GET /preview-pool/user/:userId/latest`
 - `/matching-waiting`：`GET /matching/status/:userId`
 - `/final-match`：`GET /matching/result/:userId`（**P6.7** `primaryConclusion`）、`POST /chat/conversations`（进聊天）
@@ -681,6 +686,7 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
 - `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**`q01`–`q12`+`q25` canonical**、**17** 条 `questionnaire.scorer.regression` 口径、controller 零改动说明与「**非**30 题全 `canonical` / 全量正式生产」边界
+- `docs/P4/P4.3-questionnaire-profile-v3.md`：**问卷画像 v3 只读** — 目标、运行逻辑、分支累计、dominant/uncertain、主/候选/风格、`displayPrimary`、风格 top3、`overallExplanation`、`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、二十轴 float 定位、边界（**不含** matching/worker 消费 v3、**不含** P6.8 联动实现）
 
 **P5（治理与运营 — 已完成）**
 

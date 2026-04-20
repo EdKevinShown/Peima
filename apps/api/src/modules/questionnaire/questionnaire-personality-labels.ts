@@ -31,6 +31,17 @@ export type PersonalityStyleLabel = {
   matchedAxes: MatchedAxis[];
 };
 
+/** 展示用主标签（永不为空）；与 labels.primary（强主，可为 null）分离。 */
+export type DisplayPrimarySource = "primary" | "candidate" | "fallback";
+
+export type DisplayPrimary = {
+  id: string;
+  name: string;
+  ruleTokens: string[];
+  matchedAxes: MatchedAxis[];
+  source: DisplayPrimarySource;
+};
+
 export type PersonalityLabelsResult = {
   primary: PersonalityPrimary | null;
   candidates: PersonalityCandidate[];
@@ -118,13 +129,18 @@ function ruleWeakStats(
 function collectStyleLabels(
   layer1: Record<number, AxisBranchProfileV3>,
 ): PersonalityStyleLabel[] {
-  const out: PersonalityStyleLabel[] = [];
   const minAdj = QUESTIONNAIRE_BRANCH_PROFILE_V3.STYLE_MIN_ADJUSTED_SCORE;
+  const acc: {
+    label: PersonalityStyleLabel;
+    ruleIndex: number;
+    strongConditions: number;
+  }[] = [];
 
-  for (const rule of PERSONALITY_STYLE_LABEL_RULES) {
+  PERSONALITY_STYLE_LABEL_RULES.forEach((rule, ruleIndex) => {
     const conditions = parseRuleConditions(rule.tokens);
-    if (conditions.length === 0) continue;
+    if (conditions.length === 0) return;
     let ok = true;
+    let strongConditions = 0;
     for (const c of conditions) {
       const p = profileForAxis(layer1, c.axisId);
       if (!p) {
@@ -139,21 +155,39 @@ function collectStyleLabels(
         p.dominantBranch === c.branch;
       const highAdj =
         adj != null && adj >= minAdj && p.uncertainBranches.length === 0;
+      if (strongDom) strongConditions += 1;
       if (!strongDom && !highAdj) {
         ok = false;
         break;
       }
     }
     if (ok) {
-      out.push({
-        id: rule.id,
-        name: rule.name,
-        ruleTokens: [...rule.tokens],
-        matchedAxes: matchedAxesForRule(conditions),
+      acc.push({
+        label: {
+          id: rule.id,
+          name: rule.name,
+          ruleTokens: [...rule.tokens],
+          matchedAxes: matchedAxesForRule(conditions),
+        },
+        ruleIndex,
+        strongConditions,
       });
     }
-  }
-  return out;
+  });
+
+  acc.sort((a, b) => {
+    if (b.strongConditions !== a.strongConditions) {
+      return b.strongConditions - a.strongConditions;
+    }
+    if (b.label.ruleTokens.length !== a.label.ruleTokens.length) {
+      return b.label.ruleTokens.length - a.label.ruleTokens.length;
+    }
+    return a.ruleIndex - b.ruleIndex;
+  });
+
+  return acc
+    .slice(0, QUESTIONNAIRE_LABEL_MATCH_V3.MAX_STYLE_LABELS)
+    .map((x) => x.label);
 }
 
 export function matchPersonalityLabelsV3(

@@ -69,7 +69,7 @@ function fmtRatio(r) {
   return `${(r * 100).toFixed(0)}%`;
 }
 
-function buildMatchedAxisHighlightSet(labels) {
+function buildMatchedAxisHighlightSet(labels, displayPrimary) {
   const s = new Set();
   if (!labels) return s;
   const add = (axes) => {
@@ -79,6 +79,7 @@ function buildMatchedAxisHighlightSet(labels) {
     }
   };
   add(labels.primary?.matchedAxes);
+  add(displayPrimary?.matchedAxes);
   for (const c of labels.candidates ?? []) {
     add(c.matchedAxes);
   }
@@ -131,7 +132,11 @@ export default function QuestionnaireProfilePage() {
   }, [load]);
 
   const highlightSet = useMemo(
-    () => buildMatchedAxisHighlightSet(payload?.labels),
+    () =>
+      buildMatchedAxisHighlightSet(
+        payload?.labels,
+        payload?.displayPrimary,
+      ),
     [payload],
   );
 
@@ -139,6 +144,8 @@ export default function QuestionnaireProfilePage() {
   const dimProfiles = payload?.dimensionBranchProfiles ?? null;
   const uncertainByAxis = payload?.uncertainBranchesByAxis ?? null;
   const labels = payload?.labels ?? null;
+  const displayPrimary = payload?.displayPrimary ?? null;
+  const overallExplanation = payload?.overallExplanation ?? null;
 
   const emptyNoRow = userId && !loading && !error && payload === null;
 
@@ -147,8 +154,8 @@ export default function QuestionnaireProfilePage() {
       <h1 style={{ fontSize: "1.25rem" }}>问卷画像（G1-R · v3）</h1>
       <p style={{ color: "#666", fontSize: "0.88rem", marginBottom: "0.75rem" }}>
         只读 <code>GET /questionnaire/profile/:userId</code>。主区为<strong>分支累计（公平机会）</strong>与
-        <strong>主标签 / 候选 / 风格</strong>；二十轴 float 在文末折叠区，仅作连续强度展示，
-        <strong>不参与任何标签判定</strong>。
+        <strong>主标签 / 候选 / 风格</strong>；顶部「整体解释」由后端规则拼装；二十轴 float 在文末折叠区，仅作连续强度展示，
+        <strong>不参与任何标签判定</strong>，<strong>也不作为整体解释主依据</strong>。
       </p>
       <p style={{ marginBottom: "1rem" }}>
         <Link to="/">首页</Link>
@@ -184,6 +191,33 @@ export default function QuestionnaireProfilePage() {
 
       {userId && !loading && !error && profile && payload ? (
         <>
+          {overallExplanation ? (
+            <section
+              style={{
+                marginTop: "1rem",
+                border: "1px solid #c5e1f5",
+                borderRadius: 8,
+                padding: "0.85rem 1rem",
+                background: "#f7fbff",
+              }}
+            >
+              <h2 style={{ fontSize: "1.02rem", margin: "0 0 0.45rem" }}>整体解释</h2>
+              <p style={{ margin: "0 0 0.5rem", fontSize: "1rem", fontWeight: 700 }}>
+                {overallExplanation.title}
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.92rem",
+                  lineHeight: 1.55,
+                  color: "#333",
+                }}
+              >
+                {overallExplanation.paragraph}
+              </p>
+            </section>
+          ) : null}
+
           <section style={{ marginTop: "1rem" }}>
             <h2 style={{ fontSize: "1.02rem", margin: "0 0 0.5rem" }}>置信度</h2>
             <p style={{ margin: 0, fontSize: "0.95rem" }}>
@@ -203,20 +237,48 @@ export default function QuestionnaireProfilePage() {
                 fontSize: "0.9rem",
               }}
             >
-              <p style={{ margin: "0 0 0.5rem" }}>
-                <strong>主标签</strong> <code>labels.primary</code>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>展示主标签</strong>{" "}
+                {displayPrimary ? (
+                  <>
+                    <strong>{displayPrimary.name}</strong>{" "}
+                    <span style={{ color: "#666" }}>
+                      ({displayPrimary.id} ·{" "}
+                      {displayPrimary.source === "primary"
+                        ? "强主"
+                        : displayPrimary.source === "candidate"
+                          ? "由候选归纳"
+                          : "兜底"}
+                      )
+                    </span>
+                  </>
+                ) : null}
+              </p>
+              {displayPrimary?.matchedAxes?.length ? (
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.85rem", color: "#555" }}>
+                  展示依据维度分支：
+                  {displayPrimary.matchedAxes.map((m) => (
+                    <code key={`dp-${m.axisId}-${m.branch}`} style={{ marginLeft: 6 }}>
+                      {m.axisId}
+                      {m.branch}
+                    </code>
+                  ))}
+                </p>
+              ) : null}
+              <p style={{ margin: "0.45rem 0 0.35rem", fontSize: "0.85rem", color: "#555" }}>
+                <strong>强主标签</strong> <code>labels.primary</code>
                 {labels?.primary ? (
                   <>
                     ：<strong>{labels.primary.name}</strong>{" "}
                     <span style={{ color: "#666" }}>({labels.primary.id})</span>
                   </>
                 ) : (
-                  <span style={{ color: "#666" }}>：暂无强命中（需各维高确定性 dominant 全匹配）</span>
+                  <span style={{ color: "#666" }}>：暂无（需各维高确定性 dominant 全匹配）</span>
                 )}
               </p>
               {labels?.primary?.matchedAxes?.length ? (
                 <p style={{ margin: "0 0 0.35rem", fontSize: "0.85rem", color: "#555" }}>
-                  依据维度分支：
+                  强主依据维度分支：
                   {labels.primary.matchedAxes.map((m) => (
                     <code key={`${m.axisId}-${m.branch}`} style={{ marginLeft: 6 }}>
                       {m.axisId}
@@ -261,7 +323,7 @@ export default function QuestionnaireProfilePage() {
               </p>
               {!labels?.styleLabels?.length ? (
                 <p style={{ margin: 0, color: "#666" }}>
-                  暂无（风格规则表与核心规则同源扩充；当前仅六条核心规则时为空）
+                  暂无（当前画像未命中风格规则表中的侧写组合）
                 </p>
               ) : (
                 <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
@@ -490,7 +552,8 @@ export default function QuestionnaireProfilePage() {
             </summary>
             <p style={{ color: "#888", fontSize: "0.82rem", margin: "0.5rem 0" }}>
               下列数值来自 <code>user_profile</code> 聚合结果，仅作连续强度参考，
-              <strong>不参与主标签、候选标签、风格标签的判定</strong>。
+              <strong>不参与主标签、候选标签、风格标签的判定</strong>，
+              <strong>也不作为页面顶部整体解释的主依据</strong>。
             </p>
             <ul
               style={{

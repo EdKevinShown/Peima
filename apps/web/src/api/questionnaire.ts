@@ -116,6 +116,21 @@ export type PersonalityLabelsResult = {
   styleLabels: PersonalityStyleLabel[];
 };
 
+export type DisplayPrimarySource = "primary" | "candidate" | "fallback";
+
+export type QuestionnaireDisplayPrimary = {
+  id: string;
+  name: string;
+  ruleTokens: string[];
+  matchedAxes: MatchedAxis[];
+  source: DisplayPrimarySource;
+};
+
+export type QuestionnaireOverallExplanation = {
+  title: string;
+  paragraph: string;
+};
+
 export type BranchMetricV3 = {
   hits: number;
   opportunities: number;
@@ -137,6 +152,8 @@ export type QuestionnaireProfileResponse = {
   dominantBranches: Record<string, string | null>;
   uncertainBranchesByAxis: Record<string, string[]>;
   labels: PersonalityLabelsResult;
+  displayPrimary: QuestionnaireDisplayPrimary;
+  overallExplanation: QuestionnaireOverallExplanation;
 };
 
 export async function getQuestionnaireQuestions() {
