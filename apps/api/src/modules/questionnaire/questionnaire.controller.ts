@@ -8,9 +8,9 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import type { UserProfile } from "@peima/database";
 import { SubmitQuestionnaireDto } from "./dto/submit-questionnaire.dto";
 import type {
+  QuestionnaireProfileView,
   QuestionsPayload,
   SubmitQuestionnaireResult,
 } from "./questionnaire.service";
@@ -44,7 +44,9 @@ export class QuestionnaireController {
   }
 
   @Get("profile/:userId")
-  getProfile(@Param("userId") userId: string): Promise<UserProfile> {
+  getProfile(
+    @Param("userId") userId: string,
+  ): Promise<QuestionnaireProfileView> {
     return this.questionnaireService.getProfileForUser(userId);
   }
 }
