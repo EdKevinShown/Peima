@@ -3,6 +3,7 @@ import FinalMatchPage from "../pages/FinalMatchPage";
 import MatchingWaitingPage from "../pages/MatchingWaitingPage";
 import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
+import QuestionnaireProfilePage from "../pages/QuestionnaireProfilePage";
 import ChatPage from "../pages/ChatPage";
 import CopilotPage from "../pages/CopilotPage";
 import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
@@ -43,6 +44,10 @@ function HomePage() {
         <li>
           <Link to="/questionnaire">/questionnaire</Link>
           <span style={{ color: "#666" }}> 问卷</span>
+        </li>
+        <li>
+          <Link to="/questionnaire-profile">/questionnaire-profile</Link>
+          <span style={{ color: "#666" }}> 问卷画像</span>
         </li>
         <li>
           <Link to="/preview-pool">/preview-pool</Link>
@@ -89,6 +94,7 @@ export default function AppRoutes() {
       <Route path="/final-match" element={<FinalMatchPage />} />
       <Route path="/preview-pool" element={<PreviewPoolPage />} />
       <Route path="/questionnaire" element={<QuestionnairePage />} />
+      <Route path="/questionnaire-profile" element={<QuestionnaireProfilePage />} />
       <Route path="/chat/timeline" element={<RelationshipTimelinePage />} />
       <Route path="/chat" element={<ChatPage />} />
       <Route path="/copilot" element={<CopilotPage />} />
