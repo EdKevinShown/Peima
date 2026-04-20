@@ -4,11 +4,16 @@
 
 ---
 
-## 当前项目状态（截至 P5 治理与运营收口；P6 含 Copilot 线、独立 AI 结果层切片、P6.8 聊天画像补全、P6.9 该链路治理与 P6.10 ChatPage UX hinting 已落地）
+## 当前项目状态（截至 P6.8 / P6.10 收口与主链联调验证）
+
+> 与 **`docs/P6/P6.8-P6.10-phase-closure-handoff.md`** 对齐的本轮工程事实摘要；P6 其它切片与专文仍以 **`docs/P6/`** 为准。本节「已验证」口径**侧重** **P6.8、P6.10、会话 URL 自愈、final match 规则/占位主链**；**P6.9** 仅 **`docs/P6/P6.9-*`** 专文描述，**不**并入本轮 README 完成态。
 
 | 维度 | 说明 |
 |------|------|
-| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**（RBAC、建议中心、审计日志、通知中心、分析仪表板）；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 已交付 **Copilot 模型化与运行收口（P6.1～P6.4）**、**三条独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**（聊天驱动画像补全建议，pending 闭环）、**P6.9**（P6.8 **唯一 POST** 上最小治理）与 **P6.10**（ChatPage 体验增强，**不**改后端治理），**不是**统一 Agent / multi-agent / simulation 主链（详见下文「P6」）；**当前阶段重点是收口，不是扩功能**；Worker 全自动大模型编排、多 Agent simulation 一体化、主匹配决策层直接模型替换等仍不在当前已交付范围。 |
+| **核心口径** | P0 稳定；P1 结构化占位已完成；**P2-MVP 最小闭环已落地**；**P2.5 补完项已合入**；**P3 关系时间线已收口**（P3-1/2/3，**仅该切片**）；**P5 治理与运营已完整交付并完成一轮 code review 修复**；**P4（产品化补完）已完成 5 个最小切片并进入阶段收口**；**P6** 仓库内已含 **Copilot 模型化（P6.1～P6.4）**、**独立 AI 结果层切片（P6.5～P6.7）**、**P6.8**、**P6.10** 等实现；整体**仍非**统一 Agent / multi-agent / simulation 产品主链。**P6.9** 见专文，**本轮 README 不以「已收口」口径纳入**。 |
+| **P0 主链（匹配结果层；当前为规则 / 占位）** | **`preview-pool` → `POST /matching/enqueue` → 执行一轮 `batch-match` → `GET /matching/result/:userId`（Final Match 页）** 已在本地跑通；**worker 侧打分与 `matchInsights` 等仍为规则层与占位实现**，**不是**「最终 AI 模拟匹配」交付形态。 |
+| **P6.8 / P6.10 / 会话入口（已本地验证）** | **P6.8**：ChatPage 可生成建议，进入 **`profile-suggestions`（mine / accept / dismiss）**；**accept** 作为 **layer1 / 维度类补充信号** 写入聚合路径；**dismiss** 不写画像；不以单次聊天强改主标签为产品目标。**P6.10**：生成按钮具备最小禁用态与说明；已有 **pending** 时禁用；前后端提示与 **`docs/P6/P6.8-*`、`P6.10-*`** 及当前实现一致。**会话 URL**：`/chat`、`/copilot`、`/chat/timeline` 在仅有 **`userId`**（query 或 `localStorage.peimaUserId`）时可 **`createConversation` + `replace` 补全 `conversationId`**；三页互跳保持同一会话参数（`apps/web/src/hooks/useEnsureConversationInUrl.js`）。 |
+| **profile-suggestions 可读性** | **`GET /profile-suggestions/mine`** 与 Chat「画像更新建议」依赖 **`profile_update_suggestions` 与当前 Prisma schema / migrations 对齐**；库未迁移到最新时列表仍可能失败（见下「本地联调注意」）。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
 | **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分）、submit 写 **`user_profile` 20 G1-R + `confidence`**（旧六维已停写）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`q01`–`q12` 与 `q25` 已为 `canonical`**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** 固定 **17** 条用例与当前闸门一致。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId` 返回第一层分支画像（hits / 按题 opportunities / rate / adjustedScore）、dominant / uncertain、**`labels`**（`primary` 可为 null / `candidates` / `styleLabels` 对外 ≤3）、**`displayPrimary`（永非空）**、**`overallExplanation`**（`title` + `paragraph`，规则拼装、非 AI）；Web **`/questionnaire-profile`**；二十轴 float 仍为 `user_profile` **次级**连续值，**不参与**标签与总体解释主依据。专篇 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。（摘要；**全文与六条核心口径**见下「权威说明」。） |
 | **问卷 / G1-R — 尚未完成** | **`q13`–`q30` 仍未全部 `canonical`**（除 **`q25`** 外该段其余题当前多为 **`draft`**）→ **不能**宣称「**30 题**全 `canonical` / 全量正式生产真源与计分已结案」；**`confidence`** 分母含全部 canonical 题，未升格题仍会稀释比例；v2 轴上仍可能因 **`draft`** 题无贡献而为 **`null`**。问卷画像 **v3 只读层**依赖已存答卷与上述闸门，**不**改变本行事实。**worker / matching** 与 **20 维 G1-R** 全链路消费对齐、**matching/worker 读取 v3 分支画像**等 **未**作为已交付能力写入本 README；**P6.8** 聊天驱动画像补全等 **仍属 P6 线**（见下文「P6.8」与 `docs/P6/`），**未**与问卷 v3 只读 API 自动联动。全仓 **e2e** 若仍有旧题数假设需另任务跟进。 |
@@ -17,7 +22,16 @@
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.10** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
 | **P3（已完成）** | **关系时间线（唯一含义）**：单会话只读时间线 API + `/chat/timeline` + FinalMatch 第二入口 + 消息分页；**不**含 Analytics 深化、Worker 自动生成、建议中心后台等（见「当前限制 / 后续方向」）。验收、联调备忘、限制、推送前清单见 **`docs/P3/P3-relationship-timeline.md`**；**不**新增时间线专用表、**不**改 P0 聊天契约。 |
 | **P5（已完成）** | **治理与运营完整交付**：轻量 RBAC（`UserRole` + `Permission` 矩阵）、建议中心聚合查询 API、Admin 建议中心、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、WebSocket/REST 通知中心、Admin 分析仪表板，以及 code review 后的 history / audit / notification / export 修复。详见 **`docs/P5/`** 与仓库当前实现。 |
-| **P6（已落地）** | **Copilot 线（P6.1～P6.4）**：真实 LLM 只读 Copilot、运行手册、验收与稳定性收口；**结果层切片（P6.5～P6.7）**：会话摘要 AI、匹配解释 AI、最终匹配主结论（读路径 `primaryConclusion`）；**P6.8**：聊天驱动画像补全建议（`POST .../profile-completion-suggestion`，pending → accept/dismiss）；**P6.9**：该 POST 上最小治理（消息门槛、pending 门禁、冷却）；**P6.10**：ChatPage 上该按钮的事前提示与 **400 / 409 / 429** 事后文案统一（**不**改后端规则）。均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
+| **P6（已落地）** | **Copilot 线（P6.1～P6.4）**；**结果层切片（P6.5～P6.7）**；**P6.8 / P6.10** 见上表「P6.8 / P6.10 / 会话入口」行；**P6.9** 见 **`docs/P6/P6.9-*`**（**本轮 README 完成态不并列**）；均**非**统一 Agent 主链；详见下文「P6」与 **`docs/P6/`**。 |
+
+### 本地联调注意
+
+- **`conversationId`**：聊天 / Copilot / 时间线依赖 URL 中的 **`conversationId`**；仅有 **`userId`** 时由前端 **`useEnsureConversationInUrl`** 调用 **`createConversation`** 并以 **`replace` 写回 `conversationId` 与 `userId`**。无 **`userId`** 时无法自动补会话；**`createConversation`** 仍须满足既有后端条件（例如存在最新 **`match_result`**）。  
+- **matching / batch-match**：**`POST /matching/enqueue`** 要求已存在 **`user_profile`**（问卷已落库）；**batch-match** 消费 **`batch_match_queue` 中 `waiting`** 的条目，并依赖 viewer 的 **active 预览池** 与候选数据。触发一轮批处理时，**以当前仓库实际可跑通的路径为准**：优先在 **API 已用同一 `.env` 起服务** 的前提下，使用带 JWT 的 **`POST /admin/batch-match/run-once`** 或 **`POST /test/matching/run-batch-once`**（需满足 **`PEIMA_ADMIN_USER_IDS`**、**`PEIMA_TEST_MATCH_*`** 等环境变量与禁用开关，实现见 **`apps/api/src/modules/admin/`**、**`apps/api/src/modules/test/`** 与 **`AdminService.runBatchMatchSubprocess`**）。本地若需脱离 API 直接跑 worker，请对照 **`apps/worker/package.json`** 的 **`scripts`** 与 **`apps/worker/src/main.ts`** 对 **`--batch-match`** / **`--daily-match`** 的入口，自行选择 **`build` 后 `node dist/...`** 或 **`tsx src/...`** 等**你本机已验证**的命令，并保证 **`DATABASE_URL`** 与 API 一致；**勿**假定某一条 `pnpm filter` 命令在所有环境下默认可用。  
+- **profile-suggestions / migration**：新库或 reset 后须应用 **`packages/database/prisma/migrations`**；在 **`packages/database`** 目录下加载根目录 **`.env`** 执行：  
+  `pnpm exec dotenv -e ../../.env -- prisma migrate deploy --schema=./prisma/schema.prisma`  
+  （须已 **`pnpm install`**，以便从该包解析 **`prisma`** CLI。）  
+- **常用启动**：根目录 **`pnpm dev:api`**、**`pnpm dev:web`**；Monorepo **`prepare`** 会执行 **`pnpm --filter @peima/database run db:generate`**。前端 **`VITE_API_BASE_URL`** 须指向 **API** 监听地址，勿指向 Vite dev 自身端口（详见 **`docs/P3/P3-relationship-timeline.md`** 等既有说明）。
 
 **问卷 / G1-R（权威说明）**：`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md` — 含 **核心口径（六条）**、Batch 2-A / 2-B 状态、very short test record、下一轮待办及 **controller 为何零改动通过**；**只读画像 v3** 见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**；上表「已完成 / 尚未完成」两行为摘要。
 
