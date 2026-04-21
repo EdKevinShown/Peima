@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from "@nestjs/common";
-import type { Prisma, ProfileUpdateSuggestion } from "@peima/database";
+import { Prisma, type ProfileUpdateSuggestion } from "@peima/database";
 import { P2SourceType, P2SuggestionStatus } from "@peima/shared/constants";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { DimensionBranchChatHintItem } from "../questionnaire/dimension-branch-chat-hints";
@@ -20,6 +20,7 @@ import {
   isDimensionBranchHintsAcceptPayload,
   parseP6DimensionBranchHintsProposedPatch,
 } from "./parse-p6-dimension-branch-hints-patch";
+import { buildP6ChatProfileCompletionReviewSummary } from "./build-p6-chat-review-summary";
 import { ProfileSuggestionRepository } from "./profile-suggestion.repository";
 
 const MINE_MAX_ROWS = 100;
@@ -36,6 +37,38 @@ export class ProfileSuggestionService {
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
+  }
+
+  /**
+   * P6.8: fail fast when a pending row already exists (same message as createP6 guard).
+   */
+  async throwIfPendingP6ChatProfileCompletionExists(
+    tokenUserId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const dup = await this.repo.findPendingP6ChatProfileCompletionForConversation({
+      userId: tokenUserId,
+      sourceConversationId: conversationId,
+      sourceVersion: P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION,
+      sourceType: P2SourceType.Hybrid,
+    });
+    if (dup) {
+      throw new ConflictException(
+        "A pending P6.8 profile-completion suggestion already exists for this conversation",
+      );
+    }
+  }
+
+  findLatestP6ChatProfileCompletionForConversation(
+    tokenUserId: string,
+    conversationId: string,
+  ): Promise<ProfileUpdateSuggestion | null> {
+    return this.repo.findLatestP6ChatProfileCompletionForConversation({
+      userId: tokenUserId,
+      sourceConversationId: conversationId,
+      sourceVersion: P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION,
+      sourceType: P2SourceType.Hybrid,
+    });
   }
 
   async create(dto: CreateProfileSuggestionDto, tokenUserId: string) {
@@ -62,20 +95,16 @@ export class ProfileSuggestionService {
     tokenUserId: string;
     conversationId: string;
     hintItems: ReadonlyArray<DimensionBranchChatHintItem>;
+    generatedUpToMessageId: string;
   }): Promise<ProfileUpdateSuggestion> {
-    const { tokenUserId, conversationId, hintItems } = params;
+    const { tokenUserId, conversationId, hintItems, generatedUpToMessageId } =
+      params;
     await this.ensureUserExists(tokenUserId);
 
-    const dup = await this.repo.findPendingP6ChatProfileCompletionForConversation({
-      userId: tokenUserId,
-      sourceConversationId: conversationId,
-      sourceVersion: P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION,
-    });
-    if (dup) {
-      throw new ConflictException(
-        "A pending P6.8 profile-completion suggestion already exists for this conversation",
-      );
-    }
+    await this.throwIfPendingP6ChatProfileCompletionExists(
+      tokenUserId,
+      conversationId,
+    );
 
     const proposedPatch: Prisma.InputJsonValue = {
       kind: P6_8_DIMENSION_BRANCH_HINTS_PATCH_KIND,
@@ -83,15 +112,33 @@ export class ProfileSuggestionService {
       items: [...hintItems],
     };
 
-    return this.repo.create({
-      userId: tokenUserId,
-      status: P2SuggestionStatus.Pending,
-      // P6.8 chat 生成：复用 hybrid；与 Copilot/其它来源靠 sourceVersion + sourceConversationId 区分。
-      sourceType: P2SourceType.Hybrid,
-      sourceVersion: P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION,
-      proposedPatch,
-      sourceConversationId: conversationId,
-    });
+    const reviewSummary = buildP6ChatProfileCompletionReviewSummary(
+      hintItems,
+    ) as Prisma.InputJsonValue;
+
+    try {
+      return await this.repo.create({
+        userId: tokenUserId,
+        status: P2SuggestionStatus.Pending,
+        // P6.8 chat 生成：复用 hybrid；与 Copilot/其它来源靠 sourceVersion + sourceConversationId 区分。
+        sourceType: P2SourceType.Hybrid,
+        sourceVersion: P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION,
+        proposedPatch,
+        reviewSummary,
+        sourceConversationId: conversationId,
+        generatedUpToMessageId,
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        throw new ConflictException(
+          "A pending P6.8 profile-completion suggestion already exists for this conversation",
+        );
+      }
+      throw e;
+    }
   }
 
   listMine(tokenUserId: string) {

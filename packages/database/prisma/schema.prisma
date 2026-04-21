@@ -321,6 +321,10 @@ model ProfileUpdateSuggestion {
   sourceVersion String
   /// Optional: chat conversation that produced this row (e.g. P6.8 duplicate guard).
   sourceConversationId String?
+  /// P6.8: latest `messages.id` in the conversation at generation time (cursor for R1 / traceability).
+  generatedUpToMessageId String?
+  /// P6.8 chat: human-readable review payload derived from the same hint items as `proposedPatch` (optional on legacy rows).
+  reviewSummary Json?
   proposedPatch Json
   // P5: 运营与优先级字段
   priority      String @default("medium") // low | medium | high

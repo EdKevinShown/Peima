@@ -13,21 +13,42 @@ export class ProfileSuggestionRepository {
     sourceType: string;
     sourceVersion: string;
     proposedPatch: Prisma.InputJsonValue;
+    reviewSummary?: Prisma.InputJsonValue;
     sourceConversationId?: string | null;
+    generatedUpToMessageId?: string | null;
   }): Promise<ProfileUpdateSuggestion> {
     return this.prisma.profileUpdateSuggestion.create({ data });
   }
 
-  findPendingP6ChatProfileCompletionForConversation(params: {
+  findLatestP6ChatProfileCompletionForConversation(params: {
     userId: string;
     sourceConversationId: string;
     sourceVersion: string;
+    sourceType: string;
   }): Promise<ProfileUpdateSuggestion | null> {
     return this.prisma.profileUpdateSuggestion.findFirst({
       where: {
         userId: params.userId,
         sourceConversationId: params.sourceConversationId,
         sourceVersion: params.sourceVersion,
+        sourceType: params.sourceType,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  findPendingP6ChatProfileCompletionForConversation(params: {
+    userId: string;
+    sourceConversationId: string;
+    sourceVersion: string;
+    sourceType: string;
+  }): Promise<ProfileUpdateSuggestion | null> {
+    return this.prisma.profileUpdateSuggestion.findFirst({
+      where: {
+        userId: params.userId,
+        sourceConversationId: params.sourceConversationId,
+        sourceVersion: params.sourceVersion,
+        sourceType: params.sourceType,
         status: P2SuggestionStatus.Pending,
       },
     });

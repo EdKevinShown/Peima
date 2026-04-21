@@ -7,6 +7,8 @@ export type ProfileSuggestionRow = {
   status: string;
   sourceType: string;
   sourceVersion: string;
+  sourceConversationId?: string | null;
+  reviewSummary?: unknown | null;
   proposedPatch: unknown;
   createdAt: string;
   updatedAt: string;

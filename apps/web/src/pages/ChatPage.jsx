@@ -5,6 +5,10 @@ import ConversationContextBar from "../components/common/ConversationContextBar"
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
+import P6ReviewSummary, {
+  normalizeP6ReviewSummary,
+  P6ProposedPatchDetails,
+} from "../components/profile/P6ReviewSummary.jsx";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
@@ -288,6 +292,23 @@ export default function ChatPage() {
         s.sourceConversationId === conversationId,
     );
   }, [profileSuggestions, conversationId]);
+
+  const pendingP6ForThisConversation = useMemo(() => {
+    if (!conversationId) return null;
+    return (
+      (profileSuggestions ?? []).find(
+        (s) =>
+          s.status === "pending" &&
+          s.sourceVersion === P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION &&
+          s.sourceConversationId === conversationId,
+      ) ?? null
+    );
+  }, [profileSuggestions, conversationId]);
+
+  const pendingP6ReviewModel = useMemo(() => {
+    if (!pendingP6ForThisConversation) return null;
+    return normalizeP6ReviewSummary(pendingP6ForThisConversation);
+  }, [pendingP6ForThisConversation]);
 
   const profileCompletionNoMessagesBlock = useMemo(() => {
     if (!conversationId || !conversation) return false;
@@ -752,6 +773,37 @@ export default function ChatPage() {
               >
                 {profileCompletionContextLine}
               </p>
+            ) : null}
+            {pendingP6ForThisConversation ? (
+              <div style={{ margin: "0 0 0.5rem" }}>
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    color: "#1e293b",
+                    marginBottom: 6,
+                  }}
+                >
+                  本会话画像建议摘要
+                </div>
+                {pendingP6ReviewModel ? (
+                  <P6ReviewSummary model={pendingP6ReviewModel} compact />
+                ) : (
+                  <p
+                    style={{
+                      margin: "0 0 0.35rem",
+                      fontSize: "0.78rem",
+                      color: "#64748b",
+                    }}
+                  >
+                    本建议暂无结构化审阅摘要；请展开下方查看原始补丁。
+                  </p>
+                )}
+                <P6ProposedPatchDetails
+                  proposedPatch={pendingP6ForThisConversation.proposedPatch}
+                  id={pendingP6ForThisConversation.id}
+                />
+              </div>
             ) : null}
             <div
               style={{
