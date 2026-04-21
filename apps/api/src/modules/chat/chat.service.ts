@@ -93,7 +93,7 @@ export class ChatService {
       where: { id: conversationId },
       include: {
         messages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         },
       },
     });
@@ -391,7 +391,7 @@ export class ChatService {
       orderBy: { createdAt: "desc" },
       include: {
         messages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         },
       },
     });

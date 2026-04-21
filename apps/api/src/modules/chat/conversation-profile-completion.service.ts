@@ -32,6 +32,26 @@ export class ConversationProfileCompletionService {
       tokenUserId,
     );
 
+    if (conversation.messages.length === 0) {
+      throw new UnprocessableEntityException(
+        "Conversation has no messages; add messages before requesting a profile-completion suggestion",
+      );
+    }
+
+    const tailMessage =
+      conversation.messages[conversation.messages.length - 1]!;
+
+    await this.profileSuggestionService.throwIfPendingP6ChatProfileCompletionExists(
+      tokenUserId,
+      conversationId,
+    );
+
+    await this.assertNoNewMessagesSinceLastP6Suggestion(
+      tokenUserId,
+      conversationId,
+      tailMessage.id,
+    );
+
     const userPrompt = this.buildUserPrompt(conversationId, conversation);
     const llm = await this.chatClient.complete(
       CONVERSATION_PROFILE_COMPLETION_MODEL_SYSTEM_PROMPT,
@@ -62,11 +82,62 @@ export class ConversationProfileCompletionService {
       items: mapped,
     });
 
+    await this.profileSuggestionService.throwIfPendingP6ChatProfileCompletionExists(
+      tokenUserId,
+      conversationId,
+    );
+
+    const conversationAfter = await this.chatService.getConversationWithMessages(
+      conversationId,
+      tokenUserId,
+    );
+
+    if (conversationAfter.messages.length === 0) {
+      throw new UnprocessableEntityException(
+        "Conversation has no messages; add messages before requesting a profile-completion suggestion",
+      );
+    }
+
+    const tailAfter =
+      conversationAfter.messages[conversationAfter.messages.length - 1]!;
+
+    await this.assertNoNewMessagesSinceLastP6Suggestion(
+      tokenUserId,
+      conversationId,
+      tailAfter.id,
+    );
+
     return this.profileSuggestionService.createP6ChatProfileCompletionSuggestion({
       tokenUserId,
       conversationId,
       hintItems: validated,
+      generatedUpToMessageId: tailAfter.id,
     });
+  }
+
+  /**
+   * R1: when the latest P6.8 row has a message cursor, block regeneration until a newer tail message exists.
+   * Historical rows with null `generatedUpToMessageId` do not trigger this gate.
+   */
+  private async assertNoNewMessagesSinceLastP6Suggestion(
+    tokenUserId: string,
+    conversationId: string,
+    tailMessageId: string,
+  ): Promise<void> {
+    const latest =
+      await this.profileSuggestionService.findLatestP6ChatProfileCompletionForConversation(
+        tokenUserId,
+        conversationId,
+      );
+    const anchor = latest?.generatedUpToMessageId;
+    if (anchor == null || anchor === "") {
+      return;
+    }
+    if (tailMessageId === anchor) {
+      throw new UnprocessableEntityException(
+        "No new chat messages since the last profile-completion suggestion for this conversation",
+      );
+    }
   }
 
   private buildUserPrompt(
