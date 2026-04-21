@@ -52,7 +52,10 @@ export default function QuestionnairePage() {
   );
   const total = questions.length;
   const formComplete =
-    !!userId && total === 12 && answeredCount === 12 && !submitLoading;
+    !!userId &&
+    total > 0 &&
+    answeredCount === total &&
+    !submitLoading;
 
   const setAnswer = useCallback((questionKey, value) => {
     setSubmitOk(false);
@@ -68,12 +71,12 @@ export default function QuestionnairePage() {
       );
       return;
     }
-    if (questions.length !== 12) {
+    if (total === 0) {
       setSubmitError(new Error("题目未加载完整"));
       return;
     }
-    if (answeredCount < 12) {
-      setSubmitError(new Error("请答完 12 道题后再提交"));
+    if (answeredCount < total) {
+      setSubmitError(new Error("请答完全部题目后再提交"));
       return;
     }
     const payload = {
@@ -94,7 +97,7 @@ export default function QuestionnairePage() {
     } finally {
       setSubmitLoading(false);
     }
-  }, [userId, questions, answers, answeredCount]);
+  }, [userId, questions, answers, answeredCount, total]);
 
   return (
     <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
@@ -179,9 +182,9 @@ export default function QuestionnairePage() {
                 请先设置 userId 后再提交
               </p>
             )}
-            {userId && answeredCount < 12 && (
+            {userId && total > 0 && answeredCount < total && (
               <p style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-                答满 12 题后可提交
+                答满全部题目后可提交
               </p>
             )}
             {submitError && (

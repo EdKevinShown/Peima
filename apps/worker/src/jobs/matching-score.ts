@@ -28,14 +28,34 @@ export type UserImageLike = {
   styleTags: string[];
 } | null;
 
-export type UserProfileLike = {
-  socialEnergy: number | null;
-  emotionalExpression: number | null;
-  relationshipPace: number | null;
-  initiativeLevel: number | null;
-  decisionOrientation: number | null;
-  conflictResponse: number | null;
-} | null;
+/**
+ * G1-R questionnaire axes on `UserProfile` (order aligned with API scorer / Prisma).
+ * `confidence` is stored on DB row but is not used in `computeProfileScore`.
+ */
+export type UserProfileLike =
+  | null
+  | {
+      attachmentStyle: number | null;
+      emotionalExpression: number | null;
+      communicationStyle: number | null;
+      conflictHandling: number | null;
+      loveLanguage: number | null;
+      securityNeed: number | null;
+      controlNeed: number | null;
+      independence: number | null;
+      loyaltyView: number | null;
+      jealousyTendency: number | null;
+      moneyAttitude: number | null;
+      careerPriority: number | null;
+      lifePace: number | null;
+      socialNeed: number | null;
+      emotionalStability: number | null;
+      sexualValues: number | null;
+      familyView: number | null;
+      marriageExpectation: number | null;
+      childrenIntent: number | null;
+      riskPreference: number | null;
+    };
 
 export type PoolItemLike = {
   baseScore: number | null;
@@ -48,12 +68,26 @@ const W_STYLE = 0.15;
 const W_PROF = 0.2;
 
 const PROFILE_DIMS = [
-  "socialEnergy",
+  "attachmentStyle",
   "emotionalExpression",
-  "relationshipPace",
-  "initiativeLevel",
-  "decisionOrientation",
-  "conflictResponse",
+  "communicationStyle",
+  "conflictHandling",
+  "loveLanguage",
+  "securityNeed",
+  "controlNeed",
+  "independence",
+  "loyaltyView",
+  "jealousyTendency",
+  "moneyAttitude",
+  "careerPriority",
+  "lifePace",
+  "socialNeed",
+  "emotionalStability",
+  "sexualValues",
+  "familyView",
+  "marriageExpectation",
+  "childrenIntent",
+  "riskPreference",
 ] as const;
 
 function norm(s: string | null | undefined): string {

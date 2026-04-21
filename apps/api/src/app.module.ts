@@ -14,6 +14,7 @@ import { BehaviorSignalModule } from "./modules/behavior-signal/behavior-signal.
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
 import { SummaryAiModule } from "./modules/summary-ai/summary-ai.module";
+import { MatchExplanationAiModule } from "./modules/match-explanation-ai/match-explanation-ai.module";
 import { AdminModule } from "./modules/admin/admin.module";
 import { TestModule } from "./modules/test/test.module";
 import { RbacModule } from "./common/rbac/rbac.module";
@@ -41,6 +42,7 @@ import { NotificationModule } from "./modules/notifications/notification.module"
     AnalyticsModule,
     CopilotModule,
     SummaryAiModule,
+    MatchExplanationAiModule,
     AdminModule,
     TestModule,
     SuggestionCenterModule,

@@ -3,16 +3,10 @@ import {
   acceptProfileSuggestion,
   dismissProfileSuggestion,
 } from "../../api/profile";
-
-function patchPreview(patch) {
-  if (patch == null) return "（无补丁内容）";
-  try {
-    const s = JSON.stringify(patch, null, 0);
-    return s.length > 280 ? `${s.slice(0, 280)}…` : s;
-  } catch {
-    return String(patch);
-  }
-}
+import P6ReviewSummary, {
+  normalizeP6ReviewSummary,
+  P6ProposedPatchDetails,
+} from "./P6ReviewSummary.jsx";
 
 function StatusBadge({ status }) {
   const accepted = status === "accepted";
@@ -144,6 +138,7 @@ export default function ProfileSuggestionCard({
           >
             {pending.map((s) => {
               const busy = pendingActionId === s.id;
+              const p6Model = normalizeP6ReviewSummary(s);
               return (
                 <li
                   key={s.id}
@@ -157,18 +152,20 @@ export default function ProfileSuggestionCard({
                   <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: 4 }}>
                     {s.sourceType} · {s.sourceVersion}
                   </div>
-                  <pre
-                    style={{
-                      margin: "0 0 0.45rem",
-                      fontSize: "0.72rem",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      maxHeight: 72,
-                      overflow: "auto",
-                    }}
-                  >
-                    {patchPreview(s.proposedPatch)}
-                  </pre>
+                  {p6Model ? (
+                    <P6ReviewSummary model={p6Model} compact />
+                  ) : (
+                    <p
+                      style={{
+                        margin: "0 0 0.35rem",
+                        fontSize: "0.78rem",
+                        color: "#64748b",
+                      }}
+                    >
+                      本建议暂无结构化审阅摘要；请展开下方查看原始补丁。
+                    </p>
+                  )}
+                  <P6ProposedPatchDetails proposedPatch={s.proposedPatch} id={s.id} />
                   <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
                     <button
                       type="button"

@@ -72,6 +72,72 @@ export async function generateConversationSummary(conversationId: string) {
   return handleJson<ConversationSummaryResponse>(res);
 }
 
+/** P6.8：从会话生成待审阅的维度 branch 建议（不落标签直出）。 */
+export class ProfileCompletionSuggestionRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ProfileCompletionSuggestionRequestError";
+    this.status = status;
+  }
+}
+
+/** `POST /chat/conversations/:conversationId/profile-completion-suggestion` */
+export async function postProfileCompletionSuggestion(
+  conversationId: string,
+  body?: Record<string, unknown>,
+): Promise<unknown> {
+  const init: RequestInit = {
+    method: "POST",
+    headers: (
+      body !== undefined
+        ? { "Content-Type": "application/json", ...authHeaders() }
+        : { ...authHeaders() }
+    ) as HeadersInit,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  };
+
+  const res = await fetch(
+    `${baseUrl}/chat/conversations/${encodeURIComponent(conversationId)}/profile-completion-suggestion`,
+    init,
+  );
+
+  const text = await res.text();
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new ProfileCompletionSuggestionRequestError(
+        401,
+        "未登录或 token 无效，请先登录（/login）",
+      );
+    }
+    if (res.status === 403) {
+      throw new ProfileCompletionSuggestionRequestError(
+        403,
+        "没有权限执行此操作（403）。",
+      );
+    }
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text) as { message?: string | string[] };
+      if (Array.isArray(parsed.message)) {
+        detail = parsed.message.join(", ");
+      } else if (parsed.message) {
+        detail = String(parsed.message);
+      }
+    } catch {
+      /* keep raw */
+    }
+    throw new ProfileCompletionSuggestionRequestError(
+      res.status,
+      detail || `HTTP ${res.status}`,
+    );
+  }
+
+  if (!text) return {};
+  return JSON.parse(text) as unknown;
+}
+
 export async function sendMessage(payload: {
   conversationId: string;
   senderUserId: string;

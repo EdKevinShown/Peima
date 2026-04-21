@@ -1,6 +1,7 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getMatchingResult } from "../api/matching";
+import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import LoadingState from "../components/common/LoadingState";
 import { resolveUserId } from "../utils/resolveUserId";
 import { createConversation } from "../api/chat";
@@ -56,6 +57,9 @@ export default function FinalMatchPage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [aiExplanation, setAiExplanation] = useState(null);
+  const [aiExplanationLoading, setAiExplanationLoading] = useState(false);
+  const [aiExplanationError, setAiExplanationError] = useState(null);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -65,6 +69,8 @@ export default function FinalMatchPage() {
     }
     setLoading(true);
     setError(null);
+    setAiExplanation(null);
+    setAiExplanationError(null);
     try {
       const data = await getMatchingResult(userId);
       setResult(data);
@@ -75,6 +81,21 @@ export default function FinalMatchPage() {
       setLoading(false);
     }
   }, [userId]);
+
+  const onFetchAiExplanation = useCallback(async () => {
+    if (!result?.id) return;
+    setAiExplanationError(null);
+    setAiExplanationLoading(true);
+    try {
+      const data = await getMatchExplanationAi(result.id);
+      setAiExplanation(data);
+    } catch (e) {
+      setAiExplanation(null);
+      setAiExplanationError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiExplanationLoading(false);
+    }
+  }, [result?.id]);
 
   useEffect(() => {
     load();
@@ -220,6 +241,50 @@ export default function FinalMatchPage() {
               </div>
             </section>
           )}
+
+          <section
+            style={{
+              marginTop: "1.25rem",
+              paddingTop: "1rem",
+              borderTop: "1px dashed #e5e7eb",
+            }}
+            aria-label="AI 匹配说明试点"
+          >
+            <h2 style={{ fontSize: "1.02rem", margin: "0 0 0.35rem" }}>
+              AI 匹配说明（试点）
+            </h2>
+            <p style={{ margin: "0 0 0.5rem", color: "#64748b", fontSize: "0.8rem" }}>
+              独立接口，不修改匹配分数与队列；点击后加载，失败不影响下方进入聊天与时间线。
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <button
+                type="button"
+                onClick={onFetchAiExplanation}
+                disabled={aiExplanationLoading || !result.id}
+              >
+                {aiExplanationLoading ? "生成中…" : "生成 AI 匹配说明（试点）"}
+              </button>
+            </div>
+            {aiExplanationError ? (
+              <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                AI 匹配说明请求失败：{aiExplanationError}
+              </p>
+            ) : null}
+            {aiExplanation ? (
+              <div style={insightCardStyle}>
+                <h3 style={insightCardTitleStyle}>说明正文</h3>
+                <p style={{ margin: "0 0 0.5rem", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+                  {aiExplanation.explanationText}
+                </p>
+                <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>
+                  来源 {aiExplanation.sourceType} · {aiExplanation.sourceVersion}
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "#777", margin: "0.5rem 0 0" }}>
+                  P6.6 试点：成功时为模型输出；失败时为规则占位。不参与匹配决策、不落库。
+                </p>
+              </div>
+            ) : null}
+          </section>
 
           <div
             style={{

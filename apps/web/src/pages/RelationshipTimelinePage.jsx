@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
+import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { getConversationTimeline } from "../api/chat";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -93,6 +94,8 @@ export default function RelationshipTimelinePage() {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const { ensureConversationError, shouldHoldForConversationBootstrap } =
+    useEnsureConversationInUrl(searchParams);
 
   const [mergedItems, setMergedItems] = useState([]);
   const [messagePagination, setMessagePagination] = useState(null);
@@ -237,10 +240,25 @@ export default function RelationshipTimelinePage() {
         refreshSource={refreshSource}
       />
 
-      {!conversationId ? (
+      {shouldHoldForConversationBootstrap ? (
+        <LoadingState label="正在准备会话…" />
+      ) : null}
+      {!conversationId && !shouldHoldForConversationBootstrap ? (
         <p style={{ color: "#666" }} role="status">
-          缺少 conversationId。请从 <Link to="/chat">聊天页</Link> 进入会话后再查看时间线，或使用 <code>?conversationId=…</code>
-          （建议同时带上 <code>userId=…</code> 以保持回跳状态一致）。
+          {ensureConversationError ? (
+            <>
+              无法创建会话：{ensureConversationError.message}
+              <br />
+              请确认已登录且存在匹配结果，或从 <Link to="/chat">聊天页</Link> 携带{" "}
+              <code>?conversationId=…</code> 进入。
+            </>
+          ) : (
+            <>
+              缺少 conversationId。请从 <Link to="/chat">聊天页</Link> 进入会话后再查看时间线，或使用{" "}
+              <code>?conversationId=…</code>
+              （建议同时带上 <code>userId=…</code> 以保持回跳状态一致）。
+            </>
+          )}
         </p>
       ) : null}
 

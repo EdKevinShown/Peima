@@ -5,6 +5,7 @@
  */
 
 import { Injectable, ForbiddenException, Logger } from "@nestjs/common";
+import { Prisma } from "@peima/database";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
@@ -21,6 +22,11 @@ import {
   RoleChangedEvent,
 } from "../events/notification.events";
 
+function isTruthyEnvSkipRbacInit(v: string | undefined): boolean {
+  const s = v?.trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+}
+
 @Injectable()
 export class RbacService {
   private readonly logger = new Logger(RbacService.name);
@@ -33,7 +39,30 @@ export class RbacService {
     private auditService: AuditService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.initializeDefaultRoles();
+    void this.initializeDefaultRoles();
+  }
+
+  /**
+   * 本地缺表 / reset 后无 `role_permissions`：跳过 DB seed，避免启动阶段 error 刷屏；权限仍走 ROLE_PERMISSIONS_MAP + env。
+   */
+  private isMissingRbacRolePermissionSchema(error: unknown): boolean {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2021"
+    ) {
+      return true;
+    }
+    const msg =
+      error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase();
+    const namesRoleTable =
+      msg.includes("role_permissions") || msg.includes("role_permission");
+    const looksMissing =
+      msg.includes("does not exist") ||
+      msg.includes("could not find") ||
+      msg.includes("unknown table");
+    return namesRoleTable && looksMissing;
   }
 
   /**
@@ -41,6 +70,13 @@ export class RbacService {
    * 目标：逐步将环境变量中的配置迁移到数据库
    */
   private async initializeDefaultRoles(): Promise<void> {
+    if (isTruthyEnvSkipRbacInit(process.env.PEIMA_RBAC_SKIP_DB_INIT)) {
+      this.logger.warn(
+        "PEIMA_RBAC_SKIP_DB_INIT is set: skipping default role_permission DB seed (local dev).",
+      );
+      return;
+    }
+
     try {
       // 检查数据库中是否已有角色权限定义
       const existingCount = await this.prisma.rolePermission.count();
@@ -78,9 +114,15 @@ export class RbacService {
         `✓ Initialized ${rolePermissions.length} role-permission mappings`
       );
     } catch (error) {
+      if (this.isMissingRbacRolePermissionSchema(error)) {
+        this.logger.warn(
+          `Skipping default role_permission seed: RBAC table missing or unreachable (${error instanceof Error ? error.message : String(error)}). Using in-memory ROLE_PERMISSIONS_MAP / env fallback.`,
+        );
+        return;
+      }
       this.logger.error(
         `Failed to initialize role permissions: ${(error as Error).message}`,
-        (error as Error).stack
+        (error as Error).stack,
       );
     }
   }

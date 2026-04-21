@@ -8,9 +8,11 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
+import type { ProfileUpdateSuggestion } from "@peima/database";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { ChatService } from "./chat.service";
+import { ConversationProfileCompletionService } from "./conversation-profile-completion.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 type JwtReq = {
@@ -20,7 +22,10 @@ type JwtReq = {
 @Controller("chat")
 @UseGuards(JwtAuthGuard)
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly conversationProfileCompletionService: ConversationProfileCompletionService,
+  ) {}
 
   @Post("conversations")
   createConversation(
@@ -74,6 +79,21 @@ export class ChatController {
       throw new UnauthorizedException("not authenticated");
     }
     return this.chatService.getConversationWithMessages(conversationId, tokenUserId);
+  }
+
+  @Post("conversations/:conversationId/profile-completion-suggestion")
+  generateProfileCompletionSuggestion(
+    @Param("conversationId") conversationId: string,
+    @Req() req: JwtReq,
+  ): Promise<ProfileUpdateSuggestion> {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.conversationProfileCompletionService.generateProfileCompletionSuggestion(
+      conversationId,
+      tokenUserId,
+    );
   }
 
   @Post("messages")
