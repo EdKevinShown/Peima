@@ -37,6 +37,8 @@ const REASON = {
   NO_ACTIVE_POOL: "NO_ACTIVE_POOL",
   NO_SCORED_CANDIDATES: "NO_SCORED_CANDIDATES",
   CANDIDATE_CONTEXT_MISSING: "CANDIDATE_CONTEXT_MISSING",
+  CANDIDATE_PROFILE_MISSING: "CANDIDATE_PROFILE_MISSING",
+  VIEWER_PROFILE_MISSING: "VIEWER_PROFILE_MISSING",
   UNEXPECTED_ERROR: "UNEXPECTED_ERROR",
 } as const;
 
@@ -220,6 +222,22 @@ export async function runBatchMatch(): Promise<void> {
       const viewerProfRow = await prisma.userProfile.findUnique({
         where: { userId: q.userId },
       });
+      if (!viewerProfRow) {
+        await prisma.batchMatchQueue.update({
+          where: { id: q.id },
+          data: { status: QUEUE_STATUS.FAILED },
+        });
+        failedCount++;
+        logBatchLine({
+          event: "queue_done",
+          batchId: batch.id,
+          queueId: q.id,
+          viewerUserId: q.userId,
+          outcome: "fail",
+          reasonCode: REASON.VIEWER_PROFILE_MISSING,
+        });
+        continue;
+      }
       const viewerProf = toProfileLike(viewerProfRow);
 
       const candidateIds = [
@@ -252,6 +270,17 @@ export async function runBatchMatch(): Promise<void> {
 
         const candidateImage = imageMap.get(candidateUser.id) ?? null;
         const candidateProfRow = profileMap.get(candidateUser.id) ?? null;
+        if (!candidateProfRow) {
+          logBatchLine({
+            event: "item_skip",
+            batchId: batch.id,
+            queueId: q.id,
+            viewerUserId: q.userId,
+            candidateUserId: item.candidateUserId,
+            reasonCode: REASON.CANDIDATE_PROFILE_MISSING,
+          });
+          continue;
+        }
 
         const components = computeFinalScoreV1({
           item: {
@@ -262,7 +291,7 @@ export async function runBatchMatch(): Promise<void> {
           viewerProfile: viewerProf,
           candidateUser: toCandidateUser(candidateUser),
           candidateImage: toImageLike(candidateImage),
-          candidateProfile: toProfileLike(candidateProfRow ?? null),
+          candidateProfile: toProfileLike(candidateProfRow),
         });
 
         scored.push({

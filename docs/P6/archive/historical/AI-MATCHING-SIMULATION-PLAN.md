@@ -1,5 +1,7 @@
 # AI 模拟匹配：规划与算法说明
 
+> **当前主链定义（唯一真源）**：以 [`P6-current-matching-chain-single-source-of-truth.md`](../../truth/P6-current-matching-chain-single-source-of-truth.md) 为准；本文若与其冲突，以真源文档为准。
+
 ## 目录
 
 - [概括（3 分钟看懂）](#概括3-分钟看懂)

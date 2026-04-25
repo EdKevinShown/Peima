@@ -15,6 +15,9 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { CopilotModule } from "./modules/copilot/copilot.module";
 import { SummaryAiModule } from "./modules/summary-ai/summary-ai.module";
 import { MatchExplanationAiModule } from "./modules/match-explanation-ai/match-explanation-ai.module";
+import { MatchReviewAiModule } from "./modules/match-review-ai/match-review-ai.module";
+import { InteractionSimulationLiteModule } from "./modules/interaction-simulation-lite/interaction-simulation-lite.module";
+import { MatchReadoutFusionModule } from "./modules/match-readout-fusion/match-readout-fusion.module";
 import { AdminModule } from "./modules/admin/admin.module";
 import { TestModule } from "./modules/test/test.module";
 import { RbacModule } from "./common/rbac/rbac.module";
@@ -23,6 +26,9 @@ import { AuditModule } from "./common/audit/audit.module";
 import { AuditMiddleware } from "./common/middleware/audit.middleware";
 import { EventsModule } from "./common/events/events.module";
 import { NotificationModule } from "./modules/notifications/notification.module";
+import { PrescreenV0Module } from "./modules/prescreen-v0/prescreen-v0.module";
+import { PostPoolDeepScreenModule } from "./modules/post-pool-deep-screen/post-pool-deep-screen.module";
+import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v1.module";
 
 @Module({
   imports: [
@@ -43,12 +49,18 @@ import { NotificationModule } from "./modules/notifications/notification.module"
     CopilotModule,
     SummaryAiModule,
     MatchExplanationAiModule,
+    MatchReviewAiModule,
+    InteractionSimulationLiteModule,
+    MatchReadoutFusionModule,
     AdminModule,
     TestModule,
     SuggestionCenterModule,
     AuthModule,
     AuditModule,
     NotificationModule,
+    PrescreenV0Module,
+    PostPoolDeepScreenModule,
+    AiSimulationV1Module,
   ],
   controllers: [],
   providers: [],

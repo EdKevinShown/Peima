@@ -1,9 +1,9 @@
 # P6-MVP：真实 AI Copilot（只读，失败可回退）
 
-> **Status: 已落地（Copilot 切片；首轮验收见 `docs/P6/P6.3-acceptance-round1.md`）**
+> **Status: 已落地（Copilot 切片；首轮验收见 `docs/P6/acceptance/P6.3-acceptance-round1.md`）**
 
 面向当前 Peima / 配吗 仓库真实状态：**项目整体已到 P5**；后端仍以规则 / 模板 / 占位逻辑为主，**真实 AI 生产链尚未正式接入**；前端已有聊天内 Copilot 卡片与独立 `CopilotPage`。  
-**P6-MVP** 仅为完整 P6 中的 **最小切片**：真实 AI Copilot，**只读**，**失败可回退**。本文档 **不构成** `docs/P6/P6-ai-production-evolution-plan.md` 中梯队 A/B/C 的全量承诺。
+**P6-MVP** 仅为完整 P6 中的 **最小切片**：真实 AI Copilot，**只读**，**失败可回退**。本文档 **不构成** `docs/P6/archive/historical/P6-ai-production-evolution-plan.md` 中梯队 A/B/C 的全量承诺。
 
 ---
 
@@ -26,13 +26,13 @@
 - **任何降级路径**（开关关闭、密钥缺失、超时、错误、输出无法安全映射回 DTO 等）：对外返回 **与当前一致** 的规则层结果，`sourceType` **保留为 `rule_based`**（与现有 `P2SourceType.RuleBased` 一致）。
 - **`sourceVersion`**：用于标识 **规则模板版本**（如现有 `COPILOT_RULE_VERSION`）或 **模型侧版本/快照**（如模型名 + prompt 版本号）；成功走模型与走规则时应 **分别可区分**，便于排障与审计。
 
-**P6.2 收口（实现与运维）**：`model_<slug>` 中 `slug` 优先取 **`AI_PROVIDER`**，未设置时按 **`AI_BASE_URL` 主机名** 推断（避免 DeepSeek 等误显示为 `openai`）；无法识别时用 `openai_compatible` 表示「协议兼容、厂商未标注」。模型成功时 `sourceVersion` 采用 **`slug|model|prompt 版本`** 三节格式。详见 `docs/P6/P6.2-copilot-llm-runbook.md`。
+**P6.2 收口（实现与运维）**：`model_<slug>` 中 `slug` 优先取 **`AI_PROVIDER`**，未设置时按 **`AI_BASE_URL` 主机名** 推断（避免 DeepSeek 等误显示为 `openai`）；无法识别时用 `openai_compatible` 表示「协议兼容、厂商未标注」。模型成功时 `sourceVersion` 采用 **`slug|model|prompt 版本`** 三节格式。详见 `docs/P6/specs/P6.2-copilot-llm-runbook.md`。
 
 ---
 
 ## 3. 不做什么（严格排除）
 
-- **不做** 完整 P6：`docs/P6/P6-ai-production-evolution-plan.md` 中的 Worker 队列扩展、多 Provider 生产化、simulation、多 Agent 编排、WebSocket 流式等 **均不在 P6-MVP**。
+- **不做** 完整 P6：`docs/P6/archive/historical/P6-ai-production-evolution-plan.md` 中的 Worker 队列扩展、多 Provider 生产化、simulation、多 Agent 编排、WebSocket 流式等 **均不在 P6-MVP**。
 - **不做** 摘要链路 AI 化（`POST .../summary/generate`、摘要持久化策略、历史版本）—— **不在本轮改写入路径**。
 - **不做** 匹配核心 AI 化、match explanation、预览池/问卷的模型重写。
 - **不做** Copilot 洞察落库、异步任务、用户侧「再生成」版本树（除非后续单独立项）。
@@ -107,6 +107,6 @@
 
 ## 9. 阶段摘要
 
-**P6-MVP**：在仓库已到 P5、仍以规则/模板为主、Copilot UI/API 已存在的前提下，**只把「真实模型」接到这一条只读洞察链路上**，并保持失败即回退到今日规则层；**完整 P6** 仍以 `docs/P6/P6-ai-production-evolution-plan.md` 为准，**未因本文自动扩展范围**。
+**P6-MVP**：在仓库已到 P5、仍以规则/模板为主、Copilot UI/API 已存在的前提下，**只把「真实模型」接到这一条只读洞察链路上**，并保持失败即回退到今日规则层；**完整 P6** 仍以 `docs/P6/archive/historical/P6-ai-production-evolution-plan.md` 为准，**未因本文自动扩展范围**。
 
-**里程碑（文档收口）**：P6-MVP 已定义；P6.1 已实现；P6.2 已收口；**P6.3 首轮验收通过**（见 `docs/P6/P6.3-acceptance-round1.md`）。
+**里程碑（文档收口）**：P6-MVP 已定义；P6.1 已实现；P6.2 已收口；**P6.3 首轮验收通过**（见 `docs/P6/acceptance/P6.3-acceptance-round1.md`）。

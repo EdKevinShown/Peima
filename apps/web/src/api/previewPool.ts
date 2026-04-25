@@ -39,7 +39,7 @@ export async function getLatestPreviewPool(userId: string) {
   return handleJson<LatestPreviewPoolResponse>(res);
 }
 
-/** POST /preview-pool/generate — requires JWT userId === body.userId; needs ≥6 other users with images. */
+/** POST /preview-pool/generate — JWT userId === body.userId; ≥6 gated others (images + profile + preference gate); 6 槽为 visual(1–2)/preference(3–4)/backup(5–6)。 */
 export async function generatePreviewPool(userId: string) {
   const res = await fetch(`${baseUrl}/preview-pool/generate`, {
     method: "POST",

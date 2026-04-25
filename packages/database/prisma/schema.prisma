@@ -47,6 +47,7 @@ model User {
   rolesAssigned            UserRole[] @relation("UserRolesAssigned") // P5 Phase 2.2：分配给该用户的角色
   rolesGrantedByMe         UserRole[] @relation("UserRolesGrantedBy") // P5 Phase 2.2：由该用户授予的角色
   notifications            Notification[] // P5 Phase 2.3：通知记录
+  aiSimulationV1Jobs       AiSimulationV1Job[] // P6：AI 模拟 v1（侧车，不写 MatchResult）
 
   @@map("users")
 }
@@ -124,6 +125,47 @@ model PreviewPoolItem {
   candidate   User        @relation("PreviewPoolItemCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
 
   @@map("preview_pool_items")
+}
+
+/// AI 模拟 v1 job（pool 后深筛 hint → LLM transcript-lite + evaluator）；不写 MatchResult。
+model AiSimulationV1Job {
+  id                     String   @id @default(cuid())
+  viewerUserId           String
+  poolId                 String
+  schemaVersion          String
+  runSpecVersion         String
+  hintSource             String
+  hintSnapshot           Json
+  /// 与 `hintSnapshot` 解析后 Top-8 截断一致的有序 candidate user id 列表（JSON string[]）。
+  simulationQueueActual Json
+  jobStatus              String   @default("queued")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  viewer User                  @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+  items  AiSimulationV1Item[]
+
+  @@map("ai_simulation_v1_jobs")
+}
+
+model AiSimulationV1Item {
+  id               String   @id @default(cuid())
+  jobId            String
+  candidateUserId  String
+  status           String   @default("queued")
+  attemptCount     Int      @default(0)
+  transcriptLite   Json?
+  evaluator        Json?
+  /// First schema check failure when errorCode is schema_validation: { path, reason }.
+  failureDetail    Json?
+  errorCode        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  job AiSimulationV1Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("ai_simulation_v1_items")
 }
 
 /// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).

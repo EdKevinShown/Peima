@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "publicBaseUrl": "http://127.0.0.1:3000",
+  "items": [
+    {
+      "file": "test-user-images1.jpg",
+      "userId": "cmoc1gnil00006z64l9w2oa5t"
+    },
+    {
+      "file": "test-user-images2.jpg",
+      "userId": "cmoc1gnjc000x6z64esun9iur"
+    },
+    {
+      "file": "test-user-images3.jpg",
+      "userId": "cmoc1gnjo001u6z64ghwpseih"
+    },
+    {
+      "file": "test-user-images4.jpg",
+      "userId": "cmoc1gnk1002r6z64iapqf5n9"
+    },
+    {
+      "file": "test-user-images5.jpg",
+      "userId": "cmoc1gnkd003o6z64zobqegdc"
+    },
+    {
+      "file": "test-user-images6.jpg",
+      "userId": "cmoc1gnkq004l6z64jdq89d4a"
+    }
+  ]
+}

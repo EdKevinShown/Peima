@@ -29,7 +29,7 @@ P0 主流程已跑通，因此 **P0 可视为完成**。
 2. 问卷提交（`POST /questionnaire/submit`）
 3. 图片数据与候选用户准备（确保候选用户存在 `images`）
 4. `preview-pool generate`（`POST /preview-pool/generate`）
-5. `preview-pool` 页面展示 6 个 item（按 `rankInPool` 升序、三层展示分层）
+5. `preview-pool` 页面展示 6 个 item（按 `rankInPool` 升序；**P6 第二步**起为 **visual(1–2) / preference(3–4) / backup(5–6)** 与 **full / full / locked** 默认展示，借位视觉槽可为 **blurred**）
 6. 匹配入队（`POST /matching/enqueue`）
 7. worker 跑批次匹配（启动时注册 cron；手动或定时触发 `batch-match`）
 8. final-match 页面展示最终结果（`GET /matching/result/:userId`）

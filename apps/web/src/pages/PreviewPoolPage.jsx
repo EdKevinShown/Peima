@@ -90,6 +90,13 @@ export default function PreviewPoolPage() {
         <strong>6 个用户各自在「用户图片」表里有一条及以上记录</strong>（仅注册用户不够，需通过图片接口上传）。
         报错里的 <code>others_with_images</code> 即符合条件的人数。
       </p>
+      <p style={{ color: "#555", fontSize: "0.82rem", marginBottom: "0.75rem" }}>
+        <strong>槽位语义（当前生成规则）</strong>：rank <strong>1–2</strong> 为{" "}
+        <code>visual</code>（风格标签与首图对齐）；rank <strong>3–4</strong> 为{" "}
+        <code>preference</code>（按偏好维度得分排序）；rank <strong>5–6</strong> 为{" "}
+        <code>backup</code>。视觉位若因有图候选不足而借位补足，该槽可能显示为{" "}
+        <code>blurred</code>。
+      </p>
       <p style={{ marginBottom: "1rem" }}>
         <Link to="/">首页</Link>
         {" · "}

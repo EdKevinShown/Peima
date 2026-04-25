@@ -75,10 +75,10 @@
   - 如何验证：调用 latest 接口并检查 payload。  
   - 预期结果是什么：`200` 返回 `previewPool + items`；items 数组按 `rankInPool asc` 排序。
 
-- [ ] `displayMode` 三层概念落库可见（full/blurred/locked）  
-  - 要验证什么：rank 1-2 => `preference/full`，rank 3-4 => `visual/blurred`，rank 5-6 => `backup/locked`。  
-  - 如何验证：检查 items 的 `candidateType` 与 `displayMode`。  
-  - 预期结果是什么：严格符合 P0 固定分层规则。
+- [ ] `displayMode` 与 `candidateType` 落库符合 **P6 第二步分层**（已替代旧「前两槽 preference / 三四槽 visual」规则）  
+  - 要验证什么：**rank 1–2** => **`visual` / `full`**（视觉位；**借位补足**时该槽可为 **`blurred`**）；**rank 3–4** => **`preference` / `full`**（兼容位，按 `preferenceScore` 排序）；**rank 5–6** => **`backup` / `locked`**。  
+  - 如何验证：调用 `GET /preview-pool/user/:userId/latest`（或生成接口返回）检查每个 item 的 `rankInPool`、`candidateType`、`displayMode`。  
+  - 预期结果是什么：与 **`docs/P6/truth/P6-preview-pool-layered-selection-v0.md`** 写库表一致；**勿**再按旧 P0 文档验收 rank1–2=`preference`。
 
 ---
 

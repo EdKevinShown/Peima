@@ -3,7 +3,7 @@
 > **状态**：**规划文档**。**中远期方向**，**不是** 当前仓库已承诺的开发范围；**未实现**。  
 > **前置**：P0～P3 已完成；P4 / P5 分别从 **体验** 与 **治理** 侧铺垫；P6 讨论 **替换或增强规则层** 的工程路径。
 
-> **Copilot 切片（已收口）**：`docs/P6/P6-MVP-copilot.md` 所定义之 **只读 Copilot 真实模型路径** 已落地并完成 **P6.3 首轮验收通过**；**不** 表示本文所述 **梯队 A/B/C 全量生产链** 已实施或承诺范围自动扩大。
+> **Copilot 切片（已收口）**：`docs/P6/specs/P6-MVP-copilot.md` 所定义之 **只读 Copilot 真实模型路径** 已落地并完成 **P6.3 首轮验收通过**；**不** 表示本文所述 **梯队 A/B/C 全量生产链** 已实施或承诺范围自动扩大。
 
 ---
 
@@ -103,7 +103,7 @@ README 长期口径：**真实 AI Agent、多 Agent、生产级模型链尚未�
 ## 11. 阶段摘要（中英短版）
 
 **中文**  
-> **P6（规划，中远期）**：真实模型与 Worker 生产链、可选多 Agent/simulation；**非当前已承诺开发**；需单独立项并与 P5 治理衔接。详见 `docs/P6/P6-ai-production-evolution-plan.md`。
+> **P6（规划，中远期）**：真实模型与 Worker 生产链、可选多 Agent/simulation；**非当前已承诺开发**；需单独立项并与 P5 治理衔接。详见 `docs/P6/archive/historical/P6-ai-production-evolution-plan.md`（本文）。
 
 **English**  
-> **P6 (planned, mid/long-term)**: Real LLM + worker pipelines, optional multi-agent/simulation—not a committed roadmap item; requires a separate initiative and alignment with P5 governance. See `docs/P6/P6-ai-production-evolution-plan.md`.
+> **P6 (planned, mid/long-term)**: Real LLM + worker pipelines, optional multi-agent/simulation—not a committed roadmap item; requires a separate initiative and alignment with P5 governance. See `docs/P6/archive/historical/P6-ai-production-evolution-plan.md` (this document).
