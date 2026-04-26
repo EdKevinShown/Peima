@@ -9,6 +9,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { AiSimulationV1Service } from "../ai-simulation-v1/ai-simulation-v1.service";
 import {
   AI_SIMULATION_RUN_SPEC_V1,
+  AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE,
   AI_SIMULATION_V1_HINT_SOURCE,
   AI_SIMULATION_V1_SCHEMA,
 } from "../ai-simulation-v1/ai-simulation-v1.constants";
@@ -22,6 +23,7 @@ import {
 } from "./post-pool-deep-screen.constants";
 import { computeG1rProfileScalarScore } from "./post-pool-dimension-g1r";
 import type {
+  PostPoolOrchestrationMvpAiSimulationSkipReason,
   PostPoolOrchestrationMvpEnvelopeDto,
   PostPoolOrchestrationMvpRunDto,
   PostPoolDeepScreenRunDto,
@@ -30,6 +32,10 @@ import type {
   PostPoolDimensionRow,
   PostPoolSimulationQueueHintEntry,
 } from "./post-pool-deep-screen.types";
+import { PreviewPoolService } from "../preview-pool/preview-pool.service";
+import { PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION } from "../preview-pool/preview-pool-shortlist-contract.v0";
+import type { ShortlistContractBindingV0 } from "../ai-simulation-v1/ai-simulation-v1.types";
+import { computeShortlistFingerprint } from "../ai-simulation-v1/shortlist-contract-binding";
 
 @Injectable()
 export class PostPoolDeepScreenOrchestratorService {
@@ -37,6 +43,7 @@ export class PostPoolDeepScreenOrchestratorService {
     private readonly prisma: PrismaService,
     private readonly prescreenV0Service: PrescreenV0Service,
     private readonly aiSimulationV1Service: AiSimulationV1Service,
+    private readonly previewPoolService: PreviewPoolService,
   ) {}
 
   /**
@@ -66,27 +73,51 @@ export class PostPoolDeepScreenOrchestratorService {
 
     const prescreenStatus = shadow.prescreen ? "done" : "skipped";
 
-    const shouldEnqueueSimulation = dto.runMode === "mvp" && shadow.simulationQueueHint.length > 0;
     let simulationJobId: string | undefined;
     let acceptedCandidateCount: number | undefined;
     let simulationQueueActual: string[] = [];
+    let simulationQueueHintForEnvelope: PostPoolSimulationQueueHintEntry[] =
+      dto.runMode === "mvp" ? [] : shadow.simulationQueueHint;
 
-    if (shouldEnqueueSimulation) {
-      const enqueue = await this.aiSimulationV1Service.enqueue({
-        schemaVersion: AI_SIMULATION_V1_SCHEMA,
-        viewerUserId: dto.viewerUserId,
-        hintSource: AI_SIMULATION_V1_HINT_SOURCE,
-        poolId: dto.poolId,
-        hintSnapshot: shadow.simulationQueueHint,
-        runSpecVersion: AI_SIMULATION_RUN_SPEC_V1,
-      });
-      simulationJobId = enqueue.simulationJobId;
-      acceptedCandidateCount = enqueue.acceptedCandidateCount;
-      simulationQueueActual = enqueue.simulationQueueActual;
+    let aiSimReason: PostPoolOrchestrationMvpAiSimulationSkipReason | undefined;
+    let shortlistPhaseCV0SkipReason: PostPoolOrchestrationMvpAiSimulationSkipReason | null =
+      null;
+
+    if (dto.runMode !== "mvp") {
+      aiSimReason = "not_in_a2_mode";
+    } else {
+      const sl = await this.resolveShortlistSimulationForMvp(dto, shadow);
+      if (!sl.ok) {
+        aiSimReason = sl.reason;
+        shortlistPhaseCV0SkipReason = sl.reason;
+        simulationQueueHintForEnvelope = [];
+      } else {
+        simulationQueueHintForEnvelope = sl.simulationQueueHint;
+        try {
+          const enqueue = await this.aiSimulationV1Service.enqueue(
+            {
+              schemaVersion: AI_SIMULATION_V1_SCHEMA,
+              viewerUserId: dto.viewerUserId,
+              hintSource: AI_SIMULATION_V1_HINT_SOURCE,
+              poolId: dto.poolId,
+              hintSnapshot: sl.simulationQueueHint,
+              runSpecVersion: AI_SIMULATION_RUN_SPEC_V1,
+              shortlistBinding: sl.binding,
+            },
+            AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE,
+          );
+          simulationJobId = enqueue.simulationJobId;
+          acceptedCandidateCount = enqueue.acceptedCandidateCount;
+          simulationQueueActual = enqueue.simulationQueueActual;
+        } catch {
+          aiSimReason = "no_hint_for_enqueue";
+          shortlistPhaseCV0SkipReason = "no_hint_for_enqueue";
+          simulationQueueHintForEnvelope = [];
+        }
+      }
     }
 
-    const aiSimReason =
-      dto.runMode !== "mvp" ? "not_in_a2_mode" : shadow.simulationQueueHint.length === 0 ? "no_hint_for_enqueue" : undefined;
+    const shouldEnqueueSimulation = Boolean(simulationJobId);
 
     const deeplinkQuery = {
       userId: dto.viewerUserId,
@@ -96,6 +127,11 @@ export class PostPoolDeepScreenOrchestratorService {
     const deeplinkUrl = simulationJobId
       ? `${deeplinkPath}?userId=${encodeURIComponent(dto.viewerUserId)}&aiSimJobId=${encodeURIComponent(simulationJobId)}`
       : `${deeplinkPath}?userId=${encodeURIComponent(dto.viewerUserId)}`;
+
+    const consumptionReady =
+      dto.runMode === "mvp"
+        ? simulationQueueHintForEnvelope.length > 0 && Boolean(simulationJobId)
+        : shadow.simulationQueueHint.length > 0;
 
     return {
       schemaVersion: POST_POOL_ORCHESTRATION_MVP_SCHEMA,
@@ -125,7 +161,7 @@ export class PostPoolDeepScreenOrchestratorService {
           runTriggered: false,
         },
       },
-      simulationQueueHint: shadow.simulationQueueHint,
+      simulationQueueHint: simulationQueueHintForEnvelope,
       simulationQueueActual,
       deeplink: {
         finalMatchPath: deeplinkPath,
@@ -134,7 +170,7 @@ export class PostPoolDeepScreenOrchestratorService {
         ready: Boolean(simulationJobId),
       },
       finalMatchConsumptionHint: {
-        ready: shadow.simulationQueueHint.length > 0,
+        ready: consumptionReady,
         source: "orchestrator_a2",
         poolId: dto.poolId,
         runMode: dto.runMode,
@@ -155,8 +191,101 @@ export class PostPoolDeepScreenOrchestratorService {
         usedCandidateOverride: shadow.debug.usedCandidateOverride,
         candidateUserIdsSource: shadow.candidateUserIdsSource,
         prescreenSkippedReason: shadow.debug.prescreenSkippedReason,
+        shortlistPhaseCV0SkipReason,
       },
     };
+  }
+
+  /**
+   * Phase C v0: shortlist-only simulation queue (2–3). No silent fallback to full-pool prescreen hint.
+   */
+  private async resolveShortlistSimulationForMvp(
+    dto: PostPoolOrchestrationMvpRunDto,
+    shadow: PostPoolDeepScreenShadowResultDto,
+  ): Promise<
+    | {
+        ok: true;
+        binding: ShortlistContractBindingV0;
+        simulationQueueHint: PostPoolSimulationQueueHintEntry[];
+        prescreenShortlist: NonNullable<PostPoolDeepScreenShadowResultDto["prescreen"]>;
+      }
+    | { ok: false; reason: PostPoolOrchestrationMvpAiSimulationSkipReason }
+  > {
+    const pool = await this.prisma.previewPool.findFirst({
+      where: { id: dto.poolId, userId: dto.viewerUserId },
+      include: { items: { orderBy: { rankInPool: "asc" } } },
+    });
+    if (!pool?.items?.length) {
+      return { ok: false, reason: "shortlist_contract_missing" };
+    }
+
+    const contract = await this.previewPoolService.buildShortlistContractV0ForPool(
+      dto.viewerUserId,
+      dto.poolId,
+    );
+    if (!contract) {
+      return { ok: false, reason: "shortlist_contract_missing" };
+    }
+    if (contract.schemaVersion !== PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION) {
+      return { ok: false, reason: "shortlist_contract_missing" };
+    }
+
+    const shortlistIds = [...contract.shortlist.candidateUserIds];
+    if (shortlistIds.length < 2) {
+      return { ok: false, reason: "shortlist_size_lt_2" };
+    }
+
+    const poolItemIds = new Set(pool.items.map((i) => i.candidateUserId));
+    for (const id of shortlistIds) {
+      if (!poolItemIds.has(id)) {
+        return { ok: false, reason: "shortlist_not_subset_of_pool" };
+      }
+    }
+
+    const passedSet = new Set(shadow.dimensionMatchSummary.passedCandidateUserIds);
+    for (const id of shortlistIds) {
+      if (!passedSet.has(id)) {
+        return { ok: false, reason: "shortlist_dimension_ineligible" };
+      }
+    }
+
+    const prescreenShortlist = await this.prescreenV0Service.prescreenBatch({
+      schemaVersion: PRESCREEN_V0_SCHEMA,
+      viewerUserId: dto.viewerUserId,
+      candidateUserIds: shortlistIds,
+      purpose: "shadow",
+    });
+
+    const rowById = new Map(
+      prescreenShortlist.results.map((r) => [r.candidateUserId, r]),
+    );
+    const simulationQueueHint: PostPoolSimulationQueueHintEntry[] = [];
+
+    for (let idx = 0; idx < shortlistIds.length; idx += 1) {
+      const id = shortlistIds[idx];
+      const r = rowById.get(id);
+      if (!r) {
+        return { ok: false, reason: "shortlist_prescreen_incomplete" };
+      }
+      if (r.bucket === "demote") {
+        return { ok: false, reason: "shortlist_prescreen_demoted" };
+      }
+      simulationQueueHint.push({
+        rankHint: idx + 1,
+        candidateUserId: id,
+        bucket: r.bucket as "promote" | "neutral",
+        prescreenScore: r.prescreenScore,
+      });
+    }
+
+    const binding: ShortlistContractBindingV0 = {
+      previewPoolId: dto.poolId,
+      shortlistSchemaVersion: contract.schemaVersion,
+      shortlistCandidateUserIds: shortlistIds,
+      shortlistFingerprint: computeShortlistFingerprint(shortlistIds),
+    };
+
+    return { ok: true, binding, simulationQueueHint, prescreenShortlist };
   }
 
   /**

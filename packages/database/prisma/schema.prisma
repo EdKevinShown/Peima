@@ -136,6 +136,14 @@ model AiSimulationV1Job {
   runSpecVersion         String
   hintSource             String
   hintSnapshot           Json
+  /// Phase C v0: `{ previewPoolId, shortlistSchemaVersion, shortlistCandidateUserIds, shortlistFingerprint }` — must match `hintSnapshot` queue.
+  shortlistBinding       Json?
+  /// Phase C 第二步：shortlist 内 AI 决胜侧车（`shortlist_decision_v0`）；不写 MatchResult。
+  shortlistDecisionV0    Json?
+  /// Phase C v0.2：shortlist 固定四维比较侧车（`shortlist_four_dim_v0`）；不写 MatchResult。
+  shortlistFourDimV0     Json?
+  /// Phase C v0.3：shortlist 三场景证据侧车（`shortlist_scenarios_v0`）；不写 MatchResult。
+  shortlistScenariosV0   Json?
   /// 与 `hintSnapshot` 解析后 Top-8 截断一致的有序 candidate user id 列表（JSON string[]）。
   simulationQueueActual Json
   jobStatus              String   @default("queued")

@@ -12,6 +12,7 @@ import { QuestionnaireService } from "../questionnaire/questionnaire.service";
 import { AiSimulationV1ChatClient } from "./ai-simulation-v1-chat.client";
 import { AiSimulationV1ConfigService } from "./ai-simulation-v1.config.service";
 import {
+  AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE,
   AI_SIMULATION_V1_HINT_SOURCE,
   AI_SIMULATION_V1_SCHEMA,
   AI_SIMULATION_RUN_SPEC_V1,
@@ -24,7 +25,16 @@ import {
   parseAndValidateAiSimulationLlmPayloadV1,
 } from "./ai-simulation-v1-llm-payload.validate";
 import { buildAiSimulationV1SystemPrompt, buildAiSimulationV1UserPrompt } from "./ai-simulation-v1-prompt";
-import type { AiSimulationItemErrorCode, AiSimulationV1EnqueueDto } from "./ai-simulation-v1.types";
+import { PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION } from "../preview-pool/preview-pool-shortlist-contract.v0";
+import type {
+  AiSimulationItemErrorCode,
+  AiSimulationV1EnqueueDto,
+} from "./ai-simulation-v1.types";
+import { computeShortlistFingerprint } from "./shortlist-contract-binding";
+import { buildJobAuditV0 } from "./ai-simulation-v1-job-audit-v0";
+import { tryBuildShortlistDecisionV0 } from "./shortlist-decision-v0";
+import { tryBuildShortlistFourDimV0 } from "./shortlist-four-dim-v0";
+import { tryBuildShortlistScenariosV0 } from "./shortlist-scenarios-v0";
 import type { AiSimulationV1ChatFailureKind } from "./ai-simulation-v1-chat.client";
 import type { SimulationHintSnapshotEntry } from "./ai-simulation-v1.types";
 
@@ -71,12 +81,23 @@ export class AiSimulationV1Service {
     }
   }
 
-  async enqueue(dto: AiSimulationV1EnqueueDto): Promise<{
+  async enqueue(
+    dto: AiSimulationV1EnqueueDto,
+    enqueueSource: typeof AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE,
+  ): Promise<{
     simulationJobId: string;
     acceptedCandidateCount: number;
     simulationQueueActual: string[];
   }> {
     this.assertEnabledOrThrow();
+
+    if (enqueueSource !== AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE) {
+      throw new BadRequestException({
+        code: "AI_SIMULATION_V1_ENQUEUE_INVALID_SOURCE",
+        message:
+          "AI simulation jobs may only be enqueued from PostPoolDeepScreenOrchestratorService.runOrchestrationMvp (runMode=mvp).",
+      });
+    }
 
     if (dto.schemaVersion !== AI_SIMULATION_V1_SCHEMA) {
       throw new BadRequestException(`schemaVersion must be ${AI_SIMULATION_V1_SCHEMA}`);
@@ -97,9 +118,51 @@ export class AiSimulationV1Service {
       );
     }
 
+    const b = dto.shortlistBinding;
+    if (b == null || typeof b !== "object") {
+      throw new BadRequestException({
+        code: "AI_SIMULATION_V1_SHORTLIST_BINDING_REQUIRED",
+        message: "shortlistBinding is required (Phase C v0 shortlist contract).",
+      });
+    }
+    if (b.previewPoolId !== dto.poolId) {
+      throw new BadRequestException(
+        "shortlistBinding.previewPoolId must equal enqueue poolId",
+      );
+    }
+    if (b.shortlistSchemaVersion !== PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION) {
+      throw new BadRequestException(
+        `shortlistBinding.shortlistSchemaVersion must be ${PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION}`,
+      );
+    }
+    const expectedFp = computeShortlistFingerprint(b.shortlistCandidateUserIds);
+    if (b.shortlistFingerprint !== expectedFp) {
+      throw new BadRequestException(
+        "shortlistBinding.shortlistFingerprint does not match shortlistCandidateUserIds",
+      );
+    }
+    if (b.shortlistCandidateUserIds.length < 2 || b.shortlistCandidateUserIds.length > 3) {
+      throw new BadRequestException(
+        "shortlistBinding.shortlistCandidateUserIds must have length 2 or 3 for Phase C v0",
+      );
+    }
+
     const { entries, simulationQueueActual } = resolveSimulationQueueFromHintSnapshot(dto.hintSnapshot);
     if (simulationQueueActual.length === 0) {
       throw new BadRequestException("No candidates in hintSnapshot after filter and Top-8 trim");
+    }
+
+    if (simulationQueueActual.length !== b.shortlistCandidateUserIds.length) {
+      throw new BadRequestException(
+        "hintSnapshot queue length must match shortlistBinding.shortlistCandidateUserIds (no silent expansion to full pool)",
+      );
+    }
+    for (let i = 0; i < b.shortlistCandidateUserIds.length; i += 1) {
+      if (simulationQueueActual[i] !== b.shortlistCandidateUserIds[i]) {
+        throw new BadRequestException(
+          "hintSnapshot candidate order/ids must exactly match shortlistBinding.shortlistCandidateUserIds",
+        );
+      }
     }
 
     const job = await this.prisma.$transaction(async (tx) => {
@@ -111,6 +174,7 @@ export class AiSimulationV1Service {
           runSpecVersion: dto.runSpecVersion,
           hintSource: dto.hintSource,
           hintSnapshot: dto.hintSnapshot as object,
+          shortlistBinding: b as unknown as Prisma.InputJsonValue,
           simulationQueueActual,
           jobStatus: JOB_STATUS.QUEUED,
         },
@@ -158,6 +222,79 @@ export class AiSimulationV1Service {
     return this.formatJobResponse(job);
   }
 
+  /**
+   * Phase F v0.4 — admin read-only triage list.
+   * Returns minimal diagnostic fields only (no sidecar JSON payload blobs).
+   */
+  async listJobsForAdminTriage(options?: {
+    limit?: number;
+    jobStatus?: string;
+    sidecarSuppressedReason?: string;
+    diagnosticBucket?: string;
+    sidecarTrioPresent?: boolean;
+    rankConsistent?: boolean;
+    hasFailedItem?: boolean;
+  }) {
+    const limitRaw = Number(options?.limit ?? 50);
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.trunc(limitRaw))) : 50;
+    const rows = await this.prisma.aiSimulationV1Job.findMany({
+      where: options?.jobStatus ? { jobStatus: options.jobStatus } : undefined,
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+      include: {
+        items: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            candidateUserId: true,
+            status: true,
+            evaluator: true,
+          },
+        },
+      },
+    });
+
+    const out = rows.map((job) => {
+      const audit = buildJobAuditV0(job);
+      const itemCounts = audit.itemCounts;
+      return {
+        simulationJobId: job.id,
+        viewerUserId: job.viewerUserId,
+        poolId: job.poolId,
+        jobStatus: job.jobStatus,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        shortlistBindingPresent: audit.shortlistBindingPresent,
+        sidecarTrioPresent: audit.sidecarTrioPresent,
+        rankConsistent: audit.rankConsistent,
+        sidecarSuppressedReason: audit.sidecarSuppressedReason,
+        specClassification: audit.specClassification,
+        diagnosticBucket: audit.diagnosticBucket,
+        buildabilityDetail: audit.buildabilityDetail,
+        itemCounts,
+        hasFailedItem: itemCounts.failed > 0,
+      };
+    });
+
+    return out.filter((row) => {
+      if (options?.sidecarSuppressedReason && row.sidecarSuppressedReason !== options.sidecarSuppressedReason) {
+        return false;
+      }
+      if (options?.diagnosticBucket && row.diagnosticBucket !== options.diagnosticBucket) {
+        return false;
+      }
+      if (options?.sidecarTrioPresent != null && row.sidecarTrioPresent !== options.sidecarTrioPresent) {
+        return false;
+      }
+      if (options?.rankConsistent != null && row.rankConsistent !== options.rankConsistent) {
+        return false;
+      }
+      if (options?.hasFailedItem != null && row.hasFailedItem !== options.hasFailedItem) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   private formatJobResponse(job: {
     id: string;
     viewerUserId: string;
@@ -165,6 +302,10 @@ export class AiSimulationV1Service {
     poolId: string;
     simulationQueueActual: unknown;
     hintSnapshot: unknown;
+    shortlistBinding: unknown;
+    shortlistDecisionV0: unknown;
+    shortlistFourDimV0?: unknown;
+    shortlistScenariosV0?: unknown;
     items: Array<{
       candidateUserId: string;
       status: string;
@@ -182,6 +323,11 @@ export class AiSimulationV1Service {
       poolId: job.poolId,
       simulationQueueActual: job.simulationQueueActual as string[],
       hintSnapshot: job.hintSnapshot,
+      shortlistBinding: job.shortlistBinding ?? null,
+      shortlistDecisionV0: job.shortlistDecisionV0 ?? null,
+      shortlistFourDimV0: job.shortlistFourDimV0 ?? null,
+      shortlistScenariosV0: job.shortlistScenariosV0 ?? null,
+      jobAuditV0: buildJobAuditV0(job),
       results: job.items.map((it) => ({
         candidateUserId: it.candidateUserId,
         status: it.status,
@@ -223,9 +369,45 @@ export class AiSimulationV1Service {
         await this.runOneItemWithRetries(job.viewerUserId, item.id, item.candidateUserId);
       }
     } finally {
+      const finished = await this.prisma.aiSimulationV1Job.findFirst({
+        where: { id: jobId },
+        include: { items: { orderBy: { createdAt: "asc" } } },
+      });
+      const scenarios =
+        finished != null
+          ? tryBuildShortlistScenariosV0(finished.shortlistBinding, finished.items)
+          : null;
+      const fourDim =
+        scenarios != null ? tryBuildShortlistFourDimV0(scenarios) : null;
+      const decision =
+        finished != null
+          ? tryBuildShortlistDecisionV0(finished.shortlistBinding, finished.items)
+          : null;
+      const rankConsistent =
+        fourDim != null &&
+        decision != null &&
+        fourDim.comparison.rankedCandidateUserIds.length === decision.rankedCandidateUserIds.length &&
+        fourDim.comparison.rankedCandidateUserIds.every(
+          (id, idx) => id === decision.rankedCandidateUserIds[idx],
+        );
+      const updateData: Record<string, unknown> = {
+        jobStatus: JOB_STATUS.COMPLETED,
+        shortlistDecisionV0:
+          rankConsistent && decision != null
+            ? (decision as unknown as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        shortlistFourDimV0:
+          rankConsistent && fourDim != null
+            ? (fourDim as unknown as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+        shortlistScenariosV0:
+          rankConsistent && scenarios != null
+            ? (scenarios as unknown as Prisma.InputJsonValue)
+            : Prisma.DbNull,
+      };
       await this.prisma.aiSimulationV1Job.update({
         where: { id: jobId },
-        data: { jobStatus: JOB_STATUS.COMPLETED },
+        data: updateData as unknown as Prisma.AiSimulationV1JobUpdateInput,
       });
     }
   }

@@ -1,8 +1,12 @@
 import { Module } from "@nestjs/common";
+import { AiSimulationV1Module } from "../ai-simulation-v1/ai-simulation-v1.module";
+import { PostPoolDeepScreenModule } from "../post-pool-deep-screen/post-pool-deep-screen.module";
+import { PrescreenV0Module } from "../prescreen-v0/prescreen-v0.module";
 import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
 
 @Module({
+  imports: [PrescreenV0Module, PostPoolDeepScreenModule, AiSimulationV1Module],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

@@ -1,8 +1,40 @@
 import { Test } from "@nestjs/testing";
+import { PrismaService } from "../src/common/prisma/prisma.service";
+import { AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE } from "../src/modules/ai-simulation-v1/ai-simulation-v1.constants";
+import { AiSimulationV1Service } from "../src/modules/ai-simulation-v1/ai-simulation-v1.service";
+import { computeShortlistFingerprint } from "../src/modules/ai-simulation-v1/shortlist-contract-binding";
+import { PreviewPoolService } from "../src/modules/preview-pool/preview-pool.service";
+import { PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION } from "../src/modules/preview-pool/preview-pool-shortlist-contract.v0";
 import { PostPoolDeepScreenOrchestratorService } from "../src/modules/post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
 import { PrescreenV0Service } from "../src/modules/prescreen-v0/prescreen-v0.service";
 import { PRESCREEN_V0_SCHEMA } from "../src/modules/prescreen-v0/prescreen-v0.types";
-import { PrismaService } from "../src/common/prisma/prisma.service";
+
+function mockProfile(userId: string, dims = 0.8, confidence = 0.9) {
+  return {
+    userId,
+    attachmentStyle: dims,
+    emotionalExpression: dims,
+    communicationStyle: dims,
+    conflictHandling: dims,
+    loveLanguage: dims,
+    securityNeed: dims,
+    controlNeed: dims,
+    independence: dims,
+    loyaltyView: dims,
+    jealousyTendency: dims,
+    moneyAttitude: dims,
+    careerPriority: dims,
+    lifePace: dims,
+    socialNeed: dims,
+    emotionalStability: dims,
+    sexualValues: dims,
+    familyView: dims,
+    marriageExpectation: dims,
+    childrenIntent: dims,
+    riskPreference: dims,
+    confidence,
+  };
+}
 
 describe("PostPoolDeepScreenOrchestratorService", () => {
   it("runs dimension batch then prescreen; hint excludes demote", async () => {
@@ -141,6 +173,8 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
         PostPoolDeepScreenOrchestratorService,
         { provide: PrismaService, useValue: prisma },
         { provide: PrescreenV0Service, useValue: { prescreenBatch: prescreenBatch } },
+        { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool: jest.fn() } },
+        { provide: AiSimulationV1Service, useValue: { enqueue: jest.fn() } },
       ],
     }).compile();
 
@@ -208,6 +242,8 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
         PostPoolDeepScreenOrchestratorService,
         { provide: PrismaService, useValue: prisma },
         { provide: PrescreenV0Service, useValue: { prescreenBatch: prescreenBatch } },
+        { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool: jest.fn() } },
+        { provide: AiSimulationV1Service, useValue: { enqueue: jest.fn() } },
       ],
     }).compile();
 
@@ -218,5 +254,116 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
     expect(out.prescreen).toBeNull();
     expect(out.debug.prescreenSkippedReason).toBe("no_candidates_passed_dimension");
     expect(out.simulationQueueHint).toEqual([]);
+  });
+
+  /**
+   * Phase C v0 acceptance anchor: pool can hold 6+ candidates for shadow/prescreen,
+   * but MVP AI enqueue must receive only shortlistContract 2–3 ids + matching shortlistBinding
+   * (never the full shadow simulationQueueHint length).
+   */
+  it("runOrchestrationMvp (mvp): enqueue receives shortlist-only hint (2) when pool has 6 items", async () => {
+    const sixItems = ["c1", "c2", "c3", "c4", "c5", "c6"].map((candidateUserId, i) => ({
+      candidateUserId,
+      rankInPool: i + 1,
+    }));
+
+    const poolRow = { id: "pool1", userId: "v1", items: sixItems };
+
+    const prisma = {
+      previewPool: {
+        findFirst: jest.fn().mockResolvedValue(poolRow),
+      },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue(mockProfile("v1")),
+        findMany: jest.fn().mockImplementation(({ where: { userId: { in: ids } } }: { where: { userId: { in: string[] } } }) =>
+          (ids as string[]).map((id) => mockProfile(id)),
+        ),
+      },
+    };
+
+    const prescreenBatch = jest.fn().mockImplementation(
+      async (dto: { candidateUserIds: string[]; purpose: string }) => ({
+        schemaVersion: PRESCREEN_V0_SCHEMA,
+        viewerUserId: "v1",
+        purpose: dto.purpose,
+        results: dto.candidateUserIds.map((id) => ({
+          candidateUserId: id,
+          bucket: "promote" as const,
+          prescreenScore: 0.9,
+          reasonCodes: ["static_compat_high" as const],
+          debug: {
+            reviewStaticScore: 80,
+            staticTier: "up" as const,
+            verdict: "worth_exploring" as const,
+            verdictTier: "up" as const,
+            bandB: 0.5,
+          },
+        })),
+        debug: { ruleVersion: "prescreen_rule_v0", droppedCandidates: [] },
+      }),
+    );
+
+    const buildShortlistContractV0ForPool = jest.fn().mockResolvedValue({
+      schemaVersion: PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION,
+      viewerUserId: "v1",
+      poolId: "pool1",
+      shortlist: { size: 2, candidateUserIds: ["c1", "c2"] },
+      staticEvidence: {},
+      exclusionReport: [],
+    });
+
+    const enqueue = jest.fn().mockResolvedValue({
+      simulationJobId: "sim-job-anchor",
+      acceptedCandidateCount: 2,
+      simulationQueueActual: ["c1", "c2"],
+    });
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PostPoolDeepScreenOrchestratorService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: PrescreenV0Service, useValue: { prescreenBatch } },
+        { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool } },
+        { provide: AiSimulationV1Service, useValue: { enqueue } },
+      ],
+    }).compile();
+
+    const orch = moduleRef.get(PostPoolDeepScreenOrchestratorService);
+    const out = await orch.runOrchestrationMvp({
+      viewerUserId: "v1",
+      poolId: "pool1",
+      runMode: "mvp",
+    });
+
+    expect(prescreenBatch).toHaveBeenCalled();
+    const shadowCall = prescreenBatch.mock.calls.find((c) => (c[0].candidateUserIds as string[]).length === 6);
+    expect(shadowCall?.[0].candidateUserIds).toHaveLength(6);
+
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue.mock.calls[0][1]).toBe(AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE);
+    const enqueueArg = enqueue.mock.calls[0][0] as {
+      hintSnapshot: { candidateUserId: string }[];
+      shortlistBinding: {
+        previewPoolId: string;
+        shortlistSchemaVersion: string;
+        shortlistCandidateUserIds: string[];
+        shortlistFingerprint: string;
+      };
+    };
+
+    expect(enqueueArg.hintSnapshot).toHaveLength(2);
+    expect(enqueueArg.hintSnapshot.map((e) => e.candidateUserId)).toEqual(["c1", "c2"]);
+    expect(enqueueArg.shortlistBinding.previewPoolId).toBe("pool1");
+    expect(enqueueArg.shortlistBinding.shortlistSchemaVersion).toBe(
+      PREVIEW_POOL_SHORTLIST_CONTRACT_SCHEMA_VERSION,
+    );
+    expect(enqueueArg.shortlistBinding.shortlistCandidateUserIds).toEqual(["c1", "c2"]);
+    expect(enqueueArg.shortlistBinding.shortlistFingerprint).toBe(
+      computeShortlistFingerprint(["c1", "c2"]),
+    );
+
+    expect(out.simulationQueueHint).toHaveLength(2);
+    expect(out.simulationQueueActual).toEqual(["c1", "c2"]);
+    expect(out.stages.aiSimulation.simulationJobId).toBe("sim-job-anchor");
   });
 });

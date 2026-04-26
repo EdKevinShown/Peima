@@ -260,6 +260,17 @@ export default function MatchingWaitingPage() {
             （若已 build 则优先用 <code>dist/main.js --batch-match</code>）。
             生产环境若 API 容器内无 worker / pnpm，会失败——仅建议在本地或可控环境使用。
           </p>
+          {userId ? (
+            <p style={{ fontSize: "0.78rem", color: "#78350f", margin: "0 0 0.65rem", lineHeight: 1.5 }}>
+              <Link
+                to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
+                style={{ color: "#1d4ed8", textDecoration: "underline" }}
+              >
+                Round 2 编排（内部）
+              </Link>
+              — 跳转预览池页，使用 admin 内部编排链（非 C 端正式功能）。
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={onAdminRunBatchMatch}

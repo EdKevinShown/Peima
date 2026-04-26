@@ -14,6 +14,17 @@ export type PostPoolDeepScreenRunDto = {
 
 export type PostPoolOrchestrationRunMode = "shadow" | "hint_only" | "mvp";
 
+/** Phase C v0: explicit skip when shortlist cannot drive AI simulation (no silent fallback to full pool). */
+export type PostPoolOrchestrationMvpAiSimulationSkipReason =
+  | "not_in_a2_mode"
+  | "no_hint_for_enqueue"
+  | "shortlist_contract_missing"
+  | "shortlist_size_lt_2"
+  | "shortlist_not_subset_of_pool"
+  | "shortlist_dimension_ineligible"
+  | "shortlist_prescreen_incomplete"
+  | "shortlist_prescreen_demoted";
+
 export type PostPoolOrchestrationMvpRunDto = {
   viewerUserId: string;
   poolId: string;
@@ -49,7 +60,7 @@ export type PostPoolOrchestrationMvpEnvelopeDto = {
     };
     aiSimulation: {
       status: PostPoolOrchestrationStageStatus;
-      reason?: "not_in_a1" | "not_in_a2_mode" | "no_hint_for_enqueue";
+      reason?: PostPoolOrchestrationMvpAiSimulationSkipReason | "not_in_a1";
       simulationJobId?: string;
       acceptedCandidateCount?: number;
       runTriggered: boolean;
@@ -90,6 +101,8 @@ export type PostPoolOrchestrationMvpEnvelopeDto = {
     usedCandidateOverride: boolean;
     candidateUserIdsSource: "preview_pool_items" | "override";
     prescreenSkippedReason: "no_candidates_passed_dimension" | null;
+    /** Phase C v0: when `runMode=mvp` and AI simulation skipped due to shortlist gate. */
+    shortlistPhaseCV0SkipReason?: PostPoolOrchestrationMvpAiSimulationSkipReason | null;
   };
 };
 

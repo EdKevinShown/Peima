@@ -2,20 +2,22 @@ import {
   Body,
   Controller,
   Get,
+  GoneException,
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PRESCREEN_V0_SCHEMA } from "../prescreen-v0/prescreen-v0.types";
+import { AI_SIMULATION_V1_ENQUEUE_HTTP_DEPRECATED_CODE } from "../ai-simulation-v1/ai-simulation-v1.constants";
 import { AiSimulationV1Service } from "../ai-simulation-v1/ai-simulation-v1.service";
 import { PostPoolDeepScreenOrchestratorService } from "../post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
 import { PrescreenV0Service } from "../prescreen-v0/prescreen-v0.service";
 import { AdminService } from "./admin.service";
-import { AdminAiSimulationV1EnqueueDto } from "./dto/admin-ai-simulation-v1-enqueue.dto";
 import { AdminPostPoolOrchestrationMvpDto } from "./dto/admin-post-pool-orchestration-mvp.dto";
 import { AdminPostPoolDeepScreenShadowDto } from "./dto/admin-post-pool-deep-screen-shadow.dto";
 import { AdminPrescreenV0BatchDebugDto } from "./dto/admin-prescreen-v0-batch-debug.dto";
@@ -45,22 +47,23 @@ export class AdminController {
     };
   }
 
-  /** AI 模拟 v1 — enqueue（202）；需 AI_SIMULATION_V1_ENABLED=1。 */
+  /**
+   * Retired: direct AI simulation enqueue. Jobs must be created via
+   * `POST /admin/post-pool-deep-screen/run-orchestration-mvp` with `runMode: "mvp"`.
+   */
   @Post("ai-simulation/v1/enqueue")
-  @HttpCode(202)
-  async aiSimulationV1Enqueue(@Req() req: JwtReq, @Body() body: AdminAiSimulationV1EnqueueDto) {
+  aiSimulationV1EnqueueRetired(@Req() req: JwtReq) {
     const userId = req.user?.userId;
     if (!userId) {
       throw new UnauthorizedException("not authenticated");
     }
     this.adminService.assertCanRunAiSimulationV1(userId);
-    return this.aiSimulationV1Service.enqueue({
-      schemaVersion: body.schemaVersion,
-      viewerUserId: body.viewerUserId,
-      hintSource: body.hintSource,
-      poolId: body.poolId,
-      hintSnapshot: body.hintSnapshot,
-      runSpecVersion: body.runSpecVersion,
+    throw new GoneException({
+      statusCode: 410,
+      error: "Gone",
+      code: AI_SIMULATION_V1_ENQUEUE_HTTP_DEPRECATED_CODE,
+      message:
+        "Direct POST /admin/ai-simulation/v1/enqueue is no longer supported. Create jobs via POST /admin/post-pool-deep-screen/run-orchestration-mvp with JSON body.runMode set to \"mvp\" (shortlist-only enqueue is built there).",
     });
   }
 
@@ -72,6 +75,41 @@ export class AdminController {
     }
     this.adminService.assertCanRunAiSimulationV1(userId);
     return this.aiSimulationV1Service.getJobById(jobId);
+  }
+
+  @Get("ai-simulation/v1/jobs")
+  async aiSimulationV1ListJobs(
+    @Req() req: JwtReq,
+    @Query("limit") limit?: string,
+    @Query("jobStatus") jobStatus?: string,
+    @Query("sidecarSuppressedReason") sidecarSuppressedReason?: string,
+    @Query("diagnosticBucket") diagnosticBucket?: string,
+    @Query("sidecarTrioPresent") sidecarTrioPresent?: string,
+    @Query("rankConsistent") rankConsistent?: string,
+    @Query("hasFailedItem") hasFailedItem?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    this.adminService.assertCanRunAiSimulationV1(userId);
+
+    const parseBool = (x?: string): boolean | undefined => {
+      if (x == null || x === "") return undefined;
+      if (x === "true") return true;
+      if (x === "false") return false;
+      return undefined;
+    };
+
+    return this.aiSimulationV1Service.listJobsForAdminTriage({
+      limit: limit ? Number(limit) : undefined,
+      jobStatus: jobStatus?.trim() || undefined,
+      sidecarSuppressedReason: sidecarSuppressedReason?.trim() || undefined,
+      diagnosticBucket: diagnosticBucket?.trim() || undefined,
+      sidecarTrioPresent: parseBool(sidecarTrioPresent),
+      rankConsistent: parseBool(rankConsistent),
+      hasFailedItem: parseBool(hasFailedItem),
+    });
   }
 
   @Post("ai-simulation/v1/jobs/:jobId/run")

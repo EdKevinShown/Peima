@@ -1,6 +1,8 @@
 # Peima / 配吗
 
-面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、第一层分支累计 + 主/候选/风格标签（风格对外 ≤3）+ **`displayPrimary`（永非空）** + 规则化 **`overallExplanation`（title + paragraph，非 AI）**；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。
+面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。
+
+> **P6（Round 2 短名单 AI 模拟 · 当前状态与最短操作）：**[`docs/P6/P6-current-status-v0.md`](./docs/P6/P6-current-status-v0.md) · [`docs/P6/P6-operating-notes-v0.md`](./docs/P6/P6-operating-notes-v0.md) · [P6 文档索引](./docs/P6/README.md)。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、第一层分支累计 + 主/候选/风格标签（风格对外 ≤3）+ **`displayPrimary`（永非空）** + 规则化 **`overallExplanation`（title + paragraph，非 AI）**；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。
 
 ---
 
@@ -754,6 +756,8 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 
 **P6（Copilot 线 + 独立切片 + P6.8 + P6.9 + P6.10 + 演进规划）**
 
+- `docs/P6/P6-current-status-v0.md`：**P6 当前状态一页纸**（A～F 快照、唯一建 job 路径、废弃 enqueue、Final Match 双层、内部页边界）
+- `docs/P6/P6-operating-notes-v0.md`：**P6 最短操作链**（orchestration → run job → GET job → Final Match 深链）
 - `docs/P6/README.md`：**P6** 文档索引（`truth/` / `acceptance/` / `specs/` / `archive/` 导航）
 - `docs/P6/archive/historical/P6-ai-production-evolution-plan.md`：**P6** 演进规划（Worker 侧编排、决策层模型替换、多 Agent/simulation 等；与 **P6.1～P6.10** 已交付内容区分）
 - `docs/P6/specs/P6.1-implementation-round1.md`：**P6.1** Copilot 真实 AI 最小实现

@@ -11,6 +11,8 @@ import LoginPage from "../pages/LoginPage";
 import UserImagesPage from "../pages/UserImagesPage";
 import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
+import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
+import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
 
 function HomePage() {
   const hint = "（多数页建议 URL 加 ?userId= 或先登录写入 localStorage）";
@@ -102,6 +104,8 @@ export default function AppRoutes() {
       <Route path="/my-images" element={<UserImagesPage />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/my-activity" element={<MyActivityPage />} />
+      <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
+      <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

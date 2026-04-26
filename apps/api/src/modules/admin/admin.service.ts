@@ -105,17 +105,33 @@ export class AdminService {
     return this.isAdminUser(userId);
   }
 
+  private assertIsAdminUserOrThrow(userId: string): void {
+    if (!this.isAdminUser(userId)) {
+      throw new ForbiddenException(
+        "admin only: add your user id to PEIMA_ADMIN_USER_IDS",
+      );
+    }
+  }
+
   assertCanTriggerBatchMatch(userId: string): void {
     if (isBatchMatchTriggerDisabled()) {
       throw new ForbiddenException(
         "admin batch-match trigger is disabled (PEIMA_ADMIN_BATCH_MATCH_DISABLED)",
       );
     }
-    if (!this.isAdminUser(userId)) {
-      throw new ForbiddenException(
-        "admin only: add your user id to PEIMA_ADMIN_USER_IDS",
-      );
-    }
+    this.assertIsAdminUserOrThrow(userId);
+  }
+
+  assertCanRunAiSimulationV1(userId: string): void {
+    this.assertIsAdminUserOrThrow(userId);
+  }
+
+  assertCanRunPostPoolDeepScreenShadow(userId: string): void {
+    this.assertIsAdminUserOrThrow(userId);
+  }
+
+  assertCanRunPrescreenDebug(userId: string): void {
+    this.assertIsAdminUserOrThrow(userId);
   }
 
   async runBatchMatchSubprocess(): Promise<void> {

@@ -6,10 +6,16 @@
 
 推荐阅读顺序：① [主链真源](./truth/P6-current-matching-chain-single-source-of-truth.md) → ② [Round 1 总览](./acceptance/P6-round1-current-status-overview.md) → ③ 按需浏览 [`specs/`](./specs/)、[`acceptance/`](./acceptance/) 等。
 
+## Current status & operations（当前状态与操作）
+
+- **[P6 Current Status (v0)](./P6-current-status-v0.md)** — 截至 `main` 的 A～F 快照、**唯一正确建 job 路径**、废弃 enqueue、Final Match 双层与 triage 边界（不写路线图）。
+- **[P6 Operating Notes (v0)](./P6-operating-notes-v0.md)** — **最短成功链**：orchestration MVP → `simulationJobId` → run job → GET job 门闩 → Final Match 深链 → 侧车与用户可见辅助卡。
+
 ## Truth（真源）
 
 - [主链顺序与阶段边界](./truth/P6-current-matching-chain-single-source-of-truth.md)
 - [AI 模拟 v1 契约](./truth/P6-ai-simulation-v1-implementation-notes.md)
+- [Shortlist 固定 10 场景模拟规则总表（`shortlistScenariosV0`）](./truth/P6-shortlist-scenarios-v0-rules-master.md)
 - [Prescreen v0 实现说明](./truth/P6-backend-intelligent-prescreen-v0-implementation-notes.md)
 - [读数融合 v0 实现说明](./truth/P6.z-readout-fusion-v0-implementation-notes.md)
 - [Preview Pool 闸门与分层 v0](./truth/P6-preview-pool-gating-and-layered-v0.md)
@@ -27,6 +33,7 @@
 - **[P6 Round 1 当前状态总览](./acceptance/P6-round1-current-status-overview.md)**（**阶段收口页**）
 - [P6 Round 2 B1：视觉增强 stub/LLM 验收收口](./acceptance/P6-round2-b1-visual-enhance-acceptance.md)
 - [P6 Round 2 Orchestrator A1/A2 验收收口](./acceptance/P6-round2-orchestrator-a1-a2-acceptance.md)
+- Round 2 orchestrator 最小回归锚点（合并前手工 smoke）：`pnpm --filter @peima/api run test:e2e:orch-anchor`
 - [P6.8–P6.10 阶段收口与 handoff](./acceptance/P6.8-P6.10-phase-closure-handoff.md)
 - [AI 模拟 v1 首轮验收结论](./acceptance/P6-ai-simulation-v1-round1-acceptance-conclusion.md)
 - [P6.3 Copilot 首轮验收](./acceptance/P6.3-acceptance-round1.md)

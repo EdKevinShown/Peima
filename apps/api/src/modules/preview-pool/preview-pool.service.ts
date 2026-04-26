@@ -3,7 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { PreviewPool, PreviewPoolItem, UserPreference } from "@peima/database";
+import type {
+  PreviewPool,
+  PreviewPoolItem,
+  User,
+  UserImage,
+  UserPreference,
+  UserProfile,
+} from "@peima/database";
 import { P1_DISCLAIMER, P1_MARK } from "@peima/shared/constants";
 import {
   passesPreferenceHardGate,
@@ -24,6 +31,10 @@ import {
   isPreviewVisualEnhanceEnabled,
   previewVisualEnhanceTimeoutMs,
 } from "./visual-signal-enhance-stub";
+import {
+  buildPreviewPoolShortlistContractV0,
+  type PreviewPoolShortlistContractV0,
+} from "./preview-pool-shortlist-contract.v0";
 
 const PREFERENCE_GATE_BATCH_SIZE = 50;
 
@@ -86,11 +97,83 @@ function buildItemMetaPlaceholder(
 export type PreviewPoolBundle = {
   previewPool: PreviewPool;
   items: PreviewPoolItem[];
+  /** Phase B v0：从 6 池派生的只读 shortlist contract（可选附加字段）。 */
+  shortlistContract?: PreviewPoolShortlistContractV0;
 };
+
+export type { PreviewPoolShortlistContractV0 };
 
 @Injectable()
 export class PreviewPoolService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Phase C v0: read-only shortlistContract for a pool row (same rules as generate/latest attach).
+   */
+  async buildShortlistContractV0ForPool(
+    viewerUserId: string,
+    poolId: string,
+  ): Promise<PreviewPoolShortlistContractV0 | undefined> {
+    const pool = await this.prisma.previewPool.findFirst({
+      where: { id: poolId, userId: viewerUserId },
+      include: { items: { orderBy: { rankInPool: "asc" } } },
+    });
+    if (!pool?.items?.length) {
+      return undefined;
+    }
+    return this.attachShortlistContractV0(viewerUserId, poolId, pool.items);
+  }
+
+  private async attachShortlistContractV0(
+    viewerUserId: string,
+    poolId: string,
+    items: PreviewPoolItem[],
+  ): Promise<PreviewPoolShortlistContractV0 | undefined> {
+    if (!items.length) {
+      return undefined;
+    }
+
+    const candidateIds = [...new Set(items.map((it) => it.candidateUserId))];
+
+    const [prefRow, viewerProf, users, profiles, images] = await Promise.all([
+      this.prisma.userPreference.findUnique({ where: { userId: viewerUserId } }),
+      this.prisma.userProfile.findUnique({ where: { userId: viewerUserId } }),
+      this.prisma.user.findMany({ where: { id: { in: candidateIds } } }),
+      this.prisma.userProfile.findMany({ where: { userId: { in: candidateIds } } }),
+      this.prisma.userImage.findMany({
+        where: { userId: { in: candidateIds } },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const candidateUserById = new Map<string, User>(users.map((u) => [u.id, u]));
+    const candidateProfileById = new Map<string, UserProfile>(
+      profiles.map((p) => [p.userId, p]),
+    );
+
+    const candidateFirstImageById = new Map<string, UserImage | null>();
+    for (const img of images) {
+      if (!candidateFirstImageById.has(img.userId)) {
+        candidateFirstImageById.set(img.userId, img);
+      }
+    }
+    for (const id of candidateIds) {
+      if (!candidateFirstImageById.has(id)) {
+        candidateFirstImageById.set(id, null);
+      }
+    }
+
+    return buildPreviewPoolShortlistContractV0({
+      viewerUserId,
+      poolId,
+      items,
+      viewerPreference: prefRow,
+      viewerProfile: viewerProf,
+      candidateUserById,
+      candidateProfileById,
+      candidateFirstImageById,
+    });
+  }
 
   /** Maps DB row to gate input (`styleTags` excluded from step-1 gate). */
   private toPreferenceGatePref(row: UserPreference | null): PreferenceGatePref | null {
@@ -324,7 +407,12 @@ export class PreviewPoolService {
     });
 
     const { items, ...previewPool } = created;
-    return { previewPool, items };
+    const shortlistContract = await this.attachShortlistContractV0(
+      userId,
+      previewPool.id,
+      items,
+    );
+    return { previewPool, items, shortlistContract };
   }
 
   async findLatestActiveForUser(viewerUserId: string): Promise<PreviewPoolBundle> {
@@ -345,7 +433,12 @@ export class PreviewPoolService {
     }
 
     const { items, ...previewPool } = pool;
-    return { previewPool, items };
+    const shortlistContract = await this.attachShortlistContractV0(
+      viewerUserId,
+      previewPool.id,
+      items,
+    );
+    return { previewPool, items, shortlistContract };
   }
 
   async remove(poolId: string, viewerUserId: string): Promise<void> {
