@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateFeedbackDto } from "./dto/create-feedback.dto";
+import type { FeedbackRecordResponse } from "./dto/feedback-record-response.dto";
 import { FeedbackService } from "./feedback.service";
 
 type JwtReq = {
@@ -21,7 +22,10 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Post()
-  create(@Body() dto: CreateFeedbackDto, @Req() req: JwtReq) {
+  create(
+    @Body() dto: CreateFeedbackDto,
+    @Req() req: JwtReq,
+  ): Promise<FeedbackRecordResponse> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId) {
       throw new UnauthorizedException("not authenticated");
@@ -30,7 +34,7 @@ export class FeedbackController {
   }
 
   @Get("mine")
-  listMine(@Req() req: JwtReq) {
+  listMine(@Req() req: JwtReq): Promise<FeedbackRecordResponse[]> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId) {
       throw new UnauthorizedException("not authenticated");

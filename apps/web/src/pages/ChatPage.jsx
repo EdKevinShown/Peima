@@ -32,9 +32,14 @@ import { getSummaryAi } from "../api/summary-ai";
 const P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION =
   "p6.8-profile-completion-chat-ai-v1";
 
+/** P6.12 structured feedback（与 `docs/P6/P6.12-chat-feedback-structured-payload-v0.md` 一致）。 */
+const P612_FEEDBACK_SOURCE_VERSION = "p6.12-chat-feedback-structured-v0";
+
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
+  const matchResultIdParam =
+    searchParams.get("matchResultId")?.trim() || undefined;
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const { ensureConversationError, shouldHoldForConversationBootstrap } =
     useEnsureConversationInUrl(searchParams);
@@ -65,6 +70,11 @@ export default function ChatPage() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [refreshSource, setRefreshSource] = useState("unknown");
   const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackContinueIntent, setFeedbackContinueIntent] = useState(3);
+  const [feedbackComfortLevel, setFeedbackComfortLevel] = useState(3);
+  const [feedbackReplyQuality, setFeedbackReplyQuality] = useState(3);
+  const [feedbackSafetyFeeling, setFeedbackSafetyFeeling] = useState(3);
+  const [feedbackAwkwardness, setFeedbackAwkwardness] = useState(3);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState(null);
@@ -400,15 +410,30 @@ export default function ChatPage() {
     setFeedbackResult(null);
     setFeedbackSubmitting(true);
     try {
+      const targetUserId = conversation?.candidateUserId || undefined;
+      const structuredPayload = {
+        schemaVersion: 1,
+        kind: "p6.12_conversation_v0",
+        conversationId,
+        overallRating: feedbackRating,
+        continueIntent: feedbackContinueIntent,
+        comfortLevel: feedbackComfortLevel,
+        replyQuality: feedbackReplyQuality,
+        safetyFeeling: feedbackSafetyFeeling,
+        awkwardness: feedbackAwkwardness,
+        ...(matchResultIdParam ? { matchResultId: matchResultIdParam } : {}),
+        ...(targetUserId ? { targetUserId } : {}),
+      };
       await submitFeedback({
         userId,
         subjectKind: "conversation",
         subjectId: conversationId,
         rating: feedbackRating,
         comment: feedbackComment.trim() || undefined,
-        tags: ["post_chat_action_hub"],
+        tags: ["post_chat_action_hub", "p6.12_structured_v0"],
         sourceType: "rule_based",
-        sourceVersion: "p4-post-chat-action-hub-v1",
+        sourceVersion: P612_FEEDBACK_SOURCE_VERSION,
+        structuredPayload,
       });
       setFeedbackResult("反馈已提交");
       setFeedbackComment("");
@@ -424,6 +449,13 @@ export default function ChatPage() {
     feedbackSubmitting,
     feedbackRating,
     feedbackComment,
+    feedbackContinueIntent,
+    feedbackComfortLevel,
+    feedbackReplyQuality,
+    feedbackSafetyFeeling,
+    feedbackAwkwardness,
+    conversation,
+    matchResultIdParam,
   ]);
 
   const onHandleLatestSuggestion = useCallback(
@@ -533,12 +565,20 @@ export default function ChatPage() {
     return s ? `/chat?${s}` : "/chat";
   }, [conversationId, userId]);
 
+  const myActivityHref = useMemo(() => {
+    if (!userId) return "/my-activity";
+    return `/my-activity?userId=${encodeURIComponent(userId)}`;
+  }, [userId]);
+
   const freshnessHint =
-    "发送消息或更新摘要后，前往沟通洞察或关系时间线时建议手动刷新，查看最新状态。";
+    "在其他页面查看洞察或时间线后，回到此处发消息前可手动刷新，以同步最新摘要。";
 
   return (
-    <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem" }}>聊天</h1>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
+      <h1 style={{ fontSize: "1.25rem", marginBottom: "0.25rem", color: "#0f172a" }}>聊天</h1>
+      <p style={{ margin: "0 0 0.65rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.45 }}>
+        主操作为输入内容后点<strong>发送</strong>。上方为可选工具入口。
+      </p>
       <ConversationContextBar
         pageKey="chat"
         conversationId={conversationId}
@@ -546,6 +586,8 @@ export default function ChatPage() {
         chatHref={chatSelfHref}
         copilotHref={copilotFullHref}
         timelineHref={timelineHref}
+        activityHref={myActivityHref}
+        navVariant="phaseG_subtle"
         freshnessHint={freshnessHint}
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}
@@ -566,17 +608,17 @@ export default function ChatPage() {
           style={{
             marginBottom: "1.25rem",
             padding: "0.75rem 0.85rem",
-            border: "1px solid #e8e8e8",
+            border: "1px dashed #cbd5e1",
             borderRadius: 10,
-            background: "#fcfcfc",
+            background: "#f8fafc",
           }}
-          aria-label="聊天后行动闭环（P4-MVP）"
+          aria-label="聊天后的可选延伸"
         >
           <h2 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", fontWeight: 600 }}>
-            聊天后行动闭环（P4-MVP）
+            可选：摘要与建议
           </h2>
-          <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", color: "#666" }}>
-            将摘要、洞察、反馈、建议处理与时间线收口为一次连续动作。当前为规则层能力，不涉及真实模型链路。
+          <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+            本区为摘要、洞察与资料建议等<strong>可选</strong>能力；时间线、沟通洞察与反馈入口在上方。
           </p>
           <div
             style={{
@@ -714,8 +756,11 @@ export default function ChatPage() {
             }}
           >
             <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.4rem" }}>记录本次会话反馈</h3>
+            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.5rem" }}>
+              仅用于改进体验（P6.12 结构化），对方不会看到；与匹配分、排序无关。
+            </p>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.45rem" }}>
-              <label htmlFor="p4-feedback-rating">评分</label>
+              <label htmlFor="p4-feedback-rating">总评</label>
               <select
                 id="p4-feedback-rating"
                 value={feedbackRating}
@@ -729,6 +774,39 @@ export default function ChatPage() {
                 <option value={1}>1 - 很不满意</option>
               </select>
             </div>
+            {[
+              ["续聊意愿", "p612-fi", feedbackContinueIntent, setFeedbackContinueIntent],
+              ["舒适度", "p612-cm", feedbackComfortLevel, setFeedbackComfortLevel],
+              ["对方回复", "p612-rq", feedbackReplyQuality, setFeedbackReplyQuality],
+              ["安全感", "p612-sf", feedbackSafetyFeeling, setFeedbackSafetyFeeling],
+              ["尴尬/不自然（越高越尴尬）", "p612-aw", feedbackAwkwardness, setFeedbackAwkwardness],
+            ].map(([label, id, value, setVal]) => (
+              <div
+                key={id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "0.35rem",
+                }}
+              >
+                <label htmlFor={id} style={{ minWidth: "9.5rem", fontSize: "0.8rem" }}>
+                  {label}
+                </label>
+                <select
+                  id={id}
+                  value={value}
+                  onChange={(e) => setVal(Number(e.target.value))}
+                  disabled={feedbackSubmitting}
+                >
+                  {[5, 4, 3, 2, 1].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
             <textarea
               rows={2}
               value={feedbackComment}
@@ -949,16 +1027,39 @@ export default function ChatPage() {
               style={{ width: "100%", resize: "vertical" }}
               placeholder="输入消息…"
             />
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem" }}>
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center" }}>
               <button
                 type="button"
                 onClick={onSend}
                 disabled={sending || !userId || !conversationId || content.trim().length === 0}
+                style={{
+                  padding: "0.65rem 1.35rem",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  border: "none",
+                  borderRadius: 8,
+                  background: "#1e293b",
+                  color: "#fff",
+                  cursor: "pointer",
+                }}
               >
                 {sending ? "发送中…" : "发送"}
               </button>
-              <button type="button" onClick={() => load("manual")} disabled={loading}>
-                刷新
+              <button
+                type="button"
+                onClick={() => load("manual")}
+                disabled={loading}
+                style={{
+                  padding: "0.5rem 0.85rem",
+                  fontSize: "0.86rem",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  background: "#fff",
+                  color: "#475569",
+                  cursor: "pointer",
+                }}
+              >
+                刷新对话
               </button>
             </div>
           </div>

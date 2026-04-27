@@ -5,6 +5,7 @@ import {
   IsInt,
   IsISO8601,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -51,6 +52,11 @@ export class CreateFeedbackDto {
   @IsString()
   @MaxLength(4000)
   comment?: string;
+
+  /** P6.12 v0 conversation structured feedback; when set, use with sourceVersion p6.12-chat-feedback-structured-v0 and rule_based. */
+  @IsOptional()
+  @IsObject()
+  structuredPayload?: Record<string, unknown>;
 
   @IsString()
   @IsNotEmpty()
