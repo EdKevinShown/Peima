@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import { getQuestionnaireProfile } from "../api/questionnaire";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -101,6 +101,7 @@ function branchCellStyle(axisId, letter, highlightSet) {
 }
 
 export default function QuestionnaireProfilePage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
 
@@ -150,7 +151,7 @@ export default function QuestionnaireProfilePage() {
   const emptyNoRow = userId && !loading && !error && payload === null;
 
   return (
-    <main style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>问卷画像（G1-R · v3）</h1>
       <p style={{ color: "#666", fontSize: "0.88rem", marginBottom: "0.75rem" }}>
         只读 <code>GET /questionnaire/profile/:userId</code>。主区为<strong>分支累计（公平机会）</strong>与
@@ -183,10 +184,26 @@ export default function QuestionnaireProfilePage() {
       ) : null}
 
       {emptyNoRow ? (
-        <p style={{ color: "#555", marginTop: "0.75rem" }} role="status">
-          当前尚无问卷画像，请先完成问卷（<Link to="/questionnaire">/questionnaire</Link>
-          ）。
-        </p>
+        <div style={{ marginTop: "1rem" }}>
+          <p style={{ color: "#555", margin: "0 0 0.65rem" }} role="status">
+            当前尚无问卷画像，请先完成问卷。
+          </p>
+          <Link
+            to={userId ? `/questionnaire?userId=${encodeURIComponent(userId)}` : "/questionnaire"}
+            style={{
+              display: "inline-block",
+              padding: "0.65rem 1.25rem",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              borderRadius: 8,
+              background: "#1e293b",
+              color: "#fff",
+              textDecoration: "none",
+            }}
+          >
+            去填问卷
+          </Link>
+        </div>
       ) : null}
 
       {userId && !loading && !error && profile && payload ? (
@@ -589,6 +606,36 @@ export default function QuestionnaireProfilePage() {
               ))}
             </ul>
           </details>
+
+          <div
+            style={{
+              marginTop: "1.75rem",
+              paddingTop: "1.1rem",
+              borderTop: "1px solid #e5e7eb",
+            }}
+          >
+            <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0 0 0.55rem" }}>
+              Phase G v0.1：资料已就绪后，下一步进入匹配等待（状态枢纽）。
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(`/matching-waiting?userId=${encodeURIComponent(userId)}`)
+              }
+              style={{
+                padding: "0.65rem 1.25rem",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                border: "none",
+                borderRadius: 8,
+                background: "#1e293b",
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              前往匹配等待页
+            </button>
+          </div>
 
           <p style={{ color: "#888", fontSize: "0.78rem", marginTop: "1rem" }}>
             更新于 {profile.updatedAt ? String(profile.updatedAt) : "—"}

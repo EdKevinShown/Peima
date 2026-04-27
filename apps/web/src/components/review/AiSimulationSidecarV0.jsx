@@ -6,12 +6,13 @@ const CONTINUE_ZH = {
   slow_down: "建议放缓",
 };
 
-function continueLabel(v) {
-  if (v == null || typeof v !== "string") return "—";
-  return CONTINUE_ZH[v] ?? v;
+/** 主视图不展示英文枚举：仅映射已知值，其余返回 null（由一句泛化文案承接）。 */
+function continueLabelSafe(v) {
+  if (v == null || typeof v !== "string") return null;
+  return CONTINUE_ZH[v] ?? null;
 }
 
-/** 0–1 → 百分制展示，与 FinalMatchPage formatScoreDisplay 一致语义 */
+/** 0–1 → 百分制展示（与 FinalMatch 主指数区分：仅作弱参考）。 */
 function formatSimRankScore(v) {
   if (v == null || Number.isNaN(Number(v))) return "—";
   const x = Number(v);
@@ -44,31 +45,31 @@ function isTranscriptLiteShape(tl) {
       typeof r === "object" &&
       typeof r.round === "number" &&
       typeof r.speaker === "string" &&
-      typeof r.intent_tag === "string" &&
       typeof r.text === "string",
   );
 }
 
-const shellStyle = {
+/** 成功态：正式模块外壳（弱于主结果 Hero）。 */
+const moduleShell = {
   marginBottom: "1.25rem",
-  padding: "1rem 1rem 1.1rem",
+  padding: "1rem 1rem 1.05rem",
   borderRadius: 10,
-  border: "1px solid #a5b4fc",
-  background: "linear-gradient(180deg, #f5f3ff 0%, #ffffff 40%)",
-  boxShadow: "0 1px 4px rgba(91,33,182,0.06)",
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
+  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
 };
 
-const titleStyle = {
+const moduleTitle = {
   fontSize: "1.02rem",
   margin: "0 0 0.35rem",
-  color: "#4c1d95",
+  color: "#0f172a",
   fontWeight: 700,
 };
 
-const subStyle = {
-  margin: "0 0 0.85rem",
+const moduleSub = {
+  margin: "0 0 0.65rem",
   fontSize: "0.82rem",
-  color: "#6b21a8",
+  color: "#64748b",
   lineHeight: 1.55,
 };
 
@@ -76,22 +77,25 @@ const btnRefresh = {
   padding: "0.45rem 0.85rem",
   fontSize: "0.82rem",
   fontWeight: 500,
-  border: "1px solid #c4b5fd",
+  border: "1px solid #cbd5e1",
   borderRadius: 8,
   background: "#fff",
-  color: "#5b21b6",
+  color: "#475569",
   cursor: "pointer",
 };
 
+const compactWrap = {
+  marginBottom: "0.85rem",
+  padding: "0.65rem 0.75rem",
+  borderRadius: 8,
+  border: "1px solid #e2e8f0",
+  background: "#fff",
+  maxWidth: 520,
+};
+
 /**
- * AI 模拟 v1 侧车（内部）：依赖父组件拉取 GET job 后传入。
- * @param {object} props
- * @param {string} props.aiSimJobId
- * @param {string | null} props.candidateUserId
- * @param {import("../../api/ai-simulation-v1").AiSimulationV1JobResponse | null} props.job
- * @param {boolean} props.jobLoading
- * @param {string | null} props.jobError
- * @param {() => void} props.onRefresh
+ * Phase E v1.1：Final Match「互动与相处参考」（仅呈现层；数据仍来自 GET job）。
+ * 门闩不满足时不展示半成品模块；技术字段仅出现在折叠内。
  */
 export default function AiSimulationSidecarV0({
   aiSimJobId,
@@ -110,49 +114,37 @@ export default function AiSimulationSidecarV0({
 
   const isForbidden = Boolean(jobError && (jobError.includes("403") || jobError.includes("没有权限")));
 
-  if (!aiSimJobId) {
-    return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ ...subStyle, marginBottom: 0 }}>
-          未关联模拟 job。内部验收请在 URL 增加 <code style={{ fontSize: "0.78rem" }}>aiSimJobId</code>
-          （由 Admin enqueue 返回的 <code style={{ fontSize: "0.78rem" }}>simulationJobId</code>）。
-        </p>
-      </div>
-    );
-  }
-
-  if (!candidateUserId) {
-    return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ ...subStyle, marginBottom: 0 }}>等待当前匹配结果中的对方 ID…</p>
-      </div>
-    );
+  if (!aiSimJobId || !candidateUserId) {
+    return null;
   }
 
   if (jobLoading) {
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ margin: 0, fontSize: "0.88rem", color: "#64748b" }}>加载模拟 job…</p>
-      </div>
+      <p style={{ ...moduleSub, marginBottom: "0.75rem" }} role="status">
+        正在加载相处参考…
+      </p>
     );
   }
 
   if (jobError) {
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
+      <div style={compactWrap} aria-live="polite">
         {isForbidden ? (
-          <p style={{ margin: 0, fontSize: "0.88rem", color: "#92400e", lineHeight: 1.55 }}>
-            无权限加载 AI 模拟结果：需要 Admin 白名单账号与有效登录。侧车不影响上方匹配结论。
+          <p style={{ margin: 0, fontSize: "0.86rem", color: "#64748b", lineHeight: 1.55 }}>
+            暂时无法加载相处参考（权限不足）。不影响上方匹配结果与匹配指数。
           </p>
         ) : (
-          <p style={{ margin: 0, fontSize: "0.88rem", color: "#b00020" }} role="alert">
-            {jobError}
+          <p style={{ margin: 0, fontSize: "0.86rem", color: "#64748b", lineHeight: 1.55 }}>
+            暂时无法加载相处参考。不影响上方匹配结果。
           </p>
         )}
+        <details style={{ marginTop: "0.55rem", fontSize: "0.76rem", color: "#94a3b8" }}>
+          <summary style={{ cursor: "pointer", color: "#64748b" }}>查看错误详情（可选）</summary>
+          <p style={{ margin: "0.4rem 0 0", wordBreak: "break-word" }}>{jobError}</p>
+        </details>
+        <button type="button" style={{ ...btnRefresh, marginTop: "0.55rem" }} onClick={onRefresh} disabled={jobLoading}>
+          重试加载
+        </button>
       </div>
     );
   }
@@ -163,34 +155,31 @@ export default function AiSimulationSidecarV0({
 
   if (!matched) {
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ margin: "0 0 0.5rem", fontSize: "0.88rem", color: "#92400e", lineHeight: 1.55 }}>
-          当前页面的对方（<code style={{ fontSize: "0.76rem" }}>{candidateUserId}</code>）不在该模拟 job 的{" "}
-          <code style={{ fontSize: "0.76rem" }}>results</code> 队列中。请核对 enqueue 时的 hint 与 Top-8 是否包含此人。
-        </p>
-        <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>
-          jobId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{aiSimJobId}</code>
-        </p>
-      </div>
+      <p style={{ ...moduleSub, marginBottom: "0.75rem" }} role="status">
+        当前参考说明与本轮对象未对齐，暂不展示。不影响上方匹配结果。
+      </p>
     );
   }
 
   const st = matched.status;
   if (st === "queued" || st === "running") {
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ margin: "0 0 0.65rem", fontSize: "0.88rem", color: "#5b21b6", lineHeight: 1.55 }}>
-          {st === "queued" ? "该候选在模拟队列中排队，尚未执行。" : "该候选的模拟正在执行中…"}
+      <div style={compactWrap} aria-live="polite">
+        <p style={{ margin: "0 0 0.55rem", fontSize: "0.86rem", color: "#475569", lineHeight: 1.55 }}>
+          {st === "queued" ? "相处参考尚在排队生成。" : "相处参考正在生成中。"}
         </p>
         <button type="button" style={btnRefresh} onClick={onRefresh} disabled={jobLoading}>
-          刷新状态
+          刷新进度
         </button>
-        <p style={{ margin: "0.5rem 0 0", fontSize: "0.74rem", color: "#64748b" }}>
-          job：<code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>{job.simulationJobId}</code> · jobStatus：
-          <code style={{ fontSize: "0.72rem" }}>{job.jobStatus}</code>
-        </p>
+        <details style={{ marginTop: "0.55rem", fontSize: "0.74rem", color: "#94a3b8" }}>
+          <summary style={{ cursor: "pointer", color: "#64748b" }}>技术状态（可选）</summary>
+          <p style={{ margin: "0.35rem 0 0", wordBreak: "break-all" }}>
+            <code>{String(job.simulationJobId || "")}</code>
+          </p>
+          <p style={{ margin: "0.25rem 0 0" }}>
+            <code>{String(job.jobStatus || "")}</code>
+          </p>
+        </details>
       </div>
     );
   }
@@ -200,74 +189,60 @@ export default function AiSimulationSidecarV0({
     const hasDetail =
       fd != null && typeof fd === "object" && !Array.isArray(fd) && typeof fd.path === "string";
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
+      <div style={compactWrap} aria-live="polite">
         <p style={{ margin: "0 0 0.5rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.55 }}>
-          模拟未产出可用结构化结果；<strong>不</strong>作为人工审核结论，仅用于排障与迭代。
+          本次未能生成可用的相处参考，不影响上方匹配结论。
         </p>
-        <p style={{ margin: "0 0 0.25rem", fontSize: "0.82rem", color: "#334155" }}>
-          <strong>errorCode</strong>：<code style={{ fontSize: "0.8rem" }}>{matched.errorCode ?? "—"}</code>
-        </p>
-        {matched.errorCode === "schema_validation" && hasDetail ? (
-          <>
-            <p style={{ margin: "0.35rem 0 0.15rem", fontSize: "0.82rem", color: "#334155" }}>
-              <strong>failureDetail.path</strong>
-            </p>
-            <pre
-              style={{
-                margin: "0 0 0.35rem",
-                padding: "0.45rem 0.55rem",
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                fontSize: "0.76rem",
-                overflowX: "auto",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-all",
-              }}
-            >
-              {fd.path}
-            </pre>
-            <p style={{ margin: "0.25rem 0 0.15rem", fontSize: "0.82rem", color: "#334155" }}>
-              <strong>failureDetail.reason</strong>
-            </p>
-            <pre
-              style={{
-                margin: 0,
-                padding: "0.45rem 0.55rem",
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: 6,
-                fontSize: "0.76rem",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-all",
-              }}
-            >
-              {typeof fd.reason === "string" ? fd.reason : "—"}
-            </pre>
-          </>
-        ) : matched.errorCode === "schema_validation" ? (
-          <p style={{ margin: "0.35rem 0 0", fontSize: "0.8rem", color: "#64748b" }}>
-            无字段级 failureDetail（请查实现或日志）。
+        <details style={{ fontSize: "0.78rem", color: "#64748b" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569" }}>查看排障信息（可选）</summary>
+          <p style={{ margin: "0.45rem 0 0.2rem" }}>以下为内部排障字段。</p>
+          <p style={{ margin: "0.2rem 0" }}>
+            <code>{String(matched.errorCode ?? "—")}</code>
           </p>
-        ) : null}
-        <div style={{ marginTop: "0.65rem" }}>
-          <button type="button" style={btnRefresh} onClick={onRefresh} disabled={jobLoading}>
-            刷新
-          </button>
-        </div>
+          {matched.errorCode === "schema_validation" && hasDetail ? (
+            <>
+              <pre
+                style={{
+                  margin: "0.35rem 0",
+                  padding: "0.45rem 0.55rem",
+                  background: "#f1f5f9",
+                  borderRadius: 6,
+                  fontSize: "0.74rem",
+                  overflowX: "auto",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}
+              >
+                {typeof fd.path === "string" ? fd.path : ""}
+              </pre>
+              <pre
+                style={{
+                  margin: 0,
+                  padding: "0.45rem 0.55rem",
+                  background: "#f1f5f9",
+                  borderRadius: 6,
+                  fontSize: "0.74rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}
+              >
+                {typeof fd.reason === "string" ? fd.reason : "—"}
+              </pre>
+            </>
+          ) : null}
+        </details>
+        <button type="button" style={{ ...btnRefresh, marginTop: "0.55rem" }} onClick={onRefresh} disabled={jobLoading}>
+          刷新
+        </button>
       </div>
     );
   }
 
   if (st !== "succeeded" || !isEvaluatorShape(matched.evaluator)) {
     return (
-      <div style={shellStyle} aria-label="AI 模拟侧车">
-        <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-        <p style={{ margin: 0, fontSize: "0.88rem", color: "#64748b" }}>
-          状态为 <code>{st}</code>，且无可用 evaluator 数据。
-        </p>
-      </div>
+      <p style={{ ...moduleSub, marginBottom: "0.75rem" }} role="status">
+        相处参考暂不可用。不影响上方匹配结果。
+      </p>
     );
   }
 
@@ -275,80 +250,95 @@ export default function AiSimulationSidecarV0({
   const hints = ev.mitigation_hints;
   const firstHint = hints[0];
   const restHints = hints.slice(1);
+  const continueZh = continueLabelSafe(ev.continue_recommendation);
+  const riskTags = Array.isArray(ev.risk_tags) ? ev.risk_tags.filter((t) => typeof t === "string" && t.trim()) : [];
 
   return (
-    <div style={shellStyle} aria-label="AI 模拟侧车">
-      <h3 style={titleStyle}>AI 模拟（内部参考）</h3>
-      <p style={subStyle}>
-        以下为 Admin 路径下「真正 AI 模拟 v1」的结构化输出，仅供内部审核/复核参考；<strong>非</strong>用户前台功能，<strong>不</strong>写入匹配主链与最终分。
+    <div style={moduleShell} aria-label="互动与相处参考">
+      <h3 style={moduleTitle}>互动与相处参考</h3>
+      <p style={moduleSub}>
+        结合多场景模拟生成的<strong>辅助理解</strong>，便于聊天时心里有个数；<strong>不替代</strong>上方匹配指数与系统结论。
+      </p>
+      <p style={{ ...moduleSub, marginTop: "-0.35rem", marginBottom: "0.75rem", fontSize: "0.78rem", color: "#94a3b8" }}>
+        请以上方主结果为准；本区仅为参考。
       </p>
 
       <div
         style={{
-          padding: "0.75rem 0.85rem",
-          borderRadius: 8,
-          background: "#fff",
-          border: "1px solid #e9d5ff",
-          marginBottom: "0.65rem",
+          marginBottom: "0.75rem",
+          padding: "0.5rem 0",
+          borderBottom: "1px solid #e2e8f0",
         }}
       >
-        <p style={{ margin: "0 0 0.2rem", fontSize: "0.75rem", color: "#64748b" }}>模拟参考分（闭区间 [0,1]；下为百分制便于扫读）</p>
-        <p style={{ margin: 0, fontSize: "1.65rem", fontWeight: 800, color: "#6d28d9" }}>
+        <p style={{ margin: "0 0 0.15rem", fontSize: "0.72rem", color: "#94a3b8", fontWeight: 500 }}>参考分（辅助）</p>
+        <p style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600, color: "#64748b", letterSpacing: "0.02em" }}>
           {formatSimRankScore(ev.simulationRankScore)}
-          <span style={{ fontSize: "0.8rem", fontWeight: 500, color: "#7c3aed", marginLeft: "0.35rem" }}>· 原值 {ev.simulationRankScore}</span>
+          <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "#94a3b8", marginLeft: "0.35rem" }}>百分制便于阅读</span>
         </p>
       </div>
 
-      <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>继续了解建议</p>
-      <p style={{ margin: "0 0 0.75rem", fontWeight: 600, color: "#1e1b4b", fontSize: "0.95rem" }}>
-        {continueLabel(ev.continue_recommendation)}
-        <span style={{ fontWeight: 400, color: "#64748b", fontSize: "0.8rem", marginLeft: "0.35rem" }}>
-          ({ev.continue_recommendation})
-        </span>
+      <p style={{ margin: "0 0 0.45rem", fontSize: "0.88rem", color: "#334155", lineHeight: 1.6 }}>
+        {continueZh ? (
+          <>
+            <strong>整体节奏建议：</strong>
+            {continueZh}。
+          </>
+        ) : (
+          <>
+            <strong>整体节奏：</strong>
+            详见下方「聊天与相处参考」具体说明。
+          </>
+        )}
       </p>
 
-      <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>风险标签</p>
-      {ev.risk_tags.length === 0 ? (
-        <p style={{ margin: "0 0 0.75rem", fontSize: "0.88rem", color: "#475569" }}>无</p>
-      ) : (
-        <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.15rem", lineHeight: 1.55, color: "#334155", fontSize: "0.88rem" }}>
-          {ev.risk_tags.map((t, i) => (
-            <li key={`rt-${i}`} style={{ marginBottom: "0.25rem" }}>
-              <code style={{ fontSize: "0.82rem" }}>{t}</code>
-            </li>
-          ))}
-        </ul>
-      )}
+      {riskTags.length > 0 ? (
+        <details style={{ margin: "0.55rem 0 0.65rem", fontSize: "0.82rem", color: "#475569" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569" }}>
+            查看互动中可能需要留意的维度（可选）
+          </summary>
+          <p style={{ margin: "0.45rem 0 0.35rem", fontSize: "0.76rem", color: "#64748b" }}>
+            以下为系统生成的内部标签，默认不展开即可使用本页主结果。
+          </p>
+          <ul style={{ margin: 0, paddingLeft: "1.15rem", lineHeight: 1.55, fontSize: "0.78rem", color: "#475569" }}>
+            {riskTags.map((t, i) => (
+              <li key={`rt-${i}`} style={{ marginBottom: "0.2rem" }}>
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{t}</code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
-      <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>缓解提示</p>
+      <h4 style={{ margin: "0.85rem 0 0.35rem", fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+        聊天与相处参考
+      </h4>
       {hints.length === 0 ? (
-        <p style={{ margin: "0 0 0.65rem", fontSize: "0.88rem", color: "#475569" }}>无</p>
+        <p style={{ margin: "0 0 0.65rem", fontSize: "0.86rem", color: "#64748b" }}>暂无额外提示。</p>
       ) : (
         <div style={{ margin: "0 0 0.65rem" }}>
-          <p style={{ margin: 0, lineHeight: 1.6, color: "#334155", fontSize: "0.88rem" }}>{firstHint}</p>
-          {restHints.length > 0 ? (
-            mitigationExpanded ? (
-              <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1.15rem", lineHeight: 1.55, color: "#334155", fontSize: "0.88rem" }}>
-                {restHints.map((t, i) => (
-                  <li key={`mh-${i}`} style={{ marginBottom: "0.25rem" }}>
+          <ul style={{ margin: 0, paddingLeft: "1.15rem", lineHeight: 1.6, color: "#334155", fontSize: "0.88rem" }}>
+            <li style={{ marginBottom: "0.35rem" }}>{firstHint}</li>
+            {mitigationExpanded && restHints.length > 0
+              ? restHints.map((t, i) => (
+                  <li key={`mh-${i}`} style={{ marginBottom: "0.35rem" }}>
                     {t}
                   </li>
-                ))}
-              </ul>
-            ) : (
-              <button
-                type="button"
-                style={{
-                  ...btnRefresh,
-                  marginTop: "0.45rem",
-                  padding: "0.3rem 0.55rem",
-                  fontSize: "0.78rem",
-                }}
-                onClick={() => setMitigationExpanded(true)}
-              >
-                还有 {restHints.length} 条提示…
-              </button>
-            )
+                ))
+              : null}
+          </ul>
+          {restHints.length > 0 && !mitigationExpanded ? (
+            <button
+              type="button"
+              style={{
+                ...btnRefresh,
+                marginTop: "0.35rem",
+                padding: "0.3rem 0.55rem",
+                fontSize: "0.78rem",
+              }}
+              onClick={() => setMitigationExpanded(true)}
+            >
+              还有 {restHints.length} 条…
+            </button>
           ) : null}
           {mitigationExpanded && restHints.length > 0 ? (
             <button
@@ -356,35 +346,50 @@ export default function AiSimulationSidecarV0({
               style={{ ...btnRefresh, marginTop: "0.35rem", padding: "0.3rem 0.55rem", fontSize: "0.78rem" }}
               onClick={() => setMitigationExpanded(false)}
             >
-              收起额外提示
+              收起
             </button>
           ) : null}
         </div>
       )}
 
-      <details style={{ marginTop: "0.35rem", fontSize: "0.86rem", color: "#4c1d95" }}>
-        <summary style={{ cursor: "pointer", fontWeight: 600, userSelect: "none" }}>查看模拟对话（4 轮）</summary>
+      <details style={{ marginTop: "0.35rem", fontSize: "0.84rem", color: "#475569" }}>
+        <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569", userSelect: "none" }}>
+          查看示例对话（可选）
+        </summary>
         {isTranscriptLiteShape(matched.transcriptLite) ? (
-          <ol style={{ margin: "0.55rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.55, color: "#334155", fontSize: "0.86rem" }}>
+          <ol style={{ margin: "0.55rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.55, color: "#334155", fontSize: "0.84rem" }}>
             {matched.transcriptLite.rounds.map((r, i) => (
               <li key={`tr-${i}`} style={{ marginBottom: "0.45rem" }}>
-                <strong style={{ color: "#5b21b6" }}>{r.speaker}</strong> · 轮 {r.round}{" "}
-                <code style={{ fontSize: "0.74rem", color: "#64748b" }}>{r.intent_tag}</code>
+                <strong style={{ color: "#334155" }}>{r.speaker}</strong>
+                <span style={{ color: "#94a3b8" }}> · 第 {r.round} 轮</span>
                 <div style={{ marginTop: "0.2rem", whiteSpace: "pre-wrap" }}>{r.text}</div>
               </li>
             ))}
           </ol>
         ) : (
-          <p style={{ margin: "0.55rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>无 transcript 数据或格式异常。</p>
+          <p style={{ margin: "0.55rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>暂无示例对话内容。</p>
         )}
       </details>
 
-      <p style={{ margin: "0.65rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
-        job：<code style={{ fontSize: "0.7rem", wordBreak: "break-all" }}>{job.simulationJobId}</code>
-      </p>
-      <button type="button" style={{ ...btnRefresh, marginTop: "0.45rem" }} onClick={onRefresh} disabled={jobLoading}>
-        刷新模拟数据
+      <details style={{ marginTop: "0.55rem", fontSize: "0.74rem", color: "#94a3b8" }}>
+        <summary style={{ cursor: "pointer", color: "#64748b" }}>技术细节（可选）</summary>
+        <p style={{ margin: "0.4rem 0 0", wordBreak: "break-all" }}>
+          <code>{String(job.simulationJobId || "")}</code>
+        </p>
+        {typeof ev.continue_recommendation === "string" && ev.continue_recommendation && !continueZh ? (
+          <p style={{ margin: "0.25rem 0 0", wordBreak: "break-all" }}>
+            <code>{ev.continue_recommendation}</code>
+          </p>
+        ) : null}
+      </details>
+
+      <button type="button" style={{ ...btnRefresh, marginTop: "0.55rem" }} onClick={onRefresh} disabled={jobLoading}>
+        刷新参考
       </button>
+
+      <p style={{ margin: "0.65rem 0 0", fontSize: "0.78rem", color: "#94a3b8", lineHeight: 1.45 }}>
+        准备好后，请使用页面底部<strong>进入聊天</strong>开始真实对话。
+      </p>
     </div>
   );
 }

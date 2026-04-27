@@ -45,6 +45,37 @@ export default function AiSimulationJobTriagePage() {
     load();
   }, [load]);
 
+  /** Phase F v0.6：基于当前接口返回的 rows 前端聚合（只读，不联动筛选）。 */
+  const triageSummary = useMemo(() => {
+    let inProgress = 0;
+    let currentOk = 0;
+    let currentAnomaly = 0;
+    let legacyAcceptable = 0;
+    let hasFailedItem = 0;
+    for (const r of rows) {
+      const st = typeof r.jobStatus === "string" ? r.jobStatus : "";
+      const bucket = typeof r.diagnosticBucket === "string" ? r.diagnosticBucket : "";
+      if (st === "queued" || st === "running" || bucket === "in_progress") inProgress += 1;
+      if (bucket === "current_ok") currentOk += 1;
+      if (bucket === "current_anomaly") currentAnomaly += 1;
+      if (bucket === "legacy_acceptable") legacyAcceptable += 1;
+      if (r.hasFailedItem === true) hasFailedItem += 1;
+    }
+    return { inProgress, currentOk, currentAnomaly, legacyAcceptable, hasFailedItem };
+  }, [rows]);
+
+  const pillBase = {
+    display: "inline-flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "0.12rem",
+    padding: "0.4rem 0.55rem",
+    borderRadius: 6,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    minWidth: "5.5rem",
+  };
+
   const updateFilter = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value == null || value === "") next.delete(key);
@@ -54,6 +85,19 @@ export default function AiSimulationJobTriagePage() {
 
   return (
     <main style={{ maxWidth: 1200, margin: "1.1rem auto", padding: "0 1rem", color: "#334155" }}>
+      <div
+        style={{
+          background: "#fffbeb",
+          border: "1px solid #fbbf24",
+          borderRadius: 8,
+          padding: "0.5rem 0.75rem",
+          marginBottom: "0.85rem",
+          fontSize: "0.82rem",
+          color: "#92400e",
+        }}
+      >
+        <strong>内部 / Admin</strong> — 不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。
+      </div>
       <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>
         AI Simulation Job 分诊列表（内部只读）
       </h1>
@@ -141,6 +185,48 @@ export default function AiSimulationJobTriagePage() {
           </label>
         </div>
       </section>
+
+      {!loading && !error ? (
+        <section
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            background: "#f1f5f9",
+            padding: "0.55rem 0.75rem",
+            marginBottom: "0.75rem",
+          }}
+          aria-label="当前列表聚合摘要"
+        >
+          <p style={{ margin: "0 0 0.45rem", fontSize: "0.72rem", color: "#64748b", lineHeight: 1.4 }}>
+            <strong>基于当前列表结果</strong>（本页接口最多 {filters.limit} 条，随上方筛选与刷新变化）· 只读摘要，非全库统计。
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", alignItems: "stretch" }}>
+            <div style={pillBase} title="排队或运行中，或分诊桶为进行中">
+              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>进行中</span>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.inProgress}</span>
+            </div>
+            <div style={pillBase} title="分诊桶：当前规范、正常">
+              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>当前规范·正常</span>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.currentOk}</span>
+            </div>
+            <div style={pillBase} title="分诊桶：当前规范、异常">
+              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>当前规范·异常</span>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.currentAnomaly}</span>
+            </div>
+            <div style={pillBase} title="分诊桶：旧版可接受">
+              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>旧版可接受</span>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.legacyAcceptable}</span>
+            </div>
+            <div style={pillBase} title="行上标记含失败项为是">
+              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>含失败项</span>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.hasFailedItem}</span>
+            </div>
+          </div>
+          <p style={{ margin: "0.4rem 0 0", fontSize: "0.68rem", color: "#94a3b8" }}>
+            与下方表格为同一批数据；摘要项不可点击，筛选仍请用上方控件。
+          </p>
+        </section>
+      ) : null}
 
       {loading ? <LoadingState label="加载 AI 模拟 job 列表（最近 50 条）..." /> : null}
       {error ? (

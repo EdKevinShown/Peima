@@ -135,6 +135,19 @@ export default function AiSimulationJobDiagnosticPage() {
 
   return (
     <main style={{ maxWidth: 980, margin: "1.2rem auto", padding: "0 1rem", color: "#334155" }}>
+      <div
+        style={{
+          background: "#fffbeb",
+          border: "1px solid #fbbf24",
+          borderRadius: 8,
+          padding: "0.5rem 0.75rem",
+          marginBottom: "0.85rem",
+          fontSize: "0.82rem",
+          color: "#92400e",
+        }}
+      >
+        <strong>内部 / Admin</strong> — 不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。
+      </div>
       <h1 style={{ margin: "0 0 0.6rem", fontSize: "1.25rem", color: "#0f172a" }}>
         AI 模拟 job 诊断详情（内部只读）
       </h1>

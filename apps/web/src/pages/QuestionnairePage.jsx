@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   getQuestionnaireQuestions,
   submitQuestionnaire,
@@ -8,6 +8,7 @@ import LoadingState from "../components/common/LoadingState";
 import { resolveUserId } from "../utils/resolveUserId";
 
 export default function QuestionnairePage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
 
@@ -100,7 +101,7 @@ export default function QuestionnairePage() {
   }, [userId, questions, answers, answeredCount, total]);
 
   return (
-    <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
+    <main style={{ maxWidth: 640, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>轻量画像问卷</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
         userId: <code>{userId || "（未设置）"}</code>
@@ -192,11 +193,31 @@ export default function QuestionnairePage() {
                 {submitError.message}
               </p>
             )}
-            {submitOk && (
-              <p style={{ color: "#206020", marginTop: "0.75rem" }} role="status">
-                问卷已提交，画像已更新（本页不自动跳转）
-              </p>
-            )}
+            {submitOk && userId ? (
+              <div style={{ marginTop: "1rem" }}>
+                <p style={{ color: "#206020", margin: "0 0 0.65rem" }} role="status">
+                  问卷已提交，画像已更新。
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/matching-waiting?userId=${encodeURIComponent(userId)}`)
+                  }
+                  style={{
+                    padding: "0.65rem 1.25rem",
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    border: "none",
+                    borderRadius: 8,
+                    background: "#1e293b",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  下一步：前往匹配等待页
+                </button>
+              </div>
+            ) : null}
           </div>
         </>
       )}

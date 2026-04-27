@@ -129,6 +129,11 @@ export default function RelationshipTimelinePage() {
     return s ? `/chat/timeline?${s}` : "/chat/timeline";
   }, [conversationId, userId]);
 
+  const myActivityHref = useMemo(() => {
+    if (!userId) return "/my-activity";
+    return `/my-activity?userId=${encodeURIComponent(userId)}`;
+  }, [userId]);
+
   const freshnessHint =
     "聊天页有新消息、摘要或反馈变化后，建议回到当前页手动刷新查看最新关系进展。";
 
@@ -223,7 +228,7 @@ export default function RelationshipTimelinePage() {
   );
 
   return (
-    <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>关系时间线</h1>
       <p style={{ color: "#666", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
         关系进展回顾（只读）
@@ -235,6 +240,8 @@ export default function RelationshipTimelinePage() {
         chatHref={chatBackHref}
         copilotHref={copilotHref}
         timelineHref={timelineSelfHref}
+        activityHref={myActivityHref}
+        navVariant="phaseG_subtle"
         freshnessHint={freshnessHint}
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}

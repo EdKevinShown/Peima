@@ -50,7 +50,8 @@ export default function LoginPage() {
       // P0：最小验证，确保 /auth/me 在当前 token 下可用
       await getMe();
 
-      navigate(`/matching-waiting?userId=${encodeURIComponent(res.user.id)}`, {
+      // Phase G v0.1：登录后主路径 → 问卷 / 资料完善（先问卷）
+      navigate(`/questionnaire?userId=${encodeURIComponent(res.user.id)}`, {
         replace: true,
       });
     } catch (e) {

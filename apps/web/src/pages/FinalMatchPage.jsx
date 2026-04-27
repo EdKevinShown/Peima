@@ -962,7 +962,7 @@ export default function FinalMatchPage() {
   }, [userId, navigate]);
 
   return (
-    <main style={{ maxWidth: 600, margin: "0 auto", padding: "1.5rem 1rem 2.5rem" }}>
+    <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>
       {userId ? (
         <details
           style={{
@@ -1807,15 +1807,31 @@ export default function FinalMatchPage() {
 
           {/* —— 第三层：AI 复审主区 + 补充说明 —— */}
           <section style={aiLayerShell} aria-label="匹配复审与补充解读">
-            <AiSimulationSidecarV0
-              key={`${aiSimJobId || "no-job"}-${result.candidateUserId || ""}`}
-              aiSimJobId={aiSimJobId}
-              candidateUserId={result.candidateUserId}
-              job={aiSimJob}
-              jobLoading={aiSimJobLoading}
-              jobError={aiSimJobError}
-              onRefresh={loadAiSimJob}
-            />
+            {aiSimJobId &&
+            result?.candidateUserId &&
+            (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
+              <>
+                <p
+                  style={{
+                    margin: "0 0 0.65rem",
+                    fontSize: "0.78rem",
+                    color: "#64748b",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  以下为基于模拟的<strong>互动与相处参考</strong>（与上方主结果独立）；无说明引用时不显示本块。
+                </p>
+                <AiSimulationSidecarV0
+                  key={`${aiSimJobId || "no-job"}-${result.candidateUserId || ""}`}
+                  aiSimJobId={aiSimJobId}
+                  candidateUserId={result.candidateUserId}
+                  job={aiSimJob}
+                  jobLoading={aiSimJobLoading}
+                  jobError={aiSimJobError}
+                  onRefresh={loadAiSimJob}
+                />
+              </>
+            ) : null}
             <h2 style={{ fontSize: "1.15rem", margin: "0 0 0.35rem", color: "#312e81", fontWeight: 700 }}>
               匹配复审与相处参考
             </h2>
@@ -2038,25 +2054,37 @@ export default function FinalMatchPage() {
               borderTop: "1px solid #e5e7eb",
               display: "flex",
               flexDirection: "column",
-              gap: "0.65rem",
+              gap: "0.75rem",
+              alignItems: "flex-start",
             }}
           >
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem", alignItems: "center" }}>
-              <button type="button" style={btnPrimary} onClick={onEnterChat} disabled={!userId}>
-                进入聊天
-              </button>
-              <button type="button" style={btnSecondary} onClick={onViewTimeline} disabled={!userId}>
-                查看关系时间线
-              </button>
-            </div>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8" }}>
-              时间线为只读回顾，便于查看互动脉络。
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
+              <strong>下一步：</strong>与对方开始聊天；时间线与刷新为可选辅助。
             </p>
-            <div style={{ marginTop: "0.35rem" }}>
-              <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
-                刷新匹配结果
-              </button>
-            </div>
+            <button
+              type="button"
+              style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
+              onClick={onEnterChat}
+              disabled={!userId}
+            >
+              进入聊天
+            </button>
+            <button
+              type="button"
+              onClick={onViewTimeline}
+              disabled={!userId}
+              style={{
+                ...btnTertiary,
+                marginTop: 0,
+                fontSize: "0.8rem",
+                padding: "0.35rem 0",
+              }}
+            >
+              查看关系时间线（可选回顾）
+            </button>
+            <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
+              刷新匹配结果
+            </button>
           </footer>
         </article>
       )}

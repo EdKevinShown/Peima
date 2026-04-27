@@ -46,6 +46,11 @@ export default function CopilotPage() {
     return s ? `/copilot?${s}` : "/copilot";
   }, [conversationId, userId]);
 
+  const myActivityHref = useMemo(() => {
+    if (!userId) return "/my-activity";
+    return `/my-activity?userId=${encodeURIComponent(userId)}`;
+  }, [userId]);
+
   const freshnessHint = "聊天页有新消息或摘要更新后，建议在当前页手动刷新查看最新状态。";
 
   useEffect(() => {
@@ -88,7 +93,7 @@ export default function CopilotPage() {
   }, [conversationId, refreshNonce, nextRefreshSource]);
 
   return (
-    <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>沟通建议（只读）</h1>
       <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "0.75rem" }}>
         沟通洞察基于当前会话快照生成，不代发消息、不推送提醒。
@@ -101,6 +106,8 @@ export default function CopilotPage() {
         chatHref={chatBackHref}
         copilotHref={copilotSelfHref}
         timelineHref={timelineHref}
+        activityHref={myActivityHref}
+        navVariant="phaseG_subtle"
         freshnessHint={freshnessHint}
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}

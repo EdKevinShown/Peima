@@ -32,6 +32,16 @@
 | **内部诊断区** | 折叠区块：侧车原始字段、`jobAuditV0`、深链工具等 — **内部 / 排障 / 验收**，非 C 端主叙事。 |
 | **用户可见 AI 辅助解释卡** | Phase E v1.0：自然语言「互动参考」，**不替代**匹配指数与系统主结论。 |
 
+## P6.11 — Match Explanation 聊天 overlay 只读增强
+
+- **状态**：**接口验收已完成**（单测 6/6；规则 fallback 未破坏；真实 LLM 路径已用 DeepSeek 跑通，`sourceType` / `sourceVersion` 见下文档「接口验收」）。**不**改 `finalScore`、worker、matching 排序、schema、问卷主画像。
+- **行为**：`GET /match-explanation-ai/match-results/:matchResultId` 在走 LLM 时只读 viewer 的 `effectiveProfileChatOverlayV1`，经服务端摘要写入 **user 消息**（非响应字段）。
+- 说明与验收记录：[P6.11-match-explanation-chat-overlay-readonly-v0.md](./P6.11-match-explanation-chat-overlay-readonly-v0.md)。
+
+## P6.12 — Chat Feedback Structured Payload v0
+
+- **状态**：**最小接口验收已完成**；`UserFeedback.structuredPayload` 已落地；`POST /feedback` / `GET /feedback/mine` 与 P4 旧路径兼容。详见 [P6.12 实现状态与接口验收](./P6.12-chat-feedback-structured-payload-v0.md#实现状态与接口验收)（含 migrate 样例、POST/GET 记录、**`continueIntent` = 1–5 整数量表**、非 yes/maybe/no）。**不**将反馈读入 `finalScore`、worker、matching 排序。
+
 ## Triage / 诊断详情（边界）
 
 - **分诊列表页 / job 诊断详情页**：**Admin / 内部** 使用；用于批量浏览 job 健康度与下钻字段。  

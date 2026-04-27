@@ -9,6 +9,8 @@
 ## Current status & operations（当前状态与操作）
 
 - **[P6 Current Status (v0)](./P6-current-status-v0.md)** — 截至 `main` 的 A～F 快照、**唯一正确建 job 路径**、废弃 enqueue、Final Match 双层与 triage 边界（不写路线图）。
+- **[P6.11 Match Explanation 聊天 overlay 只读解释增强](./P6.11-match-explanation-chat-overlay-readonly-v0.md)** — `effectiveProfileChatOverlayV1` → 摘要进解释模型上下文；**接口验收已完成**；不改分、不改问卷主链。
+- **[P6.12 Chat Feedback Structured Payload v0](./P6.12-chat-feedback-structured-payload-v0.md#实现状态与接口验收)** — **最小接口验收已完成**；`structuredPayload`、同路径 POST/GET；**不**影响 `finalScore`、worker、matching 排序。
 - **[P6 Operating Notes (v0)](./P6-operating-notes-v0.md)** — **最短成功链**：orchestration MVP → `simulationJobId` → run job → GET job 门闩 → Final Match 深链 → 侧车与用户可见辅助卡。
 
 ## Truth（真源）
@@ -35,6 +37,8 @@
 - [P6 Round 2 Orchestrator A1/A2 验收收口](./acceptance/P6-round2-orchestrator-a1-a2-acceptance.md)
 - Round 2 orchestrator 最小回归锚点（合并前手工 smoke）：`pnpm --filter @peima/api run test:e2e:orch-anchor`
 - [P6.8–P6.10 阶段收口与 handoff](./acceptance/P6.8-P6.10-phase-closure-handoff.md)
+- [P6.11 Match Explanation 聊天 overlay 只读（接口验收）](./P6.11-match-explanation-chat-overlay-readonly-v0.md#接口验收) — 单测、fallback、真实 LLM（DeepSeek）跑通记录
+- [P6.12 Chat Feedback `structuredPayload` v0（接口验收）](./P6.12-chat-feedback-structured-payload-v0.md#实现状态与接口验收) — migrate、P6.12/P4 POST、`GET /feedback/mine` 混排
 - [AI 模拟 v1 首轮验收结论](./acceptance/P6-ai-simulation-v1-round1-acceptance-conclusion.md)
 - [P6.3 Copilot 首轮验收](./acceptance/P6.3-acceptance-round1.md)
 - [P6.z 读数融合 v0 验收清单](./acceptance/P6.z-readout-fusion-v0-acceptance-checklist.md)
@@ -52,6 +56,7 @@
 - [Preview Pool 视觉信号增强 v0](./specs/P6-preview-pool-visual-signal-enhancement-v0.md)
 - [P6 Round 2 编排 MVP 定义页](./specs/P6-round2-orchestration-mvp.md)
 - [P6.8–P6.10 suggestion review 最小实现范围](./specs/P6.8-P6.10-suggestion-review-minimal-implementation-scope.md)
+- [P6.12 Chat Feedback Structured Payload v0（实现状态与接口验收）](./P6.12-chat-feedback-structured-payload-v0.md#实现状态与接口验收)
 
 其余见 [`specs/`](./specs/) 目录。
 
