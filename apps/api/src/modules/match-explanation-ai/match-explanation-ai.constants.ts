@@ -5,4 +5,4 @@ export const MATCH_EXPLANATION_RULE_SOURCE_VERSION =
   "p6.6-match-explanation-rule-v1";
 
 export const MATCH_EXPLANATION_PROMPT_VERSION =
-  "p6.6-match-explanation-prompt-v1";
+  "p6.11-match-explanation-prompt-v2";

@@ -12,13 +12,22 @@ export const MATCH_EXPLANATION_AI_SYSTEM_PROMPT = `你是配吗（Peima）匹配
 硬性约束：
 - 不得修改、编造或暗示不同的 finalScore、排序或匹配决策；不得建议用户去「换一个人」或操作后台。
 - 不得编造输入中未出现的具体事实；仅基于给定字段合理归纳。
+- 若用户消息包含「聊天画像补充参考」段落：仅可把它当作补充背景，不得声称它改变了匹配分、排序、问卷主结论或系统决策；不得在 explanationText 中复述任何内部字段名、分支代号、轴编号或权重类信息。
 - 语气中立、尊重双方。
 
 JSON 字段（全部为必填）：
 - matchResultId: 字符串，必须与用户消息中的 matchResultId 完全一致。
 - explanationText: 字符串，一段完整可读说明（可含多句），面向普通用户。`;
 
-export function buildMatchExplanationUserContent(row: MatchResult): string {
+export type MatchExplanationUserContentOptions = {
+  /** P6.11: pre-rendered overlay summary for the viewer only; omit when null/empty. */
+  chatProfileOverlaySummary?: string | null;
+};
+
+export function buildMatchExplanationUserContent(
+  row: MatchResult,
+  options?: MatchExplanationUserContentOptions,
+): string {
   const insightsRaw =
     row.matchInsights == null ? null : JSON.stringify(row.matchInsights);
   const insightsSnippet =
@@ -39,5 +48,8 @@ export function buildMatchExplanationUserContent(row: MatchResult): string {
     `createdAt=${row.createdAt.toISOString()}`,
     `matchInsights（截断）=${insightsSnippet}`,
   ];
-  return lines.join("\n");
+  const base = lines.join("\n");
+  const overlay = options?.chatProfileOverlaySummary?.trim();
+  if (!overlay) return base;
+  return `${base}\n\n${overlay}`;
 }

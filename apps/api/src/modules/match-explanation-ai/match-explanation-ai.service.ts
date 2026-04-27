@@ -13,6 +13,7 @@ import {
   MATCH_EXPLANATION_PROMPT_VERSION,
   MATCH_EXPLANATION_RULE_SOURCE_VERSION,
 } from "./match-explanation-ai.constants";
+import { buildChatProfileOverlaySummaryForPrompt } from "./match-explanation-chat-overlay-summary";
 import {
   buildMatchExplanationUserContent,
   MATCH_EXPLANATION_AI_SYSTEM_PROMPT,
@@ -93,7 +94,31 @@ export class MatchExplanationAiService {
       return ruleResponse();
     }
 
-    const userContent = buildMatchExplanationUserContent(row);
+    let chatProfileOverlaySummary: string | null = null;
+    try {
+      const prof = await this.prisma.userProfile.findUnique({
+        where: { userId: row.userId },
+        select: { effectiveProfileChatOverlayV1: true },
+      });
+      chatProfileOverlaySummary = buildChatProfileOverlaySummaryForPrompt(
+        prof?.effectiveProfileChatOverlayV1 ?? null,
+      );
+    } catch (err) {
+      this.logger.warn(
+        JSON.stringify({
+          event: MATCH_EXPLANATION_AI_LOG_EVENT,
+          matchResultId: mid,
+          outcome: "overlay_summary_skipped",
+          reason: "profile_read_failed",
+          detail: String(err).slice(0, 300),
+        }),
+      );
+      chatProfileOverlaySummary = null;
+    }
+
+    const userContent = buildMatchExplanationUserContent(row, {
+      chatProfileOverlaySummary,
+    });
     const result = await this.chatClient.complete(
       MATCH_EXPLANATION_AI_SYSTEM_PROMPT,
       userContent,
