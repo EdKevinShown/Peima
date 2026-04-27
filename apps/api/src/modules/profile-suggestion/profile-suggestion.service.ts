@@ -22,6 +22,7 @@ import {
 } from "./parse-p6-dimension-branch-hints-patch";
 import { buildP6ChatProfileCompletionReviewSummary } from "./build-p6-chat-review-summary";
 import { ProfileSuggestionRepository } from "./profile-suggestion.repository";
+import { ChatProfileEvidenceV1Service } from "./chat-profile-evidence-v1.service";
 
 const MINE_MAX_ROWS = 100;
 
@@ -30,6 +31,7 @@ export class ProfileSuggestionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly repo: ProfileSuggestionRepository,
+    private readonly chatProfileEvidenceV1: ChatProfileEvidenceV1Service,
   ) {}
 
   private async ensureUserExists(userId: string) {
@@ -216,6 +218,19 @@ export class ProfileSuggestionService {
           },
           update: { dimensionBranchChatHints: merged.json },
         });
+        if (row.sourceConversationId) {
+          await this.chatProfileEvidenceV1.upsertEvidenceAndRecomputeOverlay(
+            tx,
+            {
+              userId: tokenUserId,
+              conversationId: row.sourceConversationId,
+              suggestionId: row.id,
+              sourceVersion: row.sourceVersion ?? "",
+              acceptedAt: resolvedAt,
+              items,
+            },
+          );
+        }
       } else {
         const patch = parseProfileProposedPatch(row.proposedPatch);
         if (Object.keys(patch).length > 0) {

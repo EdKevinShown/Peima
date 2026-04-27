@@ -27,6 +27,32 @@ export function isDimensionBranchHintsAcceptPayload(row: {
   return isP6DimensionBranchHintsSourceVersion(row.sourceVersion);
 }
 
+/**
+ * P6.8.x：按题库 `computeBranchOpportunitiesFromQuestionBank` 丢弃无 opportunities 的 axis-branch；
+ * 保留首次出现的合法轴（同轴多条时只保留第一条合法项）。供 profile-completion 生成链在 parse 前收口。
+ */
+export function filterDimensionBranchHintsToQuestionBank(
+  items: ReadonlyArray<DimensionBranchChatHintItem>,
+): DimensionBranchChatHintItem[] {
+  const opps = computeBranchOpportunitiesFromQuestionBank();
+  const out: DimensionBranchChatHintItem[] = [];
+  const seenAxis = new Set<number>();
+  for (const it of items) {
+    const { axisId, branch } = it;
+    if (axisId < 1 || axisId > 20) continue;
+    if (!BRANCH_LETTERS.includes(branch as (typeof BRANCH_LETTERS)[number])) {
+      continue;
+    }
+    const letter = branch as (typeof BRANCH_LETTERS)[number];
+    const o = opps[axisId]?.[letter] ?? 0;
+    if (o <= 0) continue;
+    if (seenAxis.has(axisId)) continue;
+    seenAxis.add(axisId);
+    out.push({ axisId, branch: letter });
+  }
+  return out;
+}
+
 function validateItemsAgainstBank(
   items: ReadonlyArray<DimensionBranchChatHintItem>,
   opps: Record<number, BranchOpportunityRow>,

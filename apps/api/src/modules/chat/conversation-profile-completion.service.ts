@@ -6,7 +6,10 @@ import {
 } from "@nestjs/common";
 import type { ProfileUpdateSuggestion } from "@peima/database";
 import { P6_8_DIMENSION_BRANCH_HINTS_PATCH_KIND } from "../questionnaire/dimension-branch-chat-hints.constants";
-import { parseP6DimensionBranchHintsProposedPatch } from "../profile-suggestion/parse-p6-dimension-branch-hints-patch";
+import {
+  filterDimensionBranchHintsToQuestionBank,
+  parseP6DimensionBranchHintsProposedPatch,
+} from "../profile-suggestion/parse-p6-dimension-branch-hints-patch";
 import { ProfileSuggestionService } from "../profile-suggestion/profile-suggestion.service";
 import { ConversationProfileCompletionChatCompletionsClient } from "./conversation-profile-completion-chat-completions.client";
 import { CONVERSATION_PROFILE_COMPLETION_MODEL_SYSTEM_PROMPT } from "./conversation-profile-completion-model.prompt";
@@ -76,10 +79,17 @@ export class ConversationProfileCompletionService {
       );
     }
 
+    const bankFiltered = filterDimensionBranchHintsToQuestionBank(mapped);
+    if (bankFiltered.length === 0) {
+      throw new UnprocessableEntityException(
+        "All profile-completion hint items were rejected: no question-bank branch opportunities for the model's axis-branch choices",
+      );
+    }
+
     const validated = parseP6DimensionBranchHintsProposedPatch({
       kind: P6_8_DIMENSION_BRANCH_HINTS_PATCH_KIND,
       schemaVersion: 1,
-      items: mapped,
+      items: bankFiltered,
     });
 
     await this.profileSuggestionService.throwIfPendingP6ChatProfileCompletionExists(

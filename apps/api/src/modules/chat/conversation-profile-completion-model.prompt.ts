@@ -12,7 +12,7 @@ export const CONVERSATION_PROFILE_COMPLETION_MODEL_SYSTEM_PROMPT = `你是配吗
 
 items 中每个元素为对象，仅允许键：axisId、branch、confidence、evidence（后两者可选）。
 - axisId：整数 1～20（问卷轴编号）
-- branch：单个大写字母 A、B、C、D 或 E（该轴上的分支档）
+- branch：单个大写字母 A、B、C、D 或 E，且必须是该 axisId 在题库中**实际出现过的分支档**（服务端会丢弃题库无 opportunities 的组合；若全部被丢弃则请求失败）
 - confidence：若有，必须为 0～1 的有限数字
 - evidence：若有，必须为简短字符串（≤200 字），引用输入中的依据，不得编造具体事实
 

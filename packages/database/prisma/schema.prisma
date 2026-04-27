@@ -48,6 +48,7 @@ model User {
   rolesGrantedByMe         UserRole[] @relation("UserRolesGrantedBy") // P5 Phase 2.2：由该用户授予的角色
   notifications            Notification[] // P5 Phase 2.3：通知记录
   aiSimulationV1Jobs       AiSimulationV1Job[] // P6：AI 模拟 v1（侧车，不写 MatchResult）
+  chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
 
   @@map("users")
 }
@@ -223,12 +224,41 @@ model UserProfile {
   confidence          Float?
   /// Accepted P6.8 chat-based dimension-branch hints (supplement to questionnaire layer1; not answer SOT).
   dimensionBranchChatHints Json?
+  /// P6 v1：问卷基线 + 聊天证据聚合后的最终生效画像派生视图（只读消费；不接 worker / finalScore）。
+  effectiveProfileChatOverlayV1 Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profile")
+}
+
+/// P6 v1：聊天补全 accept 产生的结构化证据（幂等 key userId+conversationId+axisId；ignore 不入库）。
+model ChatProfileEvidence {
+  id                     String    @id @default(cuid())
+  userId                 String
+  conversationId       String
+  axisId                 Int
+  branch                 String
+  acceptedAt             DateTime
+  sourceVersion          String
+  suggestionId           String?
+  acceptedByUser         Boolean   @default(true)
+  sessionQualityBucket   String
+  sessionQualityWeight   Float
+  freshnessBucket        String
+  freshnessWeight        Float
+  evidenceWeight         Float
+  revokedAt              DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId, axisId])
+  @@index([userId, axisId])
+  @@map("chat_profile_evidence")
 }
 
 /// One daily (or manual) batch run of queue-based matching.
@@ -351,6 +381,8 @@ model UserFeedback {
   rating        Int?
   tags          String[] @default([])
   comment       String?  @db.Text
+  /// P6.12: optional structured chat feedback (v0); null = legacy P4 or rating-only rows.
+  structuredPayload Json?
   recordedAt    DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
