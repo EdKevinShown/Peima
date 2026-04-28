@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base reset ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  background-attachment: fixed;
+  color: #ffffff;
+  min-height: 100dvh;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.30); }
+
+/* ── Glass card ─────────────────────────────────────────── */
+@layer components {
+  .glass {
+    @apply backdrop-blur-md border border-white/10 shadow-glass;
+    background: rgba(255,255,255,0.07);
+  }
+  .glass-strong {
+    @apply backdrop-blur-md border shadow-glass;
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.15);
+  }
+
+  /* Primary gradient button */
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center font-semibold rounded-2xl px-6 py-3 text-white
+           transition-all duration-200 select-none cursor-pointer overflow-hidden;
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%);
+    box-shadow: 0 4px 20px rgba(255,107,157,0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(255,107,157,0.5);
+  }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center font-medium rounded-2xl px-5 py-2.5 text-white/70
+           border transition-all duration-200 cursor-pointer;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply text-white;
+    border-color: rgba(255,255,255,0.30);
+    background: rgba(255,255,255,0.12);
+  }
+  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Input field */
+  .input-glass {
+    @apply w-full rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none
+           border transition-all duration-200;
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.12);
+  }
+  .input-glass:focus {
+    border-color: rgba(255,107,157,0.6);
+    box-shadow: 0 0 0 3px rgba(255,107,157,0.15);
+    background: rgba(255,255,255,0.10);
+  }
+
+  /* Badge */
+  .badge-gradient {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-white;
+    background: linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%);
+  }
+
+  /* Page wrapper */
+  .page-container {
+    @apply min-h-dvh w-full flex flex-col;
+  }
+}
+
+/* ── Gradient text ──────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Floating orbs (background decoration) ─────────────── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(80px);
+  opacity: 0.25;
+}
+.orb-pink  { background: #ff6b9d; width: 400px; height: 400px; top: -80px;  left: -100px; }
+.orb-purple{ background: #c44dff; width: 350px; height: 350px; bottom: -60px; right: -80px; }

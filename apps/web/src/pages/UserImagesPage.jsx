@@ -131,7 +131,7 @@ export default function UserImagesPage() {
         也可粘贴已有 <strong>https 直链</strong>（图床等）。预览池要求其他候选用户在库里至少各有一条图片记录。
       </p>
       <p style={{ marginBottom: "1rem" }}>
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         {" · "}
         <Link to={`/preview-pool?userId=${encodeURIComponent(userId || "")}`}>
           预览池

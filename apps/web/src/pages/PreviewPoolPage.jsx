@@ -170,7 +170,7 @@ export default function PreviewPoolPage() {
         <code>blurred</code>。
       </p>
       <p style={{ marginBottom: "1rem" }}>
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         {" · "}
         <Link
           to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}

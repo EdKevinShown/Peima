@@ -54,3 +54,9 @@ tmp
 
 # API local image uploads (see UPLOAD_DIR)
 **/uploads/
+
+# Claude Code workspace
+.claude/
+
+# Stray screenshots at repo root
+/image.png

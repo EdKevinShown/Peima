@@ -1,41 +1,32 @@
-import { useCallback, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import LoadingState from "../components/common/LoadingState";
+import { useCallback, useEffect, useState } from "react";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { getMe, login, register } from "../api/auth";
-
-function Field({ label, value, onChange, placeholder, type = "text" }) {
-  return (
-    <label style={{ display: "block", marginBottom: "0.75rem" }}>
-      <div style={{ fontSize: "0.9rem", color: "#333", marginBottom: "0.35rem" }}>
-        {label}
-      </div>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        type={type}
-        style={{
-          width: "100%",
-          padding: "0.65rem 0.75rem",
-          border: "1px solid #ddd",
-          borderRadius: 8,
-        }}
-      />
-    </label>
-  );
-}
+import { isProfileIncomplete } from "./OnboardingPage";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-
-  const [mode, setMode] = useState("login"); // login | register
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState("login");
   const [phone, setPhone] = useState("");
   const [nickname, setNickname] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const onSubmit = useCallback(async () => {
+  useEffect(() => {
+    const requestedMode = searchParams.get("mode");
+    if (requestedMode === "register" || requestedMode === "login") {
+      setMode(requestedMode);
+      setError(null);
+    }
+  }, [searchParams]);
+
+  // Already logged in → go home
+  if (localStorage.getItem("peimaToken")) {
+    return <Navigate to="/home" replace />;
+  }
+
+  const onSubmit = useCallback(async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
     try {
@@ -43,83 +34,122 @@ export default function LoginPage() {
         mode === "register"
           ? await register({ phone: phone.trim(), nickname: nickname.trim() })
           : await login({ phone: phone.trim() });
-
       localStorage.setItem("peimaToken", res.token);
       localStorage.setItem("peimaUserId", res.user.id);
-
-      // P0：最小验证，确保 /auth/me 在当前 token 下可用
-      await getMe();
-
-      // Phase G v0.1：登录后主路径 → 问卷 / 资料完善（先问卷）
-      navigate(`/questionnaire?userId=${encodeURIComponent(res.user.id)}`, {
-        replace: true,
-      });
+      localStorage.setItem("peimaUserNickname", res.user.nickname || "");
+      const me = await getMe();
+      navigate(isProfileIncomplete(me) ? "/onboarding" : "/home", { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
   }, [mode, phone, nickname, navigate]);
 
   return (
-    <main style={{ maxWidth: 520, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem" }}>
-        登录 / 注册
-      </h1>
-      <p style={{ color: "#666", fontSize: "0.9rem", marginTop: 0 }}>
-        P0 占位版手机号直登（不做短信验证码）。
-      </p>
+    <div className="min-h-dvh flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background orbs */}
+      <div className="orb orb-pink" />
+      <div className="orb orb-purple" />
 
-      <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          disabled={loading || mode === "login"}
-        >
-          登录
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("register")}
-          disabled={loading || mode === "register"}
-        >
-          注册
-        </button>
-      </div>
-
-      {loading && <LoadingState label="正在请求登录…" />}
-      {error && (
-        <p style={{ color: "#b00020" }} role="alert">
-          {error.message}
-        </p>
-      )}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit();
-        }}
+      <Link
+        to="/"
+        className="absolute top-5 left-5 z-20 btn-ghost text-sm px-4 py-2"
       >
-        <Field label="手机号" value={phone} onChange={setPhone} placeholder="13900139000" />
+        ← 返回
+      </Link>
 
-        {mode === "register" && (
-          <Field
-            label="昵称"
-            value={nickname}
-            onChange={setNickname}
-            placeholder="请输入昵称"
-          />
-        )}
+      <div className="relative z-10 w-full max-w-sm animate-slide-up">
+        {/* Logo / brand */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl mb-4 shadow-glow"
+               style={{ background: 'linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%)' }}>
+            <span className="text-3xl">配</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gradient mb-1">配吗</h1>
+          <p className="text-white/50 text-sm">找到真正合适的那个人</p>
+        </div>
 
-        <button type="submit" disabled={loading}>
-          {mode === "register" ? "注册并登录" : "登录"}
-        </button>
-      </form>
+        {/* Card */}
+        <div className="glass rounded-3xl p-8 shadow-glass">
+          {/* Mode tabs */}
+          <div className="flex rounded-2xl p-1 mb-7" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            {["login", "register"].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setError(null); }}
+                disabled={loading}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  mode === m
+                    ? "text-white shadow-glass-sm"
+                    : "text-white/45 hover:text-white/70"
+                }`}
+                style={mode === m ? { background: 'linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%)' } : {}}
+              >
+                {m === "login" ? "登录" : "注册"}
+              </button>
+            ))}
+          </div>
 
-      <div style={{ marginTop: "1rem", color: "#666", fontSize: "0.9rem" }}>
-        <Link to="/">返回首页</Link>
+          {/* Error */}
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded-2xl text-sm text-red-300 border border-red-400/25 animate-fade-in"
+                 style={{ background: 'rgba(255,80,80,0.10)' }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5 ml-1">手机号</label>
+              <input
+                className="input-glass"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="13900139000"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {mode === "register" && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-medium text-white/50 mb-1.5 ml-1">昵称</label>
+                <input
+                  className="input-glass"
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="你想被叫什么"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !phone.trim() || (mode === "register" && !nickname.trim())}
+              className="btn-primary w-full mt-2"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  处理中…
+                </span>
+              ) : (
+                mode === "register" ? "注册并开始" : "登录"
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-white/25 text-xs mt-6">
+          手机号直登，无需验证码
+        </p>
       </div>
-    </main>
+    </div>
   );
 }
-
