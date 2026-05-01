@@ -85,7 +85,7 @@ M3 的目标 **不是** M4 式排序融合，而是验证：
    - **处理**：按 `.env.example` 与 runbook 打开开关并配置 OpenAI-compatible 厂商参数。
 
 4. **`http_error`**  
-   - Chat Completions **URL 拼接错误**（例如在已含 `/v1` 的 base 上再拼 `/v1/chat/completions` 等）。  
+   - Chat Completions **URL 拼接与供应商约定不一致**，例如 DeepSeek 根 `baseUrl` 被拼成 `/v1/chat/completions`，导致 HTTP 失败。  
    - **处理**：统一为 **根 baseUrl + `/chat/completions`**（与 DeepSeek / OpenAI 兼容约定对齐）。
 
 5. **`invalid_json`**  
@@ -142,7 +142,7 @@ M3 的目标 **不是** M4 式排序融合，而是验证：
 
 | 代号 | 建议 |
 |------|------|
-| **A** | **M3.1-real-plus（可选）**：再 **单条** reset + async run，例如从 **5 succeeded / 1 failed** 演进，**降低** `fallbackCount`；**不**一次性重跑全部 failed。 |
+| **A** | **M3.1-real-plus（可选）**：再 **单条** reset + async run，例如从 **4 succeeded / 2 failed** 演进到 **5 succeeded / 1 failed**，**降低** `fallbackCount`；**不**一次性重跑全部 failed。 |
 | **B** | **M3.3 durable queue**：生产 **多实例**、任务 **持久化 / 恢复**、**重试**、**stuck `running` 回收** 等。 |
 | **C** | **M1.3 evaluator calibration**：仅当 **更多真实 job** 显示 **`D_pre` 饱和** 与 **普遍压分** 时再开。 |
 | **D** | **M0.9 / M3.1 simulation prompt calibration**：仅当 **transcript / 场景信号** 明显 **同质化**、且与静态输入解耦后仍成立时再开。 |
@@ -155,6 +155,7 @@ M3 的目标 **不是** M4 式排序融合，而是验证：
 - **未改** `finalScore`。  
 - **未改** worker **主排序**。  
 - **未改** `MatchResult.finalScore`。  
+- **未改** RRM-Sim **公式 / deterministic evaluator** 契约与实现语义。  
 - **RRM-Sim 未参与**真实排序 / 融合。  
 - **未恢复** `shortlistScenariosV0` 作为真实模拟证据路径。  
 - **未写**假 **transcript**；**未写**假成功结果。  
