@@ -1,0 +1,17 @@
+{
+  "name": "@peima/ai-simulation-v1-runner",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@peima/database": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

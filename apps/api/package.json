@@ -24,6 +24,7 @@
     "@nestjs/platform-socket.io": "^10.4.22",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/websockets": "^10.4.22",
+    "@peima/ai-simulation-v1-runner": "workspace:*",
     "@peima/database": "workspace:*",
     "@peima/shared": "workspace:*",
     "@types/jsonwebtoken": "^9.0.10",
