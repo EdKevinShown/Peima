@@ -63,12 +63,17 @@ export type MatchingResultResponse = {
     | "static_fallback";
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
   /**
-   * M5.1-M0: readonly multi-source sidecar; echoes current display only.
+   * M5.1-M0/M1: readonly multi-source sidecar + viewer-safe source hydration.
    * Does not participate in display resolution — never overrides `displayCandidateUserId`.
    */
   multiSourceFinalDecision?: {
     schemaVersion: 1;
-    sourceVersion: "m5.1-m0-multi-source-final-decision-readonly-v1";
+    sourceVersion: "m5.1-m1-multi-source-final-decision-readonly-v1";
+    baseline: {
+      matchResultCandidateUserId: string;
+      finalScore: number | null;
+      sourceType: "match_result_baseline";
+    };
     currentDisplayCandidateUserId: string;
     currentDisplaySourceType:
       | "match_result_original"
@@ -79,6 +84,42 @@ export type MatchingResultResponse = {
     m5AppliedToDisplay: false;
     wouldChangeCurrentDisplay: false;
     decisionRule: "current_display_preserved_readonly";
+    sources: {
+      static: { available: true; candidateUserId: string; summary: string };
+      pairwise:
+        | { available: false; summary: string }
+        | {
+            available: true;
+            selectedCandidateUserId: string;
+            pairwiseWinnerCandidateUserId: string | null;
+            staticTop1CandidateUserId: string;
+            sourceType: string;
+            mode: string;
+            pairwiseProposalRecommendation: string;
+            fallbackReason: string | null;
+            wouldChangeStaticResult: boolean;
+            appliedToFinalScore: boolean;
+            appliedToWorkerRanking: boolean;
+            frozen: boolean;
+            frozenAt: string | null;
+          };
+      rrmSim: {
+        available: false;
+        summary: string;
+        unavailableReason: "m51m1_no_rrm_sim_hydration";
+      };
+      guardrails: {
+        status: "not_evaluated" | "caution";
+        blockReasons: string[];
+        cautionReasons: string[];
+        sourceSummary: string;
+      };
+    };
+    admin: {
+      decisionTrace: Array<{ step: "source_hydration_readonly"; detail: string }>;
+      missingSources: string[];
+      notes: string[];
+    };
   };
 };
 
