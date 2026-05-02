@@ -39,6 +39,10 @@ export type ViewerSafeFinalMatchDecisionMeta = {
   appliedToWorkerRanking: boolean;
 };
 
+/**
+ * GET `/matching/result/:userId` 的 JSON 形状。
+ * M4.3：最终匹配页仅重组展示与折叠策略；不改变本响应字段含义或服务端决策。
+ */
 export type MatchingResultResponse = {
   id: string;
   userId: string;
