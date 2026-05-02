@@ -8,6 +8,9 @@
  * From monorepo root:
  *   cd apps/api && pnpm exec nest build
  *   node --env-file=.env packages/database/scripts/m4-2-m3-b-run-pairwise-jobs-local.mjs
+ *   node --env-file=.env packages/database/scripts/m4-2-m3-b-run-pairwise-jobs-local.mjs --offset 5 --limit 2 --out docs/M4/M4.2-m3-pairwise-run-2.local.md
+ *
+ * `--offset` skips the first N rows of the **第二节** NEED_PAIRWISE_JOB 表（按 `#` 升序，0-based）.
  *
  * Env: `DATABASE_URL`, `JWT_SECRET`, pairwise LLM (`AI_PAIRWISE_DECISION_ENABLED`, `AI_PAIRWISE_DECISION_API_KEY`, …).
  */
@@ -44,11 +47,14 @@ function tryLoadMonorepoDotEnv() {
 
 function parseArgs(argv) {
   let limit = 5;
+  let offset = 0;
   let candidatesPath = path.join(MONOREPO_ROOT, "docs", "M4", "M4.2-m3-finalize-candidate-list.local.md");
   let outPath = path.join(MONOREPO_ROOT, "docs", "M4", "M4.2-m3-pairwise-run.local.md");
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === "--limit" && argv[i + 1]) limit = Math.max(1, parseInt(String(argv[++i]), 10) || 5);
+    if (a === "--offset" && argv[i + 1]) offset = Math.max(0, parseInt(String(argv[++i]), 10) || 0);
+    else if (a.startsWith("--offset=")) offset = Math.max(0, parseInt(a.slice("--offset=".length), 10) || 0);
+    else if (a === "--limit" && argv[i + 1]) limit = Math.max(1, parseInt(String(argv[++i]), 10) || 5);
     else if (a.startsWith("--limit=")) limit = Math.max(1, parseInt(a.slice("--limit=".length), 10) || 5);
     else if (a === "--candidates" && argv[i + 1]) {
       const v = String(argv[++i]);
@@ -64,7 +70,7 @@ function parseArgs(argv) {
       outPath = path.isAbsolute(v) ? v : path.join(MONOREPO_ROOT, v);
     }
   }
-  return { limit, candidatesPath, outPath };
+  return { limit, offset, candidatesPath, outPath };
 }
 
 /** Rows: | # | NEED_PAIRWISE_JOB | `viewer` | `pool` | `simJob` | ... */
@@ -129,9 +135,15 @@ async function main() {
   }
   const md = fs.readFileSync(args.candidatesPath, "utf8");
   const parsed = parseNeedPairwiseRowsFromLocalMd(md);
-  const picked = parsed.slice(0, args.limit);
-  if (!picked.length) {
+  const picked = parsed.slice(args.offset, args.offset + args.limit);
+  if (!parsed.length) {
     console.error("No NEED_PAIRWISE_JOB table rows parsed. Check local candidate list format.");
+    process.exit(1);
+  }
+  if (!picked.length) {
+    console.error(
+      `No rows in range offset=${args.offset} limit=${args.limit} (parsed ${parsed.length} rows).`,
+    );
     process.exit(1);
   }
 
@@ -162,6 +174,7 @@ async function main() {
   lines.push(``);
   lines.push(`- **generatedAt**: ${new Date().toISOString()}`);
   lines.push(`- **source**: \`${path.relative(MONOREPO_ROOT, args.candidatesPath)}\``);
+  lines.push(`- **tableSlice**: offset=${args.offset} limit=${args.limit} (第二节 NEED_PAIRWISE_JOB 行，按表 # 升序)`);
   lines.push(`- **mode**: Nest \`createOrReusePairwiseDecisionJob\` + \`runPairwiseDecisionJobSync\` (no HTTP; no finalize)`);
   lines.push(`- **candidatesAttempted**: ${picked.length}`);
   lines.push(``);

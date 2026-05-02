@@ -76,5 +76,7 @@ m13-calibration-report*.json
 /docs/M4/M4.2-m3-finalize-candidate-list.local.md
 /docs/M4/M4.2-m3-pairwise-run.local.md
 /docs/M4/M4.2-m3-finalize-run.local.md
+/docs/M4/M4.2-m3-pairwise-run-2.local.md
+/docs/M4/M4.2-m3-finalize-run-2.local.md
 /tmp/m4-2-batch-regression-*.json
 /tmp/m4-2-batch-regression-*.md

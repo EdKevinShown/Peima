@@ -8,6 +8,7 @@
  * From monorepo root:
  *   cd apps/api && pnpm exec nest build
  *   node --env-file=.env packages/database/scripts/m4-2-m3-c-finalize-pairwise-local.mjs
+ *   node --env-file=.env packages/database/scripts/m4-2-m3-c-finalize-pairwise-local.mjs --pairwise-log docs/M4/M4.2-m3-pairwise-run-2.local.md --out docs/M4/M4.2-m3-finalize-run-2.local.md
  */
 import fs from "node:fs";
 import { createRequire } from "node:module";
