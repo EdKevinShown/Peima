@@ -61,3 +61,10 @@ m13-calibration-report*.json
 
 # API local image uploads (see UPLOAD_DIR)
 **/uploads/
+
+# Stray local outputs (do not commit)
+/ai-simulation-invalid-json-items.json
+/packages/ai-simulation-v1-runner/src/index.js
+/packages/ai-simulation-v1-runner/src/index.js.map
+/packages/ai-simulation-v1-runner/src/run-ai-simulation-v1-job-execution.js
+/packages/ai-simulation-v1-runner/src/run-ai-simulation-v1-job-execution.js.map
