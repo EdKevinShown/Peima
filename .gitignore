@@ -80,3 +80,11 @@ m13-calibration-report*.json
 /docs/M4/M4.2-m3-finalize-run-2.local.md
 /tmp/m4-2-batch-regression-*.json
 /tmp/m4-2-batch-regression-*.md
+
+# M4.2-F3 pairwise replay local outputs (no real IDs)
+/docs/M4/M4.2-f3-pairwise-schema-validation-regression.local.md
+/docs/M4/M4.2-f3-pairwise-schema-validation-regression.local.json
+
+# M4.4 local observability reports (counts only; still do not commit)
+/docs/M4/M4.4-admin-observability-summary.local.json
+/docs/M4/M4.4-admin-observability-summary.local.md
