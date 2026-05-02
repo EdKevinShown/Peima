@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
+    "prebuild": "pnpm --filter @peima/ai-simulation-v1-runner run build:worker && pnpm --filter @peima/ai-pairwise-decision-runner run build:worker",
     "build": "pnpm --filter @peima/shared build && tsc",
     "start": "node dist/main.js",
     "batch-match": "tsx src/main.ts --batch-match"
   },
   "dependencies": {
+    "@peima/ai-pairwise-decision-runner": "workspace:*",
+    "@peima/ai-simulation-v1-runner": "workspace:*",
     "@peima/database": "workspace:*",
     "@peima/shared": "workspace:*",
     "node-cron": "^4.2.1"

@@ -6,10 +6,14 @@ import {
 import type { BatchMatchQueue, MatchResult } from "@peima/database";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EnqueueMatchDto } from "./dto/enqueue-match.dto";
+import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
 };
+
+/** M3.8-M13: `GET /matching/result` — Prisma row + display sidecar fields. */
+export type MatchResultViewerPayload = MatchResult & MatchResultDisplayFields;
 
 @Injectable()
 export class MatchingService {
@@ -82,7 +86,7 @@ export class MatchingService {
     return { status: "not_queued" };
   }
 
-  async getLatestResultForUser(userId: string): Promise<MatchResult> {
+  async getLatestResultForUser(userId: string): Promise<MatchResultViewerPayload> {
     await this.ensureUserExists(userId);
 
     const result = await this.prisma.matchResult.findFirst({
@@ -92,6 +96,7 @@ export class MatchingService {
     if (!result) {
       throw new NotFoundException(`No match result for user ${userId}`);
     }
-    return result;
+    const display = await resolveMatchResultDisplay(this.prisma, result);
+    return { ...result, ...display };
   }
 }

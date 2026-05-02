@@ -1,5 +1,10 @@
 import { ITEM_STATUS, SHORTLIST_DECISION_V0_SCHEMA } from "./ai-simulation-v1.constants";
-import type { EvaluatorV1, ShortlistContractBindingV0, ShortlistDecisionV0 } from "./ai-simulation-v1.types";
+import type {
+  EvaluatorV1,
+  ShortlistContractBindingV0,
+  ShortlistDecisionV0,
+  ShortlistFourDimV0,
+} from "./ai-simulation-v1.types";
 import { computeShortlistFingerprint } from "./shortlist-contract-binding";
 
 type ItemRow = {
@@ -91,6 +96,48 @@ export function tryBuildShortlistDecisionV0(
     schemaVersion: SHORTLIST_DECISION_V0_SCHEMA,
     chosenCandidateUserId,
     rankedCandidateUserIds,
+    shortlistFingerprint: binding.shortlistFingerprint,
+  };
+  if (confidenceTier) {
+    out.confidenceTier = confidenceTier;
+  }
+  return out;
+}
+
+/**
+ * M0.7.1 — shortlist 决胜排序与 `shortlistFourDimV0.comparison` 对齐（用于 v2 模拟路径），
+ * `confidenceTier` 仍取自该候选 item 的 legacy evaluator shim。
+ */
+export function tryBuildShortlistDecisionV0FromFourDim(
+  shortlistBinding: unknown,
+  fourDim: ShortlistFourDimV0 | null,
+  items: ItemRow[],
+): ShortlistDecisionV0 | null {
+  if (!fourDim || !isBindingV0(shortlistBinding)) return null;
+  const binding = shortlistBinding;
+  const expectedIds = binding.shortlistCandidateUserIds;
+  if (expectedIds.length < 2 || expectedIds.length > 3) return null;
+  if (computeShortlistFingerprint(expectedIds) !== binding.shortlistFingerprint) return null;
+
+  const ranked = fourDim.comparison.rankedCandidateUserIds;
+  if (ranked.length !== expectedIds.length) return null;
+  if (!setsEqualAsMultisets(ranked, expectedIds)) return null;
+  if (computeShortlistFingerprint(ranked) !== binding.shortlistFingerprint) return null;
+
+  const chosenCandidateUserId = ranked[0];
+  const byId = new Map(items.map((it) => [it.candidateUserId, it]));
+  for (const id of ranked) {
+    const it = byId.get(id);
+    if (!it || it.status !== ITEM_STATUS.SUCCEEDED) return null;
+  }
+
+  const winner = byId.get(chosenCandidateUserId);
+  const confidenceTier = winner ? readConfidenceTier(winner.evaluator) : null;
+
+  const out: ShortlistDecisionV0 = {
+    schemaVersion: SHORTLIST_DECISION_V0_SCHEMA,
+    chosenCandidateUserId,
+    rankedCandidateUserIds: ranked,
     shortlistFingerprint: binding.shortlistFingerprint,
   };
   if (confidenceTier) {

@@ -10,7 +10,10 @@ import { buildJobAuditV0 } from "../src/modules/ai-simulation-v1/ai-simulation-v
 import { computeShortlistFingerprint } from "../src/modules/ai-simulation-v1/shortlist-contract-binding";
 import { tryBuildShortlistDecisionV0 } from "../src/modules/ai-simulation-v1/shortlist-decision-v0";
 import { tryBuildShortlistFourDimV0 } from "../src/modules/ai-simulation-v1/shortlist-four-dim-v0";
+import { recomputeAiSimulationJobSidecarsV0 } from "../src/modules/ai-simulation-v1/ai-simulation-job-sidecars-recompute";
 import { tryBuildShortlistScenariosV0 } from "../src/modules/ai-simulation-v1/shortlist-scenarios-v0";
+import * as shortlistScenariosV0Mod from "../src/modules/ai-simulation-v1/shortlist-scenarios-v0";
+import { buildValidAiSimulationV2Payload } from "./fixtures/ai-simulation-v2-seven-scenarios";
 
 function binding(ids: string[]) {
   return {
@@ -31,7 +34,19 @@ function ev(score: number, recommendation: "explore_more" | "hold" | "slow_down"
   };
 }
 
+function transcriptLiteV2(overrides?: { high?: boolean }) {
+  const hi = [0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95];
+  const lo = [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35];
+  return buildValidAiSimulationV2Payload({
+    scenarioScores: overrides?.high === false ? lo : hi,
+  });
+}
+
 describe("buildJobAuditV0 (Phase F v0.1)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("queued job: job_in_progress, rankConsistent null", () => {
     const b = binding(["a", "b"]);
     const audit = buildJobAuditV0({
@@ -68,7 +83,7 @@ describe("buildJobAuditV0 (Phase F v0.1)", () => {
     expect(audit.sidecarSuppressedReason).toBe(JOB_AUDIT_V0_SUPPRESSED_REASON.JOB_IN_PROGRESS);
   });
 
-  it("completed with persisted trio and matching recompute: none", () => {
+  it("completed with persisted ranking sidecars (fourDim+decision) and matching recompute: none", () => {
     const b = binding(["c1", "c2"]);
     const items = [
       { candidateUserId: "c1", status: ITEM_STATUS.SUCCEEDED, evaluator: ev(0.86, "hold") },
@@ -80,7 +95,7 @@ describe("buildJobAuditV0 (Phase F v0.1)", () => {
     const audit = buildJobAuditV0({
       jobStatus: JOB_STATUS.COMPLETED,
       shortlistBinding: b,
-      shortlistScenariosV0: scenarios,
+      shortlistScenariosV0: null,
       shortlistFourDimV0: four,
       shortlistDecisionV0: dec,
       items,
@@ -186,7 +201,7 @@ describe("buildJobAuditV0 (Phase F v0.1)", () => {
     const audit = buildJobAuditV0({
       jobStatus: JOB_STATUS.COMPLETED,
       shortlistBinding: b,
-      shortlistScenariosV0: scenarios,
+      shortlistScenariosV0: null,
       shortlistFourDimV0: four,
       shortlistDecisionV0: dec,
       items: itemsCorrupt,
@@ -230,6 +245,59 @@ describe("buildJobAuditV0 (Phase F v0.1)", () => {
     expect(audit.specClassification).toBe(JOB_AUDIT_V0_SPEC_CLASSIFICATION.LEGACY_PRE_SHORTLIST_CONTRACT);
     expect(audit.diagnosticBucket).toBe(JOB_AUDIT_V0_DIAGNOSTIC_BUCKET.LEGACY_ACCEPTABLE);
     expect(audit.buildabilityDetail).toBe(JOB_AUDIT_V0_BUILDABILITY_DETAIL.BINDING_MISSING);
+  });
+
+  it("v2 transcript job: buildJobAuditV0 recompute does not call tryBuildShortlistScenariosV0", () => {
+    const spy = jest.spyOn(shortlistScenariosV0Mod, "tryBuildShortlistScenariosV0");
+    const b = binding(["v2a", "v2b"]);
+    const items = [
+      {
+        candidateUserId: "v2a",
+        status: ITEM_STATUS.SUCCEEDED,
+        evaluator: ev(0.9, "hold"),
+        transcriptLite: transcriptLiteV2({ high: true }),
+      },
+      {
+        candidateUserId: "v2b",
+        status: ITEM_STATUS.SUCCEEDED,
+        evaluator: ev(0.5, "hold"),
+        transcriptLite: transcriptLiteV2({ high: false }),
+      },
+    ];
+    const reco = recomputeAiSimulationJobSidecarsV0({ shortlistBinding: b, items });
+    expect(reco.derivation).toBe("simulation_v2");
+    const auditOk = buildJobAuditV0({
+      jobStatus: JOB_STATUS.COMPLETED,
+      shortlistBinding: b,
+      shortlistScenariosV0: null,
+      shortlistFourDimV0: reco.fourDim,
+      shortlistDecisionV0: reco.decision,
+      items,
+    });
+    expect(spy).not.toHaveBeenCalled();
+    expect(auditOk.sidecarTrioPresent).toBe(true);
+    expect(auditOk.sidecarSuppressedReason).toBe(JOB_AUDIT_V0_SUPPRESSED_REASON.NONE);
+  });
+
+  it("read compat: legacy DB row may still include shortlistScenariosV0 JSON alongside fourDim+decision", () => {
+    const b = binding(["c1", "c2"]);
+    const items = [
+      { candidateUserId: "c1", status: ITEM_STATUS.SUCCEEDED, evaluator: ev(0.86, "hold") },
+      { candidateUserId: "c2", status: ITEM_STATUS.SUCCEEDED, evaluator: ev(0.7, "slow_down") },
+    ];
+    const scenarios = tryBuildShortlistScenariosV0(b, items)!;
+    const four = tryBuildShortlistFourDimV0(scenarios)!;
+    const dec = tryBuildShortlistDecisionV0(b, items)!;
+    const audit = buildJobAuditV0({
+      jobStatus: JOB_STATUS.COMPLETED,
+      shortlistBinding: b,
+      shortlistScenariosV0: scenarios,
+      shortlistFourDimV0: four,
+      shortlistDecisionV0: dec,
+      items,
+    });
+    expect(audit.sidecarTrioPresent).toBe(true);
+    expect(audit.sidecarSuppressedReason).toBe(JOB_AUDIT_V0_SUPPRESSED_REASON.NONE);
   });
 
   it("completed, malformed shortlistBinding object: current_anomaly + binding_shape_invalid", () => {

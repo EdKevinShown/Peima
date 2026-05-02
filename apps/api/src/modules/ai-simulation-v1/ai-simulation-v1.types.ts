@@ -13,6 +13,7 @@ import type {
   SHORTLIST_SCENE_KEYS_V0,
   SHORTLIST_FOUR_DIM_V0_SCHEMA,
 } from "./ai-simulation-v1.constants";
+import type { RrmScenarioKeyV1 } from "./ai-simulation-v1-rrm.constants";
 
 /** Phase C v0 — persisted on `AiSimulationV1Job.shortlistBinding`; must match `hintSnapshot` queue. */
 export type ShortlistContractBindingV0 = {
@@ -30,6 +31,22 @@ export type AiSimulationV1EnqueueDto = {
   hintSnapshot: unknown;
   runSpecVersion: typeof AI_SIMULATION_RUN_SPEC_V1;
   shortlistBinding: ShortlistContractBindingV0;
+};
+
+/**
+ * Admin `POST .../jobs/:jobId/run` — M3.3-M1: returns immediately; LLM runs in worker when job is `queued`.
+ * `started` is always `false` for this handler; use `reason` + `jobStatus`.
+ */
+export type AiSimulationV1RequestRunJobResponse = {
+  ok: true;
+  jobId: string;
+  jobStatus: string;
+  started: boolean;
+  reason?:
+    | "enqueued_for_worker"
+    | "already_running"
+    | "already_completed"
+    | "not_queued_for_worker";
 };
 
 export type AiSimulationItemErrorCode =
@@ -121,6 +138,55 @@ export type AiSimulationLlmPayloadV1 = {
   evaluator: EvaluatorV1;
 };
 
+export type RrmSimulationTranscriptEntryV2 = {
+  speaker: "viewer" | "candidate";
+  message: string;
+};
+
+export type RrmScenarioSignalsV2 = {
+  topicContinuity: string;
+  emotionalSafety: string;
+  mutualInvestment: string;
+  pressureOrBoundaryRisk: string;
+  nextStepSuitability: string;
+  conversationMomentum: string;
+  repairPotential: string;
+};
+
+export type RrmScenarioEvaluatorV2 = {
+  scenarioScore: number;
+  confidence: number;
+};
+
+export type RrmScenarioResultV2 = {
+  scenario: RrmScenarioKeyV1;
+  scenarioApproachIntensity: number;
+  simulationTranscript: RrmSimulationTranscriptEntryV2[];
+  simulationSummary: string;
+  observerNotes?: string;
+  signals: RrmScenarioSignalsV2;
+  evaluator: RrmScenarioEvaluatorV2;
+};
+
+export type RrmOverallSimulationAssessmentV2 = {
+  crossScenarioConsistency: string;
+  mainStrengths: string[];
+  mainRisks: string[];
+  recommendedOpeningStyle: string;
+  confidence: number;
+};
+
+/** M0.6-Full — persisted under `AiSimulationV1Item.transcriptLite` (v2); legacy evaluator shim in `evaluator`. */
+export type AiSimulationLlmPayloadV2 = {
+  schemaVersion: 2;
+  sourceType: string;
+  sourceVersion: string;
+  fallbackUsed: boolean;
+  participants: { viewerUserId: string; candidateUserId: string };
+  scenarioResults: RrmScenarioResultV2[];
+  overallSimulationAssessment: RrmOverallSimulationAssessmentV2;
+};
+
 export type SimulationHintSnapshotEntry = {
   rankHint: number;
   candidateUserId: string;
@@ -150,7 +216,10 @@ export type JobAuditV0 = {
   schemaVersion: typeof JOB_AUDIT_V0_SCHEMA;
   jobStatus: string;
   shortlistBindingPresent: boolean;
-  /** True iff all three sidecar JSON columns are non-null on the job row. */
+  /**
+   * True when `shortlistFourDimV0` and `shortlistDecisionV0` are both non-null on the job row.
+   * (Legacy name `sidecarTrioPresent`: `shortlistScenariosV0` is no longer required or persisted for new jobs — M0.7.)
+   */
   sidecarTrioPresent: boolean;
   itemCounts: JobAuditV0ItemCounts;
   /**

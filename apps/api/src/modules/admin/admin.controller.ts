@@ -121,8 +121,7 @@ export class AdminController {
     }
     this.adminService.assertCanRunAiSimulationV1(userId);
     const job = await this.aiSimulationV1Service.getJobById(jobId);
-    await this.aiSimulationV1Service.runJob(jobId, job.viewerUserId as string);
-    return { ok: true as const };
+    return this.aiSimulationV1Service.requestRunJobAsync(jobId, job.viewerUserId as string);
   }
 
   /**

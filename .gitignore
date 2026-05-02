@@ -52,5 +52,12 @@ Desktop.ini
 tmp
 *.local
 
+# Local M1.3 calibration reports (do not commit real job exports)
+tools/.outputs/
+tools/output/
+reports/m13-*.json
+m13-calibration-report*.json
+*.local.json
+
 # API local image uploads (see UPLOAD_DIR)
 **/uploads/

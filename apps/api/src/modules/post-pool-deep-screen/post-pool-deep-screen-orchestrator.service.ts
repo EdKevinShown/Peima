@@ -12,6 +12,7 @@ import {
   AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE,
   AI_SIMULATION_V1_HINT_SOURCE,
   AI_SIMULATION_V1_SCHEMA,
+  JOB_STATUS,
 } from "../ai-simulation-v1/ai-simulation-v1.constants";
 import { PrescreenV0Service } from "../prescreen-v0/prescreen-v0.service";
 import { PRESCREEN_V0_SCHEMA } from "../prescreen-v0/prescreen-v0.types";
@@ -78,6 +79,7 @@ export class PostPoolDeepScreenOrchestratorService {
     let simulationQueueActual: string[] = [];
     let simulationQueueHintForEnvelope: PostPoolSimulationQueueHintEntry[] =
       dto.runMode === "mvp" ? [] : shadow.simulationQueueHint;
+    let aiSimulationAsyncRunStarted: boolean | undefined;
 
     let aiSimReason: PostPoolOrchestrationMvpAiSimulationSkipReason | undefined;
     let shortlistPhaseCV0SkipReason: PostPoolOrchestrationMvpAiSimulationSkipReason | null =
@@ -109,6 +111,19 @@ export class PostPoolDeepScreenOrchestratorService {
           simulationJobId = enqueue.simulationJobId;
           acceptedCandidateCount = enqueue.acceptedCandidateCount;
           simulationQueueActual = enqueue.simulationQueueActual;
+          try {
+            const runRes = await this.aiSimulationV1Service.requestRunJobAsync(
+              enqueue.simulationJobId,
+              dto.viewerUserId,
+            );
+            aiSimulationAsyncRunStarted =
+              runRes.reason === "enqueued_for_worker" ||
+              runRes.reason === "already_running" ||
+              runRes.reason === "already_completed";
+          } catch (err) {
+            /* M3.2: background run is best-effort; enqueue + GET job polling still work */
+            void err;
+          }
         } catch {
           aiSimReason = "no_hint_for_enqueue";
           shortlistPhaseCV0SkipReason = "no_hint_for_enqueue";
@@ -158,7 +173,7 @@ export class PostPoolDeepScreenOrchestratorService {
           reason: aiSimReason,
           simulationJobId,
           acceptedCandidateCount,
-          runTriggered: false,
+          runTriggered: Boolean(simulationJobId && aiSimulationAsyncRunStarted),
         },
       },
       simulationQueueHint: simulationQueueHintForEnvelope,

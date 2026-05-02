@@ -3,16 +3,27 @@ import {
   TRANSCRIPT_LITE_NARRATOR_ROUND,
   TRANSCRIPT_LITE_SCHEMA_VERSION,
 } from "./ai-simulation-v1.constants";
-import type { AiSimulationLlmPayloadV1, TranscriptLiteRoundV1 } from "./ai-simulation-v1.types";
+import type { AiSimulationLlmPayloadV1, AiSimulationLlmPayloadV2, TranscriptLiteRoundV1 } from "./ai-simulation-v1.types";
+import { parseAndValidateAiSimulationLlmPayloadV2 } from "./ai-simulation-v2-llm-payload.validate";
 
 const SPEAKERS = new Set(["viewer", "candidate", "narrator"]);
 const CONTINUE = new Set(["explore_more", "hold", "slow_down"]);
 const CONF = new Set(["high", "medium", "low"]);
 
-/** First schema failure (persisted on item when errorCode is schema_validation). */
+/**
+ * First schema failure (persisted on item when errorCode is schema_validation).
+ * v2 transcript failures may add optional observability fields (same keys as v2 validator).
+ */
 export type AiSimulationV1SchemaFailureDetail = {
   path: string;
   reason: string;
+  expectedShape?: string;
+  offendingType?: string;
+  normalizationAttempted?: boolean;
+  actualLength?: number;
+  expectedMin?: number;
+  expectedMax?: number;
+  scenario?: string;
 };
 
 export type ParseValidateAiSimulationLlmPayloadV1Result =
@@ -206,6 +217,49 @@ export function parseAndValidateAiSimulationLlmPayloadV1(rawText: string): Parse
       },
     },
   };
+}
+
+export type ParseValidateAiSimulationLlmPayloadAnyResult =
+  | { ok: true; version: 1; payload: AiSimulationLlmPayloadV1 }
+  | { ok: true; version: 2; payload: AiSimulationLlmPayloadV2 }
+  | { ok: false; failure: "parse" }
+  | { ok: false; failure: "schema"; detail: AiSimulationV1SchemaFailureDetail };
+
+/**
+ * v2 when `schemaVersion` is 2 (number) or accepted string alias; otherwise v1.
+ * Old persisted rows remain v1; new runs use v2 only from the service.
+ */
+export function parseAndValidateAiSimulationLlmPayloadAny(rawText: string): ParseValidateAiSimulationLlmPayloadAnyResult {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(rawText) as unknown;
+  } catch {
+    return { ok: false, failure: "parse" };
+  }
+  if (typeof obj !== "object" || obj === null) {
+    return schema({ path: "payload", reason: "expected_object" });
+  }
+  const root = obj as Record<string, unknown>;
+  const sv = root.schemaVersion;
+  const isV2 =
+    sv === 2 ||
+    sv === "2" ||
+    sv === "ai_simulation_llm_payload_v2" ||
+    Number(sv) === 2;
+  if (isV2) {
+    const v2 = parseAndValidateAiSimulationLlmPayloadV2(rawText);
+    if (!v2.ok) {
+      if (v2.failure === "parse") return { ok: false, failure: "parse" };
+      return { ok: false, failure: "schema", detail: v2.detail };
+    }
+    return { ok: true, version: 2, payload: v2.payload };
+  }
+  const v1 = parseAndValidateAiSimulationLlmPayloadV1(rawText);
+  if (!v1.ok) {
+    if (v1.failure === "parse") return { ok: false, failure: "parse" };
+    return { ok: false, failure: "schema", detail: v1.detail };
+  }
+  return { ok: true, version: 1, payload: v1.payload };
 }
 
 /** Strip optional ```json fences from model output. */

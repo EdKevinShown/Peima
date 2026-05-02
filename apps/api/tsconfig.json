@@ -9,11 +9,9 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": "./",
-    "paths": {
-      "@peima/ai-simulation-v1-runner": ["../../packages/ai-simulation-v1-runner/src/index.ts"]
-    },
-    "incremental": true,
+    "incremental": false,
     "skipLibCheck": true,
     "strictNullChecks": true,
     "noImplicitAny": true,

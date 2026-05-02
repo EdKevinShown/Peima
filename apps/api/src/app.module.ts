@@ -29,6 +29,7 @@ import { NotificationModule } from "./modules/notifications/notification.module"
 import { PrescreenV0Module } from "./modules/prescreen-v0/prescreen-v0.module";
 import { PostPoolDeepScreenModule } from "./modules/post-pool-deep-screen/post-pool-deep-screen.module";
 import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v1.module";
+import { AiPairwiseDecisionModule } from "./modules/ai-pairwise-decision/ai-pairwise-decision.module";
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v
     PrescreenV0Module,
     PostPoolDeepScreenModule,
     AiSimulationV1Module,
+    AiPairwiseDecisionModule,
   ],
   controllers: [],
   providers: [],

@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "prebuild": "pnpm --filter @peima/database build && pnpm --filter @peima/shared build",
+    "prebuild": "pnpm --filter @peima/database build && pnpm --filter @peima/shared build && pnpm --filter @peima/ai-simulation-v1-runner run build && pnpm --filter @peima/ai-pairwise-decision-runner run build:worker",
+    "prestart:dev": "pnpm --filter @peima/ai-simulation-v1-runner run build && pnpm --filter @peima/ai-pairwise-decision-runner run build:worker",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -24,6 +25,7 @@
     "@nestjs/platform-socket.io": "^10.4.22",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/websockets": "^10.4.22",
+    "@peima/ai-pairwise-decision-runner": "workspace:*",
     "@peima/ai-simulation-v1-runner": "workspace:*",
     "@peima/database": "workspace:*",
     "@peima/shared": "workspace:*",

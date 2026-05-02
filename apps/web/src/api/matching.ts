@@ -23,6 +23,22 @@ export type MatchInsights = {
   chatSimulationSummary: string;
 };
 
+/** M3.8-M13: viewer-safe finalize 摘要（无 raw pairwise / dimensions / strongRisk）。 */
+export type ViewerSafeFinalMatchDecisionMeta = {
+  sourceType: string;
+  mode: string;
+  pairwiseProposalRecommendation: string;
+  selectedCandidateUserId: string;
+  staticTop1CandidateUserId: string;
+  pairwiseWinnerCandidateUserId: string | null;
+  wouldChangeStaticResult: boolean;
+  fallbackReason: string | null;
+  frozen: boolean;
+  frozenAt: string | null;
+  appliedToFinalScore: boolean;
+  appliedToWorkerRanking: boolean;
+};
+
 export type MatchingResultResponse = {
   id: string;
   userId: string;
@@ -34,6 +50,14 @@ export type MatchingResultResponse = {
   createdAt: string;
   updatedAt: string;
   matchInsights?: MatchInsights | null;
+  /** M3.8-M13：与 `candidateUserId` 可能不同；Final 页应优先用于展示与对端资料。 */
+  displayCandidateUserId?: string;
+  displaySourceType?:
+    | "match_result_original"
+    | "static_final"
+    | "pairwise_final"
+    | "static_fallback";
+  finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
 };
 
 export async function enqueueMatching(userId: string) {
@@ -58,4 +82,31 @@ export async function getMatchingResult(userId: string) {
   const url = `${baseUrl}/matching/result/${encodeURIComponent(userId)}`;
   const res = await fetch(url, { headers: authHeaders() });
   return handleJson<MatchingResultResponse>(res);
+}
+
+/** M3.8-M11/M12A: finalize sidecar — server never mutates `MatchResult.candidateUserId` / `finalScore`. */
+export type FinalizeWithPairwiseApiStatus = "pending" | "finalized" | "already_frozen" | "disabled";
+
+export type FinalizeWithPairwiseResponse = {
+  ok: true;
+  status: FinalizeWithPairwiseApiStatus;
+  /** Opaque server meta; do not log or render raw fields to users. */
+  finalMatchDecisionMeta: Record<string, unknown> | null;
+};
+
+export async function finalizeWithPairwise(params: { poolId: string; pairwiseJobId: string }) {
+  const poolId = params.poolId.trim();
+  const pairwiseJobId = params.pairwiseJobId.trim();
+  if (!poolId || !pairwiseJobId) {
+    throw new Error("缺少 poolId 或 pairwiseJobId。");
+  }
+  const res = await fetch(`${baseUrl}/matching/finalize-with-pairwise`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ poolId, pairwiseJobId }),
+  });
+  return handleJson<FinalizeWithPairwiseResponse>(res);
 }

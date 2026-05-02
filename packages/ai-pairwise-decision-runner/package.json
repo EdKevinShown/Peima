@@ -1,0 +1,29 @@
+{
+  "name": "@peima/ai-pairwise-decision-runner",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./worker-consumer": {
+      "types": "./src/worker-consumer.ts",
+      "default": "./dist/worker-consumer.js"
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.bundle.mjs",
+    "build:worker": "pnpm run build"
+  },
+  "dependencies": {
+    "@peima/database": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "~5.7.2"
+  }
+}

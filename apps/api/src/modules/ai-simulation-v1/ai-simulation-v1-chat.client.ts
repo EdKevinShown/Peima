@@ -1,6 +1,23 @@
 import { Injectable } from "@nestjs/common";
 import { AiSimulationV1ConfigService } from "./ai-simulation-v1.config.service";
 
+/**
+ * Resolves `AI_SIMULATION_V1_BASE_URL` / `MATCH_REVIEW_AI_BASE_URL` to a Chat Completions URL.
+ * - DeepSeek: `https://api.deepseek.com` → `https://api.deepseek.com/chat/completions` (no `/v1/` segment).
+ * - OpenAI-style: `https://api.openai.com/v1` → `https://api.openai.com/v1/chat/completions`.
+ * If the base already ends with `/chat/completions`, it is returned unchanged (no duplicate path).
+ */
+export function buildAiSimulationV1ChatCompletionsUrl(baseUrl: string): string {
+  const b = baseUrl.trim().replace(/\/+$/, "");
+  if (!b) {
+    return "/chat/completions";
+  }
+  if (b.toLowerCase().endsWith("/chat/completions")) {
+    return b;
+  }
+  return `${b}/chat/completions`;
+}
+
 export type AiSimulationV1ChatFailureKind =
   | "disabled"
   | "missing_api_key"
@@ -31,7 +48,7 @@ export class AiSimulationV1ChatClient {
       return { ok: false, kind: "missing_api_key" };
     }
 
-    const url = `${this.config.baseUrl.replace(/\/$/, "")}/v1/chat/completions`;
+    const url = buildAiSimulationV1ChatCompletionsUrl(this.config.baseUrl);
     const body = {
       model: this.config.model,
       messages: [
@@ -39,7 +56,7 @@ export class AiSimulationV1ChatClient {
         { role: "user" as const, content: user },
       ],
       temperature: 0.25,
-      max_tokens: 2500,
+      max_tokens: this.config.maxCompletionTokens,
     };
 
     const controller = new AbortController();

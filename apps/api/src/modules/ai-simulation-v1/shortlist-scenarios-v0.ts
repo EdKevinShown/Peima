@@ -1,3 +1,11 @@
+/**
+ * Legacy **synthetic** 10-scene matrix (`SHORTLIST_SCENE_KEYS_V0`). **Not** used by new ai-simulation-v1 jobs
+ * whose items all carry RRM-ready `transcriptLite` schema v2 — those derive `shortlistFourDimV0` /
+ * `shortlistDecisionV0` via `recomputeAiSimulationJobSidecarsV0` without calling `tryBuildShortlistScenariosV0`.
+ *
+ * Still used **in-memory** for older / mixed jobs (evaluator-only shim, non-v2 transcript) to feed
+ * `tryBuildShortlistFourDimV0`. **Not** persisted to `shortlistScenariosV0` on new jobs.
+ */
 import { ITEM_STATUS, SHORTLIST_SCENARIOS_V0_SCHEMA, SHORTLIST_SCENE_KEYS_V0 } from "./ai-simulation-v1.constants";
 import type {
   EvaluatorV1,

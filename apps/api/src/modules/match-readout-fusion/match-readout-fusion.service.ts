@@ -8,6 +8,7 @@ import { QuestionnaireService } from "../questionnaire/questionnaire.service";
 import { buildRuleAiMatchReview } from "../match-review-ai/match-review-ai-rule";
 import { buildMatchReviewStaticSummary } from "../match-review-ai/match-review-static-summary";
 import { buildInteractionSimulationLiteRulePayload } from "../interaction-simulation-lite/interaction-simulation-lite-rule";
+import { resolveMatchResultDisplay } from "../matching/matching-result-display";
 import { computeReadoutFusion } from "./match-readout-fusion-fusion.rule";
 import type { MatchReadoutFusionResponseDto } from "./match-readout-fusion.types";
 
@@ -33,13 +34,16 @@ export class MatchReadoutFusionService {
       throw new ForbiddenException("match result not accessible by this user");
     }
 
+    const display = await resolveMatchResultDisplay(this.prisma, row);
+    const candidateIdForReadout = display.displayCandidateUserId;
+
     let viewerProfileView;
     let candidateProfileView;
     try {
       viewerProfileView =
         await this.questionnaireService.getProfileForUser(tokenUserId);
       candidateProfileView =
-        await this.questionnaireService.getProfileForUser(row.candidateUserId);
+        await this.questionnaireService.getProfileForUser(candidateIdForReadout);
     } catch (e) {
       if (e instanceof NotFoundException) {
         throw new NotFoundException(

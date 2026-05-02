@@ -1,6 +1,6 @@
 const TOKEN_KEY = "peimaToken";
 
-export function getToken() {
+export function getToken(): string {
   try {
     return localStorage.getItem(TOKEN_KEY) || "";
   } catch {

@@ -48,6 +48,10 @@ model User {
   rolesGrantedByMe         UserRole[] @relation("UserRolesGrantedBy") // P5 Phase 2.2：由该用户授予的角色
   notifications            Notification[] // P5 Phase 2.3：通知记录
   aiSimulationV1Jobs       AiSimulationV1Job[] // P6：AI 模拟 v1（侧车，不写 MatchResult）
+  /// M3.8-M3：RRM-lite pairwise decision job（独立语义；不写 MatchResult）。
+  aiPairwiseDecisionJobs   AiPairwiseDecisionJob[]
+  /// M3.8-M11：finalize-with-pairwise sidecar（不写 MatchResult.candidateUserId / 不改 finalScore）。
+  pairwisePoolFinalizeMeta PairwisePoolFinalizeMeta[]
   chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
 
   @@map("users")
@@ -175,6 +179,53 @@ model AiSimulationV1Item {
 
   @@index([jobId])
   @@map("ai_simulation_v1_items")
+}
+
+/// M3.8-M3: RRM-lite pairwise decision job (isolated from `ai_simulation_v1_jobs`; no MatchResult / finalScore).
+model AiPairwiseDecisionJob {
+  id                   String    @id @default(cuid())
+  viewerUserId         String
+  poolId               String
+  shortlistFingerprint String
+  /// `queued` | `running` | `succeeded` | `failed`
+  status               String    @default("queued")
+  /// Contract era for reuse + result validation (e.g. `rrm-lite-pairwise-decision-v1`).
+  sourceVersion        String
+  shortlistSnapshot    Json
+  decisionResult       Json?
+  /// Safe structured failure (no API key, no raw LLM body, no full prompts).
+  failureDetail        Json?
+  fallbackUsed         Boolean?
+  /// M3.8-M9: Phase-2 shadow final source (no MatchResult / no raw LLM / no scores in contract).
+  finalSourceShadow    Json?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@index([viewerUserId, poolId, shortlistFingerprint, sourceVersion, status])
+  @@map("ai_pairwise_decision_jobs")
+}
+
+/// M3.8-M11: viewer-scoped finalize sidecar per pool (idempotent; frozen blocks late job swap).
+model PairwisePoolFinalizeMeta {
+  id             String    @id @default(cuid())
+  viewerUserId   String
+  poolId         String
+  pairwiseJobId  String
+  /// `FinalMatchDecisionMeta` v1 JSON (no raw scores / dimensions / strongRisk).
+  meta           Json
+  frozen         Boolean   @default(false)
+  frozenAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerUserId, poolId])
+  @@map("pairwise_pool_finalize_meta")
 }
 
 /// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).

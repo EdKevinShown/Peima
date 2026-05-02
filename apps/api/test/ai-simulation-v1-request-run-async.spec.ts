@@ -8,10 +8,12 @@ import { AiSimulationV1ConfigService } from "../src/modules/ai-simulation-v1/ai-
 import { AiSimulationV1Service } from "../src/modules/ai-simulation-v1/ai-simulation-v1.service";
 import { JOB_STATUS } from "../src/modules/ai-simulation-v1/ai-simulation-v1.constants";
 
-describe("AiSimulationV1Service.requestRunJobAsync (M3.2)", () => {
-  const configEnabled = { get aiSimulationV1Enabled() {
-    return true;
-  } } as AiSimulationV1ConfigService;
+describe("AiSimulationV1Service.requestRunJobAsync (M3.3-M1 API enqueue)", () => {
+  const configEnabled = {
+    get aiSimulationV1Enabled() {
+      return true;
+    },
+  } as AiSimulationV1ConfigService;
 
   async function buildService(prisma: Record<string, unknown>) {
     const moduleRef = await Test.createTestingModule({
@@ -26,20 +28,14 @@ describe("AiSimulationV1Service.requestRunJobAsync (M3.2)", () => {
     return moduleRef.get(AiSimulationV1Service);
   }
 
-  it("returns running immediately without awaiting runAiSimulationV1JobExecution", async () => {
+  it("returns queued immediately without calling runAiSimulationV1JobExecution", async () => {
     const prisma = {
       aiSimulationV1Job: {
         findFirst: jest.fn().mockResolvedValue({ id: "job1", jobStatus: JOB_STATUS.QUEUED }),
-        findUnique: jest.fn(),
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        update: jest.fn().mockResolvedValue({}),
-      },
-      aiSimulationV1Item: {
-        findMany: jest.fn().mockResolvedValue([]),
       },
     };
     const service = await buildService(prisma);
-    const execSpy = jest.spyOn(aiSimRunner, "runAiSimulationV1JobExecution").mockResolvedValue(undefined);
+    const execSpy = jest.spyOn(aiSimRunner, "runAiSimulationV1JobExecution");
 
     const t0 = Date.now();
     const out = await service.requestRunJobAsync("job1", "viewer1");
@@ -47,29 +43,19 @@ describe("AiSimulationV1Service.requestRunJobAsync (M3.2)", () => {
 
     expect(out.ok).toBe(true);
     expect(out.jobId).toBe("job1");
-    expect(out.jobStatus).toBe(JOB_STATUS.RUNNING);
-    expect(out.started).toBe(true);
+    expect(out.jobStatus).toBe(JOB_STATUS.QUEUED);
+    expect(out.started).toBe(false);
+    expect(out.reason).toBe("enqueued_for_worker");
     expect(elapsed).toBeLessThan(500);
-    expect(execSpy).toHaveBeenCalledTimes(1);
-    expect(execSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prisma,
-        completeChat: expect.any(Function),
-        getProfileForUser: expect.any(Function),
-      }),
-      { jobId: "job1", viewerUserId: "viewer1" },
-    );
+    expect(execSpy).not.toHaveBeenCalled();
 
     execSpy.mockRestore();
   });
 
-  it("does not schedule execute when job is already running", async () => {
+  it("does not call runner when job is already running", async () => {
     const prisma = {
       aiSimulationV1Job: {
         findFirst: jest.fn().mockResolvedValue({ id: "job1", jobStatus: JOB_STATUS.RUNNING }),
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-        update: jest.fn(),
       },
     };
     const service = await buildService(prisma);
@@ -79,19 +65,16 @@ describe("AiSimulationV1Service.requestRunJobAsync (M3.2)", () => {
 
     expect(out.started).toBe(false);
     expect(out.reason).toBe("already_running");
-    expect(prisma.aiSimulationV1Job.updateMany).not.toHaveBeenCalled();
+    expect(out.jobStatus).toBe(JOB_STATUS.RUNNING);
     expect(execSpy).not.toHaveBeenCalled();
 
     execSpy.mockRestore();
   });
 
-  it("does not schedule execute when job is already completed", async () => {
+  it("does not call runner when job is already completed", async () => {
     const prisma = {
       aiSimulationV1Job: {
         findFirst: jest.fn().mockResolvedValue({ id: "job1", jobStatus: JOB_STATUS.COMPLETED }),
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-        update: jest.fn(),
       },
     };
     const service = await buildService(prisma);
@@ -106,35 +89,10 @@ describe("AiSimulationV1Service.requestRunJobAsync (M3.2)", () => {
     execSpy.mockRestore();
   });
 
-  it("returns claim_lost when concurrent claim loses queued→running race", async () => {
-    const prisma = {
-      aiSimulationV1Job: {
-        findFirst: jest.fn().mockResolvedValue({ id: "job1", jobStatus: JOB_STATUS.QUEUED }),
-        findUnique: jest.fn().mockResolvedValue({ jobStatus: JOB_STATUS.RUNNING }),
-        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-        update: jest.fn(),
-      },
-    };
-    const service = await buildService(prisma);
-    const execSpy = jest.spyOn(aiSimRunner, "runAiSimulationV1JobExecution");
-
-    const out = await service.requestRunJobAsync("job1", "viewer1");
-
-    expect(out.started).toBe(false);
-    expect(out.jobStatus).toBe(JOB_STATUS.RUNNING);
-    expect(out.reason).toBe("claim_lost_or_state_changed");
-    expect(execSpy).not.toHaveBeenCalled();
-
-    execSpy.mockRestore();
-  });
-
   it("throws NotFound when job id does not match viewer", async () => {
     const prisma = {
       aiSimulationV1Job: {
         findFirst: jest.fn().mockResolvedValue(null),
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-        update: jest.fn(),
       },
     };
     const service = await buildService(prisma);

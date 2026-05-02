@@ -5,7 +5,7 @@ import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import { getInteractionSimulationLite } from "../api/interaction-simulation-lite";
 import { getMatchReadoutFusion } from "../api/match-readout-fusion";
 import { postMatchReviewAi } from "../api/match-review-ai";
-import { getAdminAiSimulationV1Job } from "../api/ai-simulation-v1";
+import { getViewerAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
 import AiSimulationSidecarV0 from "../components/review/AiSimulationSidecarV0";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -50,19 +50,6 @@ function formatScoreDisplay(v) {
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
-
-const SHORTLIST_SCENE_KEYS_V0 = [
-  "first_message_opening",
-  "pace_negotiation",
-  "boundary_conflict_response",
-  "misunderstanding_repair",
-  "long_term_lifestyle_alignment",
-  "values_commitment_conflict",
-  "re_engagement_after_lull",
-  "emotional_support_under_stress",
-  "friends_family_integration_boundary",
-  "future_planning_tradeoff",
-];
 
 function parseShortlistDecisionV0(job) {
   if (!job || typeof job !== "object") return { state: "unavailable" };
@@ -190,83 +177,6 @@ function parseShortlistFourDimV0(job, shortlistDecisionSidecar) {
   };
 }
 
-function parseShortlistScenariosV0(job, shortlistFourDimSidecar, shortlistDecisionSidecar) {
-  if (!job || typeof job !== "object") return { state: "unavailable" };
-  const scenarios = job.shortlistScenariosV0;
-  if (!scenarios || typeof scenarios !== "object" || Array.isArray(scenarios)) {
-    return { state: "unavailable" };
-  }
-  const s = scenarios;
-  const schemaVersion = typeof s.schemaVersion === "string" ? s.schemaVersion : "";
-  const shortlistFingerprint =
-    typeof s.shortlistFingerprint === "string" ? s.shortlistFingerprint : "";
-  const rawScenes = Array.isArray(s.scenes) ? s.scenes : [];
-  const scenes = rawScenes
-    .map((row) => {
-      if (!row || typeof row !== "object" || Array.isArray(row)) return null;
-      const r = row;
-      if (
-        typeof r.sceneKey !== "string" ||
-        typeof r.candidateUserId !== "string" ||
-        typeof r.score !== "number" ||
-        Number.isNaN(r.score)
-      ) {
-        return null;
-      }
-      if (r.status !== "succeeded" && r.status !== "failed") return null;
-      return {
-        sceneKey: r.sceneKey,
-        candidateUserId: r.candidateUserId,
-        score: r.score,
-        status: r.status,
-      };
-    })
-    .filter(Boolean);
-
-  if (!schemaVersion || !shortlistFingerprint || scenes.length === 0 || scenes.length !== rawScenes.length) {
-    return { state: "invalid", reason: "数据异常/不可用" };
-  }
-
-  const grouped = new Map();
-  for (const row of scenes) {
-    if (!SHORTLIST_SCENE_KEYS_V0.includes(row.sceneKey)) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    if (!grouped.has(row.candidateUserId)) grouped.set(row.candidateUserId, []);
-    grouped.get(row.candidateUserId).push(row.sceneKey);
-  }
-  for (const [, keys] of grouped) {
-    if (keys.length !== SHORTLIST_SCENE_KEYS_V0.length) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    const keySet = new Set(keys);
-    if (keySet.size !== SHORTLIST_SCENE_KEYS_V0.length) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    for (const expected of SHORTLIST_SCENE_KEYS_V0) {
-      if (!keySet.has(expected)) {
-        return { state: "invalid", reason: "数据异常/不可用" };
-      }
-    }
-  }
-
-  const fourDimFp =
-    shortlistFourDimSidecar?.state === "ok" ? shortlistFourDimSidecar.shortlistFingerprint : null;
-  const decisionFp =
-    shortlistDecisionSidecar?.state === "ok" ? shortlistDecisionSidecar.shortlistFingerprint : null;
-  const fingerprintConsistentWithFourDim = !fourDimFp || fourDimFp === shortlistFingerprint;
-  const fingerprintConsistentWithDecision = !decisionFp || decisionFp === shortlistFingerprint;
-
-  return {
-    state: "ok",
-    schemaVersion,
-    shortlistFingerprint,
-    scenes,
-    fingerprintConsistentWithFourDim,
-    fingerprintConsistentWithDecision,
-  };
-}
-
 function parseJobAuditV0(job) {
   if (!job || typeof job !== "object") {
     return { state: "unavailable", reason: "job 不可读" };
@@ -347,20 +257,6 @@ function jobAuditAllowsPhaseEAssistCard(audit) {
   return true;
 }
 
-/** Human labels for scene keys — card copy only; never shown as raw keys to users. */
-const SHORTLIST_SCENE_TITLE_ZH = {
-  first_message_opening: "开场寒暄",
-  pace_negotiation: "聊天节奏",
-  boundary_conflict_response: "边界与冲突",
-  misunderstanding_repair: "误会与修复",
-  long_term_lifestyle_alignment: "长期生活习惯",
-  values_commitment_conflict: "价值观与承诺",
-  re_engagement_after_lull: "冷场后再联系",
-  emotional_support_under_stress: "压力下的支持",
-  friends_family_integration_boundary: "朋友与家人边界",
-  future_planning_tradeoff: "未来规划取舍",
-};
-
 const DIM_LABEL_ZH = {
   openingSmoothness: "开场自然度",
   continuation: "继续了解",
@@ -368,18 +264,15 @@ const DIM_LABEL_ZH = {
   longTermStability: "长期磨合空间",
 };
 
-const OPENING_SCENE_PICK_KEYS = ["first_message_opening", "misunderstanding_repair", "pace_negotiation"];
-
 /**
  * Phase E v1.0 — stable natural-language lines from sidecars (no sceneKey / fingerprint in output).
  * @returns {null | { summary: string, compatibilityLines: string[], reminder: string, opening: string }}
  */
-function buildPhaseEAssistCopy(job, candidateUserId, decision, fourDim, scenarios) {
+function buildPhaseEAssistCopy(job, candidateUserId, decision, fourDim) {
   if (
     !candidateUserId ||
     decision.state !== "ok" ||
     fourDim.state !== "ok" ||
-    scenarios.state !== "ok" ||
     !decision.rankedCandidateUserIds.includes(candidateUserId)
   ) {
     return null;
@@ -456,22 +349,22 @@ function buildPhaseEAssistCopy(job, candidateUserId, decision, fourDim, scenario
       "相处建议：模拟里「互动摩擦信号」略高一点，并不代表不合适，更像是提醒聊天时少下结论、多确认对方感受。";
   }
 
-  const scenesForCur = scenarios.scenes.filter((s) => s.candidateUserId === candidateUserId && s.status === "succeeded");
+  const matched = Array.isArray(job?.results)
+    ? job.results.find((r) => r.candidateUserId === candidateUserId)
+    : null;
+  const tl = matched?.transcriptLite;
   let opening = "开场建议：先从近况、轻松话题或共同兴趣聊起，少用「你应该」式表达，给对方接话空间。";
-  let best = null;
-  for (const sk of OPENING_SCENE_PICK_KEYS) {
-    const hit = scenesForCur.filter((s) => s.sceneKey === sk);
-    for (const s of hit) {
-      if (!best || s.score > best.score) best = s;
-    }
-  }
-  if (best && SHORTLIST_SCENE_TITLE_ZH[best.sceneKey]) {
-    const t = SHORTLIST_SCENE_TITLE_ZH[best.sceneKey];
-    opening = `开场建议：从「${t}」相关角度切入往往更自然——先分享一点近况或轻松观察，少用结论式表达。`;
+  if (
+    tl &&
+    typeof tl === "object" &&
+    !Array.isArray(tl) &&
+    tl.schemaVersion === 2 &&
+    tl.overallSimulationAssessment &&
+    typeof tl.overallSimulationAssessment.recommendedOpeningStyle === "string" &&
+    tl.overallSimulationAssessment.recommendedOpeningStyle.trim()
+  ) {
+    opening = `开场建议：${tl.overallSimulationAssessment.recommendedOpeningStyle.trim()}`;
   } else {
-    const matched = Array.isArray(job?.results)
-      ? job.results.find((r) => r.candidateUserId === candidateUserId)
-      : null;
     const ev = matched?.evaluator;
     if (ev && typeof ev === "object" && !Array.isArray(ev) && Array.isArray(ev.mitigation_hints) && ev.mitigation_hints[0]) {
       const h0 = ev.mitigation_hints[0];
@@ -713,8 +606,13 @@ export default function FinalMatchPage() {
   const [deeplinkJobIdInput, setDeeplinkJobIdInput] = useState("");
   const [generatedDeeplink, setGeneratedDeeplink] = useState("");
   const [deeplinkCopyStatus, setDeeplinkCopyStatus] = useState("");
+  /** M3.8-M13: 展示与下游 API（复审 / 侧车）一致用 displayCandidateUserId，无则回退 MatchResult.candidateUserId。 */
+  const effectiveDisplayCandidateId = useMemo(
+    () => String(result?.displayCandidateUserId || result?.candidateUserId || "").trim(),
+    [result?.displayCandidateUserId, result?.candidateUserId],
+  );
   const sidecarStatus = useMemo(() => {
-    const candidateUserId = result?.candidateUserId || "";
+    const candidateUserId = effectiveDisplayCandidateId;
     const hasJobId = aiSimJobId.length > 0;
     const hasReadableJob = Boolean(aiSimJob && !aiSimJobError);
     const candidateInJob = Boolean(
@@ -732,15 +630,11 @@ export default function FinalMatchPage() {
       sidecarReady,
       jobStatus: aiSimJob?.jobStatus || "—",
     };
-  }, [aiSimJobId, aiSimJob, aiSimJobError, result?.candidateUserId]);
+  }, [aiSimJobId, aiSimJob, aiSimJobError, effectiveDisplayCandidateId]);
   const shortlistDecisionSidecar = useMemo(() => parseShortlistDecisionV0(aiSimJob), [aiSimJob]);
   const shortlistFourDimSidecar = useMemo(
     () => parseShortlistFourDimV0(aiSimJob, shortlistDecisionSidecar),
     [aiSimJob, shortlistDecisionSidecar],
-  );
-  const shortlistScenariosSidecar = useMemo(
-    () => parseShortlistScenariosV0(aiSimJob, shortlistFourDimSidecar, shortlistDecisionSidecar),
-    [aiSimJob, shortlistFourDimSidecar, shortlistDecisionSidecar],
   );
   const jobAuditSidecar = useMemo(() => parseJobAuditV0(aiSimJob), [aiSimJob]);
 
@@ -751,10 +645,9 @@ export default function FinalMatchPage() {
     if (!jobAuditAllowsPhaseEAssistCard(jobAuditSidecar)) return { visible: false, copy: null };
     const copy = buildPhaseEAssistCopy(
       aiSimJob,
-      result?.candidateUserId || "",
+      effectiveDisplayCandidateId,
       shortlistDecisionSidecar,
       shortlistFourDimSidecar,
-      shortlistScenariosSidecar,
     );
     if (!copy) return { visible: false, copy: null };
     return { visible: true, copy };
@@ -764,10 +657,9 @@ export default function FinalMatchPage() {
     aiSimJobError,
     aiSimJob,
     jobAuditSidecar,
-    result?.candidateUserId,
+    effectiveDisplayCandidateId,
     shortlistDecisionSidecar,
     shortlistFourDimSidecar,
-    shortlistScenariosSidecar,
   ]);
 
   const load = useCallback(async () => {
@@ -806,28 +698,41 @@ export default function FinalMatchPage() {
     }
   }, [userId]);
 
-  const loadAiSimJob = useCallback(async () => {
-    if (!aiSimJobId) {
-      setAiSimJob(null);
-      setAiSimJobError(null);
-      setAiSimJobLoading(false);
-      return;
-    }
-    setAiSimJobLoading(true);
-    setAiSimJobError(null);
-    try {
-      const data = await getAdminAiSimulationV1Job(aiSimJobId);
-      setAiSimJob(data);
-    } catch (e) {
-      setAiSimJob(null);
-      setAiSimJobError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setAiSimJobLoading(false);
-    }
-  }, [aiSimJobId]);
+  const loadAiSimJob = useCallback(
+    async (opts = {}) => {
+      const silent = Boolean(opts?.silent);
+      if (!aiSimJobId) {
+        setAiSimJob(null);
+        setAiSimJobError(null);
+        setAiSimJobLoading(false);
+        return;
+      }
+      if (!silent) {
+        setAiSimJobLoading(true);
+        setAiSimJobError(null);
+      }
+      try {
+        const data = await getViewerAiSimulationV1Job(aiSimJobId);
+        setAiSimJob(data);
+        if (!silent) {
+          setAiSimJobError(null);
+        }
+      } catch (e) {
+        if (!silent) {
+          setAiSimJob(null);
+          setAiSimJobError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!silent) {
+          setAiSimJobLoading(false);
+        }
+      }
+    },
+    [aiSimJobId],
+  );
 
   useEffect(() => {
-    if (!aiSimJobId || !result?.candidateUserId) {
+    if (!aiSimJobId || !effectiveDisplayCandidateId) {
       if (!aiSimJobId) {
         setAiSimJob(null);
         setAiSimJobError(null);
@@ -836,7 +741,19 @@ export default function FinalMatchPage() {
       return;
     }
     loadAiSimJob();
-  }, [aiSimJobId, result?.candidateUserId, loadAiSimJob]);
+  }, [aiSimJobId, effectiveDisplayCandidateId, loadAiSimJob]);
+
+  /** M3.2: poll job while server-side LLM generation is in progress (no full-page block). */
+  useEffect(() => {
+    if (!aiSimJobId || !effectiveDisplayCandidateId) return;
+    const st = (aiSimJob?.jobStatus || "").trim();
+    if (st !== "queued" && st !== "running") return;
+
+    const id = window.setInterval(() => {
+      void loadAiSimJob({ silent: true });
+    }, 3500);
+    return () => window.clearInterval(id);
+  }, [aiSimJobId, effectiveDisplayCandidateId, aiSimJob?.jobStatus, loadAiSimJob]);
 
   useEffect(() => {
     if (!aiSimJobId) {
@@ -847,11 +764,11 @@ export default function FinalMatchPage() {
   }, [aiSimJobId]);
 
   const onFetchMatchReview = useCallback(async () => {
-    if (!result?.candidateUserId) return;
+    if (!effectiveDisplayCandidateId) return;
     setMatchReviewError(null);
     setMatchReviewLoading(true);
     try {
-      const data = await postMatchReviewAi(result.candidateUserId);
+      const data = await postMatchReviewAi(effectiveDisplayCandidateId);
       setMatchReview(data);
     } catch (e) {
       setMatchReview(null);
@@ -859,7 +776,7 @@ export default function FinalMatchPage() {
     } finally {
       setMatchReviewLoading(false);
     }
-  }, [result?.candidateUserId]);
+  }, [effectiveDisplayCandidateId]);
 
   const onFetchInteractionSim = useCallback(async () => {
     if (!result?.id) return;
@@ -1182,103 +1099,6 @@ export default function FinalMatchPage() {
               </Link>
             </p>
           ) : null}
-        </div>
-      </details>
-      <details
-        style={{
-          marginBottom: "1rem",
-          padding: "0.65rem 0.85rem",
-          borderRadius: 8,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-          fontSize: "0.8rem",
-          color: "#475569",
-        }}
-      >
-        <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          AI 场景证据侧车（shortlistScenariosV0，内部只读）
-        </summary>
-        <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
-          {!aiSimJobId || aiSimJobLoading || aiSimJobError || shortlistScenariosSidecar.state === "unavailable" ? (
-            <p style={{ margin: 0 }}>AI 场景证据侧车暂不可用。</p>
-          ) : shortlistScenariosSidecar.state === "invalid" ? (
-            <p style={{ margin: 0, color: "#92400e" }}>{shortlistScenariosSidecar.reason}</p>
-          ) : (
-            <>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                schemaVersion：<code style={{ fontSize: "0.74rem" }}>{shortlistScenariosSidecar.schemaVersion}</code>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                shortlistFingerprint：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all", marginLeft: "0.25rem" }}>
-                  {shortlistScenariosSidecar.shortlistFingerprint}
-                </code>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                场景结构可读（每候选恰好固定场景集合）：
-                <strong style={{ color: "#166534", marginLeft: "0.25rem" }}>是</strong>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                与 shortlistFourDimV0/shortlistDecisionV0 指纹一致性：
-                <strong
-                  style={{
-                    color:
-                      shortlistScenariosSidecar.fingerprintConsistentWithFourDim &&
-                      shortlistScenariosSidecar.fingerprintConsistentWithDecision
-                        ? "#166534"
-                        : "#92400e",
-                    marginLeft: "0.25rem",
-                  }}
-                >
-                  {shortlistScenariosSidecar.fingerprintConsistentWithFourDim &&
-                  shortlistScenariosSidecar.fingerprintConsistentWithDecision
-                    ? "一致"
-                    : "不一致（低权重警示）"}
-                </strong>
-              </p>
-              <div style={{ marginTop: "0.45rem", overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        candidateUserId
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        sceneKey
-                      </th>
-                      <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        score
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shortlistScenariosSidecar.scenes.map((row, idx) => (
-                      <tr key={`${row.candidateUserId}-${row.sceneKey}-${idx}`}>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{row.candidateUserId}</code>
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{row.sceneKey}</code>
-                        </td>
-                        <td style={{ textAlign: "right", padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {row.score.toFixed(4)}
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {row.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p style={{ margin: "0.4rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
-                本场景证据用于汇总到 shortlistFourDimV0，再支撑 shortlistDecisionV0。
-              </p>
-            </>
-          )}
         </div>
       </details>
       <details
@@ -1808,7 +1628,7 @@ export default function FinalMatchPage() {
           {/* —— 第三层：AI 复审主区 + 补充说明 —— */}
           <section style={aiLayerShell} aria-label="匹配复审与补充解读">
             {aiSimJobId &&
-            result?.candidateUserId &&
+            effectiveDisplayCandidateId &&
             (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
               <>
                 <p
@@ -1822,9 +1642,9 @@ export default function FinalMatchPage() {
                   以下为基于模拟的<strong>互动与相处参考</strong>（与上方主结果独立）；无说明引用时不显示本块。
                 </p>
                 <AiSimulationSidecarV0
-                  key={`${aiSimJobId || "no-job"}-${result.candidateUserId || ""}`}
+                  key={`${aiSimJobId || "no-job"}-${effectiveDisplayCandidateId || ""}`}
                   aiSimJobId={aiSimJobId}
-                  candidateUserId={result.candidateUserId}
+                  candidateUserId={effectiveDisplayCandidateId}
                   job={aiSimJob}
                   jobLoading={aiSimJobLoading}
                   jobError={aiSimJobError}
@@ -1854,7 +1674,7 @@ export default function FinalMatchPage() {
                   fontSize: "0.96rem",
                 }}
                 onClick={onFetchMatchReview}
-                disabled={matchReviewLoading || !result.candidateUserId}
+                disabled={matchReviewLoading || !effectiveDisplayCandidateId}
               >
                 {matchReviewLoading ? "正在生成…" : "获取相处参考"}
               </button>
@@ -2012,7 +1832,12 @@ export default function FinalMatchPage() {
               当前账号 userId（URL / 本地）：<code style={{ fontSize: "0.74rem" }}>{userId || "—"}</code>
             </p>
             <p style={{ margin: "0.25rem 0" }}>
-              对方用户 ID（candidateUserId）：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{result.candidateUserId}</code>
+              系统匹配对象 ID（MatchResult.candidateUserId）：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{result.candidateUserId}</code>
+            </p>
+            <p style={{ margin: "0.25rem 0" }}>
+              当前展示对象 ID（displayCandidateUserId · {result.displaySourceType || "—"}）：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{effectiveDisplayCandidateId}</code>
             </p>
             <p style={{ margin: "0.25rem 0" }}>
               结果时间（createdAt 原文）：<code style={{ fontSize: "0.74rem" }}>{formatDate(result.createdAt)}</code>

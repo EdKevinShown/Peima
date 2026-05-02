@@ -12,7 +12,6 @@ import {
   QUESTIONNAIRE_VERSION,
 } from "./data/questions";
 import { SubmitQuestionnaireDto } from "./dto/submit-questionnaire.dto";
-import { parseDimensionBranchChatHintsFromUserProfileJson } from "./dimension-branch-chat-hints";
 import {
   buildAxisBranchProfilesV3,
   type AxisBranchProfileV3,
@@ -30,6 +29,7 @@ import {
   resolveDisplayPrimary,
   type OverallExplanation,
 } from "./questionnaire-overall-explanation";
+import { loadQuestionnaireProfileViewForAudit } from "./questionnaire-profile-view.util";
 
 export type QuestionsPayload = {
   version: string;
@@ -61,51 +61,6 @@ export type QuestionnaireProfileView = {
   /** 规则拼装的整体解释（非 AI） */
   overallExplanation: OverallExplanation;
 };
-
-function serializeLayer1(
-  profiles: Record<number, AxisBranchProfileV3>,
-): DimensionBranchProfilesJson {
-  const out: DimensionBranchProfilesJson = {};
-  for (let axis = 1; axis <= 20; axis += 1) {
-    out[String(axis)] = profiles[axis];
-  }
-  return out;
-}
-
-function serializeHitsOnly(
-  profiles: Record<number, AxisBranchProfileV3>,
-): Record<string, Record<string, number>> {
-  const out: Record<string, Record<string, number>> = {};
-  for (let axis = 1; axis <= 20; axis += 1) {
-    const row = profiles[axis]?.branches ?? {};
-    const o: Record<string, number> = {};
-    for (const L of ["A", "B", "C", "D", "E"] as const) {
-      o[L] = row[L]?.hits ?? 0;
-    }
-    out[String(axis)] = o;
-  }
-  return out;
-}
-
-function serializeDominantBranches(
-  profiles: Record<number, AxisBranchProfileV3>,
-): Record<string, string | null> {
-  const out: Record<string, string | null> = {};
-  for (let axis = 1; axis <= 20; axis += 1) {
-    out[String(axis)] = profiles[axis]?.dominantBranch ?? null;
-  }
-  return out;
-}
-
-function serializeUncertainBranches(
-  profiles: Record<number, AxisBranchProfileV3>,
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (let axis = 1; axis <= 20; axis += 1) {
-    out[String(axis)] = [...(profiles[axis]?.uncertainBranches ?? [])];
-  }
-  return out;
-}
 
 @Injectable()
 export class QuestionnaireService {
@@ -205,45 +160,6 @@ export class QuestionnaireService {
 
   async getProfileForUser(userId: string): Promise<QuestionnaireProfileView> {
     await this.ensureUserExists(userId);
-
-    const profile = await this.prisma.userProfile.findUnique({
-      where: { userId },
-    });
-    if (!profile) {
-      throw new NotFoundException(`Profile for user ${userId} not found`);
-    }
-
-    const rows = await this.prisma.questionnaireAnswer.findMany({
-      where: { userId },
-      orderBy: { updatedAt: "asc" },
-    });
-    const answers = rows.map((r) => ({
-      questionKey: r.questionKey,
-      answerValue: r.answerValue,
-    }));
-
-    const chatHints = parseDimensionBranchChatHintsFromUserProfileJson(
-      profile.dimensionBranchChatHints,
-    );
-    const layer1 = buildAxisBranchProfilesV3(answers, chatHints);
-    const labels = matchPersonalityLabelsV3(layer1);
-    const displayPrimary = resolveDisplayPrimary(labels);
-    const uncertainBranchesByAxis = serializeUncertainBranches(layer1);
-    const overallExplanation = buildOverallExplanation({
-      labels,
-      displayPrimary,
-      uncertainBranchesByAxis,
-    });
-
-    return {
-      profile,
-      dimensionBranchProfiles: serializeLayer1(layer1),
-      byDimensionBranchScores: serializeHitsOnly(layer1),
-      dominantBranches: serializeDominantBranches(layer1),
-      uncertainBranchesByAxis,
-      labels,
-      displayPrimary,
-      overallExplanation,
-    };
+    return loadQuestionnaireProfileViewForAudit(this.prisma, userId);
   }
 }

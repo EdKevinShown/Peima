@@ -95,7 +95,6 @@ function parseJobAudit(job) {
 function sidecarPresence(job) {
   if (!job || typeof job !== "object" || Array.isArray(job)) return null;
   return {
-    shortlistScenariosV0: job.shortlistScenariosV0 != null,
     shortlistFourDimV0: job.shortlistFourDimV0 != null,
     shortlistDecisionV0: job.shortlistDecisionV0 != null,
   };
@@ -108,18 +107,28 @@ export default function AiSimulationJobDiagnosticPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts = {}) => {
+    const silent = Boolean(opts?.silent);
     if (!jobId) return;
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const data = await getAdminAiSimulationV1Job(jobId);
       setJob(data);
+      if (!silent) {
+        setError("");
+      }
     } catch (e) {
-      setJob(null);
-      setError(e instanceof Error ? e.message : String(e));
+      if (!silent) {
+        setJob(null);
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [jobId]);
 
@@ -128,10 +137,20 @@ export default function AiSimulationJobDiagnosticPage() {
     load();
   }, [jobId, load]);
 
+  useEffect(() => {
+    if (!jobId) return;
+    const st = (job?.jobStatus || "").trim();
+    if (st !== "queued" && st !== "running") return;
+    const id = window.setInterval(() => void load({ silent: true }), 3000);
+    return () => window.clearInterval(id);
+  }, [jobId, job?.jobStatus, load]);
+
   const audit = useMemo(() => parseJobAudit(job), [job]);
   const binding = useMemo(() => parseBindingSummary(job?.shortlistBinding), [job]);
   const presence = useMemo(() => sidecarPresence(job), [job]);
   const items = Array.isArray(job?.results) ? job.results : [];
+  const rrmDiag = job && typeof job === "object" && job.rrmSimMultiCandidateDiagnostic ? job.rrmSimMultiCandidateDiagnostic : null;
+  const rrmProposal = job && typeof job === "object" && job.rrmRankingProposal ? job.rrmRankingProposal : null;
 
   return (
     <main style={{ maxWidth: 980, margin: "1.2rem auto", padding: "0 1rem", color: "#334155" }}>
@@ -173,6 +192,22 @@ export default function AiSimulationJobDiagnosticPage() {
 
       {!loading && !error && job ? (
         <>
+          {(job.jobStatus === "queued" || job.jobStatus === "running") && (
+            <div
+              style={{
+                border: "1px solid #93c5fd",
+                borderRadius: 8,
+                background: "#eff6ff",
+                padding: "0.55rem 0.75rem",
+                marginBottom: "0.75rem",
+                fontSize: "0.82rem",
+                color: "#1e3a8a",
+              }}
+              role="status"
+            >
+              后台生成中：本页可继续浏览当前快照；数据会随轮询自动刷新，无需阻塞等待整轮 LLM 完成。
+            </div>
+          )}
           <section
             style={{
               border: "1px solid #e2e8f0",
@@ -291,9 +326,6 @@ export default function AiSimulationJobDiagnosticPage() {
             ) : (
               <>
                 <p style={{ margin: "0 0 0.2rem" }}>
-                  shortlistScenariosV0：<strong>{String(presence.shortlistScenariosV0)}</strong>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
                   shortlistFourDimV0：<strong>{String(presence.shortlistFourDimV0)}</strong>
                 </p>
                 <p style={{ margin: 0 }}>
@@ -363,6 +395,194 @@ export default function AiSimulationJobDiagnosticPage() {
               </div>
             )}
           </section>
+
+          {rrmDiag ? (
+            <>
+            {rrmProposal ? (
+              <details
+                style={{
+                  border: "1px solid #0ea5e9",
+                  borderRadius: 8,
+                  background: "#ecfeff",
+                  padding: "0.65rem 0.85rem",
+                  marginBottom: "0.75rem",
+                  fontSize: "0.82rem",
+                  lineHeight: 1.55,
+                }}
+              >
+                <summary style={{ cursor: "pointer", fontWeight: 700, color: "#0c4a6e", userSelect: "none" }}>
+                  M4.0 — RRM 排序建议（只读 · 不入主链）
+                </summary>
+                <p style={{ margin: "0.45rem 0 0.5rem", fontSize: "0.78rem", color: "#155e75" }}>
+                  <strong>Admin / 诊断专用</strong>：展示「若仅按 RRM-Sim 节奏分重排」的假设结果；<strong>不</strong>写入 MatchResult、<strong>不</strong>影响 worker
+                  主排序与 finalScore。
+                </p>
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
+                  <code>{rrmProposal.sourceVersion}</code> · schemaVersion {rrmProposal.schemaVersion} · mode{" "}
+                  <code>{rrmProposal.mode}</code>
+                </p>
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
+                  appliedToFinalScore：<strong>{String(rrmProposal.appliedToFinalScore)}</strong> · appliedToWorkerRanking：
+                  <strong>{String(rrmProposal.appliedToWorkerRanking)}</strong>
+                </p>
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
+                  recommendation：<code style={{ fontSize: "0.78rem" }}>{rrmProposal.recommendation}</code> · confidenceLevel：
+                  <code>{rrmProposal.confidenceLevel}</code> · scoreDistributionFlag：
+                  <code>{rrmProposal.scoreDistributionFlag}</code>
+                </p>
+                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
+                  existingTop：<code>{rrmProposal.existingTopCandidateUserId || "—"}</code> · rrmTop：
+                  <code>{rrmProposal.rrmTopCandidateUserId || "—"}</code> · topCandidateChanged：
+                  <strong>{String(rrmProposal.topCandidateChanged)}</strong>
+                </p>
+                {Array.isArray(rrmProposal.warnings) && rrmProposal.warnings.length > 0 ? (
+                  <ul style={{ margin: "0.35rem 0 0.5rem", paddingLeft: "1.1rem", fontSize: "0.74rem", color: "#9a3412" }}>
+                    {rrmProposal.warnings.map((w, i) => (
+                      <li key={`rrm-prop-w-${i}`}>{w}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div style={{ overflowX: "auto", marginTop: "0.45rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>existingRank</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>rrmRank</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>candidateUserId</th>
+                        <th style={{ textAlign: "right", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>simulatedRhythmScore</th>
+                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>reasonSummary</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rrmProposal.items.map((row, idx) => (
+                        <tr key={`rrm-prop-${row.candidateUserId}-${idx}`}>
+                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
+                            {row.existingRank == null ? "—" : row.existingRank}
+                          </td>
+                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
+                            {row.rrmRank == null ? "—" : row.rrmRank}
+                          </td>
+                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
+                            <code style={{ fontSize: "0.68rem" }}>{row.candidateUserId}</code>
+                          </td>
+                          <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
+                            {row.simulatedRhythmScore == null ? "—" : row.simulatedRhythmScore}
+                          </td>
+                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe", wordBreak: "break-word" }}>
+                            {row.reasonSummary}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ) : null}
+            <details
+              style={{
+                border: "1px solid #c7d2fe",
+                borderRadius: 8,
+                background: "#eef2ff",
+                padding: "0.65rem 0.85rem",
+                marginBottom: "0.75rem",
+                fontSize: "0.82rem",
+                lineHeight: 1.55,
+              }}
+            >
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#312e81", userSelect: "none" }}>
+                RRM-Sim 多候选人对比（只读诊断）
+              </summary>
+              <p style={{ margin: "0.45rem 0 0.5rem", fontSize: "0.78rem", color: "#4c1d95" }}>
+                以下排序为<strong>假设仅按 RRM 节奏分</strong>的对比，不参与真实匹配排序，不改变 finalScore / MatchResult。
+              </p>
+              <p style={{ margin: "0 0 0.35rem", fontSize: "0.76rem", color: "#5b21b6" }}>
+                jobId：<code>{rrmDiag.jobId}</code> · viewerUserId：<code>{rrmDiag.viewerUserId}</code> · transcript 侧 sourceVersion
+                摘要：<code>{rrmDiag.sourceVersion}</code>
+              </p>
+              <div
+                style={{
+                  marginBottom: "0.55rem",
+                  padding: "0.45rem 0.55rem",
+                  background: "#faf5ff",
+                  borderRadius: 6,
+                  border: "1px solid #e9d5ff",
+                  fontSize: "0.76rem",
+                  color: "#5b21b6",
+                }}
+              >
+                <p style={{ margin: "0 0 0.2rem" }}>
+                  RRM 可用条数：<strong>{rrmDiag.diagnostics.rrmAvailableCount}</strong> · fallback 条数：
+                  <strong>{rrmDiag.diagnostics.fallbackCount}</strong>
+                </p>
+                <p style={{ margin: "0 0 0.2rem" }}>
+                  节奏分 spread（仅非 fallback）：<strong>{rrmDiag.diagnostics.scoreRange.spread}</strong>（min{" "}
+                  {rrmDiag.diagnostics.scoreRange.min} / max {rrmDiag.diagnostics.scoreRange.max}）
+                </p>
+                <p style={{ margin: "0 0 0.2rem" }}>
+                  scoreDistributionFlag：<code>{rrmDiag.diagnostics.scoreDistributionFlag}</code>
+                </p>
+                <p style={{ margin: 0 }}>
+                  若仅按 RRM 节奏排，Top 是否变化：
+                  <strong>{String(rrmDiag.diagnostics.topCandidateChangedIfRrmOnly)}</strong>
+                </p>
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#6b21a8" }}>
+                  existingSimulationRank：<code>{rrmDiag.rankings.existingSimulationRank.join(" > ")}</code>
+                </p>
+                <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#6b21a8" }}>
+                  rrmRhythmRank（降序）：<code>{rrmDiag.rankings.rrmRhythmRank.join(" > ")}</code>
+                </p>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.74rem" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>existingRank</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>candidateUserId</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>v2 full</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>simulationRankScore</th>
+                      <th style={{ textAlign: "right", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>simulatedRhythmScore</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>suggestedAction</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>progressionWindow</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>fallbackUsed</th>
+                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>
+                        rrmUnavailableReason
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rrmDiag.items.map((row, idx) => (
+                      <tr key={`rrm-diag-${row.candidateUserId}-${idx}`}>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          {row.existingRank == null ? "—" : row.existingRank}
+                        </td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          <code style={{ fontSize: "0.7rem" }}>{row.candidateUserId}</code>
+                        </td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>{String(row.aiSimulationV2Full)}</td>
+                        <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          {row.simulationRankScore == null ? "—" : row.simulationRankScore}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          {row.simulatedRhythmScore == null ? "—" : row.simulatedRhythmScore}
+                        </td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          <code style={{ fontSize: "0.68rem" }}>{row.suggestedAction || "—"}</code>
+                        </td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                          <code style={{ fontSize: "0.68rem" }}>{row.progressionWindow || "—"}</code>
+                        </td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>{String(row.fallbackUsed)}</td>
+                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe", wordBreak: "break-all" }}>
+                          <code style={{ fontSize: "0.65rem" }}>{row.rrmUnavailableReason || "—"}</code>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            </>
+          ) : null}
         </>
       ) : null}
     </main>

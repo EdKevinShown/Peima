@@ -15,14 +15,13 @@ import type {
   JobAuditV0SpecClassification,
   JobAuditV0SuppressedReason,
 } from "./ai-simulation-v1.types";
-import { tryBuildShortlistDecisionV0 } from "./shortlist-decision-v0";
-import { tryBuildShortlistFourDimV0 } from "./shortlist-four-dim-v0";
-import { tryBuildShortlistScenariosV0 } from "./shortlist-scenarios-v0";
+import { recomputeAiSimulationJobSidecarsV0 } from "./ai-simulation-job-sidecars-recompute";
 
 type ItemRow = {
   candidateUserId: string;
   status: string;
   evaluator: unknown;
+  transcriptLite?: unknown;
 };
 
 type JobForAudit = {
@@ -35,6 +34,7 @@ type JobForAudit = {
     candidateUserId: string;
     status: string;
     evaluator: unknown;
+    transcriptLite?: unknown;
   }>;
 };
 
@@ -74,12 +74,12 @@ function inspectBinding(binding: unknown): {
   };
 }
 
-function sidecarTrioPresentInJob(job: JobForAudit): boolean {
-  return (
-    job.shortlistScenariosV0 != null &&
-    job.shortlistFourDimV0 != null &&
-    job.shortlistDecisionV0 != null
-  );
+/**
+ * M0.7: `shortlistScenariosV0` DB column is legacy / cleared on new jobs; ranking sidecars are
+ * `shortlistFourDimV0` + `shortlistDecisionV0` only. Field name `sidecarTrioPresent` kept for API stability.
+ */
+function sidecarRankingPairPresentInJob(job: JobForAudit): boolean {
+  return job.shortlistFourDimV0 != null && job.shortlistDecisionV0 != null;
 }
 
 function itemRowsFromJob(job: JobForAudit): ItemRow[] {
@@ -87,6 +87,7 @@ function itemRowsFromJob(job: JobForAudit): ItemRow[] {
     candidateUserId: it.candidateUserId,
     status: it.status,
     evaluator: it.evaluator,
+    transcriptLite: it.transcriptLite,
   }));
 }
 
@@ -106,33 +107,6 @@ function itemCounts(job: JobForAudit): JobAuditV0ItemCounts {
   return { total, queued, running, succeeded, failed };
 }
 
-function computeRankConsistent(
-  fourDim: ReturnType<typeof tryBuildShortlistFourDimV0>,
-  decision: ReturnType<typeof tryBuildShortlistDecisionV0>,
-): boolean {
-  if (fourDim == null || decision == null) return false;
-  const a = fourDim.comparison.rankedCandidateUserIds;
-  const b = decision.rankedCandidateUserIds;
-  if (a.length !== b.length) return false;
-  return a.every((id, i) => id === b[i]);
-}
-
-function recomputeTrioAndRank(
-  job: JobForAudit,
-  itemsPayload: ItemRow[],
-): {
-  scenarios: ReturnType<typeof tryBuildShortlistScenariosV0>;
-  fourDim: ReturnType<typeof tryBuildShortlistFourDimV0>;
-  decision: ReturnType<typeof tryBuildShortlistDecisionV0>;
-  rankConsistent: boolean;
-} {
-  const scenarios = tryBuildShortlistScenariosV0(job.shortlistBinding, itemsPayload);
-  const fourDim = scenarios != null ? tryBuildShortlistFourDimV0(scenarios) : null;
-  const decision = tryBuildShortlistDecisionV0(job.shortlistBinding, itemsPayload);
-  const rankConsistent = computeRankConsistent(fourDim, decision);
-  return { scenarios, fourDim, decision, rankConsistent };
-}
-
 /**
  * Read-time derived only (Phase F v0.1). No DB write; not persisted.
  * Mirrors `runJob` `finally` re: tryBuild* + `rankConsistent`.
@@ -140,17 +114,30 @@ function recomputeTrioAndRank(
 export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
   const binding = inspectBinding(job.shortlistBinding);
   const counts = itemCounts(job);
-  const trioInDb = sidecarTrioPresentInJob(job);
+  const pairInDb = sidecarRankingPairPresentInJob(job);
   const itemsPayload = itemRowsFromJob(job);
-  const { scenarios, fourDim, decision, rankConsistent } = recomputeTrioAndRank(job, itemsPayload);
-  const recomputeWouldPersistTrio = scenarios != null && fourDim != null && decision != null && rankConsistent;
+  const reco = recomputeAiSimulationJobSidecarsV0({
+    shortlistBinding: job.shortlistBinding,
+    items: itemsPayload,
+  });
+  const {
+    fourDim,
+    decision,
+    rankConsistent: recomputeRankConsistent,
+    derivation,
+    legacyScenariosBuildable,
+    bindingCandidateIdsOk,
+    allShortlistItemsSucceeded,
+  } = reco;
+  const recomputeWouldPersistRankingSidecars =
+    fourDim != null && decision != null && recomputeRankConsistent;
 
   if (job.jobStatus !== JOB_STATUS.COMPLETED) {
     return {
       schemaVersion: JOB_AUDIT_V0_SCHEMA,
       jobStatus: job.jobStatus,
       shortlistBindingPresent: binding.present,
-      sidecarTrioPresent: trioInDb,
+      sidecarTrioPresent: pairInDb,
       itemCounts: counts,
       rankConsistent: null,
       sidecarSuppressedReason: JOB_AUDIT_V0_SUPPRESSED_REASON.JOB_IN_PROGRESS,
@@ -207,8 +194,8 @@ export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
     return JOB_AUDIT_V0_BUILDABILITY_DETAIL.UNKNOWN;
   };
 
-  if (trioInDb) {
-    if (recomputeWouldPersistTrio) {
+  if (pairInDb) {
+    if (recomputeWouldPersistRankingSidecars) {
       const sidecarSuppressedReason = JOB_AUDIT_V0_SUPPRESSED_REASON.NONE;
       return {
         schemaVersion: JOB_AUDIT_V0_SCHEMA,
@@ -230,7 +217,7 @@ export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
       shortlistBindingPresent: binding.present,
       sidecarTrioPresent: true,
       itemCounts: counts,
-      rankConsistent,
+      rankConsistent: recomputeRankConsistent,
       sidecarSuppressedReason,
       specClassification: binding.specClassification,
       diagnosticBucket: decideBucket(binding.specClassification, sidecarSuppressedReason),
@@ -238,7 +225,7 @@ export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
     };
   }
 
-  if (recomputeWouldPersistTrio) {
+  if (recomputeWouldPersistRankingSidecars) {
     const sidecarSuppressedReason = JOB_AUDIT_V0_SUPPRESSED_REASON.PERSISTED_SIDECARS_STALE;
     return {
       schemaVersion: JOB_AUDIT_V0_SCHEMA,
@@ -255,13 +242,25 @@ export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
   }
 
   let reason: JobAuditV0SuppressedReason = JOB_AUDIT_V0_SUPPRESSED_REASON.UNKNOWN;
-  if (scenarios == null) {
+  if (derivation === "simulation_v2") {
+    if (fourDim == null) {
+      reason = JOB_AUDIT_V0_SUPPRESSED_REASON.FOUR_DIM_NOT_BUILDABLE;
+    } else if (decision == null) {
+      reason = JOB_AUDIT_V0_SUPPRESSED_REASON.DECISION_NOT_BUILDABLE;
+    } else if (!recomputeRankConsistent) {
+      reason = JOB_AUDIT_V0_SUPPRESSED_REASON.RANK_MISMATCH;
+    }
+  } else if (!bindingCandidateIdsOk) {
+    reason = JOB_AUDIT_V0_SUPPRESSED_REASON.SCENARIOS_NOT_BUILDABLE;
+  } else if (!allShortlistItemsSucceeded) {
+    reason = JOB_AUDIT_V0_SUPPRESSED_REASON.FOUR_DIM_NOT_BUILDABLE;
+  } else if (legacyScenariosBuildable === false) {
     reason = JOB_AUDIT_V0_SUPPRESSED_REASON.SCENARIOS_NOT_BUILDABLE;
   } else if (fourDim == null) {
     reason = JOB_AUDIT_V0_SUPPRESSED_REASON.FOUR_DIM_NOT_BUILDABLE;
   } else if (decision == null) {
     reason = JOB_AUDIT_V0_SUPPRESSED_REASON.DECISION_NOT_BUILDABLE;
-  } else if (!rankConsistent) {
+  } else if (!recomputeRankConsistent) {
     reason = JOB_AUDIT_V0_SUPPRESSED_REASON.RANK_MISMATCH;
   }
 
@@ -271,7 +270,7 @@ export function buildJobAuditV0(job: JobForAudit): JobAuditV0 {
     shortlistBindingPresent: binding.present,
     sidecarTrioPresent: false,
     itemCounts: counts,
-    rankConsistent,
+    rankConsistent: recomputeRankConsistent,
     sidecarSuppressedReason: reason,
     specClassification: binding.specClassification,
     diagnosticBucket: decideBucket(binding.specClassification, reason),
