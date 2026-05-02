@@ -11,6 +11,7 @@ import {
 import type { BatchMatchQueue } from "@peima/database";
 import { EnqueueMatchDto } from "./dto/enqueue-match.dto";
 import { FinalizeWithPairwiseDto } from "./dto/finalize-with-pairwise.dto";
+import { MatchingDecisionComparisonService } from "./matching-decision-comparison.service";
 import { MatchingFinalizePairwiseService } from "./matching-finalize-pairwise.service";
 import { MatchingRrmRankingProposalService } from "./matching-rrm-ranking-proposal.service";
 import type { MatchResultViewerPayload, MatchStatusPayload } from "./matching.service";
@@ -28,6 +29,7 @@ export class MatchingController {
     private readonly matchingService: MatchingService,
     private readonly finalizePairwise: MatchingFinalizePairwiseService,
     private readonly rrmRankingProposal: MatchingRrmRankingProposalService,
+    private readonly decisionComparison: MatchingDecisionComparisonService,
   ) {}
 
   @Post("enqueue")
@@ -74,6 +76,16 @@ export class MatchingController {
       throw new UnauthorizedException("not authenticated");
     }
     return this.rrmRankingProposal.getReadonlyProposal(tokenUserId, poolId.trim());
+  }
+
+  /** M4.1 — 只读四源决策对照；不写库、不改 GET /matching/result。 */
+  @Get("decision-comparison/:poolId")
+  getDecisionComparison(@Param("poolId") poolId: string, @Req() req: JwtReq) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.decisionComparison.getComparison(tokenUserId, poolId.trim());
   }
 
   /** M3.8-M11: finalize sidecar — JWT `viewerUserId` only; never mutates `MatchResult.candidateUserId`. */
