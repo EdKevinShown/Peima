@@ -217,7 +217,7 @@ describe("AiPairwiseDecisionService", () => {
     if (!r.ok) expect(r.failureDetail.code).toBe("json_parse_error");
   });
 
-  it("fails binding_conflict when A/B ids do not match shortlist order", async () => {
+  it("M4.2-F2: overwrites swapped candidateA/B ids from shortlist when winner/loser stay valid", async () => {
     process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
     process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
     const body = validDecisionBody("cand-b", "cand-a", "cand-b", "cand-a");
@@ -226,10 +226,10 @@ describe("AiPairwiseDecisionService", () => {
     };
     const svc = makeService(llm);
     const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.failureDetail.code).toBe("binding_conflict");
-      expect(r.failureDetail.path).toBe("candidateAUserId");
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.candidateAUserId).toBe("cand-a");
+      expect(r.value.candidateBUserId).toBe("cand-b");
     }
   });
 
@@ -353,7 +353,7 @@ describe("AiPairwiseDecisionService", () => {
     }
   });
 
-  it("returns binding_conflict when LLM viewerUserId conflicts with shortlist", async () => {
+  it("M4.2-F2: overwrites wrong viewerUserId from shortlist (authoritative binding)", async () => {
     process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
     process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
     const body = { ...validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b"), viewerUserId: "wrong-viewer" };
@@ -362,16 +362,11 @@ describe("AiPairwiseDecisionService", () => {
     };
     const svc = makeService(llm);
     const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.failureDetail.code).toBe("binding_conflict");
-      expect(r.failureDetail.path).toBe("viewerUserId");
-      expect(r.failureDetail.expected).toBe("viewer-1");
-      expect(r.failureDetail.actual).toBe("wrong-viewer");
-    }
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.viewerUserId).toBe("viewer-1");
   });
 
-  it("returns binding_conflict when LLM candidateAUserId conflicts with shortlist", async () => {
+  it("M4.2-F2: overwrites wrong candidateAUserId from shortlist", async () => {
     process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
     process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
     const body = { ...validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b"), candidateAUserId: "cand-b" };
@@ -380,11 +375,8 @@ describe("AiPairwiseDecisionService", () => {
     };
     const svc = makeService(llm);
     const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.failureDetail.code).toBe("binding_conflict");
-      expect(r.failureDetail.path).toBe("candidateAUserId");
-    }
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.candidateAUserId).toBe("cand-a");
   });
 
   it("returns schema_validation when winnerCandidateId is not A or B", async () => {
@@ -643,7 +635,7 @@ describe("AiPairwiseDecisionService", () => {
       if (r.ok) expect(r.value.sourceVersion).toBe("rrm-lite-pairwise-decision-v1");
     });
 
-    it("still returns binding_conflict when candidateAUserId conflicts (M15C does not relax bindings)", async () => {
+    it("M4.2-F2: overwrites conflicting candidateAUserId from shortlist (authoritative binding)", async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const body = {
@@ -656,14 +648,11 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("binding_conflict");
-        expect(r.failureDetail.path).toBe("candidateAUserId");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.candidateAUserId).toBe("cand-a");
     });
 
-    it("still returns binding_conflict when viewerUserId conflicts", async () => {
+    it("M4.2-F2: overwrites conflicting viewerUserId from shortlist", async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const body = {
@@ -676,11 +665,8 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("binding_conflict");
-        expect(r.failureDetail.path).toBe("viewerUserId");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.viewerUserId).toBe("viewer-1");
     });
 
     it("still returns schema_validation when winnerCandidateId is not A or B", async () => {
@@ -834,7 +820,7 @@ describe("AiPairwiseDecisionService", () => {
       if (!r.ok) expect(r.failureDetail.code).toBe("schema_validation");
     });
 
-    it('does not parse dimensions.conversationFit string "0.7"', async () => {
+    it('M4.2-F2: coerces dimensions.conversationFit string "0.7" to number', async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -847,10 +833,9 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("dimensions.conversationFit");
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.value.dimensions.conversationFit).toBe(0.7);
       }
     });
 
@@ -1074,7 +1059,7 @@ describe("AiPairwiseDecisionService", () => {
       }
     });
 
-    it("does not normalize candidateA.strongRisk numeric 0", async () => {
+    it("M4.2-F2: coerces candidateA.strongRisk numeric 0 to false", async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -1087,11 +1072,8 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("candidateA.strongRisk");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.candidateA.strongRisk).toBe(false);
     });
 
     it("still fails when winnerCandidateId is invalid after strongRisk normalization", async () => {
@@ -1190,7 +1172,7 @@ describe("AiPairwiseDecisionService", () => {
       if (r.ok) expect(r.value.candidateB.progressionFit).toBe(0.6);
     });
 
-    it("still fails when candidateA.conversationFit missing and no nested scalar", async () => {
+    it("M4.2-F2: fills candidateA.conversationFit from root dimensions when missing on candidate and no nested scalar", async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -1202,14 +1184,11 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("candidateA.conversationFit");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.candidateA.conversationFit).toBe(base.dimensions.conversationFit);
     });
 
-    it("does not copy root dimensions.conversationFit onto candidateA", async () => {
+    it("M4.2-F2: copies root dimensions.conversationFit onto candidateA when candidate field missing", async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -1225,14 +1204,11 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("candidateA.conversationFit");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.candidateA.conversationFit).toBe(0.7);
     });
 
-    it('does not accept candidateA.conversationFit string "0.7"', async () => {
+    it('M4.2-F2: coerces candidateA.conversationFit string "0.7" to number', async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -1245,11 +1221,8 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("candidateA.conversationFit");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.candidateA.conversationFit).toBe(0.7);
     });
 
     it("does not accept candidateA.conversationFit 70 as 0–1", async () => {
@@ -1631,7 +1604,7 @@ describe("AiPairwiseDecisionService", () => {
       }
     });
 
-    it('does not accept decisionConfidence string "0.7"', async () => {
+    it('M4.2-F2: coerces decisionConfidence string "0.7" to number', async () => {
       process.env.AI_PAIRWISE_DECISION_ENABLED = "1";
       process.env.AI_PAIRWISE_DECISION_API_KEY = "k";
       const base = validDecisionBody("cand-a", "cand-b", "cand-a", "cand-b");
@@ -1641,11 +1614,8 @@ describe("AiPairwiseDecisionService", () => {
       };
       const svc = makeService(llm);
       const r = await svc.generateAiPairwiseDecision({ shortlist: shortlistFixture() });
-      expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.failureDetail.code).toBe("schema_validation");
-        expect(r.failureDetail.path).toBe("decisionConfidence");
-      }
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.value.decisionConfidence).toBe(0.7);
     });
 
     it("does not accept decisionConfidence 70 as unit scalar", async () => {

@@ -107,16 +107,24 @@ function extractUnitScalar(raw: unknown): unknown {
   return raw;
 }
 
-/** M15D/M15F: only accept a plain unit scalar when `extractUnitScalar` yields a finite number in [0,1]. */
+/** M15D/M15F + M4.2-F2: unit scalar in [0,1], including plain numeric strings (trim, no 0–100 scaling). */
 function tryExtractUnitScalar01(raw: unknown): number | undefined {
   const x = extractUnitScalar(raw);
   if (typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= 1) {
     return x;
   }
+  if (typeof x === "string") {
+    const t = x.trim();
+    if (t === "") return undefined;
+    const n = Number(t);
+    if (Number.isFinite(n) && n >= 0 && n <= 1) {
+      return n;
+    }
+  }
   return undefined;
 }
 
-/** M3.8-M15H: same 0–1 rules as M15D plus plain `{ confidence: number in [0,1] }` (no string parse, no scaling). */
+/** M3.8-M15H + M4.2-F2: 0–1 decisionConfidence including numeric strings and nested confidence. */
 function tryExtractDecisionConfidence01(raw: unknown): number | undefined {
   const fromUnit = tryExtractUnitScalar01(raw);
   if (fromUnit !== undefined) {
@@ -159,6 +167,7 @@ function normalizeDecisionConfidenceInDraft(draft: Record<string, unknown>): voi
     isPlainObject(decision) ? decision.decisionConfidence : undefined,
     isPlainObject(finalDecision) ? finalDecision.confidence : undefined,
     isPlainObject(pairwiseDecision) ? pairwiseDecision.confidence : undefined,
+    isPlainObject(pairwiseDecision) ? pairwiseDecision.decisionConfidence : undefined,
   ];
 
   for (const raw of sources) {
@@ -200,6 +209,26 @@ function normalizeCandidateNestedDimScalarsOntoTopLevel(draft: Record<string, un
   }
 }
 
+/** M4.2-F2: copy missing per-candidate six-axis scalars from root `dimensions` when present (unit coercion). */
+function hoistRootDimensionsOntoMissingCandidateAxes(draft: Record<string, unknown>): void {
+  const rootDims = draft.dimensions;
+  if (!isPlainObject(rootDims)) return;
+  for (const ck of ["candidateA", "candidateB"] as const) {
+    const block = draft[ck];
+    if (!isPlainObject(block)) continue;
+    const b = { ...block };
+    for (const field of RRM_LITE_PAIRWISE_DIM_KEYS) {
+      if (!isCandidateDimScalarMissing(b, field)) continue;
+      if (!(field in rootDims)) continue;
+      const unit = tryExtractUnitScalar01(rootDims[field]);
+      if (unit !== undefined) {
+        b[field] = unit;
+      }
+    }
+    draft[ck] = b;
+  }
+}
+
 function normalizeRrmLiteDimensionLayersInDraft(draft: Record<string, unknown>): void {
   const applyToBlock = (key: "dimensions" | "candidateA" | "candidateB"): void => {
     const block = draft[key];
@@ -208,6 +237,11 @@ function normalizeRrmLiteDimensionLayersInDraft(draft: Record<string, unknown>):
     for (const k of RRM_LITE_PAIRWISE_DIM_KEYS) {
       if (k in b) {
         const orig = b[k];
+        const s01 = tryExtractUnitScalar01(orig);
+        if (s01 !== undefined) {
+          b[k] = s01;
+          continue;
+        }
         const ex = extractUnitScalar(orig);
         if (typeof ex === "number" && Number.isFinite(ex) && ex >= 0 && ex <= 1) {
           b[k] = ex;
@@ -225,14 +259,19 @@ function normalizeRrmLiteDimensionLayersInDraft(draft: Record<string, unknown>):
 }
 
 /**
- * M3.8-M15E: strict boolean literals for `candidateA.strongRisk` / `candidateB.strongRisk` only.
- * Does not add missing keys; does not infer from prose or numeric 0/1.
+ * M3.8-M15E + M4.2-F2: boolean literals for `candidateA.strongRisk` / `candidateB.strongRisk`;
+ * strings "true"/"false" and numbers 0/1.
  */
 function coerceStrongRiskLiteral(raw: unknown): unknown {
   if (raw === undefined || raw === null) {
     return raw;
   }
   if (typeof raw === "boolean") {
+    return raw;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    if (raw === 0) return false;
+    if (raw === 1) return true;
     return raw;
   }
   if (typeof raw === "string") {
@@ -245,6 +284,10 @@ function coerceStrongRiskLiteral(raw: unknown): unknown {
     const v = raw.value;
     if (typeof v === "boolean") {
       return v;
+    }
+    if (typeof v === "number" && Number.isFinite(v)) {
+      if (v === 0) return false;
+      if (v === 1) return true;
     }
     if (typeof v === "string") {
       const t = v.trim().toLowerCase();
@@ -297,6 +340,14 @@ function isCandidateEnumFieldMissing(block: Record<string, unknown>, field: "sug
   return v === undefined || v === null;
 }
 
+/** M4.2-F2: case / hyphen tolerant suggestedAction (safe subset only). */
+function canonicalSuggestedActionString(raw: string): string | undefined {
+  const t = raw.trim().toLowerCase().replace(/-/g, "_");
+  if (SUGGESTED_ACTION_ENUM_SET.has(t)) return t;
+  if (t === "slowdown") return "slow_down";
+  return undefined;
+}
+
 function normalizeCandidateNestedEnumsOntoTopLevel(draft: Record<string, unknown>): void {
   const hoistSuggestedAction = (b: Record<string, unknown>): unknown[] => [
     isPlainObject(b.action) ? b.action.suggestedAction : undefined,
@@ -305,6 +356,10 @@ function normalizeCandidateNestedEnumsOntoTopLevel(draft: Record<string, unknown
     isPlainObject(b.recommendation) ? b.recommendation.value : undefined,
     isPlainObject(b.guidance) ? b.guidance.suggestedAction : undefined,
     isPlainObject(b.guidance) ? b.guidance.value : undefined,
+    isPlainObject(b.decision) ? b.decision.suggestedAction : undefined,
+    isPlainObject(b.candidate) ? b.candidate.suggestedAction : undefined,
+    isPlainObject(b.profile) ? b.profile.suggestedAction : undefined,
+    isPlainObject(b.dimensions) ? b.dimensions.suggestedAction : undefined,
   ];
 
   const hoistProgressionWindow = (b: Record<string, unknown>): unknown[] => [
@@ -323,14 +378,22 @@ function normalizeCandidateNestedEnumsOntoTopLevel(draft: Record<string, unknown
     const cur = b[field];
     const missing = isCandidateEnumFieldMissing(b, field);
     if (!missing) {
-      const lit = extractLiteralEnum(cur, allowed);
+      let lit = extractLiteralEnum(cur, allowed);
+      if (lit === undefined && field === "suggestedAction" && typeof cur === "string") {
+        const c = canonicalSuggestedActionString(cur);
+        if (c !== undefined && allowed.has(c)) lit = c;
+      }
       if (lit !== undefined) {
         b[field] = lit;
       }
       return;
     }
     for (const raw of hoisted) {
-      const lit = extractLiteralEnum(raw, allowed);
+      let lit = extractLiteralEnum(raw, allowed);
+      if (lit === undefined && field === "suggestedAction" && typeof raw === "string") {
+        const c = canonicalSuggestedActionString(raw);
+        if (c !== undefined && allowed.has(c)) lit = c;
+      }
       if (lit !== undefined) {
         b[field] = lit;
         return;
@@ -387,25 +450,52 @@ function normalizeAppliedFalseMetadata(
   };
 }
 
+/** M4.2-F2: authoritative viewer/pool/candidate ids from shortlist (ignore LLM echo). */
+function applyAuthoritativeBindingMetadata(
+  draft: Record<string, unknown>,
+  shortlist: RelationshipShortlistTop2,
+): void {
+  draft.viewerUserId = shortlist.viewerUserId;
+  draft.poolId = shortlist.poolId;
+  draft.candidateAUserId = shortlist.candidates[0].candidateUserId;
+  draft.candidateBUserId = shortlist.candidates[1].candidateUserId;
+}
+
+/** M4.2-F2: root `fallbackUsed` — boolean, or string/number literals commonly emitted by LLMs. */
+function normalizeFallbackUsedInDraft(draft: Record<string, unknown>): void {
+  const v = draft.fallbackUsed;
+  if (v === undefined || v === null) return;
+  if (typeof v === "boolean") {
+    draft.fallbackUsed = v;
+    return;
+  }
+  if (typeof v === "number" && Number.isFinite(v)) {
+    if (v === 0) draft.fallbackUsed = false;
+    else if (v === 1) draft.fallbackUsed = true;
+    return;
+  }
+  if (typeof v === "string") {
+    const t = v.trim().toLowerCase();
+    if (t === "true" || t === "1" || t === "yes") draft.fallbackUsed = true;
+    else if (t === "false" || t === "0" || t === "no") draft.fallbackUsed = false;
+  }
+}
+
 /**
- * M3.8-M15A + M15B + M15C + M15D: after `JSON.parse`, before `parseAndValidateAiPairwiseDecision` — fill known binding
- * metadata from the shortlist when omitted; never silently overwrite conflicting binding strings;
+ * M3.8-M15A + M15B + M15C + M15D + **M4.2-F2**: after `JSON.parse`, before `parseAndValidateAiPairwiseDecision`.
+ * **M4.2-F2**: `viewerUserId`, `poolId`, `candidateAUserId`, `candidateBUserId` are **always** taken from the active shortlist
+ * (LLM echoes ignored for those four fields).
  * tolerate safe metadata literal variants (schemaVersion, string "false" for applied flags);
  * **authoritative** `sourceVersion` is always written from `AI_PAIRWISE_DECISION_SOURCE_VERSION` (LLM value ignored);
- * **M15D**: `extractUnitScalar` on `dimensions.*` and `candidateA|B` six axis fields — unwrap `{score|value|rating}` only
- * when those hold a **number** in [0,1]; no string parse, no 0–100 scaling, no invented defaults; if a key exists but cannot
- * yield a unit scalar in [0,1], the original value is kept for the validator.
- * **M15E**: `strongRisk` on **candidateA|B** — boolean, or `"true"`/`"false"` (trim, case-insensitive), or `{ value: boolean | "true"|"false" }`; missing unchanged.
- * **M15F**: on **candidateA|B** only, when a six-axis key is missing, try **in order** `scores`, `dimensions`, `fit`, `metrics`,
- * `ratings` nested objects for the same key; only **`tryExtractUnitScalar01`** (numeric 0–1, same unwrap rules as M15D); never
- * copy from root `draft.dimensions`; no defaults; no 0–100 scaling.
- * **M15G**: **`suggestedAction`** / **`progressionWindow`** on **candidateA|B** — trim + strict match to frozen enums; unwrap
- * `{ value|enum|label }` when those hold an allowed string; when top-level missing, hoist only from listed nested paths inside
- * the same block (never from root draft, no defaults, no fuzzy or natural-language mapping).
- * **M15H**: root **`decisionConfidence`** — **`tryExtractDecisionConfidence01`** (M15D unwrap + **`confidence`** number on
- * objects); if missing, try **`confidence`**, **`confidenceScore`**, **`decision.{confidence|decisionConfidence}`**,
- * **`finalDecision.confidence`**, **`pairwiseDecision.confidence`**; no defaults, no string parse, no 0–100 scaling, no
- * inference from scores or prose.
+ * **M15D + F2**: `extractUnitScalar` / **`tryExtractUnitScalar01`** on `dimensions.*` and `candidateA|B` six axis fields —
+ * unwrap `{score|value|rating}`; **F2** adds plain **numeric strings** in [0,1]; no 0–100 scaling, no invented defaults.
+ * **M15E + F2**: `strongRisk` — boolean, `"true"`/`"false"`, **`0`/`1`**, or `{ value: ... }` per `coerceStrongRiskLiteral`.
+ * **M15F + F2**: nested `scores|dimensions|fit|metrics|ratings` on candidates; **F2** also hoists missing axes from **root**
+ * `draft.dimensions` when present.
+ * **M15G + F2**: **`suggestedAction`** / **`progressionWindow`** — strict enums + extra nested hoists; **F2** canonicalizes
+ * common `suggestedAction` string variants (case, hyphen).
+ * **M15H + F2**: root **`decisionConfidence`** — unwrap + hoists; **F2** accepts **numeric strings** in [0,1] via `tryExtractUnitScalar01`.
+ * **F2**: root **`fallbackUsed`** — boolean coercion for string `"true"`/`"false"` and `0`/`1`.
  */
 export function normalizeAiPairwiseDecisionDraftFromShortlist(
   parsed: unknown,
@@ -426,60 +516,9 @@ export function normalizeAiPairwiseDecisionDraftFromShortlist(
   }
 
   const draft: Record<string, unknown> = { ...parsed };
-  const expectViewer = shortlist.viewerUserId;
-  const expectPool = shortlist.poolId;
-  const expectA = shortlist.candidates[0].candidateUserId;
-  const expectB = shortlist.candidates[1].candidateUserId;
   const nowIso = new Date().toISOString();
 
-  const bindString = (
-    key: "viewerUserId" | "poolId" | "candidateAUserId" | "candidateBUserId",
-    expected: string,
-  ): { ok: true } | { ok: false; failure: NormalizeAiPairwiseDecisionDraftFailure } => {
-    const cur = draft[key];
-    if (isEmptyBindingString(cur)) {
-      draft[key] = expected;
-      return { ok: true };
-    }
-    if (typeof cur !== "string") {
-      return {
-        ok: false,
-        failure: {
-          code: "metadata_conflict",
-          path: key,
-          reason: "expected_string_for_binding_field",
-          message: `${key} must be a non-empty string when present.`,
-          expected: "non-empty string",
-          actual: typeof cur,
-        },
-      };
-    }
-    const t = cur.trim();
-    if (t !== expected) {
-      return {
-        ok: false,
-        failure: {
-          code: "binding_conflict",
-          path: key,
-          reason: "shortlist_binding_mismatch",
-          message: `${key} conflicts with the active shortlist.`,
-          expected,
-          actual: t.slice(0, 200),
-        },
-      };
-    }
-    draft[key] = expected;
-    return { ok: true };
-  };
-
-  const r1 = bindString("viewerUserId", expectViewer);
-  if (!r1.ok) return r1;
-  const r2 = bindString("poolId", expectPool);
-  if (!r2.ok) return r2;
-  const r3 = bindString("candidateAUserId", expectA);
-  if (!r3.ok) return r3;
-  const r4 = bindString("candidateBUserId", expectB);
-  if (!r4.ok) return r4;
+  applyAuthoritativeBindingMetadata(draft, shortlist);
 
   const svNorm = normalizeSchemaVersionMetadata(draft.schemaVersion);
   if (!svNorm.ok) {
@@ -526,10 +565,12 @@ export function normalizeAiPairwiseDecisionDraftFromShortlist(
   }
 
   normalizeCandidateNestedDimScalarsOntoTopLevel(draft);
+  hoistRootDimensionsOntoMissingCandidateAxes(draft);
   normalizeRrmLiteDimensionLayersInDraft(draft);
   normalizeStrongRiskInCandidateBlocks(draft);
   normalizeCandidateNestedEnumsOntoTopLevel(draft);
   normalizeDecisionConfidenceInDraft(draft);
+  normalizeFallbackUsedInDraft(draft);
 
   return { ok: true, draft };
 }
