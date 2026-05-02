@@ -6,6 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import type { RrmSimMultiCandidateDiagnostic } from "./ai-simulation-v1-rrm-multi-candidate-diagnostic";
+import type { RrmRankingProposal } from "./ai-simulation-v1-rrm-ranking-proposal";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@peima/database";
 import { buildMatchReviewStaticSummary } from "../match-review-ai/match-review-static-summary";
@@ -32,6 +34,7 @@ import type {
 import { computeShortlistFingerprint } from "./shortlist-contract-binding";
 import { buildJobAuditV0 } from "./ai-simulation-v1-job-audit-v0";
 import { buildRrmSimMultiCandidateDiagnostic } from "./ai-simulation-v1-rrm-multi-candidate-diagnostic";
+import { buildRrmRankingProposal } from "./ai-simulation-v1-rrm-ranking-proposal";
 import { evaluateRrmSimFromSimulationV2 } from "./rrm-sim.evaluator";
 import type { RrmSimResult } from "./rrm-sim.types";
 
@@ -209,6 +212,73 @@ export class AiSimulationV1Service {
     if (!job) {
       throw new NotFoundException(`Job ${jobId} not found`);
     }
+    const { base, results, rrmSimMultiCandidateDiagnostic, rrmRankingProposal } =
+      await this.computeRrmReadonlyEnrichmentForJob(job);
+    return { ...base, results, rrmSimMultiCandidateDiagnostic, rrmRankingProposal };
+  }
+
+  /**
+   * M4.0 matching 只读：同池最新 **completed** job 上复用 admin 的 RRM 诊断链（不重跑 LLM、不写 DB）。
+   * `jobStatus === completed` 视为「已成功完成的 simulation job」。
+   */
+  async getRrmRankingProposalReadonlyForPool(
+    viewerUserId: string,
+    poolId: string,
+  ): Promise<{
+    simulationJobId: string;
+    rrmRankingProposal: RrmRankingProposal;
+    rrmSimMultiCandidateDiagnostic: RrmSimMultiCandidateDiagnostic;
+    shortlistBinding: unknown;
+  }> {
+    const job = await this.prisma.aiSimulationV1Job.findFirst({
+      where: {
+        poolId,
+        viewerUserId,
+        jobStatus: JOB_STATUS.COMPLETED,
+      },
+      orderBy: { updatedAt: "desc" },
+      include: { items: { orderBy: { createdAt: "asc" } } },
+    });
+    if (!job) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.NOT_FOUND,
+          message: "No completed AI simulation job exists for this pool.",
+          code: "NO_SUCCEEDED_SIMULATION_JOB_FOR_POOL",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const { rrmSimMultiCandidateDiagnostic, rrmRankingProposal } = await this.computeRrmReadonlyEnrichmentForJob(job);
+    return {
+      simulationJobId: job.id,
+      rrmRankingProposal,
+      rrmSimMultiCandidateDiagnostic,
+      shortlistBinding: job.shortlistBinding ?? null,
+    };
+  }
+
+  private async computeRrmReadonlyEnrichmentForJob(job: {
+    id: string;
+    viewerUserId: string;
+    jobStatus: string;
+    poolId: string;
+    simulationQueueActual: unknown;
+    hintSnapshot: unknown;
+    shortlistBinding: unknown;
+    shortlistDecisionV0: unknown;
+    shortlistFourDimV0?: unknown;
+    shortlistScenariosV0?: unknown;
+    items: Array<{
+      candidateUserId: string;
+      status: string;
+      attemptCount: number;
+      transcriptLite: unknown;
+      evaluator: unknown;
+      failureDetail: unknown | null;
+      errorCode: string | null;
+    }>;
+  }) {
     const base = this.formatJobResponse(job);
     const results = await this.enrichResultsWithRrmSim(job.viewerUserId, base.results);
     const rrmSimMultiCandidateDiagnostic = buildRrmSimMultiCandidateDiagnostic({
@@ -219,7 +289,8 @@ export class AiSimulationV1Service {
       shortlistBinding: base.shortlistBinding,
       results,
     });
-    return { ...base, results, rrmSimMultiCandidateDiagnostic };
+    const rrmRankingProposal = buildRrmRankingProposal(rrmSimMultiCandidateDiagnostic);
+    return { base, results, rrmSimMultiCandidateDiagnostic, rrmRankingProposal };
   }
 
   /**
@@ -388,7 +459,8 @@ export class AiSimulationV1Service {
   }
 
   /**
-   * Runs all queued items for the job (in-process, awaits LLM). Prefer `requestRunJobAsync` for HTTP handlers.
+   * Synchronous path: sets `running` then awaits full job execution in-process (tests / manual only).
+   * Admin `POST .../run` uses `requestRunJobAsync` (worker-backed, M3.3-M1).
    */
   async runJob(jobId: string, viewerUserId: string): Promise<void> {
     this.assertEnabledOrThrow();
@@ -410,8 +482,8 @@ export class AiSimulationV1Service {
   }
 
   /**
-   * M3.2: claim `queued` → `running` and continue LLM work in the background; returns immediately.
-   * Duplicate calls while `running` / after `completed` do not start a second runner.
+   * M3.3-M1: API only enqueues — job stays `queued` until worker claims and runs `runAiSimulationV1JobExecution`.
+   * No LLM work in the API process for this path.
    */
   async requestRunJobAsync(
     jobId: string,
@@ -446,50 +518,22 @@ export class AiSimulationV1Service {
       };
     }
 
-    const claimed = await this.prisma.aiSimulationV1Job.updateMany({
-      where: { id: jobId, viewerUserId, jobStatus: JOB_STATUS.QUEUED },
-      data: { jobStatus: JOB_STATUS.RUNNING },
-    });
-
-    if (claimed.count === 0) {
-      const latest = await this.prisma.aiSimulationV1Job.findUnique({
-        where: { id: jobId },
-        select: { jobStatus: true },
-      });
-      const st = latest?.jobStatus ?? head.jobStatus;
+    if (head.jobStatus === JOB_STATUS.QUEUED) {
       return {
         ok: true,
         jobId: head.id,
-        jobStatus: st,
+        jobStatus: JOB_STATUS.QUEUED,
         started: false,
-        reason: "claim_lost_or_state_changed",
+        reason: "enqueued_for_worker",
       };
     }
-
-    void this.invokeRunAiSimulationV1JobExecution(jobId, viewerUserId).catch(async (err: unknown) => {
-      this.logger.error(
-        { err, jobId, viewerUserId, event: "ai_simulation_v1_execute_run_job_body_failed" },
-        "ai_simulation_v1_execute_run_job_body_failed",
-      );
-      try {
-        await this.prisma.aiSimulationV1Job.update({
-          where: { id: jobId },
-          data: { jobStatus: JOB_STATUS.COMPLETED },
-        });
-      } catch (inner) {
-        this.logger.error(
-          { err: inner, jobId, event: "ai_simulation_v1_finalize_job_after_execute_error_failed" },
-          "ai_simulation_v1_finalize_job_after_execute_error_failed",
-        );
-      }
-    });
 
     return {
       ok: true,
       jobId: head.id,
-      jobStatus: JOB_STATUS.RUNNING,
-      started: true,
-      reason: "claimed_and_scheduled",
+      jobStatus: head.jobStatus,
+      started: false,
+      reason: "not_queued_for_worker",
     };
   }
 
