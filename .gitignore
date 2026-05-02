@@ -68,3 +68,10 @@ m13-calibration-report*.json
 /packages/ai-simulation-v1-runner/src/index.js.map
 /packages/ai-simulation-v1-runner/src/run-ai-simulation-v1-job-execution.js
 /packages/ai-simulation-v1-runner/src/run-ai-simulation-v1-job-execution.js.map
+
+# M4.2 local batch report outputs (do not commit raw IDs)
+/docs/M4/M4.2-batch-regression-report.json
+/docs/M4/M4.2-batch-regression-run-record.md
+/docs/M4/M4.2-batch-regression-run-record.local.md
+/tmp/m4-2-batch-regression-*.json
+/tmp/m4-2-batch-regression-*.md
