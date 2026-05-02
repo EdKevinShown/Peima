@@ -16,7 +16,7 @@ export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
 };
 
-/** M3.8-M13 + M5.1-M0/M1: `GET /matching/result` — row + display + readonly multi-source sidecar (hydration, no display mutation). */
+/** M3.8-M13 + M5.1-M0/M1/M2: `GET /matching/result` — row + display + readonly multi-source sidecar (RRM-Sim discovery, no display mutation). */
 export type MatchResultViewerPayload = MatchResult &
   MatchResultDisplayFields & {
     multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;

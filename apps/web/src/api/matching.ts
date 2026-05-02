@@ -63,12 +63,12 @@ export type MatchingResultResponse = {
     | "static_fallback";
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
   /**
-   * M5.1-M0/M1: readonly multi-source sidecar + viewer-safe source hydration.
+   * M5.1-M0/M1/M2: readonly multi-source sidecar + viewer-safe hydration (RRM-Sim optional embedded summary).
    * Does not participate in display resolution — never overrides `displayCandidateUserId`.
    */
   multiSourceFinalDecision?: {
     schemaVersion: 1;
-    sourceVersion: "m5.1-m1-multi-source-final-decision-readonly-v1";
+    sourceVersion: "m5.1-m2-multi-source-final-decision-readonly-v1";
     baseline: {
       matchResultCandidateUserId: string;
       finalScore: number | null;
@@ -103,11 +103,33 @@ export type MatchingResultResponse = {
             frozen: boolean;
             frozenAt: string | null;
           };
-      rrmSim: {
-        available: false;
-        summary: string;
-        unavailableReason: "m51m1_no_rrm_sim_hydration";
-      };
+      rrmSim:
+        | {
+            available: false;
+            summary: string;
+            unavailableReason:
+              | "no_viewer_safe_rrm_sim_summary_in_match_result_payload"
+              | "rrm_sim_exists_only_in_observability_or_batch_context"
+              | "rrm_sim_requires_shadow_or_m5_2_wiring";
+          }
+        | {
+            available: true;
+            summary: string;
+            candidateUserId: string | null;
+            sourceType: string;
+            sourceVersion: string;
+            fallbackUsed: boolean;
+            unavailableReason: string | null;
+            recommendation: string | null;
+            suggestedAction: string | null;
+            progressionWindow: string | null;
+            simulatedRhythmScore: number | null;
+            cautionFlags: string[];
+            confidenceBucket: "low" | "medium" | "high" | "unknown";
+            scenarioKey: string | null;
+            generatedAt: string | null;
+            frozenAt: string | null;
+          };
       guardrails: {
         status: "not_evaluated" | "caution";
         blockReasons: string[];
@@ -116,7 +138,10 @@ export type MatchingResultResponse = {
       };
     };
     admin: {
-      decisionTrace: Array<{ step: "source_hydration_readonly"; detail: string }>;
+      decisionTrace: Array<{
+        step: "source_hydration_readonly" | "rrm_sim_source_discovery_readonly";
+        detail: string;
+      }>;
       missingSources: string[];
       notes: string[];
     };
