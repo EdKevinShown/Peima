@@ -62,6 +62,24 @@ export type MatchingResultResponse = {
     | "pairwise_final"
     | "static_fallback";
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
+  /**
+   * M5.1-M0: readonly multi-source sidecar; echoes current display only.
+   * Does not participate in display resolution — never overrides `displayCandidateUserId`.
+   */
+  multiSourceFinalDecision?: {
+    schemaVersion: 1;
+    sourceVersion: "m5.1-m0-multi-source-final-decision-readonly-v1";
+    currentDisplayCandidateUserId: string;
+    currentDisplaySourceType:
+      | "match_result_original"
+      | "static_final"
+      | "pairwise_final"
+      | "static_fallback";
+    m5ProposedDisplayCandidateUserId: string | null;
+    m5AppliedToDisplay: false;
+    wouldChangeCurrentDisplay: false;
+    decisionRule: "current_display_preserved_readonly";
+  };
 };
 
 export async function enqueueMatching(userId: string) {

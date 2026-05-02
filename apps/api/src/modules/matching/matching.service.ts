@@ -6,14 +6,21 @@ import {
 import type { BatchMatchQueue, MatchResult } from "@peima/database";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EnqueueMatchDto } from "./dto/enqueue-match.dto";
+import {
+  buildMultiSourceFinalDecisionReadonlyM51M0,
+  type MultiSourceFinalDecisionReadonlyM51M0,
+} from "./matching-multi-source-final-decision-m51m0";
 import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
 };
 
-/** M3.8-M13: `GET /matching/result` — Prisma row + display sidecar fields. */
-export type MatchResultViewerPayload = MatchResult & MatchResultDisplayFields;
+/** M3.8-M13 + M5.1-M0: `GET /matching/result` — row + display fields + readonly multi-source sidecar (no display mutation). */
+export type MatchResultViewerPayload = MatchResult &
+  MatchResultDisplayFields & {
+    multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;
+  };
 
 @Injectable()
 export class MatchingService {
@@ -97,6 +104,7 @@ export class MatchingService {
       throw new NotFoundException(`No match result for user ${userId}`);
     }
     const display = await resolveMatchResultDisplay(this.prisma, result);
-    return { ...result, ...display };
+    const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display);
+    return { ...result, ...display, multiSourceFinalDecision };
   }
 }
