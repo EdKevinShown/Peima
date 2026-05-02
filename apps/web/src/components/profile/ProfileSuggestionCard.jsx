@@ -3,10 +3,8 @@ import {
   acceptProfileSuggestion,
   dismissProfileSuggestion,
 } from "../../api/profile";
-import P6ReviewSummary, {
-  normalizeP6ReviewSummary,
-  P6ProposedPatchDetails,
-} from "./P6ReviewSummary.jsx";
+import { normalizeP6ReviewSummary } from "./P6ReviewSummary.helpers.js";
+import P6ReviewSummary, { P6ProposedPatchDetails } from "./P6ReviewSummary.jsx";
 
 function StatusBadge({ status }) {
   const accepted = status === "accepted";
@@ -34,7 +32,10 @@ export default function ProfileSuggestionCard({
   loadError,
   onRefresh,
 }) {
-  const list = Array.isArray(suggestions) ? suggestions : [];
+  const list = useMemo(
+    () => (Array.isArray(suggestions) ? suggestions : []),
+    [suggestions],
+  );
   const [pendingActionId, setPendingActionId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [processedOpen, setProcessedOpen] = useState(false);

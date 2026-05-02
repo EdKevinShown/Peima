@@ -5,10 +5,8 @@ import ConversationContextBar from "../components/common/ConversationContextBar"
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
-import P6ReviewSummary, {
-  normalizeP6ReviewSummary,
-  P6ProposedPatchDetails,
-} from "../components/profile/P6ReviewSummary.jsx";
+import { normalizeP6ReviewSummary } from "../components/profile/P6ReviewSummary.helpers.js";
+import P6ReviewSummary, { P6ProposedPatchDetails } from "../components/profile/P6ReviewSummary.jsx";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
