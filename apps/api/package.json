@@ -15,7 +15,8 @@
     "test:e2e:orch-anchor": "jest --config ./jest-e2e.config.cjs --runInBand --testPathPattern=run-orchestration-mvp",
     "m5-m4b:shadow-audit-runner": "node dist/dev-cli/m5-m4b-shadow-audit-runner.js",
     "m55-m0:rrm-top2-display-fixture": "node dist/dev-cli/m55-m0-rrm-top2-display-fixture.js",
-    "m55-m2:rrm-top2-meta-writer": "node dist/dev-cli/m55-m2-rrm-top2-meta-writer-cli.js"
+    "m55-m2:rrm-top2-meta-writer": "node dist/dev-cli/m55-m2-rrm-top2-meta-writer-cli.js",
+    "m55-m4:rrm-top2-production-hook": "node dist/dev-cli/m55-m4-rrm-top2-production-hook-cli.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
