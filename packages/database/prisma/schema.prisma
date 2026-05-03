@@ -54,6 +54,8 @@ model User {
   pairwisePoolFinalizeMeta PairwisePoolFinalizeMeta[]
   /// M5.3-C1：RRM Top2 display 侧车（不写 MatchResult.candidateUserId / 不改 finalScore）。
   matchResultRrmTop2DisplayMeta MatchResultRrmTop2DisplayMeta[]
+  /// M5.6-B1：RRM Top2 display hook outbox rows（durable intent；consumer 未接）。
+  matchResultRrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
   chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
 
   @@map("users")
@@ -252,6 +254,45 @@ model MatchResultRrmTop2DisplayMeta {
   @@map("match_result_rrm_top2_display_meta")
 }
 
+/// M5.6-B1: durable outbox / hook job for RRM Top2 display writer intent (no GET/worker/consumer wiring in this milestone).
+model MatchResultRrmTop2DisplayHookJob {
+  id                      String    @id @default(cuid())
+  matchResultId           String
+  viewerUserId            String
+  sourceVersion           String
+  status                  String
+  staticTop2Snapshot      Json
+  top2Fingerprint         String
+  rrmSourceType           String
+  rrmSourceId             String?
+  rrmSummarySourceVersion String?
+  guardrails              Json
+  noOpReasonCode          String?
+  attempts                Int       @default(0)
+  lastErrorCode           String?
+  lastErrorMessage        String?   @db.Text
+  lockedAt                DateTime?
+  processedAt             DateTime?
+  metaWriteResult         Json?
+  auditMeta               Json?
+  aiSimulationJobId       String?
+  pairwiseJobId           String?
+  poolId                  String?
+  batchId                 String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  matchResult MatchResult @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
+  viewer      User        @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([matchResultId, top2Fingerprint, sourceVersion])
+  @@index([status, createdAt])
+  @@index([viewerUserId, status])
+  @@index([matchResultId])
+  @@index([rrmSourceType, rrmSourceId])
+  @@map("match_result_rrm_top2_display_hook_jobs")
+}
+
 /// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).
 model QuestionnaireAnswer {
   id          String   @id @default(cuid())
@@ -385,7 +426,8 @@ model MatchResult {
   candidate User       @relation("MatchResultCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
   batch                MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   conversations        Conversation[]
-  rrmTop2DisplayMeta   MatchResultRrmTop2DisplayMeta?
+  rrmTop2DisplayMeta     MatchResultRrmTop2DisplayMeta?
+  rrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
 
   @@map("match_results")
 }
