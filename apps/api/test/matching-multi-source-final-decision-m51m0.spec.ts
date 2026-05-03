@@ -70,10 +70,38 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
     expect(sidecar.admin.missingSources).toEqual(
       expect.arrayContaining(["rrm_sim", "pairwise_finalize_meta", "guardrails_explicit_signal"]),
     );
+    expect(sidecar.mode).toBe("readonly");
+    expect(sidecar.decisionRule).toBe("current_display_preserved_readonly");
+    expect(sidecar.shadow.shadowModeRequested).toBe(false);
+    expect(sidecar.shadow.shadowContractEvaluated).toBe(false);
+    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(false);
     expect(sidecar.admin.decisionTrace.map((t) => t.step)).toEqual([
       "source_hydration_readonly",
       "rrm_sim_source_discovery_readonly",
     ]);
+  });
+
+  it("M5.2-M0: shadow contract when shadowEnabled option true", () => {
+    const row = mr();
+    const display = {
+      displayCandidateUserId: row.candidateUserId,
+      displaySourceType: "match_result_original" as const,
+      finalMatchDecisionMeta: null,
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.mode).toBe("shadow");
+    expect(sidecar.decisionRule).toBe("shadow_no_change_due_to_insufficient_m5_sources");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
+    expect(sidecar.shadow.shadowModeRequested).toBe(true);
+    expect(sidecar.shadow.shadowContractEvaluated).toBe(true);
+    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(false);
+    expect(sidecar.shadow.sourcesBlockingShadowProposal).toEqual(sidecar.admin.missingSources);
+    expect(sidecar.admin.decisionTrace.map((t) => t.step)).toEqual([
+      "source_hydration_readonly",
+      "rrm_sim_source_discovery_readonly",
+      "shadow_contract_readonly",
+    ]);
+    expect(sidecar.admin.decisionTrace[2]?.detail).toBe("m52m0_no_shadow_decision_engine");
   });
 
   it("echoes match_result_original when display equals baseline", () => {

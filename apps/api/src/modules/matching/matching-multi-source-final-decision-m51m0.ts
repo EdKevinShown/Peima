@@ -5,12 +5,12 @@ import type {
   ViewerSafeFinalMatchDecisionMeta,
 } from "./matching-result-display";
 
-/** M5.1-M0/M1/M2 — readonly sidecar; does not participate in display resolution. */
+/** M5.1-M0/M1/M2 + M5.2-M0 — readonly sidecar (+ optional shadow contract); does not participate in display resolution. */
 export const MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION = 1 as const;
 
-/** Bumped M5.1-M2: RRM-Sim discovery + optional hydration from embedded viewer-safe summary only. */
+/** Bumped M5.2-M0: shadow contract fields (no shadow decision / no DB). */
 export const MULTI_SOURCE_FINAL_DECISION_READONLY_SOURCE_VERSION =
-  "m5.1-m2-multi-source-final-decision-readonly-v1" as const;
+  "m5.2-m0-multi-source-final-decision-shadow-contract-v1" as const;
 
 /**
  * Optional future / backfill envelope on `MatchResult.matchInsights` (never written by M5.1-M2).
@@ -25,7 +25,8 @@ const ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS = new Set<string>([
 
 export type MultiSourceDecisionTraceStepReadonly =
   | "source_hydration_readonly"
-  | "rrm_sim_source_discovery_readonly";
+  | "rrm_sim_source_discovery_readonly"
+  | "shadow_contract_readonly";
 
 export type MultiSourceDecisionTraceEntryReadonly = {
   step: MultiSourceDecisionTraceStepReadonly;
@@ -123,22 +124,46 @@ export type MultiSourceFinalDecisionSourcesReadonly = {
   guardrails: MultiSourceGuardrailsSourceReadonly;
 };
 
+/** M5.2-M0: shadow **contract** only — no proposed candidate, no DB, no display mutation. */
+export type MultiSourceShadowContractM52M0Readonly = {
+  shadowModeRequested: boolean;
+  /** True when `shadowModeRequested` and contract slice was attached for this response. */
+  shadowContractEvaluated: boolean;
+  /** M5.2-M0: always false; M5.2-M2+ may compute a shadow-only proposal. */
+  shadowDisplayProposalComputed: boolean;
+  noProposalReason: string;
+  /** Same keys as `admin.missingSources` where relevant to a future shadow engine. */
+  sourcesBlockingShadowProposal: string[];
+  /** Pointers for later milestones (non-normative). */
+  nextMilestonesNote: string;
+};
+
 export type MultiSourceFinalDecisionReadonlyM51M0 = {
   schemaVersion: typeof MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION;
   sourceVersion: typeof MULTI_SOURCE_FINAL_DECISION_READONLY_SOURCE_VERSION;
+  /** `readonly` unless `PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED` requests shadow contract surface. */
+  mode: "readonly" | "shadow";
   baseline: MultiSourceBaselineReadonly;
   /** Mirrors resolved `displayCandidateUserId` after existing finalize logic. */
   currentDisplayCandidateUserId: string;
   /** Mirrors resolved `displaySourceType`. */
   currentDisplaySourceType: MatchResultDisplaySourceType;
-  /** M5.1+ may propose a display id; M5.1-M2 always null. */
+  /** M5.2-M0: never a real shadow proposal. */
   m5ProposedDisplayCandidateUserId: null;
-  /** M5.1-M2 never applies M5 synthesis to display. */
+  /** M5.2-M0 never applies M5 synthesis to display. */
   m5AppliedToDisplay: false;
   wouldChangeCurrentDisplay: false;
-  decisionRule: "current_display_preserved_readonly";
+  decisionRule:
+    | "current_display_preserved_readonly"
+    | "shadow_no_change_due_to_insufficient_m5_sources";
   sources: MultiSourceFinalDecisionSourcesReadonly;
+  shadow: MultiSourceShadowContractM52M0Readonly;
   admin: MultiSourceFinalDecisionAdminReadonly;
+};
+
+export type BuildMultiSourceFinalDecisionOptions = {
+  /** From `readM5FinalDecisionShadowEnabled()` in service; default false in builder. */
+  shadowEnabled?: boolean;
 };
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -398,13 +423,15 @@ function buildMissingSourcesReadonly(input: {
 }
 
 /**
- * M5.1-M0/M1/M2: readonly multi-source sidecar — echoes current display + viewer-safe source hydration.
+ * M5.1-M0/M1/M2 + M5.2-M0: readonly multi-source sidecar — display echo + hydration + optional shadow **contract**.
  * Must not alter `displayCandidateUserId` / `displaySourceType` resolution.
  */
 export function buildMultiSourceFinalDecisionReadonlyM51M0(
   matchRow: MatchResult,
   display: MatchResultDisplayFields,
+  options?: BuildMultiSourceFinalDecisionOptions,
 ): MultiSourceFinalDecisionReadonlyM51M0 {
+  const shadowEnabled = options?.shadowEnabled === true;
   const meta = display.finalMatchDecisionMeta;
   const pairwise = buildPairwiseSourceReadonly(meta);
   const guardrails = buildGuardrailsReadonly(meta, matchRow);
@@ -415,9 +442,53 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
     rrmSimAvailable: rrmSim.available === true,
   });
 
+  const decisionTrace: MultiSourceDecisionTraceEntryReadonly[] = [
+    {
+      step: "source_hydration_readonly",
+      detail: "m51m1_viewer_safe_fields_only",
+    },
+    {
+      step: "rrm_sim_source_discovery_readonly",
+      detail: discoveryDetail,
+    },
+  ];
+
+  const shadow: MultiSourceShadowContractM52M0Readonly = shadowEnabled
+    ? {
+        shadowModeRequested: true,
+        shadowContractEvaluated: true,
+        shadowDisplayProposalComputed: false,
+        noProposalReason: "m52m0_shadow_contract_only_insufficient_wiring_for_shadow_candidate",
+        sourcesBlockingShadowProposal: [...missingSources],
+        nextMilestonesNote:
+          "M5.2-M1 shadow source wiring; M5.2-M2 shadow proposed candidate; M5.2-M3 DB shadow run record; M5.3 enabled display",
+      }
+    : {
+        shadowModeRequested: false,
+        shadowContractEvaluated: false,
+        shadowDisplayProposalComputed: false,
+        noProposalReason: "shadow_mode_disabled",
+        sourcesBlockingShadowProposal: [],
+        nextMilestonesNote:
+          "Set PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED=true to surface shadow contract without changing display.",
+      };
+
+  if (shadowEnabled) {
+    decisionTrace.push({
+      step: "shadow_contract_readonly",
+      detail: "m52m0_no_shadow_decision_engine",
+    });
+  }
+
+  const mode: MultiSourceFinalDecisionReadonlyM51M0["mode"] = shadowEnabled ? "shadow" : "readonly";
+  const decisionRule: MultiSourceFinalDecisionReadonlyM51M0["decisionRule"] = shadowEnabled
+    ? "shadow_no_change_due_to_insufficient_m5_sources"
+    : "current_display_preserved_readonly";
+
   return {
     schemaVersion: MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION,
     sourceVersion: MULTI_SOURCE_FINAL_DECISION_READONLY_SOURCE_VERSION,
+    mode,
     baseline: {
       matchResultCandidateUserId: matchRow.candidateUserId,
       finalScore: matchRow.finalScore,
@@ -428,7 +499,7 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
     m5ProposedDisplayCandidateUserId: null,
     m5AppliedToDisplay: false,
     wouldChangeCurrentDisplay: false,
-    decisionRule: "current_display_preserved_readonly",
+    decisionRule,
     sources: {
       static: {
         available: true,
@@ -439,17 +510,9 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
       rrmSim,
       guardrails,
     },
+    shadow,
     admin: {
-      decisionTrace: [
-        {
-          step: "source_hydration_readonly",
-          detail: "m51m1_viewer_safe_fields_only",
-        },
-        {
-          step: "rrm_sim_source_discovery_readonly",
-          detail: discoveryDetail,
-        },
-      ],
+      decisionTrace,
       missingSources,
       notes: [],
     },

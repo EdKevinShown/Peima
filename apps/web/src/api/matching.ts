@@ -63,12 +63,13 @@ export type MatchingResultResponse = {
     | "static_fallback";
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
   /**
-   * M5.1-M0/M1/M2: readonly multi-source sidecar + viewer-safe hydration (RRM-Sim optional embedded summary).
+   * M5.1 / M5.2-M0: multi-source sidecar + optional shadow **contract** (`PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED`).
    * Does not participate in display resolution — never overrides `displayCandidateUserId`.
    */
   multiSourceFinalDecision?: {
     schemaVersion: 1;
-    sourceVersion: "m5.1-m2-multi-source-final-decision-readonly-v1";
+    sourceVersion: "m5.2-m0-multi-source-final-decision-shadow-contract-v1";
+    mode: "readonly" | "shadow";
     baseline: {
       matchResultCandidateUserId: string;
       finalScore: number | null;
@@ -83,7 +84,9 @@ export type MatchingResultResponse = {
     m5ProposedDisplayCandidateUserId: string | null;
     m5AppliedToDisplay: false;
     wouldChangeCurrentDisplay: false;
-    decisionRule: "current_display_preserved_readonly";
+    decisionRule:
+      | "current_display_preserved_readonly"
+      | "shadow_no_change_due_to_insufficient_m5_sources";
     sources: {
       static: { available: true; candidateUserId: string; summary: string };
       pairwise:
@@ -137,9 +140,20 @@ export type MatchingResultResponse = {
         sourceSummary: string;
       };
     };
+    shadow: {
+      shadowModeRequested: boolean;
+      shadowContractEvaluated: boolean;
+      shadowDisplayProposalComputed: boolean;
+      noProposalReason: string;
+      sourcesBlockingShadowProposal: string[];
+      nextMilestonesNote: string;
+    };
     admin: {
       decisionTrace: Array<{
-        step: "source_hydration_readonly" | "rrm_sim_source_discovery_readonly";
+        step:
+          | "source_hydration_readonly"
+          | "rrm_sim_source_discovery_readonly"
+          | "shadow_contract_readonly";
         detail: string;
       }>;
       missingSources: string[];

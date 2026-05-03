@@ -6,6 +6,7 @@ import {
 import type { BatchMatchQueue, MatchResult } from "@peima/database";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EnqueueMatchDto } from "./dto/enqueue-match.dto";
+import { readM5FinalDecisionShadowEnabled } from "./matching-m5-final-decision-shadow-env";
 import {
   buildMultiSourceFinalDecisionReadonlyM51M0,
   type MultiSourceFinalDecisionReadonlyM51M0,
@@ -16,7 +17,7 @@ export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
 };
 
-/** M3.8-M13 + M5.1-M0/M1/M2: `GET /matching/result` — row + display + readonly multi-source sidecar (RRM-Sim discovery, no display mutation). */
+/** M3.8-M13 + M5.1 / M5.2-M0: `GET /matching/result` — row + display + multi-source sidecar (optional shadow contract via env, no display mutation). */
 export type MatchResultViewerPayload = MatchResult &
   MatchResultDisplayFields & {
     multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;
@@ -104,7 +105,9 @@ export class MatchingService {
       throw new NotFoundException(`No match result for user ${userId}`);
     }
     const display = await resolveMatchResultDisplay(this.prisma, result);
-    const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display);
+    const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
+      shadowEnabled: readM5FinalDecisionShadowEnabled(),
+    });
     return { ...result, ...display, multiSourceFinalDecision };
   }
 }
