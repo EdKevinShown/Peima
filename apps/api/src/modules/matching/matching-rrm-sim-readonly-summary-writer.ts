@@ -10,12 +10,10 @@
 import type { Prisma } from "@peima/database";
 import {
   mergeRrmSimReadonlySummaryIntoMatchInsights,
+  RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY,
   type RrmSimReadonlySummaryPayloadV1,
 } from "./matching-rrm-sim-readonly-summary";
-import {
-  RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY,
-  tryParseRrmSimReadonlySummaryFromMatchInsights,
-} from "./matching-multi-source-final-decision-m51m0";
+import { tryParseRrmSimReadonlySummaryFromMatchInsights } from "./matching-multi-source-final-decision-m51m0";
 
 export type WriteRrmSimReadonlySummaryReason =
   | "disabled"

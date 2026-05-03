@@ -1,7 +1,12 @@
 import type { MatchResult } from "@peima/database";
 import type { PrismaService } from "../../common/prisma/prisma.service";
 import type { FinalMatchDecisionMetaV1 } from "./final-match-decision-meta.builder";
+import { buildGuardrailsReadonly } from "./matching-guardrails-readonly";
+import { tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights } from "./matching-rrm-sim-readonly-summary";
+import { readM5RrmTop2DisplayEnv } from "./m5-rrm-top2-display-env";
 import { readPairwiseFinalizeEnv } from "./pairwise-finalize-env";
+import { parseMatchResultRrmTop2DisplayMetaV1Loose } from "./rrm-top2-display-meta.parser";
+import { validateRrmTop2DisplayEligibility } from "./rrm-top2-display-eligibility";
 
 /** GET /matching/result viewer-safe slice + readout fusion alignment. */
 export type ViewerSafeFinalMatchDecisionMeta = {
@@ -24,7 +29,7 @@ export type MatchResultDisplaySourceType =
   | "static_final"
   | "pairwise_final"
   | "static_fallback"
-  /** M5.3-C1: union member reserved for M5.3-C2 resolver; not returned by `resolveMatchResultDisplay` yet. */
+  /** M5.3: RRM Top2 bounded display (requires `PEIMA_M5_RRM_TOP2_ENABLED` + frozen sidecar + eligibility). */
   | "rrm_top2_bounded_selector";
 
 export type MatchResultDisplayFields = {
@@ -88,8 +93,9 @@ function mapDisplaySourceTypeFromMeta(
 }
 
 /**
- * M3.8-M13: resolve display id for `GET /matching/result` and readout fusion.
- * Pool binding: only `PairwisePoolFinalizeMeta` rows where `meta.staticTop1CandidateUserId === matchResult.candidateUserId`
+ * M3.8-M13 + M5.3-C2: resolve display id for `GET /matching/result` and readout fusion.
+ * Priority: RRM Top2 display meta → Pairwise finalize meta → `match_result_original`.
+ * Pool binding (pairwise): only `PairwisePoolFinalizeMeta` rows where `meta.staticTop1CandidateUserId === matchResult.candidateUserId`
  * (batch static Top1 与侧车一致)；否则宁可 fallback，不猜 poolId。
  */
 export async function resolveMatchResultDisplay(
@@ -97,6 +103,48 @@ export async function resolveMatchResultDisplay(
   matchRow: MatchResult,
 ): Promise<MatchResultDisplayFields> {
   const original = matchRow.candidateUserId;
+
+  const rrmEnv = readM5RrmTop2DisplayEnv();
+  if (rrmEnv.enabled) {
+    const rrmRow = await prisma.matchResultRrmTop2DisplayMeta.findUnique({
+      where: { matchResultId: matchRow.id },
+    });
+    if (rrmRow?.frozen) {
+      const rrmParsed = parseMatchResultRrmTop2DisplayMetaV1Loose(rrmRow.meta);
+      if (rrmParsed) {
+        const baseline = rrmParsed.baselineCandidateUserId.trim();
+        const winner = rrmParsed.newDisplayCandidateUserId.trim();
+        const top2CandidateUserIds = [baseline, winner] as const;
+
+        const summary = tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights(matchRow.matchInsights);
+        const guardrails = buildGuardrailsReadonly(null, matchRow);
+
+        const elig = validateRrmTop2DisplayEligibility({
+          m5RrmTop2Enabled: true,
+          matchResultCandidateUserId: original,
+          top2CandidateUserIds,
+          top2Fingerprint: rrmParsed.top2Fingerprint.trim(),
+          rrmDisplayMeta: rrmParsed,
+          rowTop2Fingerprint: rrmRow.top2Fingerprint,
+          rrmSimReadonlySummary: summary,
+          guardrailsReadonly: guardrails,
+        });
+
+        if (elig.ok) {
+          const selected = rrmParsed.newDisplayCandidateUserId.trim();
+          const userOk = await prisma.user.findUnique({ where: { id: selected }, select: { id: true } });
+          if (userOk) {
+            return {
+              displayCandidateUserId: selected,
+              displaySourceType: "rrm_top2_bounded_selector",
+              finalMatchDecisionMeta: null,
+            };
+          }
+        }
+      }
+    }
+  }
+
   const env = readPairwiseFinalizeEnv();
 
   if (!env.enabledFlag || env.mode !== "enabled") {

@@ -1,5 +1,8 @@
 import type { MatchResult } from "@peima/database";
+import { RRM_SIM_SOURCE_VERSION } from "../src/modules/ai-simulation-v1/rrm-sim.constants";
+import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "../src/modules/matching/matching-rrm-sim-readonly-summary";
 import { resolveMatchResultDisplay } from "../src/modules/matching/matching-result-display";
+import { MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE } from "../src/modules/matching/rrm-top2-display-meta.types";
 
 function mr(over: Partial<MatchResult> = {}): MatchResult {
   return {
@@ -42,21 +45,67 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
   const prev = {
     ENABLED: process.env.PAIRWISE_FINAL_MATCH_ENABLED,
     MODE: process.env.PAIRWISE_FINAL_MATCH_MODE,
+    RRM_TOP2: process.env.PEIMA_M5_RRM_TOP2_ENABLED,
   };
 
   afterEach(() => {
     process.env.PAIRWISE_FINAL_MATCH_ENABLED = prev.ENABLED;
     process.env.PAIRWISE_FINAL_MATCH_MODE = prev.MODE;
+    if (prev.RRM_TOP2 === undefined) delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+    else process.env.PEIMA_M5_RRM_TOP2_ENABLED = prev.RRM_TOP2;
   });
+
+  function rrmSimSummaryPayload(winner: string, baseline: string) {
+    return {
+      schemaVersion: 1,
+      sourceType: "rrm_sim_readonly_summary",
+      sourceVersion: RRM_SIM_SOURCE_VERSION,
+      candidateUserId: baseline,
+      winnerUserId: winner,
+      proposalCandidateUserId: winner,
+      scenarioKey: null,
+      suggestedAction: "maintain",
+      progressionWindow: null,
+      simulatedRhythmScore: 1,
+      recommendation: "ok",
+      confidenceBucket: "high",
+      fallbackUsed: false,
+      unavailableReason: null,
+      cautionFlags: [],
+      generatedAt: "2026-05-03T00:00:00.000Z",
+      frozenAt: null,
+    };
+  }
+
+  function rrmDisplayMetaJson(over: Record<string, unknown> = {}) {
+    return {
+      schemaVersion: 1,
+      sourceType: MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE,
+      sourceVersion: "m5.3-rrm-top2-enabled-display-v1",
+      baselineCandidateUserId: "cand-static",
+      previousDisplayCandidateUserId: "cand-static",
+      newDisplayCandidateUserId: "cand-winner",
+      decisionRule: "rrm_top2_winner_guardrails_pass",
+      top2Fingerprint: "fp_rrm_1",
+      appliedToFinalScore: false,
+      appliedToWorkerRanking: false,
+      rollbackAvailable: true,
+      ...over,
+    };
+  }
 
   function mockPrisma(opts: {
     finalizeRows?: { frozen: boolean; meta: unknown }[];
     userIds?: Set<string>;
+    rrmTop2Row?: { frozen: boolean; meta: unknown; top2Fingerprint: string | null } | null;
   }) {
     const userIds = opts.userIds ?? new Set(["cand-static", "cand-winner"]);
     return {
       pairwisePoolFinalizeMeta: {
         findMany: jest.fn(async () => opts.finalizeRows ?? []),
+      },
+      matchResultRrmTop2DisplayMeta: {
+        findUnique: jest.fn(async () => opts.rrmTop2Row ?? null),
       },
       user: {
         findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
@@ -220,5 +269,105 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
     const r = await resolveMatchResultDisplay(prisma, mr());
     expect(r.displayCandidateUserId).toBe("cand-static");
     expect(r.displaySourceType).toBe("match_result_original");
+  });
+
+  describe("M5.3-C2 RRM Top2 branch", () => {
+    it("RRM env off → ignores sidecar even if present (pairwise path)", async () => {
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJson(), top2Fingerprint: "fp_rrm_1" },
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSimSummaryPayload("cand-winner", "cand-static"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displayCandidateUserId).toBe("cand-winner");
+      expect(r.displaySourceType).toBe("pairwise_final");
+    });
+
+    it("RRM env on + eligible → rrm_top2_bounded_selector (beats pairwise)", async () => {
+      process.env.PEIMA_M5_RRM_TOP2_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJson(), top2Fingerprint: "fp_rrm_1" },
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSimSummaryPayload("cand-winner", "cand-static"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displayCandidateUserId).toBe("cand-winner");
+      expect(r.displaySourceType).toBe("rrm_top2_bounded_selector");
+      expect(r.finalMatchDecisionMeta).toBeNull();
+    });
+
+    it("RRM env on but ineligible → falls back to pairwise", async () => {
+      process.env.PEIMA_M5_RRM_TOP2_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJson(), top2Fingerprint: "fp_rrm_1" },
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSimSummaryPayload("cand-winner", "cand-static"),
+            explanation: { cautions: ["hard stop"], whyMatch: "", strengths: [], rhythmPrediction: "" },
+            riskFlags: [],
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+    });
   });
 });
