@@ -4,6 +4,8 @@
 
 **M5 / M5.6 — RRM Top2 controlled production path 已收口**：RRM display resolver、**`displayCandidateUserId`** 展示路径、FinalMatch → Chat 经 **`matchResultId`** 的 handoff 对齐、RRM meta writer、hook job outbox、controlled create runner、dry-run consumer、controlled apply gate、shared apply service、independent dry-run poller、staging-style apply run record 等已按受控链路交付。该能力可在闸门与 eligibility 满足时影响 **`displayCandidateUserId` / `displaySourceType`**，**不**改写 `MatchResult.candidateUserId`、**不**重算 **`finalScore`**；**`GET /matching/result` 保持只读、不写库**。**production 默认由 worker 对 RRM hook job 自动轮询 / 自动 apply 尚未作为开箱默认能力**；进入 **M6** 后再做质量评估与运维层面的 optional operationalization。总述见 **`docs/M5/M5.6-closure-rrm-top2-controlled-production-path.md`**。
 
+**M 系列（AI 匹配 / RRM 工程里程碑）**与上文 **P0～P6** 产品切片**并行**：P 线描述「产品里做到哪一步」；M 线描述「AI simulation、RRM-Sim、Pairwise、RRM Top2 展示与受控 hook」的工程收口。**M1** 见 **`docs/M1/`**（RRM-Sim / D_pre / calibration / pre-production **规划与证据**，**不**等同于已产品化主链）；仓库**无**独立 **`docs/M2/`**——若在 **M3.8** 文档中看到「M2」，指**该文档内部的子里程碑**，不是顶层「M2 阶段」。**M3** / **M3.8** 见 **`docs/M3/`**（真实链路、Top2 + Pairwise + `displayCandidateUserId` 读路径等）。**M4** 见 **`docs/M4/`**（只读评估、对照、batch regression、解释产品化、Admin/CLI 观测）。**M5** / **M5.5** / **M5.6** 见 **`docs/M5/`**：M5 把 RRM 接到 **enabled display** 读路径；M5.5 补齐 meta writer、controlled hook runner 等**前置**；M5.6 收口 **controlled production path**。**M5.6 closure** 仍**不等于** production 默认 worker 自动轮询已开启，也**不**表示 RRM 会改 `MatchResult.candidateUserId` 或 `finalScore`。细表见下文 **「M 系列：AI 匹配 / RRM 演进状态」**。
+
 > **P6（Round 2 短名单 AI 模拟 · 当前状态与最短操作）：**[`docs/P6/P6-current-status-v0.md`](./docs/P6/P6-current-status-v0.md) · [`docs/P6/P6-operating-notes-v0.md`](./docs/P6/P6-operating-notes-v0.md) · [P6 文档索引](./docs/P6/README.md)。除 **P6.1～P6.4**（Copilot **真实 LLM** 只读路径，接口不变，成功走模型、失败回退规则层）、**P6.5 / P6.6 / P6.7** 三条**独立**大模型结果层切片、**P6.8**（聊天会话驱动画像补全建议：`POST /chat/conversations/:conversationId/profile-completion-suggestion`，独立 `PROFILE_COMPLETION_AI_*`，成功时创建 **pending** `ProfileUpdateSuggestion` 并复用 mine / accept / dismiss）与 **P6.9**（**仅**该 POST 上最小治理：消息条数门槛、同 `sourceVersion` 的 pending 门禁、时间冷却；**400 / 409 / 429**；被挡请求不调 LLM）、**P6.10**（**仅** **ChatPage**：依赖既有 messages 与 **`GET /profile-suggestions/mine`** 的事前禁用/说明与 **400 / 409 / 429** 事后固定中文；**不**改后端治理语义、**不**加新接口）外，大量正文与建议仍由 **规则 / 模板 / 占位逻辑** 生成；**统一的 AI Agent、多 Agent 编排与端到端 simulation 流水线**仍未作为产品化主链接入。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、第一层分支累计 + 主/候选/风格标签（风格对外 ≤3）+ **`displayPrimary`（永非空）** + 规则化 **`overallExplanation`（title + paragraph，非 AI）**；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。
 
 ---
@@ -214,7 +216,7 @@
 为避免产品侧误读，下列为当前仓库**准确口径**（与 `interaction-simulation-lite`、`ai-simulation-v1`、RRM 展示解析等实现一致）：
 
 - 当前**没有**默认生产化的「两个**真实用户**由 AI **代替**多轮互聊，并由聊天结果**自动**决定最终匹配对象」的链路。
-- **Interaction Simulation Lite**：基于 **`MatchResult` + 双方问卷画像 + 静态摘要** 生成结构化互动预判；可走 LLM，也可在关 env / 失败时走**规则 fallback**；**不写 DB**；**不自动发送**聊天消息；**不改** `finalScore`；**不改** `candidateUserId`；也**不直接改写** `displayCandidateUserId`（它只服务「预判读数」类接口）。
+- **Interaction Simulation Lite**：基于 **`MatchResult` + 双方问卷画像 + 静态摘要** 生成结构化互动预判（**不是**两端真实用户在客户端里由 AI「代聊」的多轮会话）；可走 LLM，也可在关 env / 失败时走**规则 fallback**；**不写 DB**；**不自动发送**聊天消息；**不改** `finalScore`；**不改** `candidateUserId`；也**不直接改写** `displayCandidateUserId`（它只服务「预判读数」类接口）。
 - **AI Simulation V1**：受控 **job / worker 队列 / 诊断与 Admin** 路径能力，用于假设性 simulation、RRM 相关上游输入等；**不是**每条 `MatchResult` 创建后默认自动跑；**不是**两端真实用户自动互发消息。
 - **`rrmSimReadonlySummary`**：**viewer-safe** 只读摘要，用于 eligibility / 读路径契约；**不是**完整聊天 transcript；不承载「完整 prompt / 原始长 transcript / 原始模型分」等产品口径外的持久化承诺。
 - **RRM Top2**：在受控 writer / fixture / hook apply 等链路写入元数据后，**仅**通过 **`resolveMatchResultDisplay`** 影响 **`displayCandidateUserId` / `displaySourceType`**；**不覆盖** `MatchResult` 行上的 **`candidateUserId`**，也**不重算** **`finalScore`**。
@@ -230,6 +232,37 @@ FINAL_MATCH_CONCLUSION_AI_API_KEY=your_kimi_api_key
 ```
 
 当前实现下，`FINAL_MATCH_CONCLUSION_AI_BASE_URL` 应填写**供应商根域名**（如 `https://api.moonshot.cn`）；客户端会自行拼接 **`/v1/chat/completions`**，**请勿**在 BASE_URL 末尾再手动追加 `/v1`。
+
+## M 系列：AI 匹配 / RRM 演进状态
+
+### M 系列与 P 系列的区别
+
+- **P0～P6**：产品 / 工程**切片**（主链、问卷、聊天、时间线、治理、Copilot 与各 AI 结果层等），README 前文大表与专节主要按 P 线组织。
+- **M1～M5.6**：**AI matching、RRM-Sim、Pairwise、RRM Top2 展示与 controlled production path** 的**工程里程碑**，文档主要在 **`docs/M1`～`docs/M5`**。
+- 两套编号**并行**，阅读时**不要混用**。
+- **M3.8** 规划/closure 文档中的 **M0～M15** 是**该文档内部的子里程碑编号**，**不等于**仓库顶层的「M0～M15 阶段」。
+
+### 阶段表
+
+| 阶段 | 当前 README 口径 | 说明 |
+|------|------------------|------|
+| **M1** | 索引见下文「文档索引」**M 系列**；正文不逐条展开 | **`docs/M1/`** 存在；以 **RRM-Sim / D_pre / calibration / pre-production planning** 为主；**不**在 README 里强写「已整条产品化上线」，细节**以目录内文档为准**。 |
+| **M2** | **不**单独宣称「M2 阶段」完成 | **未发现**独立 **`docs/M2/`**；若在 **M3.8** 文档中看到 **「M2」**，指 **M3.8 内部子里程碑**（如 Pairwise LLM client 一段），**不是**顶层 M2。 |
+| **M3** | 索引见下文 **M 系列** | **`docs/M3/`** 存在；**M3**（如 *RRM-Sim real chain closure*）验证真实 simulation → RRM-Sim **只读诊断**链路；**M3.8** 收口 **Top2 + Pairwise + `finalize-with-pairwise` + `resolveMatchResultDisplay` / `displayCandidateUserId`** 等；打通 simulation / pairwise / 展示读路径 **≠** **`finalScore` 被 AI 重算**。 |
+| **M4** | 索引见下文 **M 系列** | **`docs/M4/`** 存在；**只读** RRM ranking proposal、**四源对照**、batch regression、Final Match **解释产品化**、Admin/CLI **观测**；**不接管** `MatchResult`，**不改** `finalScore`。 |
+| **M5** | 与开篇 M5/M5.6 段、状态表一致 | **`docs/M5/M5-closure.md`**：RRM 接入 **enabled display** 读路径；经 **`resolveMatchResultDisplay`** 影响 **`displayCandidateUserId` / `displaySourceType`**；**不改** `MatchResult.candidateUserId`、**不改** `finalScore`；**`GET /matching/result` 只读**。 |
+| **M5.5** | 开篇与下表一并阅读 | **`docs/M5/M5.5-*`**：**display fixture**、**meta writer foundation**、**controlled production hook runner**、automatic hook **design / scan** 等，为 **M5.6** 的 **前置**。 |
+| **M5.6** | 与开篇 M5/M5.6 段、状态表一致 | **`docs/M5/M5.6-closure-rrm-top2-controlled-production-path.md`**：hook job outbox、controlled create、dry-run consumer、apply gate、shared apply service、independent dry-run poller、staging-style apply run record；**controlled production path closed**；**production 默认 worker poller 尚未开启**（见 closure 与 `apps/worker` 入口）。 |
+
+### 关键边界
+
+- 当前**没有**默认生产化的「两个**真实用户**由 AI **自动**多轮互聊并由聊天结果**自动**决定最终匹配对象」的链路。
+- **RRM**（在闸门与受控元数据满足时）**不**改写 **`MatchResult.candidateUserId`**。
+- **RRM** **不**重算 **`finalScore`**。
+- **RRM** 可在受控链路下影响 **`displayCandidateUserId` / `displaySourceType`**（读模型）。
+- **`GET /matching/result`**：**只读**，**不写库**。
+- **production worker** 对 RRM hook 的**自动 poller / 自动 apply** **尚未**作为开箱默认能力开启。
+- **existing frozen meta** **不覆盖**（skip / no-op 语义以 `docs/M5` 各 run record 为准）。
 
 **P1 已交付能力（摘要）**
 
@@ -723,9 +756,27 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - **P5（已完成）**：轻量 RBAC 权限模型、建议中心查询/管理 API、**Admin UI 建议中心管理界面**、审计日志系统（查询/详情/导出/失败路径）、RBAC 持久化、通知中心（WebSocket + REST）、分析仪表板，以及 code review 后的 audit/history/notification/export 修复。见 `docs/P5/` 与当前仓库实现。
 - **当前阶段重点**：收口，不是扩功能。P4 已完成 5 个最小切片，现阶段以验收、文档与质量固化为主。**P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立结果层）、**P6.8**（聊天画像补全）、**P6.9**（P6.8 生成治理）与 **P6.10**（ChatPage UX hinting，**不**改后端治理）已按文档收口交付；**仍未完成**者见上文「P6 暂未展开的内容」。演进规划中 Worker 自动生成、决策层模型替换、多 Agent/simulation 等仍见 `docs/P6/archive/historical/P6-ai-production-evolution-plan.md`。详见 `docs/P4/P4-productization-plan.md`。
 - **与旧「后续产品方向」条目的对应**：原列 Analytics / Worker / 历史版本 / 建议中心 / 权限系统等，已 **分别落入 P5 / P6（及 P4 体验项）**；**P5 已做** 者（权限、建议中心、审计、通知、分析）与 **P2.5 已做** 者（全局 analytics 白名单、聊天内建议闭环、Copilot 独立只读页、摘要手动生成）仍以 README 前文为准。
-- **M6（下一步方向，规划口径）**：重点是评估 RRM 是否真的提升体验，而不是在 M5 上无限扩功能；**production 自动 poller** 放到 M6 后期再考虑运维化。方向包括：**M6.1** Feedback `decisionContext`；**M6.2** RRM quality analytics；**M6.3** Admin observation；**M6.4** Optional production poller operationalization。
+- **M6（下一步方向，规划口径）**：重点是**评估 RRM 是否真的提升匹配质量与体验**，而不是在 M5 上无限扩功能。方向包括：**M6.1** Feedback `decisionContext`；**M6.2** RRM quality analytics；**M6.3** Admin observation；**M6.4** Optional production poller operationalization。**production poller** 若要做，应优先沿用 **dry-run / staging** 与显式 gate 的路径，再单独评审 **production** 开关与运维责任；**不要**假设「一打开就等于全量自动 apply」。
 
 ## 文档索引
+
+### M 系列（AI 匹配 / RRM 工程里程碑）
+
+- **`docs/M1/`**：RRM-Sim / D_pre / calibration / pre-production planning；**以目录内文档为准**，README **不**强写已整条产品化主链。
+- **`docs/M3/M3-rrm-sim-real-chain-closure.md`**：M3 RRM-Sim real chain closure。
+- **`docs/M3/M3.8-top2-pairwise-ai-decision-simulation-closure.md`**：M3.8 Top2 + Pairwise + display resolver closure（文内 **M0～M15** 为**子里程碑**，勿与顶层 M 混淆）。
+- **`docs/M4/M4-overall-ai-matching-phase-one-closure.md`**：M4 只读评估、对照、batch regression、解释产品化与 Admin/CLI 观测 closure。
+- **`docs/M5/M5-closure.md`**：M5 enabled display 读路径与 RRM Top2 接入 closure。
+- **`docs/M5/M5.5-m2-rrm-top2-meta-writer-foundation.md`**：M5.5 meta writer foundation。
+- **`docs/M5/M5.5-m4-rrm-top2-production-hook-runner.md`**：M5.5 controlled production hook runner。
+- **`docs/M5/M5.6-closure-rrm-top2-controlled-production-path.md`**：M5.6 RRM Top2 controlled production path closure。
+- **`docs/M5/M5.6-b9b-rrm-top2-staging-apply-run-record.md`**：M5.6 staging-style apply run record。
+- **`docs/M5/M5.6-b8c-rrm-top2-dry-run-poller-run-record.md`**：M5.6 independent dry-run poller run record。
+- **`docs/M5/M5.6-b7b-rrm-top2-hook-apply-service-extraction.md`**：M5.6 hook apply 服务抽取（B7）。
+- **`docs/M5/M5.6-b6b-env-on-existing-frozen-apply-run-record.md`**：existing frozen meta 与 env-on apply 记录。
+- **`docs/M5/M5.6-b5c-rrm-top2-hook-job-apply-run-record.md`**：hook job apply runner 记录。
+- **`docs/M5/M5.6-b4d-hook-job-create-and-consumer-dry-run-record.md`**：hook job 创建与 consumer dry-run 记录。
+- **`docs/M5/M5.6-a-rrm-top2-hook-outbox-schema-plan.md`**：hook outbox schema 计划。
 
 **P0**
 
@@ -760,17 +811,6 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
 - `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**`q01`–`q12`+`q25` canonical**、**17** 条 `questionnaire.scorer.regression` 口径、controller 零改动说明与「**非**30 题全 `canonical` / 全量正式生产」边界
 - `docs/P4/P4.3-questionnaire-profile-v3.md`：**问卷画像 v3 只读** — 目标、运行逻辑、分支累计、dominant/uncertain、主/候选/风格、`displayPrimary`、风格 top3、`overallExplanation`、`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、二十轴 float 定位、边界、**与 P6.8 一句关系**、附录代码入口与 Jest（**不含** matching/worker 消费 v3、**不含** P6.8 联动实现）
-
-**M5 / M5.6（RRM Top2 controlled production path）**
-
-- `docs/M5/M5.6-closure-rrm-top2-controlled-production-path.md`：M5.6 收口总述（受控生产路径边界）
-- `docs/M5/M5.6-b9b-rrm-top2-staging-apply-run-record.md`：staging 风格 apply 运行记录
-- `docs/M5/M5.6-b8c-rrm-top2-dry-run-poller-run-record.md`：独立 dry-run poller 运行记录
-- `docs/M5/M5.6-b7b-rrm-top2-hook-apply-service-extraction.md`：hook apply 服务抽取（B7）
-- `docs/M5/M5.6-b6b-env-on-existing-frozen-apply-run-record.md`：existing frozen meta 与环境下的 apply 记录
-- `docs/M5/M5.6-b5c-rrm-top2-hook-job-apply-run-record.md`：hook job apply runner 记录
-- `docs/M5/M5.6-b4d-hook-job-create-and-consumer-dry-run-record.md`：hook job 创建与 consumer dry-run 记录
-- `docs/M5/M5.6-a-rrm-top2-hook-outbox-schema-plan.md`：hook outbox schema 计划
 
 **P5（治理与运营 — 已完成）**
 
