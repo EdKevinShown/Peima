@@ -1,5 +1,4 @@
 import type { RrmSimReadonlySummaryPayloadV1 } from "./matching-rrm-sim-readonly-summary";
-import type { MultiSourceGuardrailsSourceReadonly } from "./matching-multi-source-final-decision-m51m0";
 import type { MatchResultRrmTop2DisplayMetaV1 } from "./rrm-top2-display-meta.types";
 
 /**
@@ -25,6 +24,7 @@ export const RRM_TOP2_DISPLAY_NO_OP_REASON_CODES = [
   "rrm_confidence_low",
   "rrm_confidence_unknown",
   "rrm_fallback_used",
+  "guardrails_missing",
   "guardrails_block",
   "guardrails_caution",
   "guardrails_not_evaluated",
@@ -45,7 +45,6 @@ export type ValidateRrmTop2DisplayEligibilityInput = {
   /** Optional DB column `MatchResultRrmTop2DisplayMeta.top2Fingerprint`; when non-null must match `top2Fingerprint`. */
   rowTop2Fingerprint?: string | null;
   rrmSimReadonlySummary: RrmSimReadonlySummaryPayloadV1 | null;
-  guardrailsReadonly: MultiSourceGuardrailsSourceReadonly;
 };
 
 export type RrmTop2DisplayEligibilityResult =
@@ -138,21 +137,28 @@ export function validateRrmTop2DisplayEligibility(
     return { ok: false, noOpReasonCode: "rrm_confidence_unknown" };
   }
 
-  const gr = input.guardrailsReadonly;
-  if (gr.status === "block") {
+  /** M5.5-M0.2: RRM Top2 eligibility uses explicit `meta.guardrails` only (not matchInsights-derived placeholders). */
+  const g = meta.guardrails;
+  if (!g) {
+    return { ok: false, noOpReasonCode: "guardrails_missing" };
+  }
+  if (g.status === "block") {
     return { ok: false, noOpReasonCode: "guardrails_block" };
   }
-  if (gr.status === "caution") {
+  if (g.status === "caution") {
     return { ok: false, noOpReasonCode: "guardrails_caution" };
   }
-  if (gr.status === "not_evaluated") {
+  if (g.status === "not_evaluated") {
     return { ok: false, noOpReasonCode: "guardrails_not_evaluated" };
   }
-  if (gr.status !== "pass") {
+  if (g.status !== "pass") {
     return { ok: false, noOpReasonCode: "guardrails_pass_predicate_failed" };
   }
-  if (!Array.isArray(gr.blockReasons) || gr.blockReasons.length > 0) {
+  if (!Array.isArray(g.blockReasons) || g.blockReasons.length > 0) {
     return { ok: false, noOpReasonCode: "guardrails_pass_predicate_failed" };
+  }
+  if (!Array.isArray(g.cautionReasons) || g.cautionReasons.length > 0) {
+    return { ok: false, noOpReasonCode: "guardrails_caution" };
   }
 
   return { ok: true, noOpReasonCode: null };

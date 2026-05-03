@@ -166,6 +166,7 @@ describe("runM55M0RrmTop2DisplayFixture", () => {
     if ("withRrmSummaryFixture" in r && r.withRrmSummaryFixture) {
       expect(r.rrmSummaryParseValid).toBe(true);
       expect(r.wouldWriteMatchInsightsSummary).toBe(true);
+      expect(r.eligibilityEligible).toBe(true);
     }
   });
 
@@ -197,6 +198,12 @@ describe("runM55M0RrmTop2DisplayFixture", () => {
         appliedToWorkerRanking: false,
         rollbackAvailable: true,
         frozenAt: "2026-05-03T00:00:00.000Z",
+        guardrails: {
+          status: "pass",
+          blockReasons: [],
+          cautionReasons: [],
+          sourceVersion: "m5-local-fixture-guardrails-v1",
+        },
       },
     };
     const prisma = {
@@ -257,6 +264,12 @@ describe("runM55M0RrmTop2DisplayFixture", () => {
         appliedToWorkerRanking: false,
         rollbackAvailable: true,
         frozenAt: "2026-05-03T00:00:00.000Z",
+        guardrails: {
+          status: "pass",
+          blockReasons: [],
+          cautionReasons: [],
+          sourceVersion: "m5-local-fixture-guardrails-v1",
+        },
       },
     };
     const prisma = {

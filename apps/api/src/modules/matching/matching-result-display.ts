@@ -1,7 +1,6 @@
 import type { MatchResult } from "@peima/database";
 import type { PrismaService } from "../../common/prisma/prisma.service";
 import type { FinalMatchDecisionMetaV1 } from "./final-match-decision-meta.builder";
-import { buildGuardrailsReadonly } from "./matching-guardrails-readonly";
 import { tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights } from "./matching-rrm-sim-readonly-summary";
 import { readM5RrmTop2DisplayEnv } from "./m5-rrm-top2-display-env";
 import { readPairwiseFinalizeEnv } from "./pairwise-finalize-env";
@@ -121,7 +120,6 @@ export async function resolveMatchResultDisplay(
         const top2CandidateUserIds = [baseline, winner] as const;
 
         const summary = tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights(matchRow.matchInsights);
-        const guardrails = buildGuardrailsReadonly(null, matchRow);
 
         const elig = validateRrmTop2DisplayEligibility({
           m5RrmTop2Enabled: true,
@@ -131,7 +129,6 @@ export async function resolveMatchResultDisplay(
           rrmDisplayMeta: rrmParsed,
           rowTop2Fingerprint: rrmRow.top2Fingerprint,
           rrmSimReadonlySummary: summary,
-          guardrailsReadonly: guardrails,
         });
 
         if (elig.ok) {

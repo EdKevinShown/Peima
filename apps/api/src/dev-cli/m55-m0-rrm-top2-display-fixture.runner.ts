@@ -3,7 +3,6 @@
  */
 import type { Prisma } from "@peima/database";
 import type { MatchResult, PrismaClient } from "@peima/database";
-import { buildGuardrailsReadonly } from "../modules/matching/matching-guardrails-readonly";
 import {
   RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY,
   tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights,
@@ -138,6 +137,12 @@ function buildRrmDisplayMetaJson(args: {
     appliedToWorkerRanking: false,
     rollbackAvailable: true,
     frozenAt: nowIso,
+    guardrails: {
+      status: "pass",
+      blockReasons: [],
+      cautionReasons: [],
+      sourceVersion: "m5-local-fixture-guardrails-v1",
+    },
   };
 }
 
@@ -201,7 +206,6 @@ export async function runM55M0RrmTop2DisplayFixture(
     : row.matchInsights;
 
   const summary = tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights(insightsForParse);
-  const guardrails = buildGuardrailsReadonly(null, row);
   const elig = validateRrmTop2DisplayEligibility({
     m5RrmTop2Enabled: true,
     matchResultCandidateUserId: row.candidateUserId,
@@ -210,7 +214,6 @@ export async function runM55M0RrmTop2DisplayFixture(
     rrmDisplayMeta: parsed,
     rowTop2Fingerprint: opts.top2Fingerprint,
     rrmSimReadonlySummary: summary,
-    guardrailsReadonly: guardrails,
   });
 
   const prismaPayload = {

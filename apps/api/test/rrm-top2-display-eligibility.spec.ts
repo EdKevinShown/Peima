@@ -3,14 +3,16 @@ import { RRM_SIM_READONLY_SUMMARY_SOURCE_TYPE } from "../src/modules/matching/ma
 import { RRM_SIM_SOURCE_VERSION } from "../src/modules/ai-simulation-v1/rrm-sim.constants";
 import { validateRrmTop2DisplayEligibility } from "../src/modules/matching/rrm-top2-display-eligibility";
 import type { MatchResultRrmTop2DisplayMetaV1 } from "../src/modules/matching/rrm-top2-display-meta.types";
+import type { RrmTop2DisplayMetaGuardrailsV1 } from "../src/modules/matching/rrm-top2-display-meta.types";
 import { MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE } from "../src/modules/matching/rrm-top2-display-meta.types";
 
-function guardPass() {
+function explicitGuardrails(over: Partial<RrmTop2DisplayMetaGuardrailsV1> = {}): RrmTop2DisplayMetaGuardrailsV1 {
   return {
-    status: "pass" as const,
-    blockReasons: [] as string[],
-    cautionReasons: [] as string[],
-    sourceSummary: "no_viewer_safe_caution_signals",
+    status: "pass",
+    blockReasons: [],
+    cautionReasons: [],
+    sourceVersion: "m5-test-guardrails-v1",
+    ...over,
   };
 }
 
@@ -27,8 +29,15 @@ function meta(over: Partial<MatchResultRrmTop2DisplayMetaV1> = {}): MatchResultR
     appliedToFinalScore: false,
     appliedToWorkerRanking: false,
     rollbackAvailable: true,
+    guardrails: explicitGuardrails(),
     ...over,
   };
+}
+
+function metaWithoutGuardrails(): MatchResultRrmTop2DisplayMetaV1 {
+  const m = meta();
+  const { guardrails: _g, ...rest } = m;
+  return rest as MatchResultRrmTop2DisplayMetaV1;
 }
 
 function summary(over: Partial<RrmSimReadonlySummaryPayloadV1> = {}): RrmSimReadonlySummaryPayloadV1 {
@@ -55,7 +64,7 @@ function summary(over: Partial<RrmSimReadonlySummaryPayloadV1> = {}): RrmSimRead
 }
 
 describe("validateRrmTop2DisplayEligibility", () => {
-  it("returns ok when all gates pass", () => {
+  it("returns ok when all gates pass (explicit meta guardrails pass)", () => {
     const r = validateRrmTop2DisplayEligibility({
       m5RrmTop2Enabled: true,
       matchResultCandidateUserId: "baseline_x",
@@ -64,7 +73,6 @@ describe("validateRrmTop2DisplayEligibility", () => {
       rrmDisplayMeta: meta(),
       rowTop2Fingerprint: "fp_stable",
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(true);
     expect(r.noOpReasonCode).toBeNull();
@@ -78,7 +86,6 @@ describe("validateRrmTop2DisplayEligibility", () => {
       top2Fingerprint: "fp_stable",
       rrmDisplayMeta: meta(),
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("env_off");
@@ -92,10 +99,22 @@ describe("validateRrmTop2DisplayEligibility", () => {
       top2Fingerprint: "fp_stable",
       rrmDisplayMeta: null,
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("meta_missing");
+  });
+
+  it("guardrails_missing when meta omits guardrails", () => {
+    const r = validateRrmTop2DisplayEligibility({
+      m5RrmTop2Enabled: true,
+      matchResultCandidateUserId: "baseline_x",
+      top2CandidateUserIds: ["baseline_x", "winner_x"],
+      top2Fingerprint: "fp_stable",
+      rrmDisplayMeta: metaWithoutGuardrails(),
+      rrmSimReadonlySummary: summary(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_missing");
   });
 
   it("baseline_mismatch", () => {
@@ -106,7 +125,6 @@ describe("validateRrmTop2DisplayEligibility", () => {
       top2Fingerprint: "fp_stable",
       rrmDisplayMeta: meta(),
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("baseline_mismatch");
@@ -121,29 +139,84 @@ describe("validateRrmTop2DisplayEligibility", () => {
       rrmDisplayMeta: meta(),
       rowTop2Fingerprint: "other_fp",
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("fingerprint_mismatch");
   });
 
-  it("guardrails_caution", () => {
+  it("guardrails_caution from explicit meta", () => {
     const r = validateRrmTop2DisplayEligibility({
       m5RrmTop2Enabled: true,
       matchResultCandidateUserId: "baseline_x",
       top2CandidateUserIds: ["baseline_x", "winner_x"],
       top2Fingerprint: "fp_stable",
-      rrmDisplayMeta: meta(),
+      rrmDisplayMeta: meta({
+        guardrails: explicitGuardrails({ status: "caution", cautionReasons: ["x"], blockReasons: [] }),
+      }),
       rrmSimReadonlySummary: summary(),
-      guardrailsReadonly: {
-        status: "caution",
-        blockReasons: [],
-        cautionReasons: ["x"],
-        sourceSummary: "caution",
-      },
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_caution");
+  });
+
+  it("guardrails_block from explicit meta", () => {
+    const r = validateRrmTop2DisplayEligibility({
+      m5RrmTop2Enabled: true,
+      matchResultCandidateUserId: "baseline_x",
+      top2CandidateUserIds: ["baseline_x", "winner_x"],
+      top2Fingerprint: "fp_stable",
+      rrmDisplayMeta: meta({
+        guardrails: explicitGuardrails({ status: "block", blockReasons: ["b"], cautionReasons: [] }),
+      }),
+      rrmSimReadonlySummary: summary(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_block");
+  });
+
+  it("guardrails_not_evaluated from explicit meta", () => {
+    const r = validateRrmTop2DisplayEligibility({
+      m5RrmTop2Enabled: true,
+      matchResultCandidateUserId: "baseline_x",
+      top2CandidateUserIds: ["baseline_x", "winner_x"],
+      top2Fingerprint: "fp_stable",
+      rrmDisplayMeta: meta({
+        guardrails: explicitGuardrails({ status: "not_evaluated", blockReasons: [], cautionReasons: [] }),
+      }),
+      rrmSimReadonlySummary: summary(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_not_evaluated");
+  });
+
+  it("guardrails_caution when status pass but cautionReasons non-empty", () => {
+    const r = validateRrmTop2DisplayEligibility({
+      m5RrmTop2Enabled: true,
+      matchResultCandidateUserId: "baseline_x",
+      top2CandidateUserIds: ["baseline_x", "winner_x"],
+      top2Fingerprint: "fp_stable",
+      rrmDisplayMeta: meta({
+        guardrails: explicitGuardrails({ status: "pass", cautionReasons: ["leak"], blockReasons: [] }),
+      }),
+      rrmSimReadonlySummary: summary(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_caution");
+  });
+
+  it("guardrails_pass_predicate_failed when status pass but blockReasons non-empty", () => {
+    const r = validateRrmTop2DisplayEligibility({
+      m5RrmTop2Enabled: true,
+      matchResultCandidateUserId: "baseline_x",
+      top2CandidateUserIds: ["baseline_x", "winner_x"],
+      top2Fingerprint: "fp_stable",
+      rrmDisplayMeta: meta({
+        guardrails: explicitGuardrails({ status: "pass", blockReasons: ["x"], cautionReasons: [] }),
+      }),
+      rrmSimReadonlySummary: summary(),
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.noOpReasonCode).toBe("guardrails_pass_predicate_failed");
   });
 
   it("rrm_confidence_low", () => {
@@ -154,7 +227,6 @@ describe("validateRrmTop2DisplayEligibility", () => {
       top2Fingerprint: "fp_stable",
       rrmDisplayMeta: meta(),
       rrmSimReadonlySummary: summary({ confidenceBucket: "low" }),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("rrm_confidence_low");
@@ -168,7 +240,6 @@ describe("validateRrmTop2DisplayEligibility", () => {
       top2Fingerprint: "fp_stable",
       rrmDisplayMeta: meta({ newDisplayCandidateUserId: "baseline_x" }),
       rrmSimReadonlySummary: summary({ winnerUserId: "winner_x" }),
-      guardrailsReadonly: guardPass(),
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.noOpReasonCode).toBe("rrm_meta_winner_mismatch");

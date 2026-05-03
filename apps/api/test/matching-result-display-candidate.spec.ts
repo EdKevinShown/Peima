@@ -90,8 +90,20 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       appliedToFinalScore: false,
       appliedToWorkerRanking: false,
       rollbackAvailable: true,
+      guardrails: {
+        status: "pass",
+        blockReasons: [],
+        cautionReasons: [],
+        sourceVersion: "m5-local-fixture-guardrails-v1",
+      },
       ...over,
     };
+  }
+
+  function rrmDisplayMetaJsonWithoutGuardrails(): Record<string, unknown> {
+    const o = rrmDisplayMetaJson();
+    const { guardrails: _g, ...rest } = o;
+    return rest;
   }
 
   function mockPrisma(opts: {
@@ -436,12 +448,12 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       expect(r.displaySourceType).toBe("rrm_top2_bounded_selector");
     });
 
-    it("RRM env on but ineligible → falls back to pairwise", async () => {
+    it("RRM env on but ineligible (guardrails_missing on meta) → falls back to pairwise", async () => {
       process.env.PEIMA_M5_RRM_TOP2_ENABLED = "1";
       process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
       process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
       const prisma = mockPrisma({
-        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJson(), top2Fingerprint: "fp_rrm_1" },
+        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJsonWithoutGuardrails(), top2Fingerprint: "fp_rrm_1" },
         finalizeRows: [
           {
             frozen: true,
@@ -467,6 +479,45 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
         } as Partial<MatchResult>),
       );
       expect(r.displaySourceType).toBe("pairwise_final");
+    });
+
+    it("matchInsights placeholder cautions do not block RRM when meta explicit guardrails pass", async () => {
+      process.env.PEIMA_M5_RRM_TOP2_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        rrmTop2Row: { frozen: true, meta: rrmDisplayMetaJson(), top2Fingerprint: "fp_rrm_1" },
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSimSummaryPayload("cand-winner", "cand-static"),
+            explanation: {
+              cautions: ["仍需线下沟通验证真实相处感受（规则占位）"],
+              whyMatch: "",
+              strengths: [],
+              rhythmPrediction: "",
+            },
+            riskFlags: [],
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("rrm_top2_bounded_selector");
+      expect(r.displayCandidateUserId).toBe("cand-winner");
     });
   });
 });
