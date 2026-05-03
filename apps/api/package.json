@@ -18,7 +18,8 @@
     "m55-m2:rrm-top2-meta-writer": "node dist/dev-cli/m55-m2-rrm-top2-meta-writer-cli.js",
     "m55-m4:rrm-top2-production-hook": "node dist/dev-cli/m55-m4-rrm-top2-production-hook-cli.js",
     "m56-b3:rrm-top2-hook-job": "node dist/dev-cli/m56-b3-rrm-top2-hook-job-cli.js",
-    "m56-b4b:rrm-top2-hook-job-consumer": "node dist/dev-cli/m56-b4b-rrm-top2-hook-job-consumer-cli.js"
+    "m56-b4b:rrm-top2-hook-job-consumer": "node dist/dev-cli/m56-b4b-rrm-top2-hook-job-consumer-cli.js",
+    "m56-b5:rrm-top2-hook-job-apply": "node dist/dev-cli/m56-b5-rrm-top2-hook-job-apply-cli.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
