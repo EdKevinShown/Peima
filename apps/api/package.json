@@ -13,7 +13,8 @@
     "test": "jest --config ./jest.config.cjs",
     "test:e2e": "jest --config ./jest-e2e.config.cjs --runInBand",
     "test:e2e:orch-anchor": "jest --config ./jest-e2e.config.cjs --runInBand --testPathPattern=run-orchestration-mvp",
-    "m5-m4b:shadow-audit-runner": "node dist/dev-cli/m5-m4b-shadow-audit-runner.js"
+    "m5-m4b:shadow-audit-runner": "node dist/dev-cli/m5-m4b-shadow-audit-runner.js",
+    "m55-m0:rrm-top2-display-fixture": "node dist/dev-cli/m55-m0-rrm-top2-display-fixture.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
