@@ -10,6 +10,7 @@ import type {
   WriteRrmTop2DisplayMetaForMatchResultResult,
 } from "../src/modules/matching/matching-rrm-top2-display-meta-writer";
 import * as hookJobSvc from "../src/modules/matching/rrm-top2-hook-job.service";
+import * as applySvc from "../src/modules/matching/rrm-top2-hook-job-apply.service";
 import {
   isM56B5WriterNoOpSkipReason,
   M56_B5_WRITER_NO_OP_SKIP_CODES,
@@ -191,9 +192,25 @@ describe("m56-b5-rrm-top2-hook-job-apply-runner (M5.6-B5-B)", () => {
     markP.mockRestore();
   });
 
+  it("no --apply → delegates to shared dry-run aggregate", async () => {
+    process.env.NODE_ENV = "test";
+    const spy = jest.spyOn(applySvc, "processRrmTop2HookJobsDryRunAggregate");
+    const p = prismaFactory({});
+    await runM56B5HookJobApplyRunner(p, {
+      limit: 2,
+      pretty: false,
+      apply: false,
+      confirmControlledApply: false,
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toMatchObject({ prisma: p, limit: 2 });
+    spy.mockRestore();
+  });
+
   it("--apply without confirm → refused, no mark calls", async () => {
     process.env.NODE_ENV = "test";
     const markP = jest.spyOn(hookJobSvc, "markRrmTop2HookJobProcessing");
+    const applySpy = jest.spyOn(applySvc, "processRrmTop2HookJobsApplyBatch");
     const p = prismaFactory({});
     const r = await runM56B5HookJobApplyRunner(p, {
       limit: 1,
@@ -203,7 +220,38 @@ describe("m56-b5-rrm-top2-hook-job-apply-runner (M5.6-B5-B)", () => {
     });
     expect(r).toMatchObject({ refused: true, reason: "apply_confirmation_required" });
     expect(markP).not.toHaveBeenCalled();
+    expect(applySpy).not.toHaveBeenCalled();
     markP.mockRestore();
+    applySpy.mockRestore();
+  });
+
+  it("--apply + confirm → delegates to shared apply batch", async () => {
+    process.env.NODE_ENV = "test";
+    const job = baseJob();
+    const applySpy = jest.spyOn(applySvc, "processRrmTop2HookJobsApplyBatch");
+    const writer = jest.fn(
+      async (): Promise<WriteRrmTop2DisplayMetaForMatchResultResult> => ({
+        ok: true,
+        dryRun: false,
+        wroteSummary: false,
+        wroteMeta: true,
+        noOpReasonCode: null,
+        matchResultId: job.matchResultId,
+        sourceVersion: "sv",
+        displayCandidateUserId: "cand-b",
+        candidateUserIdUnchanged: true,
+        finalScoreUnchanged: true,
+      }),
+    );
+    const p = prismaFactory({});
+    await runM56B5HookJobApplyRunner(
+      p,
+      { limit: 1, pretty: false, apply: true, confirmControlledApply: true },
+      { findPendingRrmTop2HookJobs: async () => [job], writeRrmTop2DisplayMetaForMatchResult: writer },
+    );
+    expect(applySpy).toHaveBeenCalledTimes(1);
+    expect(applySpy.mock.calls[0][0]).toMatchObject({ prisma: p, limit: 1 });
+    applySpy.mockRestore();
   });
 
   it("parse: default limit 1, max 10", () => {
