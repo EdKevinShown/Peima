@@ -632,27 +632,47 @@ export default function FinalMatchPage() {
     if (!userId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
-      const conv = await createConversation(userId);
-      navigate(
-        `/chat?conversationId=${encodeURIComponent(conv.id)}&userId=${encodeURIComponent(userId)}`,
-      );
+      const conv = result?.id
+        ? await createConversation(userId, { matchResultId: result.id })
+        : await createConversation(userId);
+      const q = new URLSearchParams();
+      q.set("conversationId", conv.id);
+      q.set("userId", userId);
+      if (result?.id) {
+        q.set("fromFinalMatch", "1");
+        q.set("matchResultId", result.id);
+      }
+      if (isRrmDisplay) {
+        q.set("rhythmRecommended", "1");
+      }
+      navigate(`/chat?${q.toString()}`);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate]);
+  }, [userId, navigate, result?.id, isRrmDisplay]);
 
   const onViewTimeline = useCallback(async () => {
     if (!userId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
-      const conv = await createConversation(userId);
-      navigate(
-        `/chat/timeline?conversationId=${encodeURIComponent(conv.id)}&userId=${encodeURIComponent(userId)}`,
-      );
+      const conv = result?.id
+        ? await createConversation(userId, { matchResultId: result.id })
+        : await createConversation(userId);
+      const q = new URLSearchParams();
+      q.set("conversationId", conv.id);
+      q.set("userId", userId);
+      if (result?.id) {
+        q.set("fromFinalMatch", "1");
+        q.set("matchResultId", result.id);
+      }
+      if (isRrmDisplay) {
+        q.set("rhythmRecommended", "1");
+      }
+      navigate(`/chat/timeline?${q.toString()}`);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate]);
+  }, [userId, navigate, result?.id, isRrmDisplay]);
 
   return (
     <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>

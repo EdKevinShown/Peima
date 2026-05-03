@@ -18,14 +18,24 @@ export type Conversation = {
   }[];
 };
 
-export async function createConversation(userId: string) {
+export type CreateConversationOptions = {
+  /** M5.5-Chat-R2A: server resolves chat peer from this row + `resolveMatchResultDisplay`. */
+  matchResultId?: string;
+};
+
+export async function createConversation(userId: string, options?: CreateConversationOptions) {
+  const body: { userId: string; matchResultId?: string } = { userId };
+  const mid = options?.matchResultId?.trim();
+  if (mid) {
+    body.matchResultId = mid;
+  }
   const res = await fetch(`${baseUrl}/chat/conversations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(),
     },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify(body),
   });
   return handleJson<unknown>(res);
 }

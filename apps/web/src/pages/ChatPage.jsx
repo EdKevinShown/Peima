@@ -38,6 +38,8 @@ export default function ChatPage() {
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const matchResultIdParam =
     searchParams.get("matchResultId")?.trim() || undefined;
+  const fromFinalMatchHandoff = searchParams.get("fromFinalMatch") === "1";
+  const rhythmRecommendedHandoff = searchParams.get("rhythmRecommended") === "1";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const { ensureConversationError, shouldHoldForConversationBootstrap } =
     useEnsureConversationInUrl(searchParams);
@@ -83,6 +85,8 @@ export default function ChatPage() {
   const [profileCompletionSuggestBusy, setProfileCompletionSuggestBusy] = useState(false);
   const [profileCompletionSuggestOk, setProfileCompletionSuggestOk] = useState(null);
   const [profileCompletionSuggestErr, setProfileCompletionSuggestErr] = useState(null);
+  /** M5.5-Chat-R2A: optional rhythm hint from Final Match handoff (dismissible). */
+  const [rhythmHandoffDismissed, setRhythmHandoffDismissed] = useState(false);
 
   const load = useCallback(async (source = "manual") => {
     if (!conversationId) {
@@ -956,6 +960,58 @@ export default function ChatPage() {
 
       {!loading && !error && conversation && (
         <section style={{ border: "1px solid #ddd", borderRadius: 8 }}>
+          {fromFinalMatchHandoff && rhythmRecommendedHandoff && !rhythmHandoffDismissed ? (
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderBottom: "1px solid #e2e8f0",
+                background: "#f8fafc",
+              }}
+              aria-label="聊天节奏建议"
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                <h2 style={{ fontSize: "0.95rem", margin: 0, fontWeight: 600, color: "#0f172a" }}>聊天节奏建议</h2>
+                <button
+                  type="button"
+                  onClick={() => setRhythmHandoffDismissed(true)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    fontSize: "0.82rem",
+                    padding: "0.1rem 0.25rem",
+                  }}
+                >
+                  收起
+                </button>
+              </div>
+              <p style={{ margin: "0.45rem 0 0.55rem", fontSize: "0.86rem", color: "#334155", lineHeight: 1.55 }}>
+                这次推荐已经结合了基础适配和相处节奏。建议先从轻松话题开始，观察双方回应是否自然，再慢慢深入。
+              </p>
+              <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", fontWeight: 600, color: "#475569" }}>快捷话题（仅填入输入框，不会自动发送）</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {["同城周末通常怎么安排？", "最近一件让你开心的小事？", "你平时更喜欢怎样的聊天节奏？"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setContent((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+                    style={{
+                      fontSize: "0.8rem",
+                      padding: "0.35rem 0.55rem",
+                      borderRadius: 999,
+                      border: "1px solid #cbd5e1",
+                      background: "#fff",
+                      color: "#334155",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div style={{ padding: "0.75rem 1rem", background: "#fafafa" }}>
             <div style={{ fontSize: "0.95rem", color: "#333" }}>
               viewer: <code>{conversation.viewerUserId}</code>
