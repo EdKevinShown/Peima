@@ -12,7 +12,12 @@ import {
 } from "../api/ai-pairwise-decision";
 import { getViewerAiSimulationV1Job, postAdminAiSimulationV1RunJob } from "../api/ai-simulation-v1";
 import { getToken } from "../api/auth";
-import { enqueueMatching, finalizeWithPairwise, getMatchingStatus } from "../api/matching";
+import {
+  enqueueMatching,
+  finalizeWithPairwise,
+  getMatchingResult,
+  getMatchingStatus,
+} from "../api/matching";
 import { getLatestPreviewPool } from "../api/previewPool";
 import {
   getTestMatchingCapabilities,
@@ -73,6 +78,10 @@ function ssPairwiseJobId(userId, poolId) {
 const PAIRWISE_POLL_MS = 5000;
 const PAIRWISE_DEADLINE_MS = 90_000;
 
+/** M5.4-M1：rematch 模式下轮询新 MatchResult.id，避免旧 ready 直接跳 final。 */
+const REMATCH_LATEST_POLL_MS = 2500;
+const REMATCH_READY_MAX_MS = 5 * 60 * 1000;
+
 function bindingPreviewPoolId(shortlistBinding) {
   if (shortlistBinding == null || typeof shortlistBinding !== "object" || Array.isArray(shortlistBinding)) {
     return null;
@@ -102,6 +111,14 @@ export default function MatchingWaitingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const baselineResultId = useMemo(
+    () => (searchParams.get("baselineResultId") || "").trim(),
+    [searchParams],
+  );
+  const isRematchMode = useMemo(
+    () => searchParams.get("rematch") === "1" && baselineResultId.length > 0,
+    [searchParams, baselineResultId],
+  );
 
   const [statusPayload, setStatusPayload] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -122,6 +139,14 @@ export default function MatchingWaitingPage() {
   const [readyAiFallback, setReadyAiFallback] = useState(false);
   const [readyAiError, setReadyAiError] = useState("");
   const navigatedToFinalRef = useRef(false);
+  /** M5.4-M1：status 已是 ready 但 GET result 仍为 baseline 行时，禁止走自动跳转链。 */
+  const [rematchAwaitingNewRow, setRematchAwaitingNewRow] = useState(false);
+  const [rematchNewResultNonce, setRematchNewResultNonce] = useState(0);
+  const [rematchReadyWaitError, setRematchReadyWaitError] = useState(
+    /** @type {string | null} */
+    (null),
+  );
+  const rematchStaleWaitStartedAtRef = useRef(null);
 
   /** M3.8-M6: viewer pairwise poll (no A/B UI; does not gate FinalMatch navigation). */
   const [pairwiseJobId, setPairwiseJobId] = useState(null);
@@ -215,6 +240,43 @@ export default function MatchingWaitingPage() {
     [navigate],
   );
 
+  /** M5.4-M1：rematch 且仍卡在旧 result 时轮询 GET result，超时则提示错误。 */
+  useEffect(() => {
+    if (!userId || !isRematchMode || !baselineResultId) return;
+    if (!rematchAwaitingNewRow) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      const started = rematchStaleWaitStartedAtRef.current;
+      if (started != null && Date.now() - started > REMATCH_READY_MAX_MS) {
+        setRematchReadyWaitError("等待新匹配结果超时，请返回最终结果页重试或使用「重新匹配」。");
+        setRematchAwaitingNewRow(false);
+        rematchStaleWaitStartedAtRef.current = null;
+        return;
+      }
+      try {
+        const latest = await getMatchingResult(userId);
+        if (cancelled) return;
+        if (latest?.id && latest.id !== baselineResultId) {
+          rematchStaleWaitStartedAtRef.current = null;
+          setRematchAwaitingNewRow(false);
+          setRematchReadyWaitError(null);
+          setRematchNewResultNonce((n) => n + 1);
+        }
+      } catch {
+        /* 单次失败不阻塞；依赖下次 tick */
+      }
+    };
+
+    const id = window.setInterval(() => void tick(), REMATCH_LATEST_POLL_MS);
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [userId, isRematchMode, baselineResultId, rematchAwaitingNewRow]);
+
   /** ready + 有池：编排 / GET job / run（带 session 防重），不离开本页直至 completed 可消费后 navigate */
   useEffect(() => {
     if (!userId || statusPayload?.status !== "ready") {
@@ -224,6 +286,9 @@ export default function MatchingWaitingPage() {
       setReadyPoolId(null);
       setReadyAiFallback(false);
       setReadyAiError("");
+      setRematchAwaitingNewRow(false);
+      setRematchReadyWaitError(null);
+      rematchStaleWaitStartedAtRef.current = null;
       return;
     }
 
@@ -264,11 +329,44 @@ export default function MatchingWaitingPage() {
     };
 
     (async () => {
+      setReadyAiFallback(false);
+      setReadyAiError("");
+
+      if (isRematchMode && baselineResultId) {
+        try {
+          const latest = await getMatchingResult(userId);
+          if (cancelled) return;
+          if (latest?.id === baselineResultId) {
+            setReadyPoolLoading(false);
+            setReadyPoolMissing(false);
+            setReadyPoolId(null);
+            setRematchAwaitingNewRow(true);
+            setRematchReadyWaitError(null);
+            rematchStaleWaitStartedAtRef.current =
+              rematchStaleWaitStartedAtRef.current ?? Date.now();
+            return;
+          }
+        } catch (e) {
+          if (!cancelled) {
+            setReadyPoolLoading(false);
+            setReadyPoolMissing(false);
+            setReadyPoolId(null);
+            setError(e instanceof Error ? e : new Error(String(e)));
+          }
+          return;
+        }
+        rematchStaleWaitStartedAtRef.current = null;
+        setRematchAwaitingNewRow(false);
+        setRematchReadyWaitError(null);
+      } else {
+        setRematchAwaitingNewRow(false);
+        setRematchReadyWaitError(null);
+        rematchStaleWaitStartedAtRef.current = null;
+      }
+
       setReadyPoolLoading(true);
       setReadyPoolMissing(false);
       setReadyPoolId(null);
-      setReadyAiFallback(false);
-      setReadyAiError("");
 
       let poolId = "";
       try {
@@ -400,7 +498,15 @@ export default function MatchingWaitingPage() {
     return () => {
       cancelled = true;
     };
-  }, [userId, statusPayload?.status, tryAutoRunJobOnce, navigateFinalWithJob]);
+  }, [
+    userId,
+    statusPayload?.status,
+    tryAutoRunJobOnce,
+    navigateFinalWithJob,
+    isRematchMode,
+    baselineResultId,
+    rematchNewResultNonce,
+  ]);
 
   /** M3.8-M6: pairwise create → run → poll (5s / 90s cap); does not block orchestration or FinalMatch. */
   useEffect(() => {
@@ -675,6 +781,10 @@ export default function MatchingWaitingPage() {
   };
 
   const st = statusPayload?.status;
+  const primaryStatusLine =
+    st === "ready" && isRematchMode && rematchAwaitingNewRow
+      ? "上一轮结果仍显示为「已完成」；正在等待本轮新匹配写入…"
+      : messageForStatus(st);
 
   const pairwisePrimaryLine =
     pairwiseStatus === "idle" || pairwiseStatus === "skipped"
@@ -724,10 +834,20 @@ export default function MatchingWaitingPage() {
           {error.message}
         </p>
       )}
+      {rematchReadyWaitError ? (
+        <p style={{ color: "#b00020", marginTop: "0.5rem" }} role="alert">
+          {rematchReadyWaitError}
+        </p>
+      ) : null}
+      {isRematchMode && rematchAwaitingNewRow && !rematchReadyWaitError ? (
+        <p style={{ color: "#475569", fontSize: "0.88rem", marginTop: "0.5rem", lineHeight: 1.55 }} role="status">
+          已发起重新匹配：当前服务端仍为上一轮结果，正在等待新匹配写入后再进入最终结果页（请勿关闭本页）。
+        </p>
+      ) : null}
 
       {!loading && statusPayload && (
         <p style={{ fontSize: "1.05rem", marginTop: "1rem" }}>
-          {messageForStatus(statusPayload.status)}
+          {primaryStatusLine}
         </p>
       )}
 

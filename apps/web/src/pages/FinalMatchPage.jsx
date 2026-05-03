@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { getMatchingResult } from "../api/matching";
+import { enqueueMatching, getMatchingResult } from "../api/matching";
 import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import { getInteractionSimulationLite } from "../api/interaction-simulation-lite";
 import { getMatchReadoutFusion } from "../api/match-readout-fusion";
@@ -540,6 +540,9 @@ export default function FinalMatchPage() {
   const [deeplinkJobIdInput, setDeeplinkJobIdInput] = useState("");
   const [generatedDeeplink, setGeneratedDeeplink] = useState("");
   const [deeplinkCopyStatus, setDeeplinkCopyStatus] = useState("");
+  /** M5.4-M1：重新入队后去等待页，避免旧 ready 立刻跳回 final。 */
+  const [rematchLoading, setRematchLoading] = useState(false);
+  const [rematchError, setRematchError] = useState(null);
   /** M3.8-M13: 展示与下游 API（复审 / 侧车）一致用 displayCandidateUserId，无则回退 MatchResult.candidateUserId。 */
   const effectiveDisplayCandidateId = useMemo(
     () => String(result?.displayCandidateUserId || result?.candidateUserId || "").trim(),
@@ -745,6 +748,23 @@ export default function FinalMatchPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const onRematchEnqueue = useCallback(async () => {
+    if (!userId || !result?.id) return;
+    setRematchLoading(true);
+    setRematchError(null);
+    try {
+      await enqueueMatching(userId);
+      navigate(
+        `/matching-waiting?userId=${encodeURIComponent(userId)}&rematch=1&baselineResultId=${encodeURIComponent(result.id)}`,
+        { replace: true },
+      );
+    } catch (e) {
+      setRematchError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRematchLoading(false);
+    }
+  }, [userId, result?.id, navigate]);
 
   useEffect(() => {
     if (aiSimJobId) {
@@ -1275,7 +1295,34 @@ export default function FinalMatchPage() {
 
       {!loading && !error && result && (
         <article>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.5rem" }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.65rem",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => void onRematchEnqueue()}
+              disabled={rematchLoading || !userId}
+              style={{
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                padding: "0.35rem 0.75rem",
+                borderRadius: 6,
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                color: "#0f172a",
+                cursor: rematchLoading || !userId ? "not-allowed" : "pointer",
+                opacity: rematchLoading || !userId ? 0.65 : 1,
+              }}
+            >
+              {rematchLoading ? "处理中…" : "重新匹配"}
+            </button>
             <Link
               to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
               style={{ fontSize: "0.82rem", color: "#64748b", whiteSpace: "nowrap" }}
@@ -1283,6 +1330,11 @@ export default function FinalMatchPage() {
               返回等待页
             </Link>
           </div>
+          {rematchError ? (
+            <p style={{ color: "#b00020", fontSize: "0.85rem", marginBottom: "0.75rem" }} role="alert">
+              {rematchError}
+            </p>
+          ) : null}
           <FinalMatchHero
             readoutFusion={readoutFusion}
             matchInsights={isValidMatchInsights(result.matchInsights) ? result.matchInsights : null}
