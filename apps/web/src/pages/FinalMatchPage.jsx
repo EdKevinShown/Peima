@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { enqueueMatching, getMatchingResult } from "../api/matching";
+import { generatePreviewPool } from "../api/previewPool";
 import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import { getInteractionSimulationLite } from "../api/interaction-simulation-lite";
 import { getMatchReadoutFusion } from "../api/match-readout-fusion";
@@ -501,6 +502,21 @@ function formatLiteVerdictZh(verdict) {
   return "建议先放缓";
 }
 
+/** M5.4-M2：首跳 enqueue 失败时，仅在错误形态像「池 / 候选」问题时再尝试 generate + 二次 enqueue。 */
+function shouldAttemptPreviewPoolRematchFallback(err) {
+  const text = (err instanceof Error ? err.message : String(err)).trim();
+  if (!text) return false;
+  if (/未登录|token\s*无效|401|没有权限|403|userId\s*mismatch|questionnaire|must complete/i.test(text)) {
+    return false;
+  }
+  return /\bpool\b|preview|active|候选|匹配池|candidate|items?|queue|batch|scored|empty|not found|404|unavailable|NO_ACTIVE/i.test(
+    text,
+  );
+}
+
+const REMATCH_USER_FACING_FAILURE =
+  "重新匹配失败，请稍后再试。若问题持续，请先返回预览池重新生成候选。";
+
 /** Internal: full URL for Final Match + AI simulation sidecar query params. */
 function buildFinalMatchDeeplink(viewerUserId, simulationJobId) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -542,6 +558,8 @@ export default function FinalMatchPage() {
   const [deeplinkCopyStatus, setDeeplinkCopyStatus] = useState("");
   /** M5.4-M1：重新入队后去等待页，避免旧 ready 立刻跳回 final。 */
   const [rematchLoading, setRematchLoading] = useState(false);
+  /** M5.4-M2：generate + 二次 enqueue 阶段。 */
+  const [rematchPreparingPool, setRematchPreparingPool] = useState(false);
   const [rematchError, setRematchError] = useState(null);
   /** M3.8-M13: 展示与下游 API（复审 / 侧车）一致用 displayCandidateUserId，无则回退 MatchResult.candidateUserId。 */
   const effectiveDisplayCandidateId = useMemo(
@@ -752,15 +770,44 @@ export default function FinalMatchPage() {
   const onRematchEnqueue = useCallback(async () => {
     if (!userId || !result?.id) return;
     setRematchLoading(true);
+    setRematchPreparingPool(false);
     setRematchError(null);
-    try {
-      await enqueueMatching(userId);
+
+    const goWaiting = () => {
       navigate(
         `/matching-waiting?userId=${encodeURIComponent(userId)}&rematch=1&baselineResultId=${encodeURIComponent(result.id)}`,
         { replace: true },
       );
-    } catch (e) {
-      setRematchError(e instanceof Error ? e.message : String(e));
+    };
+
+    try {
+      await enqueueMatching(userId);
+      goWaiting();
+    } catch (firstErr) {
+      console.warn("[rematch] first enqueueMatching failed", firstErr);
+      if (!shouldAttemptPreviewPoolRematchFallback(firstErr)) {
+        setRematchError(REMATCH_USER_FACING_FAILURE);
+        return;
+      }
+      setRematchPreparingPool(true);
+      try {
+        try {
+          await generatePreviewPool(userId);
+        } catch (genErr) {
+          console.warn("[rematch] generatePreviewPool failed", genErr);
+          setRematchError(REMATCH_USER_FACING_FAILURE);
+          return;
+        }
+        try {
+          await enqueueMatching(userId);
+          goWaiting();
+        } catch (secondErr) {
+          console.warn("[rematch] second enqueueMatching failed", secondErr);
+          setRematchError(REMATCH_USER_FACING_FAILURE);
+        }
+      } finally {
+        setRematchPreparingPool(false);
+      }
     } finally {
       setRematchLoading(false);
     }
@@ -1321,7 +1368,11 @@ export default function FinalMatchPage() {
                 opacity: rematchLoading || !userId ? 0.65 : 1,
               }}
             >
-              {rematchLoading ? "处理中…" : "重新匹配"}
+              {rematchPreparingPool
+                ? "正在重新准备候选池并发起匹配…"
+                : rematchLoading
+                  ? "处理中…"
+                  : "重新匹配"}
             </button>
             <Link
               to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
