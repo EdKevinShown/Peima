@@ -1,6 +1,6 @@
 /**
  * M5.2-M2A — viewer-safe `matchInsights.rrmSimReadonlySummary` payload builders (pure functions).
- * No DB, no env, no GET wiring. Persistence / safe-write hook: M5.2-M2B+.
+ * No DB, no env, no GET wiring. Controlled persistence: `matching-rrm-sim-readonly-summary-writer` (M5.2-M2B).
  *
  * Deferred (not built from raw transcripts / comparison blobs here):
  * - Direct `MatchingDecisionComparisonService` output → summary (use RrmSimResult or M4.0 proposal when available).
