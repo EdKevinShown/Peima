@@ -9,21 +9,18 @@ const heroStyle = {
 };
 
 /**
- * M4.3-M1 + M5.5-UI-R1: top hero — single intro + one primary score (finalScore semantics unchanged).
+ * M5.5-UI-R4: top hero — RRM 时区分「展示对象」与「基础适配分数」语义，不暗示分数含关系节奏。
  */
 export default function FinalMatchHero({
-  displaySourceType,
+  isRrmDisplay,
   finalScore,
   createdAt,
   formatScoreDisplay,
   formatDateShort,
 }) {
-  const isRrm = displaySourceType === "rrm_top2_bounded_selector";
-  const intro = pickHeroMainIntro(displaySourceType);
-  const scoreLabel = isRrm ? "基础适配指数" : "匹配指数";
-  const scoreHint = isRrm
-    ? "这个分数表示基础资料和问卷的适配参考；当前推荐还结合了相处节奏判断。"
-    : "这个分数表示资料与问卷的综合适配程度，可以帮助你理解本轮排序的参考。";
+  const intro = pickHeroMainIntro(isRrmDisplay);
+  const scoreLabel = isRrmDisplay ? "基础适配指数" : "匹配指数";
+  const scoreHintInline = "这个分数表示资料与问卷的综合适配程度，可以帮助你理解本轮排序的参考。";
 
   return (
     <header style={heroStyle}>
@@ -40,10 +37,29 @@ export default function FinalMatchHero({
         {intro}
       </p>
       <div style={{ marginTop: "0.85rem", paddingTop: "1rem", borderTop: "1px solid rgba(148,163,184,0.35)" }}>
-        <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
-          {scoreLabel}（{scoreHint}）
-        </p>
-        <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
+        {isRrmDisplay ? (
+          <>
+            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>{scoreLabel}</p>
+            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
+            <p
+              style={{
+                margin: "0.55rem 0 0",
+                fontSize: "0.82rem",
+                color: "#475569",
+                lineHeight: 1.55,
+              }}
+            >
+              这个分数来自基础资料和问卷适配度，用来帮助你理解基础匹配情况；当前展示对象还结合了相处节奏判断。
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
+              {scoreLabel}（{scoreHintInline}）
+            </p>
+            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
+          </>
+        )}
         <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>结果更新于 {formatDateShort(createdAt)}</p>
       </div>
     </header>

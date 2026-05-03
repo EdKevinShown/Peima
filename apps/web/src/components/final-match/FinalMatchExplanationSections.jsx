@@ -27,7 +27,7 @@ const subHeading = {
  * M5.5-UI-R3: plain-language sections; no raw API copy, no ellipsis truncation, no internal terms on the main path.
  */
 export default function FinalMatchExplanationSections({
-  displaySourceType,
+  isRrmDisplay,
   insights,
   openingTopics,
   interactionSim,
@@ -39,8 +39,7 @@ export default function FinalMatchExplanationSections({
   matchReviewError,
   onRequestMatchReview,
 }) {
-  const isRrm = displaySourceType === "rrm_top2_bounded_selector";
-  const whyLines = useMemo(() => plainWhyBullets(isRrm), [isRrm]);
+  const whyLines = useMemo(() => plainWhyBullets(isRrmDisplay), [isRrmDisplay]);
   const coexist = useMemo(() => buildPlainCoexistence(insights, matchReview), [insights, matchReview]);
 
   const topics = Array.isArray(openingTopics) ? openingTopics.filter((t) => typeof t === "string" && t.trim()) : [];
@@ -60,7 +59,7 @@ export default function FinalMatchExplanationSections({
         <h2 id="why-recommend-heading" style={h2}>
           为什么推荐
         </h2>
-        {isRrm ? (
+        {isRrmDisplay ? (
           <div
             style={{
               marginBottom: "0.65rem",
@@ -74,10 +73,7 @@ export default function FinalMatchExplanationSections({
           >
             <div style={{ fontWeight: 700, color: "#0f172a" }}>关系节奏推荐已启用</div>
             <div style={{ marginTop: "0.35rem" }}>
-              这次推荐不只看基础匹配，也参考了你们可能的聊天节奏和推进安全感。
-            </div>
-            <div style={{ marginTop: "0.35rem" }}>
-              顶部分数仍是资料与问卷的适配参考，请结合下方相处建议一起看。
+              系统在基础适配候选中，参考相处节奏来决定本轮展示对象。
             </div>
           </div>
         ) : null}

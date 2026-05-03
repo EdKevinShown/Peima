@@ -91,8 +91,8 @@ export function firstCompletePlainSentence(s) {
 export function plainWhyBullets(isRrm) {
   if (isRrm) {
     return [
-      "你们的基础适配度不错。",
-      "系统也参考了相处节奏，认为当前对象更适合作为本轮推荐。",
+      "你们的基础条件比较匹配。",
+      "系统也参考了相处节奏，认为当前对象更适合作为本轮展示。",
       "建议先轻松聊几次，再判断是否继续深入。",
     ];
   }

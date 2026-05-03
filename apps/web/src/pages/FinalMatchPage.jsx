@@ -358,6 +358,11 @@ export default function FinalMatchPage() {
     () => String(result?.displayCandidateUserId || result?.candidateUserId || "").trim(),
     [result?.displayCandidateUserId, result?.candidateUserId],
   );
+  /** M5.5-UI-R4: 关系节奏影响展示对象；finalScore 仍仅为基础适配参考，不由关系节奏重算。 */
+  const isRrmDisplay = useMemo(
+    () => result?.displaySourceType === "rrm_top2_bounded_selector",
+    [result?.displaySourceType],
+  );
   const sidecarStatus = useMemo(() => {
     const candidateUserId = effectiveDisplayCandidateId;
     const hasJobId = aiSimJobId.length > 0;
@@ -1157,7 +1162,7 @@ export default function FinalMatchPage() {
             </p>
           ) : null}
           <FinalMatchHero
-            displaySourceType={result.displaySourceType}
+            isRrmDisplay={isRrmDisplay}
             finalScore={result.finalScore}
             createdAt={result.createdAt}
             formatScoreDisplay={formatScoreDisplay}
@@ -1173,7 +1178,7 @@ export default function FinalMatchPage() {
           {isValidMatchInsights(result.matchInsights) ? (
             <div style={{ marginTop: "1.1rem" }}>
               <FinalMatchExplanationSections
-                displaySourceType={result.displaySourceType}
+                isRrmDisplay={isRrmDisplay}
                 insights={result.matchInsights}
                 openingTopics={result.matchInsights.openingTopics}
                 interactionSim={interactionSim}
