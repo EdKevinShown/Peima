@@ -246,141 +246,6 @@ function parseJobAuditV0(job) {
   };
 }
 
-/** Phase E v1.0 — consumer assist card gate (values align with API jobAuditV0). */
-const JOB_AUDIT_SPEC_CURRENT_SHORTLIST = "current_shortlist_contract";
-const JOB_AUDIT_DIAG_CURRENT_OK = "current_ok";
-const JOB_AUDIT_BUILD_NONE = "none";
-
-function jobAuditAllowsPhaseEAssistCard(audit) {
-  if (audit.state !== "ok") return false;
-  if (!audit.shortlistBindingPresent || !audit.sidecarTrioPresent) return false;
-  if (audit.rankConsistent !== true) return false;
-  if (audit.specClassification !== JOB_AUDIT_SPEC_CURRENT_SHORTLIST) return false;
-  if (audit.diagnosticBucket !== JOB_AUDIT_DIAG_CURRENT_OK) return false;
-  if (audit.buildabilityDetail !== JOB_AUDIT_BUILD_NONE) return false;
-  return true;
-}
-
-const DIM_LABEL_ZH = {
-  openingSmoothness: "开场自然度",
-  continuation: "继续了解",
-  conflictRisk: "互动摩擦信号",
-  longTermStability: "长期磨合空间",
-};
-
-/**
- * Phase E v1.0 — stable natural-language lines from sidecars (no sceneKey / fingerprint in output).
- * @returns {null | { summary: string, compatibilityLines: string[], reminder: string, opening: string }}
- */
-function buildPhaseEAssistCopy(job, candidateUserId, decision, fourDim) {
-  if (
-    !candidateUserId ||
-    decision.state !== "ok" ||
-    fourDim.state !== "ok" ||
-    !decision.rankedCandidateUserIds.includes(candidateUserId)
-  ) {
-    return null;
-  }
-
-  const tier = decision.confidenceTier;
-  let summary =
-    "基于短名单的多场景对话模拟，整理了一份「互动参考」：侧重聊天节奏与相处感受，便于你带着更轻松的心态去接触对方。";
-  if (tier === "high") {
-    summary =
-      "短名单对话模拟里，双方互动信号相对清晰，可作为「怎么聊、聊什么」的轻量参考——仍请以真实相处为准。";
-  } else if (tier === "medium") {
-    summary =
-      "短名单对话模拟给出的信号中等强度，更适合当作聊天前的「相处提示」，不必过度解读为结果好坏。";
-  } else if (tier === "low") {
-    summary =
-      "短名单对话模拟覆盖有限，下面的句子只作相处与开场的辅助提示，请更多依赖线下真实感受。";
-  }
-
-  const curRow = fourDim.candidateDimensions.find((r) => r.candidateUserId === candidateUserId);
-  if (!curRow) return null;
-
-  const n = fourDim.candidateDimensions.length;
-  const mean = (pick) =>
-    fourDim.candidateDimensions.reduce((s, r) => s + Number(r[pick]), 0) / Math.max(1, n);
-
-  const dims = ["openingSmoothness", "continuation", "longTermStability", "conflictRisk"];
-  const margins = dims.map((key) => {
-    const m = mean(key);
-    const cur = Number(curRow[key]);
-    if (key === "conflictRisk") {
-      return { key, margin: m - cur, higherIsBetter: false };
-    }
-    return { key, margin: cur - m, higherIsBetter: true };
-  });
-  margins.sort((a, b) => Math.abs(b.margin) - Math.abs(a.margin));
-
-  const compatibilityLines = [];
-  for (const row of margins) {
-    if (compatibilityLines.length >= 3) break;
-    if (Math.abs(row.margin) < 0.02) continue;
-    const label = DIM_LABEL_ZH[row.key];
-    if (!label) continue;
-    if (row.key === "conflictRisk") {
-      compatibilityLines.push(
-        row.margin > 0.02
-          ? `模拟观察：相对短名单整体，与你相关的「${label}」略低一些，通常意味着互动里可更从容确认彼此感受。`
-          : `模拟观察：相对短名单整体，与你相关的「${label}」略高一些，可作为聊天节奏上的轻量提醒（非对错判断）。`,
-      );
-    } else {
-      compatibilityLines.push(
-        row.margin > 0.02
-          ? `模拟观察：与你相关的「${label}」在短名单里相对更顺一些，可作为「从哪里聊起更自然」的参考。`
-          : `模拟观察：与你相关的「${label}」在短名单里不算突出，聊天时不妨多给对方接话与确认的空间。`,
-      );
-    }
-  }
-  if (compatibilityLines.length < 2) {
-    compatibilityLines.push(
-      "模拟观察：短名单内的差异主要体现在聊天节奏与感受表达上，下面的开场建议可当作轻量提示使用。",
-    );
-  }
-  if (compatibilityLines.length < 2) {
-    compatibilityLines.push(
-      "模拟观察：可把重点放在「聊得舒服」而非「谁更对」，更容易形成自然的互动节奏。",
-    );
-  }
-
-  const meanRisk = mean("conflictRisk");
-  let reminder =
-    "相处建议：模拟只覆盖部分话题，真实相处请以彼此节奏与边界为准；遇到不确定时，慢一点、多问一句往往更稳。";
-  if (curRow.conflictRisk > meanRisk + 0.04) {
-    reminder =
-      "相处建议：模拟里「互动摩擦信号」略高一点，并不代表不合适，更像是提醒聊天时少下结论、多确认对方感受。";
-  }
-
-  const matched = Array.isArray(job?.results)
-    ? job.results.find((r) => r.candidateUserId === candidateUserId)
-    : null;
-  const tl = matched?.transcriptLite;
-  let opening = "开场建议：先从近况、轻松话题或共同兴趣聊起，少用「你应该」式表达，给对方接话空间。";
-  if (
-    tl &&
-    typeof tl === "object" &&
-    !Array.isArray(tl) &&
-    tl.schemaVersion === 2 &&
-    tl.overallSimulationAssessment &&
-    typeof tl.overallSimulationAssessment.recommendedOpeningStyle === "string" &&
-    tl.overallSimulationAssessment.recommendedOpeningStyle.trim()
-  ) {
-    opening = `开场建议：${tl.overallSimulationAssessment.recommendedOpeningStyle.trim()}`;
-  } else {
-    const ev = matched?.evaluator;
-    if (ev && typeof ev === "object" && !Array.isArray(ev) && Array.isArray(ev.mitigation_hints) && ev.mitigation_hints[0]) {
-      const h0 = ev.mitigation_hints[0];
-      if (typeof h0 === "string" && h0.trim().length > 0 && h0.length < 120) {
-        opening = `开场建议：${h0.trim()}`;
-      }
-    }
-  }
-
-  return { summary, compatibilityLines: compatibilityLines.slice(0, 3), reminder, opening };
-}
-
 function isValidMatchInsights(mi) {
   if (mi == null || typeof mi !== "object" || Array.isArray(mi)) return false;
   const e = mi.explanation;
@@ -395,57 +260,12 @@ function isValidMatchInsights(mi) {
   return true;
 }
 
-const card = {
-  border: "1px solid #e5e7eb",
+const aiAdvancedShell = {
+  marginTop: "1.25rem",
+  padding: "0.85rem 1rem",
   borderRadius: 10,
-  padding: "1rem 1.1rem",
-  background: "#fff",
-};
-
-const cardTitle = {
-  fontWeight: 600,
-  fontSize: "0.98rem",
-  margin: "0 0 0.55rem",
-  color: "#0f172a",
-};
-
-const MATCH_REVIEW_RECOMMENDATION_ZH = {
-  strong_match: "高度契合",
-  match: "总体匹配",
-  cautious_match: "谨慎尝试",
-  not_recommended: "暂不推荐",
-};
-
-const MATCH_REVIEW_POTENTIAL_ZH = {
-  high: "偏高",
-  medium: "中等",
-  low: "偏低",
-};
-
-function matchReviewRecommendationLabel(v) {
-  if (v == null || typeof v !== "string") return "—";
-  return MATCH_REVIEW_RECOMMENDATION_ZH[v] ?? v;
-}
-
-function matchReviewPotentialSentence(label, v) {
-  if (v == null || typeof v !== "string") return `${label}：—`;
-  const zh = MATCH_REVIEW_POTENTIAL_ZH[v] ?? v;
-  return `${label}：${zh}`;
-}
-
-function matchReviewConfidenceSentence(v) {
-  if (v === "high") return "结论可信度：较高";
-  if (v === "medium") return "结论可信度：中等";
-  return "结论可信度：有限（问卷或信号较少时请更多依赖线下感受）";
-}
-
-const aiLayerShell = {
-  marginTop: "1.75rem",
-  padding: "1.25rem 1.15rem 1.35rem",
-  borderRadius: 12,
-  border: "1px solid #c7d2fe",
-  background: "linear-gradient(180deg, #eef2ff 0%, #ffffff 28%)",
-  boxShadow: "0 2px 8px rgba(67,56,202,0.08)",
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
 };
 
 const btnPrimary = {
@@ -481,26 +301,6 @@ const btnTertiary = {
   textDecoration: "underline",
   cursor: "pointer",
 };
-
-/** P6.y 初次聊天预判：三档展示（接话顺畅度 / 继续了解信号，high 为更有利） */
-function formatLiteBand3Zh(band) {
-  if (band === "high") return "高";
-  if (band === "medium") return "中";
-  return "偏低";
-}
-
-/** 风险轴：high 表示风险更高 */
-function formatLiteRiskBandZh(band) {
-  if (band === "low") return "低";
-  if (band === "medium") return "中";
-  return "高";
-}
-
-function formatLiteVerdictZh(verdict) {
-  if (verdict === "worth_exploring") return "值得继续了解";
-  if (verdict === "cautious") return "谨慎推进";
-  return "建议先放缓";
-}
 
 /** M5.4-M2：首跳 enqueue 失败时，仅在错误形态像「池 / 候选」问题时再尝试 generate + 二次 enqueue。 */
 function shouldAttemptPreviewPoolRematchFallback(err) {
@@ -592,30 +392,6 @@ export default function FinalMatchPage() {
     [aiSimJob, shortlistDecisionSidecar],
   );
   const jobAuditSidecar = useMemo(() => parseJobAuditV0(aiSimJob), [aiSimJob]);
-
-  const phaseEAssistCard = useMemo(() => {
-    if (!aiSimJobId?.trim()) return { visible: false, copy: null };
-    if (aiSimJobLoading || aiSimJobError || !aiSimJob) return { visible: false, copy: null };
-    if (aiSimJob.jobStatus !== "completed") return { visible: false, copy: null };
-    if (!jobAuditAllowsPhaseEAssistCard(jobAuditSidecar)) return { visible: false, copy: null };
-    const copy = buildPhaseEAssistCopy(
-      aiSimJob,
-      effectiveDisplayCandidateId,
-      shortlistDecisionSidecar,
-      shortlistFourDimSidecar,
-    );
-    if (!copy) return { visible: false, copy: null };
-    return { visible: true, copy };
-  }, [
-    aiSimJobId,
-    aiSimJobLoading,
-    aiSimJobError,
-    aiSimJob,
-    jobAuditSidecar,
-    effectiveDisplayCandidateId,
-    shortlistDecisionSidecar,
-    shortlistFourDimSidecar,
-  ]);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -1387,82 +1163,89 @@ export default function FinalMatchPage() {
             </p>
           ) : null}
           <FinalMatchHero
-            readoutFusion={readoutFusion}
-            matchInsights={isValidMatchInsights(result.matchInsights) ? result.matchInsights : null}
+            displaySourceType={result.displaySourceType}
             finalScore={result.finalScore}
             createdAt={result.createdAt}
             formatScoreDisplay={formatScoreDisplay}
             formatDateShort={formatDateShort}
           />
-          {!isValidMatchInsights(result.matchInsights) && readoutFusion?.headlineZh?.trim() ? (
-            <section
-              style={{
-                marginTop: "1.1rem",
-                padding: "0.85rem 1rem",
-                borderRadius: 10,
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-              }}
-              aria-label="读数摘要"
-            >
-              <p style={{ margin: 0, fontSize: "0.88rem", color: "#334155", lineHeight: 1.55 }}>{readoutFusion.headlineZh}</p>
-              {Array.isArray(readoutFusion.bulletsZh) && readoutFusion.bulletsZh.length > 0 ? (
-                <ul style={{ margin: "0.55rem 0 0", paddingLeft: "1.1rem", color: "#475569", fontSize: "0.86rem", lineHeight: 1.55 }}>
-                  {readoutFusion.bulletsZh.slice(0, 4).map((line, i) => (
-                    <li key={`fb-fallback-${i}`} style={{ marginBottom: "0.25rem" }}>
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ) : null}
-          {!isValidMatchInsights(result.matchInsights) && !readoutFusion?.headlineZh?.trim() ? (
+
+          {!isValidMatchInsights(result.matchInsights) ? (
             <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
-              暂无可读的结构化匹配解读；你仍可使用下方可选功能或联系支持。
+              结构化匹配解读暂不可用；如需读数摘要，可在下方「技术来源说明」中查看可选折叠项。
             </p>
           ) : null}
+
           {isValidMatchInsights(result.matchInsights) ? (
-            <FinalMatchExplanationSections
-              readoutFusion={readoutFusion}
-              insights={result.matchInsights}
-              finalMatchDecisionMeta={result.finalMatchDecisionMeta}
-              matchReview={matchReview}
-              matchReviewLoading={matchReviewLoading}
-              matchReviewError={matchReviewError}
-              onFetchMatchReview={onFetchMatchReview}
-              effectiveDisplayCandidateId={effectiveDisplayCandidateId}
-              matchReviewRecommendationLabel={matchReviewRecommendationLabel}
-              matchReviewPotentialSentence={matchReviewPotentialSentence}
-              matchReviewConfidenceSentence={matchReviewConfidenceSentence}
-              formatScoreDisplay={formatScoreDisplay}
-              interactionSim={interactionSim}
-              interactionSimLoading={interactionSimLoading}
-              interactionSimError={interactionSimError}
-              onFetchInteractionSim={onFetchInteractionSim}
-              resultId={result.id}
-              phaseEAssistCard={phaseEAssistCard}
-              formatLiteBand3Zh={formatLiteBand3Zh}
-              formatLiteRiskBandZh={formatLiteRiskBandZh}
-              formatLiteVerdictZh={formatLiteVerdictZh}
-            />
+            <div style={{ marginTop: "1.1rem" }}>
+              <FinalMatchExplanationSections
+                displaySourceType={result.displaySourceType}
+                insights={result.matchInsights}
+                openingTopics={result.matchInsights.openingTopics}
+                interactionSim={interactionSim}
+                interactionSimLoading={interactionSimLoading}
+                interactionSimError={interactionSimError}
+                onFetchInteractionSim={onFetchInteractionSim}
+                matchReview={matchReview}
+                matchReviewLoading={matchReviewLoading}
+                matchReviewError={matchReviewError}
+                onRequestMatchReview={onFetchMatchReview}
+              />
+            </div>
           ) : null}
 
-          <section style={aiLayerShell} aria-label="模拟与补充解读">
+          {/* —— 主流程底部行动区 —— */}
+          <footer
+            style={{
+              marginTop: "1.5rem",
+              paddingTop: "1.15rem",
+              borderTop: "1px solid #e5e7eb",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+              alignItems: "flex-start",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
+              <strong>下一步：</strong>与对方开始聊天；下方为可选的模拟与补充说明（默认收起）。
+            </p>
+            <button
+              type="button"
+              style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
+              onClick={onEnterChat}
+              disabled={!userId}
+            >
+              进入聊天
+            </button>
+            <button
+              type="button"
+              onClick={onViewTimeline}
+              disabled={!userId}
+              style={{
+                ...btnTertiary,
+                marginTop: 0,
+                fontSize: "0.8rem",
+                padding: "0.35rem 0",
+              }}
+            >
+              查看关系时间线（可选回顾）
+            </button>
+            <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
+              刷新匹配结果
+            </button>
+          </footer>
+
+          <details style={{ ...aiAdvancedShell, marginTop: "1.35rem" }} aria-label="模拟侧车与补充解读">
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
+              模拟侧车与补充解读（可选）
+            </summary>
+            <p style={{ margin: "0.65rem 0 0.75rem", fontSize: "0.8rem", color: "#64748b", lineHeight: 1.5 }}>
+              与主流程说明独立；仅供希望多看一层技术或模拟参考时使用。
+            </p>
             {aiSimJobId &&
             effectiveDisplayCandidateId &&
             (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
-              <>
-                <p
-                  style={{
-                    margin: "0 0 0.65rem",
-                    fontSize: "0.78rem",
-                    color: "#64748b",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  以下为基于模拟的<strong>互动与相处参考</strong>（与上方主结果独立）；无说明引用时不显示本块。
-                </p>
+              <div style={{ marginBottom: "1rem" }}>
                 <AiSimulationSidecarV0
                   key={`${aiSimJobId || "no-job"}-${effectiveDisplayCandidateId || ""}`}
                   aiSimJobId={aiSimJobId}
@@ -1472,30 +1255,16 @@ export default function FinalMatchPage() {
                   jobError={aiSimJobError}
                   onRefresh={loadAiSimJob}
                 />
-              </>
+              </div>
             ) : null}
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 0.35rem", color: "#312e81", fontWeight: 700 }}>
-              可选：模拟侧车与补充解读
-            </h2>
-            <p style={{ margin: "0 0 1rem", color: "#4c1d95", fontSize: "0.86rem", lineHeight: 1.55, opacity: 0.92 }}>
-              与上方主说明独立；适合想多看一层参考时使用。
-            </p>
-
-            {/* 补充模块：AI 匹配说明 */}
-            <div
-              style={{
-                marginTop: "0.25rem",
-                paddingTop: "1.1rem",
-                borderTop: "1px solid rgba(99,102,241,0.25)",
-              }}
-            >
-              <h3 style={{ ...cardTitle, fontSize: "1rem", color: "#3730a3" }}>补充解读</h3>
-              <p style={{ margin: "0 0 0.65rem", fontSize: "0.84rem", color: "#5b21b6", lineHeight: 1.5 }}>
-                可选：基于当前匹配结果再生成一段文字说明，便于从不同角度理解本轮结果。
+            <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
+              <h3 style={{ fontWeight: 600, fontSize: "0.95rem", margin: "0 0 0.45rem", color: "#0f172a" }}>补充解读</h3>
+              <p style={{ margin: "0 0 0.55rem", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 }}>
+                基于当前匹配结果生成的一段补充文字（可选）。
               </p>
               <button
                 type="button"
-                style={{ ...btnSecondary, borderColor: "#a5b4fc", color: "#3730a3" }}
+                style={btnSecondary}
                 onClick={onFetchAiExplanation}
                 disabled={aiExplanationLoading || !result.id}
               >
@@ -1503,24 +1272,63 @@ export default function FinalMatchPage() {
               </button>
               {aiExplanationError ? (
                 <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
-                  {aiExplanationError}
+                  {String(aiExplanationError).length > 160 ? "暂时无法生成补充解读，请稍后再试。" : aiExplanationError}
                 </p>
               ) : null}
               {aiExplanation ? (
-                <div style={{ ...card, marginTop: "0.75rem", border: "1px solid #e0e7ff" }}>
-                  <p style={{ margin: "0 0 0.65rem", lineHeight: 1.65, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.9rem" }}>
+                <div
+                  style={{
+                    marginTop: "0.65rem",
+                    padding: "0.75rem 0.85rem",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#fff",
+                  }}
+                >
+                  <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.88rem" }}>
                     {aiExplanation.explanationText}
                   </p>
                 </div>
               ) : null}
             </div>
-          </section>
+          </details>
 
           <FinalMatchTechnicalDetails
             displaySourceType={result.displaySourceType}
             finalMatchDecisionMeta={result.finalMatchDecisionMeta}
             readoutFusion={readoutFusion}
+            candidateUserId={result.candidateUserId}
+            displayCandidateUserId={effectiveDisplayCandidateId}
+            finalScore={result.finalScore}
+            reasonSummary={result.reasonSummary}
+            multiSourceFinalDecision={result.multiSourceFinalDecision}
+            matchReviewDebug={matchReview?.debug ?? null}
+            aiExplanationMeta={
+              aiExplanation
+                ? { sourceType: aiExplanation.sourceType, sourceVersion: aiExplanation.sourceVersion }
+                : null
+            }
           />
+
+          {readoutFusion?.headlineZh?.trim() || (Array.isArray(readoutFusion?.bulletsZh) && readoutFusion.bulletsZh.length) ? (
+            <details style={{ marginTop: "0.75rem", ...aiAdvancedShell }} aria-label="读数摘要">
+              <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569", userSelect: "none", fontSize: "0.85rem" }}>
+                可选读数摘要（折叠）
+              </summary>
+              {readoutFusion.headlineZh?.trim() ? (
+                <p style={{ margin: "0.55rem 0 0", fontSize: "0.85rem", color: "#334155", lineHeight: 1.55 }}>{readoutFusion.headlineZh}</p>
+              ) : null}
+              {Array.isArray(readoutFusion.bulletsZh) && readoutFusion.bulletsZh.length > 0 ? (
+                <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1.1rem", color: "#475569", fontSize: "0.82rem", lineHeight: 1.55 }}>
+                  {readoutFusion.bulletsZh.slice(0, 4).map((line, i) => (
+                    <li key={`fb-fallback-${i}`} style={{ marginBottom: "0.2rem" }}>
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </details>
+          ) : null}
 
           {isDebugMode ? (
             <details
@@ -1589,47 +1397,6 @@ export default function FinalMatchPage() {
               ) : null}
             </details>
           ) : null}
-
-          {/* —— 底部行动区 —— */}
-          <footer
-            style={{
-              marginTop: "2rem",
-              paddingTop: "1.25rem",
-              borderTop: "1px solid #e5e7eb",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.75rem",
-              alignItems: "flex-start",
-            }}
-          >
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
-              <strong>下一步：</strong>与对方开始聊天；时间线与刷新为可选辅助。
-            </p>
-            <button
-              type="button"
-              style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
-              onClick={onEnterChat}
-              disabled={!userId}
-            >
-              进入聊天
-            </button>
-            <button
-              type="button"
-              onClick={onViewTimeline}
-              disabled={!userId}
-              style={{
-                ...btnTertiary,
-                marginTop: 0,
-                fontSize: "0.8rem",
-                padding: "0.35rem 0",
-              }}
-            >
-              查看关系时间线（可选回顾）
-            </button>
-            <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
-              刷新匹配结果
-            </button>
-          </footer>
         </article>
       )}
 
