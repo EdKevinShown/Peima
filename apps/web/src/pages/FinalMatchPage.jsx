@@ -14,7 +14,7 @@ import { readValidatedFinalMatchConsumptionHint } from "../utils/finalMatchConsu
 import { createConversation } from "../api/chat";
 import FinalMatchHero from "../components/final-match/FinalMatchHero";
 import FinalMatchExplanationSections from "../components/final-match/FinalMatchExplanationSections";
-import FinalMatchTechnicalDetails from "../components/final-match/FinalMatchTechnicalDetails";
+import { FinalMatchTechnicalDetailsContent } from "../components/final-match/FinalMatchTechnicalDetails";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -260,14 +260,6 @@ function isValidMatchInsights(mi) {
   return true;
 }
 
-const aiAdvancedShell = {
-  marginTop: "1.25rem",
-  padding: "0.85rem 1rem",
-  borderRadius: 10,
-  border: "1px solid #e2e8f0",
-  background: "#f8fafc",
-};
-
 const btnPrimary = {
   padding: "0.65rem 1.25rem",
   fontSize: "0.95rem",
@@ -502,6 +494,7 @@ export default function FinalMatchPage() {
       const data = await postMatchReviewAi(effectiveDisplayCandidateId);
       setMatchReview(data);
     } catch (e) {
+      console.warn("[FinalMatchPage] match review failed", e);
       setMatchReview(null);
       setMatchReviewError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -517,6 +510,7 @@ export default function FinalMatchPage() {
       const data = await getInteractionSimulationLite(result.id);
       setInteractionSim(data);
     } catch (e) {
+      console.warn("[FinalMatchPage] interaction simulation lite failed", e);
       setInteractionSim(null);
       setInteractionSimError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1109,7 +1103,7 @@ export default function FinalMatchPage() {
       </details>
         </>
       ) : null}
-      {loading && <LoadingState label="加载匹配结果…" />}
+      {loading && <LoadingState label="加载匹配结果" />}
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
@@ -1145,9 +1139,9 @@ export default function FinalMatchPage() {
               }}
             >
               {rematchPreparingPool
-                ? "正在重新准备候选池并发起匹配…"
+                ? "正在重新准备候选池并发起匹配"
                 : rematchLoading
-                  ? "处理中…"
+                  ? "处理中"
                   : "重新匹配"}
             </button>
             <Link
@@ -1172,7 +1166,7 @@ export default function FinalMatchPage() {
 
           {!isValidMatchInsights(result.matchInsights) ? (
             <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
-              结构化匹配解读暂不可用；如需读数摘要，可在下方「技术来源说明」中查看可选折叠项。
+              结构化匹配解读暂不可用。你可以在页面底部展开「技术来源说明」，查看系统侧保存的原始字段与读数摘要。
             </p>
           ) : null}
 
@@ -1207,7 +1201,7 @@ export default function FinalMatchPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
-              <strong>下一步：</strong>与对方开始聊天；下方为可选的模拟与补充说明（默认收起）。
+              <strong>下一步：</strong>准备好后点击「进入聊天」。如需核对模拟侧车、补充说明或原始技术字段，请展开页面底部的「技术来源说明」。
             </p>
             <button
               type="button"
@@ -1235,100 +1229,102 @@ export default function FinalMatchPage() {
             </button>
           </footer>
 
-          <details style={{ ...aiAdvancedShell, marginTop: "1.35rem" }} aria-label="模拟侧车与补充解读">
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f8fafc",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="技术来源说明"
+          >
             <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
-              模拟侧车与补充解读（可选）
+              技术来源说明
             </summary>
-            <p style={{ margin: "0.65rem 0 0.75rem", fontSize: "0.8rem", color: "#64748b", lineHeight: 1.5 }}>
-              与主流程说明独立；仅供希望多看一层技术或模拟参考时使用。
-            </p>
-            {aiSimJobId &&
-            effectiveDisplayCandidateId &&
-            (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
-              <div style={{ marginBottom: "1rem" }}>
-                <AiSimulationSidecarV0
-                  key={`${aiSimJobId || "no-job"}-${effectiveDisplayCandidateId || ""}`}
-                  aiSimJobId={aiSimJobId}
-                  candidateUserId={effectiveDisplayCandidateId}
-                  job={aiSimJob}
-                  jobLoading={aiSimJobLoading}
-                  jobError={aiSimJobError}
-                  onRefresh={loadAiSimJob}
-                />
-              </div>
-            ) : null}
-            <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
-              <h3 style={{ fontWeight: 600, fontSize: "0.95rem", margin: "0 0 0.45rem", color: "#0f172a" }}>补充解读</h3>
-              <p style={{ margin: "0 0 0.55rem", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 }}>
-                基于当前匹配结果生成的一段补充文字（可选）。
-              </p>
-              <button
-                type="button"
-                style={btnSecondary}
-                onClick={onFetchAiExplanation}
-                disabled={aiExplanationLoading || !result.id}
-              >
-                {aiExplanationLoading ? "生成中…" : "生成补充解读"}
-              </button>
-              {aiExplanationError ? (
-                <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
-                  {String(aiExplanationError).length > 160 ? "暂时无法生成补充解读，请稍后再试。" : aiExplanationError}
-                </p>
-              ) : null}
-              {aiExplanation ? (
-                <div
-                  style={{
-                    marginTop: "0.65rem",
-                    padding: "0.75rem 0.85rem",
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    background: "#fff",
-                  }}
-                >
-                  <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.88rem" }}>
-                    {aiExplanation.explanationText}
+            <FinalMatchTechnicalDetailsContent
+              displaySourceType={result.displaySourceType}
+              finalMatchDecisionMeta={result.finalMatchDecisionMeta}
+              readoutFusion={readoutFusion}
+              candidateUserId={result.candidateUserId}
+              displayCandidateUserId={effectiveDisplayCandidateId}
+              finalScore={result.finalScore}
+              reasonSummary={result.reasonSummary}
+              multiSourceFinalDecision={result.multiSourceFinalDecision}
+              matchReviewDebug={matchReview?.debug ?? null}
+              aiExplanationMeta={
+                aiExplanation
+                  ? { sourceType: aiExplanation.sourceType, sourceVersion: aiExplanation.sourceVersion }
+                  : null
+              }
+              matchInsights={result.matchInsights ?? null}
+              matchReviewFull={matchReview}
+              interactionSimFull={interactionSim}
+              footerPanels={
+                <>
+                  <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.5rem", color: "#0f172a" }}>模拟侧车</h3>
+                  <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                    以下为基于对话模拟的只读参考，与主推荐结论相互独立。
                   </p>
-                </div>
-              ) : null}
-            </div>
+                  {aiSimJobId &&
+                  effectiveDisplayCandidateId &&
+                  (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <AiSimulationSidecarV0
+                        key={`${aiSimJobId || "no-job"}-${effectiveDisplayCandidateId || ""}`}
+                        aiSimJobId={aiSimJobId}
+                        candidateUserId={effectiveDisplayCandidateId}
+                        job={aiSimJob}
+                        jobLoading={aiSimJobLoading}
+                        jobError={aiSimJobError}
+                        onRefresh={loadAiSimJob}
+                      />
+                    </div>
+                  ) : (
+                    <p style={{ margin: "0 0 0.85rem", fontSize: "0.78rem", color: "#94a3b8" }}>
+                      当前链接未携带可用的模拟任务编号，或任务尚未加载。主推荐不依赖本区域。
+                    </p>
+                  )}
+                  <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
+                    <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.45rem", color: "#0f172a" }}>补充解读</h3>
+                    <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                      基于当前匹配结果生成的可选文字说明（仅供技术或复盘查看）。
+                    </p>
+                    <button
+                      type="button"
+                      style={btnSecondary}
+                      onClick={onFetchAiExplanation}
+                      disabled={aiExplanationLoading || !result.id}
+                    >
+                      {aiExplanationLoading ? "正在生成补充解读" : "生成补充解读"}
+                    </button>
+                    {aiExplanationError ? (
+                      <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
+                        暂时无法生成补充解读，请稍后再试。
+                      </p>
+                    ) : null}
+                    {aiExplanation ? (
+                      <div
+                        style={{
+                          marginTop: "0.65rem",
+                          padding: "0.75rem 0.85rem",
+                          borderRadius: 8,
+                          border: "1px solid #e2e8f0",
+                          background: "#fff",
+                        }}
+                      >
+                        <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.82rem" }}>
+                          {aiExplanation.explanationText}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              }
+            />
           </details>
-
-          <FinalMatchTechnicalDetails
-            displaySourceType={result.displaySourceType}
-            finalMatchDecisionMeta={result.finalMatchDecisionMeta}
-            readoutFusion={readoutFusion}
-            candidateUserId={result.candidateUserId}
-            displayCandidateUserId={effectiveDisplayCandidateId}
-            finalScore={result.finalScore}
-            reasonSummary={result.reasonSummary}
-            multiSourceFinalDecision={result.multiSourceFinalDecision}
-            matchReviewDebug={matchReview?.debug ?? null}
-            aiExplanationMeta={
-              aiExplanation
-                ? { sourceType: aiExplanation.sourceType, sourceVersion: aiExplanation.sourceVersion }
-                : null
-            }
-          />
-
-          {readoutFusion?.headlineZh?.trim() || (Array.isArray(readoutFusion?.bulletsZh) && readoutFusion.bulletsZh.length) ? (
-            <details style={{ marginTop: "0.75rem", ...aiAdvancedShell }} aria-label="读数摘要">
-              <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569", userSelect: "none", fontSize: "0.85rem" }}>
-                可选读数摘要（折叠）
-              </summary>
-              {readoutFusion.headlineZh?.trim() ? (
-                <p style={{ margin: "0.55rem 0 0", fontSize: "0.85rem", color: "#334155", lineHeight: 1.55 }}>{readoutFusion.headlineZh}</p>
-              ) : null}
-              {Array.isArray(readoutFusion.bulletsZh) && readoutFusion.bulletsZh.length > 0 ? (
-                <ul style={{ margin: "0.45rem 0 0", paddingLeft: "1.1rem", color: "#475569", fontSize: "0.82rem", lineHeight: 1.55 }}>
-                  {readoutFusion.bulletsZh.slice(0, 4).map((line, i) => (
-                    <li key={`fb-fallback-${i}`} style={{ marginBottom: "0.2rem" }}>
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </details>
-          ) : null}
 
           {isDebugMode ? (
             <details

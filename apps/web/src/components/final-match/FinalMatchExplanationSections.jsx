@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
-  pickWhyRecommendLines,
-  buildCoexistenceSegments,
-  pickFirstChatFriendlyTips,
-} from "./finalMatchNarrative";
+  plainWhyBullets,
+  buildPlainCoexistence,
+  buildPlainChatPredictionBullets,
+  reviewStaticScoreBand,
+} from "./finalMatchPlainLanguage";
 
 const card = {
   borderRadius: 12,
@@ -15,46 +16,9 @@ const card = {
 
 const h2 = { margin: "0 0 0.55rem", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" };
 
-function CollapsedBody({ children, maxChars = 220 }) {
-  const [open, setOpen] = useState(false);
-  const text = typeof children === "string" ? children : "";
-  const long = text.length > maxChars;
-  const shown = open || !long ? text : `${text.slice(0, maxChars)}…`;
-  return (
-    <div>
-      <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.55, color: "#334155", fontSize: "0.95rem" }}>{shown}</p>
-      {long ? (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          style={{
-            marginTop: "0.45rem",
-            border: "none",
-            background: "none",
-            color: "#2563eb",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            padding: 0,
-          }}
-        >
-          {open ? "收起" : "展开"}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 /**
- * M5.5-UI-R1: user-facing sections — why / coexistence / first chat; match review compact.
+ * M5.5-UI-R3: plain-language sections; no raw API copy, no ellipsis truncation, no internal terms on the main path.
  */
-function friendlyInteractionSimError(err) {
-  if (err == null) return "";
-  const s = String(err).trim();
-  if (!s) return "";
-  if (s.length <= 100 && !/403|401|whitelist|Forbidden/i.test(s)) return s;
-  return "";
-}
-
 export default function FinalMatchExplanationSections({
   displaySourceType,
   insights,
@@ -69,17 +33,21 @@ export default function FinalMatchExplanationSections({
   onRequestMatchReview,
 }) {
   const isRrm = displaySourceType === "rrm_top2_bounded_selector";
-  const whyLines = useMemo(() => pickWhyRecommendLines(insights, displaySourceType), [insights, displaySourceType]);
-  const coexist = useMemo(() => buildCoexistenceSegments(insights, matchReview), [insights, matchReview]);
-  const friendlyTips = useMemo(() => pickFirstChatFriendlyTips(interactionSim), [interactionSim]);
+  const whyLines = useMemo(() => plainWhyBullets(isRrm), [isRrm]);
+  const coexist = useMemo(() => buildPlainCoexistence(insights, matchReview), [insights, matchReview]);
 
   const topics = Array.isArray(openingTopics) ? openingTopics.filter((t) => typeof t === "string" && t.trim()) : [];
+  const chatBullets = useMemo(
+    () => buildPlainChatPredictionBullets(interactionSim, topics),
+    [interactionSim, topics],
+  );
+
   const reviewScore = matchReview?.reviewStaticScore;
   const hasReview = matchReview && typeof reviewScore === "number";
+  const band = hasReview ? reviewStaticScoreBand(reviewScore) : "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* 2. 推荐理由 */}
       <section style={card} aria-labelledby="why-recommend-heading">
         <h2 id="why-recommend-heading" style={h2}>
           为什么推荐
@@ -88,17 +56,20 @@ export default function FinalMatchExplanationSections({
           <div
             style={{
               marginBottom: "0.65rem",
-              padding: "0.45rem 0.65rem",
+              padding: "0.5rem 0.7rem",
               borderRadius: 8,
               background: "#f1f5f9",
-              fontSize: "0.82rem",
+              fontSize: "0.86rem",
               color: "#334155",
-              lineHeight: 1.45,
+              lineHeight: 1.55,
             }}
           >
-            <strong style={{ color: "#0f172a" }}>关系节奏推荐已启用</strong>
-            <div style={{ marginTop: "0.25rem" }}>
-              系统在高适配候选中，结合相处节奏与推进安全感推荐当前对象。基础分数仅作为适配参考，不代表单独的关系节奏分。
+            <div style={{ fontWeight: 700, color: "#0f172a" }}>关系节奏推荐已启用</div>
+            <div style={{ marginTop: "0.35rem" }}>
+              这次推荐不只看基础匹配，也参考了你们可能的聊天节奏和推进安全感。
+            </div>
+            <div style={{ marginTop: "0.35rem" }}>
+              顶部分数仍是资料与问卷的适配参考，请结合下方相处建议一起看。
             </div>
           </div>
         ) : null}
@@ -111,7 +82,6 @@ export default function FinalMatchExplanationSections({
         </ul>
       </section>
 
-      {/* 3. 相处建议 */}
       <section style={card} aria-labelledby="coexist-heading">
         <h2 id="coexist-heading" style={h2}>
           相处建议
@@ -145,33 +115,29 @@ export default function FinalMatchExplanationSections({
               cursor: matchReviewLoading ? "wait" : "pointer",
             }}
           >
-            {matchReviewLoading ? "正在获取相处参考…" : hasReview ? "刷新相处参考" : "获取相处参考"}
+            {matchReviewLoading ? "正在获取相处参考" : hasReview ? "刷新相处参考" : "获取相处参考"}
           </button>
           {matchReviewError ? (
-            <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c" }}>
-              暂时无法生成相处参考，请稍后再试。
-              {typeof matchReviewError === "string" && matchReviewError.trim() && matchReviewError.length < 120 ? (
-                <span style={{ display: "block", marginTop: "0.25rem", color: "#64748b", fontSize: "0.8rem" }}>
-                  {matchReviewError.trim()}
-                </span>
-              ) : null}
-            </p>
+            <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c" }}>暂时无法生成相处参考，请稍后再试。</p>
           ) : null}
           {hasReview ? (
-            <p style={{ margin: "0.55rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-              <span style={{ color: "#334155" }}>相处参考分：{Math.round(reviewScore)}</span>，仅供参考。
-              <span style={{ display: "block", marginTop: "0.2rem" }}>相处参考不改变最终推荐结果。</span>
-            </p>
-          ) : null}
-          {hasReview && typeof matchReview?.aiReview?.explanation === "string" && matchReview.aiReview.explanation.trim() ? (
-            <div style={{ marginTop: "0.5rem" }}>
-              <CollapsedBody maxChars={200}>{matchReview.aiReview.explanation.trim()}</CollapsedBody>
+            <div style={{ margin: "0.55rem 0 0", fontSize: "0.84rem", color: "#475569", lineHeight: 1.55 }}>
+              <div>
+                <span style={{ color: "#334155", fontWeight: 600 }}>相处参考：{band}</span>
+                {typeof reviewScore === "number" ? (
+                  <span style={{ marginLeft: "0.35rem" }}>
+                    （相处参考分：{Math.round(reviewScore)} / 100，仅供参考）
+                  </span>
+                ) : null}
+              </div>
+              <p style={{ margin: "0.45rem 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+                这只是根据问卷相似度给出的参考，不会改变本轮推荐结果。
+              </p>
             </div>
           ) : null}
         </div>
       </section>
 
-      {/* 4. 第一次可以这样聊 */}
       <section style={card} aria-labelledby="first-chat-heading">
         <h2 id="first-chat-heading" style={h2}>
           第一次可以这样聊
@@ -183,7 +149,7 @@ export default function FinalMatchExplanationSections({
             ))}
           </ul>
         ) : (
-          <p style={{ margin: "0 0 0.75rem", color: "#64748b", fontSize: "0.9rem" }}>暂无开场话题，可直接从轻松日常聊起。</p>
+          <p style={{ margin: "0 0 0.75rem", color: "#64748b", fontSize: "0.9rem" }}>可以从周末安排、最近开心的小事、平时的生活节奏这类轻松话题开始。</p>
         )}
         <button
           type="button"
@@ -201,25 +167,20 @@ export default function FinalMatchExplanationSections({
             cursor: interactionSimLoading ? "wait" : "pointer",
           }}
         >
-          {interactionSimLoading ? "正在生成初次聊天预判…" : "生成初次聊天预判"}
+          {interactionSimLoading ? "正在生成聊天预判" : "生成初次聊天预判"}
         </button>
         {interactionSimError ? (
-          <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c" }}>
-            暂时无法生成初次聊天预判，请稍后再试。
-            {friendlyInteractionSimError(interactionSimError) ? (
-              <span style={{ display: "block", marginTop: "0.25rem", color: "#64748b", fontSize: "0.8rem" }}>
-                {friendlyInteractionSimError(interactionSimError)}
-              </span>
-            ) : null}
+          <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c", lineHeight: 1.55 }}>
+            暂时无法生成聊天预判，请稍后再试。你也可以先从轻松话题开始聊天。
           </p>
         ) : null}
-        {friendlyTips.length ? (
-          <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.15rem", color: "#475569", lineHeight: 1.55, fontSize: "0.9rem" }}>
-            {friendlyTips.map((tip, i) => (
-              <li key={i}>{tip}</li>
-            ))}
-          </ul>
-        ) : null}
+        <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.15rem", color: "#475569", lineHeight: 1.55, fontSize: "0.9rem" }}>
+          {chatBullets.map((tip, i) => (
+            <li key={i} style={{ marginBottom: "0.3rem" }}>
+              {tip}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

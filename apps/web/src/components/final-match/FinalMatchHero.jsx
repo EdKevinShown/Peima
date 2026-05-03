@@ -22,8 +22,8 @@ export default function FinalMatchHero({
   const intro = pickHeroMainIntro(displaySourceType);
   const scoreLabel = isRrm ? "基础适配指数" : "匹配指数";
   const scoreHint = isRrm
-    ? "该分数表示基础资料与问卷适配参考；当前展示对象已结合关系节奏判断推荐。"
-    : "越高表示本轮综合匹配度越好。";
+    ? "这个分数表示基础资料和问卷的适配参考；当前推荐还结合了相处节奏判断。"
+    : "这个分数表示资料与问卷的综合适配程度，可以帮助你理解本轮排序的参考。";
 
   return (
     <header style={heroStyle}>
