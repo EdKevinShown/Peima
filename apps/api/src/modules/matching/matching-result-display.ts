@@ -32,6 +32,10 @@ export type MatchResultDisplaySourceType =
   /** M5.3: RRM Top2 bounded display (requires `PEIMA_M5_RRM_TOP2_ENABLED` + frozen sidecar + eligibility). */
   | "rrm_top2_bounded_selector";
 
+/**
+ * GET display slice. When `displaySourceType === "rrm_top2_bounded_selector"`, `finalMatchDecisionMeta`
+ * is **null** (M5.3-C2.1): do not reuse pairwise-shaped meta; RRM viewer-safe trace is deferred to M5.3-D / M6.1.
+ */
 export type MatchResultDisplayFields = {
   displayCandidateUserId: string;
   displaySourceType: MatchResultDisplaySourceType;
@@ -134,6 +138,11 @@ export async function resolveMatchResultDisplay(
           const selected = rrmParsed.newDisplayCandidateUserId.trim();
           const userOk = await prisma.user.findUnique({ where: { id: selected }, select: { id: true } });
           if (userOk) {
+            /**
+             * M5.3-C2.1: RRM 命中时 `finalMatchDecisionMeta` 刻意为 `null`，避免把 pairwise 形状的
+             * `ViewerSafeFinalMatchDecisionMeta` 伪造进 GET（会误导 FinalMatchTechnicalDetails）。
+             * Viewer-safe 的 RRM decisionContext / 技术侧 meta 由 **M5.3-D / M6.1** 单独建模与投影。
+             */
             return {
               displayCandidateUserId: selected,
               displaySourceType: "rrm_top2_bounded_selector",

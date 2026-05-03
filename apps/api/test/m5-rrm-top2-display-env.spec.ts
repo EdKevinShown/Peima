@@ -8,15 +8,18 @@ describe("readM5RrmTop2DisplayEnv", () => {
     else process.env.PEIMA_M5_RRM_TOP2_ENABLED = prev;
   });
 
-  it("defaults to disabled", () => {
+  it("unset → disabled", () => {
     delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
     expect(readM5RrmTop2DisplayEnv().enabled).toBe(false);
   });
 
-  it("enables only when set to 1", () => {
-    process.env.PEIMA_M5_RRM_TOP2_ENABLED = "1";
+  it.each(["1", "true", "yes", "TRUE", " Yes ", " 1 "])("PEIMA_M5_RRM_TOP2_ENABLED=%j → enabled", (val) => {
+    process.env.PEIMA_M5_RRM_TOP2_ENABLED = val;
     expect(readM5RrmTop2DisplayEnv().enabled).toBe(true);
-    process.env.PEIMA_M5_RRM_TOP2_ENABLED = "true";
+  });
+
+  it.each(["0", "false", "no", "off", "", "2", "maybe"])("PEIMA_M5_RRM_TOP2_ENABLED=%j → disabled", (val) => {
+    process.env.PEIMA_M5_RRM_TOP2_ENABLED = val;
     expect(readM5RrmTop2DisplayEnv().enabled).toBe(false);
   });
 });
