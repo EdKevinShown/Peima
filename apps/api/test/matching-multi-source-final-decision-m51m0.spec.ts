@@ -66,9 +66,9 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
         "no_viewer_safe_rrm_sim_summary_in_match_result_payload",
       );
     }
-    expect(sidecar.sources.guardrails.status).toBe("not_evaluated");
+    expect(sidecar.sources.guardrails.status).toBe("pass");
     expect(sidecar.admin.missingSources).toEqual(
-      expect.arrayContaining(["rrm_sim", "pairwise_finalize_meta", "guardrails_explicit_signal"]),
+      expect.arrayContaining(["rrm_sim", "pairwise_finalize_meta"]),
     );
     expect(sidecar.mode).toBe("readonly");
     expect(sidecar.decisionRule).toBe("current_display_preserved_readonly");
@@ -81,7 +81,7 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
     ]);
   });
 
-  it("M5.2-M0: shadow contract when shadowEnabled option true", () => {
+  it("M5.2-M0/M5.2-M3: shadow mode evaluates proposal rules (pairwise missing → no proposal)", () => {
     const row = mr();
     const display = {
       displayCandidateUserId: row.candidateUserId,
@@ -90,18 +90,21 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
     };
     const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
     expect(sidecar.mode).toBe("shadow");
-    expect(sidecar.decisionRule).toBe("shadow_no_change_due_to_insufficient_m5_sources");
+    expect(sidecar.decisionRule).toBe("shadow_pairwise_unavailable_current_display_preserved");
     expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
     expect(sidecar.shadow.shadowModeRequested).toBe(true);
     expect(sidecar.shadow.shadowContractEvaluated).toBe(true);
-    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(false);
-    expect(sidecar.shadow.sourcesBlockingShadowProposal).toEqual(sidecar.admin.missingSources);
+    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(true);
+    expect(sidecar.shadow.reason).toBe("pairwise_unavailable");
+    expect(sidecar.shadow.sourcesBlockingShadowProposal).toEqual(
+      expect.arrayContaining(["pairwise_finalize_meta"]),
+    );
     expect(sidecar.admin.decisionTrace.map((t) => t.step)).toEqual([
       "source_hydration_readonly",
       "rrm_sim_source_discovery_readonly",
       "shadow_contract_readonly",
     ]);
-    expect(sidecar.admin.decisionTrace[2]?.detail).toBe("m52m0_no_shadow_decision_engine");
+    expect(sidecar.admin.decisionTrace[2]?.detail).toBe("m52m3_shadow_pairwise_unavailable");
   });
 
   it("echoes match_result_original when display equals baseline", () => {
@@ -131,9 +134,7 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
       expect(pw.pairwiseWinnerCandidateUserId).toBe("cand-pw");
       expect(pw.frozen).toBe(true);
     }
-    expect(sidecar.admin.missingSources).toEqual(
-      expect.arrayContaining(["rrm_sim", "guardrails_explicit_signal"]),
-    );
+    expect(sidecar.admin.missingSources).toEqual(expect.arrayContaining(["rrm_sim"]));
     expect(sidecar.admin.missingSources).not.toContain("pairwise_finalize_meta");
   });
 
@@ -283,6 +284,180 @@ describe("buildMultiSourceFinalDecisionReadonlyM51M0 (M5.1-M0/M1/M2)", () => {
         "no_viewer_safe_rrm_sim_summary_in_match_result_payload",
       );
     }
+  });
+});
+
+describe("M5.2-M3 shadow proposal computation", () => {
+  const rrmSummary = (candidateUserId: string) => ({
+    schemaVersion: 1,
+    sourceVersion: "rrm-sim-v1",
+    candidateUserId,
+    fallbackUsed: false,
+    suggestedAction: "maintain",
+    progressionWindow: "open",
+    simulatedRhythmScore: 70,
+  });
+
+  it("consensus sets m5ProposedDisplayCandidateUserId and wouldChangeCurrentDisplay", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: [], rhythmPrediction: "" },
+        riskFlags: [],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-consensus"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "match_result_original" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-consensus",
+        selectedCandidateUserId: "cand-consensus",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.decisionRule).toBe("shadow_pairwise_rrm_consensus");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBe("cand-consensus");
+    expect(sidecar.wouldChangeCurrentDisplay).toBe(true);
+    expect(sidecar.m5AppliedToDisplay).toBe(false);
+    expect(sidecar.shadow.reason).toBe("pairwise_rrm_consensus");
+    expect(sidecar.shadow.noProposalReason).toBeNull();
+    expect(sidecar.shadow.shadowCautionReasonsEcho).toEqual([]);
+  });
+
+  it("consensus with display already equal yields wouldChangeCurrentDisplay false", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: [], rhythmPrediction: "" },
+        riskFlags: [],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-same"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-same",
+      displaySourceType: "pairwise_final" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-same",
+        selectedCandidateUserId: "cand-same",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.decisionRule).toBe("shadow_pairwise_rrm_consensus");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBe("cand-same");
+    expect(sidecar.wouldChangeCurrentDisplay).toBe(false);
+  });
+
+  it("pairwise vs rrmSim mismatch → conflict rule", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: [], rhythmPrediction: "" },
+        riskFlags: [],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-rrm"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "match_result_original" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-pw",
+        selectedCandidateUserId: "cand-pw",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.decisionRule).toBe("shadow_pairwise_rrm_conflict_current_display_preserved");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
+    expect(sidecar.shadow.reason).toBe("pairwise_rrm_conflict");
+  });
+
+  it("shadow + pairwise ok + rrm missing → rrm_sim_unavailable rule", () => {
+    const row = mr({ matchInsights: null });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "pairwise_final" as const,
+      finalMatchDecisionMeta: metaPartial(),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.decisionRule).toBe("shadow_rrm_sim_unavailable_current_display_preserved");
+    expect(sidecar.shadow.reason).toBe("rrm_sim_unavailable");
+  });
+
+  it("guardrail block sentinel → no proposal", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: [], rhythmPrediction: "" },
+        riskFlags: ["peima_m52_shadow_test_block"],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-x"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "pairwise_final" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-x",
+        selectedCandidateUserId: "cand-x",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.sources.guardrails.status).toBe("block");
+    expect(sidecar.decisionRule).toBe("shadow_guardrail_block_current_display_preserved");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
+    expect(sidecar.shadow.reason).toBe("guardrail_block");
+  });
+
+  it("guardrail not_evaluated sentinel → no proposal", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: [], rhythmPrediction: "" },
+        riskFlags: ["peima_m52_shadow_test_not_evaluated"],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-x"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "pairwise_final" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-x",
+        selectedCandidateUserId: "cand-x",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.sources.guardrails.status).toBe("not_evaluated");
+    expect(sidecar.decisionRule).toBe("shadow_guardrail_not_evaluated_current_display_preserved");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
+  });
+
+  it("caution + consensus echoes shadowCautionReasonsEcho", () => {
+    const row = mr({
+      matchInsights: {
+        explanation: { whyMatch: "w", strengths: [], cautions: ["pace note"], rhythmPrediction: "" },
+        riskFlags: [],
+        openingTopics: [],
+        chatSimulationSummary: "",
+        [RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY]: rrmSummary("cand-c"),
+      },
+    });
+    const display = {
+      displayCandidateUserId: "cand-static",
+      displaySourceType: "pairwise_final" as const,
+      finalMatchDecisionMeta: metaPartial({
+        pairwiseWinnerCandidateUserId: "cand-c",
+        selectedCandidateUserId: "cand-c",
+      }),
+    };
+    const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
+    expect(sidecar.sources.guardrails.status).toBe("caution");
+    expect(sidecar.decisionRule).toBe("shadow_pairwise_rrm_consensus");
+    expect(sidecar.m5ProposedDisplayCandidateUserId).toBe("cand-c");
+    expect(sidecar.shadow.shadowCautionReasonsEcho.some((s) => s.includes("pace"))).toBe(true);
   });
 });
 

@@ -219,7 +219,7 @@ describe("writeRrmSimReadonlySummaryToMatchResult (M5.2-M2B)", () => {
     const sidecar = buildMultiSourceFinalDecisionReadonlyM51M0(row, display, { shadowEnabled: true });
     expect(sidecar.sources.rrmSim.available).toBe(true);
     expect(sidecar.m5ProposedDisplayCandidateUserId).toBeNull();
-    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(false);
+    expect(sidecar.shadow.shadowDisplayProposalComputed).toBe(true);
     expect(sidecar.m5AppliedToDisplay).toBe(false);
   });
 });

@@ -5,12 +5,12 @@ import type {
   ViewerSafeFinalMatchDecisionMeta,
 } from "./matching-result-display";
 
-/** M5.1-M0/M1/M2 + M5.2-M0 — readonly sidecar (+ optional shadow contract); does not participate in display resolution. */
+/** M5.1-M0/M1/M2 + M5.2-M0/M3 — readonly sidecar (+ optional shadow contract / shadow proposal); does not participate in display resolution. */
 export const MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION = 1 as const;
 
-/** Bumped M5.2-M0: shadow contract fields (no shadow decision / no DB). */
+/** Bumped M5.2-M3: shadow contract + optional shadow display proposal (never applied server-side). */
 export const MULTI_SOURCE_FINAL_DECISION_READONLY_SOURCE_VERSION =
-  "m5.2-m0-multi-source-final-decision-shadow-contract-v1" as const;
+  "m5.2-m3-multi-source-final-decision-shadow-proposal-v1" as const;
 
 /**
  * Optional future / backfill envelope on `MatchResult.matchInsights` (never written by M5.1-M2).
@@ -105,7 +105,8 @@ export type MultiSourceRrmSimSourceReadonly =
   | MultiSourceRrmSimAvailableReadonly;
 
 export type MultiSourceGuardrailsSourceReadonly = {
-  status: "not_evaluated" | "caution";
+  /** `pass` = no caution signals (M5.2-M3 shadow may proceed when other sources allow). */
+  status: "pass" | "not_evaluated" | "caution" | "block";
   blockReasons: string[];
   cautionReasons: string[];
   sourceSummary: string;
@@ -124,19 +125,43 @@ export type MultiSourceFinalDecisionSourcesReadonly = {
   guardrails: MultiSourceGuardrailsSourceReadonly;
 };
 
-/** M5.2-M0: shadow **contract** only — no proposed candidate, no DB, no display mutation. */
+/** M5.2-M0 / M5.2-M3: shadow contract + optional shadow display proposal (never applied server-side). */
 export type MultiSourceShadowContractM52M0Readonly = {
   shadowModeRequested: boolean;
   /** True when `shadowModeRequested` and contract slice was attached for this response. */
   shadowContractEvaluated: boolean;
-  /** M5.2-M0: always false; M5.2-M2+ may compute a shadow-only proposal. */
+  /** M5.2-M3: true once shadow proposal rules were evaluated in shadow mode. */
   shadowDisplayProposalComputed: boolean;
-  noProposalReason: string;
-  /** Same keys as `admin.missingSources` where relevant to a future shadow engine. */
+  /** Echo of `m5ProposedDisplayCandidateUserId` (shadow-only). */
+  proposedDisplayCandidateUserId: string | null;
+  /** Echo of top-level `wouldChangeCurrentDisplay` when shadow mode is on. */
+  wouldChangeCurrentDisplay: boolean;
+  appliedToDisplay: false;
+  noProposalReason: string | null;
+  /** Sources that blocked the shadow proposal (subset of admin missing / guard rules). */
   sourcesBlockingShadowProposal: string[];
-  /** Pointers for later milestones (non-normative). */
+  /** Canonical short code: `pairwise_rrm_consensus`, `pairwise_unavailable`, etc. */
+  reason: string | null;
+  /** Viewer-safe labels for sources that hydrated for this response. */
+  availableSources: string[];
+  /** Gaps relevant to the shadow proposal outcome (often mirrors `sourcesBlockingShadowProposal`). */
+  missingSources: string[];
+  /** Echo of top-level `decisionRule` when shadow mode is on; null in readonly mode. */
+  decisionRule: string | null;
+  /** When `guardrails.status === "caution"` and a consensus proposal exists, echo viewer-safe caution lines. */
+  shadowCautionReasonsEcho: string[];
   nextMilestonesNote: string;
 };
+
+export type MultiSourceFinalDecisionReadonlyDecisionRule =
+  | "current_display_preserved_readonly"
+  | "shadow_no_change_due_to_insufficient_m5_sources"
+  | "shadow_pairwise_unavailable_current_display_preserved"
+  | "shadow_rrm_sim_unavailable_current_display_preserved"
+  | "shadow_guardrail_block_current_display_preserved"
+  | "shadow_guardrail_not_evaluated_current_display_preserved"
+  | "shadow_pairwise_rrm_conflict_current_display_preserved"
+  | "shadow_pairwise_rrm_consensus";
 
 export type MultiSourceFinalDecisionReadonlyM51M0 = {
   schemaVersion: typeof MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION;
@@ -148,14 +173,12 @@ export type MultiSourceFinalDecisionReadonlyM51M0 = {
   currentDisplayCandidateUserId: string;
   /** Mirrors resolved `displaySourceType`. */
   currentDisplaySourceType: MatchResultDisplaySourceType;
-  /** M5.2-M0: never a real shadow proposal. */
-  m5ProposedDisplayCandidateUserId: null;
-  /** M5.2-M0 never applies M5 synthesis to display. */
+  /** M5.2-M3: shadow-only proposed display candidate; never applied here (`m5AppliedToDisplay` stays false). */
+  m5ProposedDisplayCandidateUserId: string | null;
+  /** M5.2-M0 / M5.2-M3: never applies M5 synthesis to display. */
   m5AppliedToDisplay: false;
-  wouldChangeCurrentDisplay: false;
-  decisionRule:
-    | "current_display_preserved_readonly"
-    | "shadow_no_change_due_to_insufficient_m5_sources";
+  wouldChangeCurrentDisplay: boolean;
+  decisionRule: MultiSourceFinalDecisionReadonlyDecisionRule;
   sources: MultiSourceFinalDecisionSourcesReadonly;
   shadow: MultiSourceShadowContractM52M0Readonly;
   admin: MultiSourceFinalDecisionAdminReadonly;
@@ -345,6 +368,13 @@ function readMatchInsightsCautionSignals(matchInsights: unknown): {
   return { cautions, riskFlags };
 }
 
+const M52_SHADOW_TEST_BLOCK_SENTINEL = "peima_m52_shadow_test_block";
+const M52_SHADOW_TEST_NOT_EVALUATED_SENTINEL = "peima_m52_shadow_test_not_evaluated";
+
+function isShadowTestBlockRiskFlag(riskFlags: string[]): boolean {
+  return riskFlags.some((r) => r === M52_SHADOW_TEST_BLOCK_SENTINEL);
+}
+
 function buildPairwiseSourceReadonly(
   meta: ViewerSafeFinalMatchDecisionMeta | null,
 ): MultiSourcePairwiseSourceReadonly {
@@ -376,11 +406,28 @@ function buildGuardrailsReadonly(
   matchRow: MatchResult,
 ): MultiSourceGuardrailsSourceReadonly {
   const { cautions, riskFlags } = readMatchInsightsCautionSignals(matchRow.matchInsights);
+  if (isShadowTestBlockRiskFlag(riskFlags)) {
+    return {
+      status: "block",
+      blockReasons: ["match_insights_risk_flags"],
+      cautionReasons: [],
+      sourceSummary: "m52_shadow_test_block_sentinel",
+    };
+  }
+  if (riskFlags.some((r) => r === M52_SHADOW_TEST_NOT_EVALUATED_SENTINEL)) {
+    return {
+      status: "not_evaluated",
+      blockReasons: [],
+      cautionReasons: [],
+      sourceSummary: "m52_shadow_test_not_evaluated_sentinel",
+    };
+  }
   const cautionReasons: string[] = [];
   for (const c of cautions.slice(0, 8)) {
     cautionReasons.push(c.length > 200 ? `${c.slice(0, 200)}…` : c);
   }
   for (const r of riskFlags.slice(0, 8)) {
+    if (r === M52_SHADOW_TEST_BLOCK_SENTINEL || r === M52_SHADOW_TEST_NOT_EVALUATED_SENTINEL) continue;
     cautionReasons.push(r.length > 200 ? `${r.slice(0, 200)}…` : r);
   }
   const fr = meta?.fallbackReason;
@@ -390,7 +437,7 @@ function buildGuardrailsReadonly(
 
   if (cautionReasons.length === 0) {
     return {
-      status: "not_evaluated",
+      status: "pass",
       blockReasons: [],
       cautionReasons: [],
       sourceSummary: "no_viewer_safe_caution_signals",
@@ -406,7 +453,7 @@ function buildGuardrailsReadonly(
 
 function buildMissingSourcesReadonly(input: {
   pairwiseAvailable: boolean;
-  guardrailStatus: "not_evaluated" | "caution";
+  guardrailStatus: MultiSourceGuardrailsSourceReadonly["status"];
   rrmSimAvailable: boolean;
 }): string[] {
   const out: string[] = [];
@@ -420,6 +467,151 @@ function buildMissingSourcesReadonly(input: {
     out.push("guardrails_explicit_signal");
   }
   return out;
+}
+
+function extractPairwiseShadowCandidate(pairwise: MultiSourcePairwiseSourceReadonly): string | null {
+  if (!pairwise.available) return null;
+  const w = pairwise.pairwiseWinnerCandidateUserId?.trim();
+  if (w) return w;
+  const s = pairwise.selectedCandidateUserId?.trim();
+  if (s) return s;
+  return null;
+}
+
+function extractRrmSimShadowCandidate(rrmSim: MultiSourceRrmSimSourceReadonly): string | null {
+  if (!rrmSim.available) return null;
+  const c = rrmSim.candidateUserId?.trim();
+  if (c) return c;
+  return null;
+}
+
+function buildAvailableSourcesLabels(input: {
+  pairwiseAvailable: boolean;
+  rrmSimAvailable: boolean;
+}): string[] {
+  const out: string[] = ["match_result_baseline"];
+  if (input.pairwiseAvailable) out.push("pairwise_finalize_meta");
+  if (input.rrmSimAvailable) out.push("rrm_sim");
+  return out;
+}
+
+function computeM52M3ShadowProposal(input: {
+  currentDisplayCandidateUserId: string;
+  pairwise: MultiSourcePairwiseSourceReadonly;
+  rrmSim: MultiSourceRrmSimSourceReadonly;
+  guardrails: MultiSourceGuardrailsSourceReadonly;
+  missingSourcesAdmin: string[];
+}): {
+  m5ProposedDisplayCandidateUserId: string | null;
+  wouldChangeCurrentDisplay: boolean;
+  decisionRule: MultiSourceFinalDecisionReadonlyDecisionRule;
+  shadowReason: string | null;
+  noProposalReason: string | null;
+  sourcesBlockingShadowProposal: string[];
+  shadowMissingSources: string[];
+  shadowCautionReasonsEcho: string[];
+  shadowTraceDetail: string;
+} {
+  const current = input.currentDisplayCandidateUserId.trim();
+  const pwCand = extractPairwiseShadowCandidate(input.pairwise);
+  const rrmCand = extractRrmSimShadowCandidate(input.rrmSim);
+
+  const fail = (params: {
+    decisionRule: MultiSourceFinalDecisionReadonlyDecisionRule;
+    shadowReason: string;
+    noProposalReason: string;
+    sourcesBlockingShadowProposal: string[];
+    shadowTraceDetail: string;
+  }) => ({
+    m5ProposedDisplayCandidateUserId: null as string | null,
+    wouldChangeCurrentDisplay: false,
+    decisionRule: params.decisionRule,
+    shadowReason: params.shadowReason,
+    noProposalReason: params.noProposalReason,
+    sourcesBlockingShadowProposal: params.sourcesBlockingShadowProposal,
+    shadowMissingSources: params.sourcesBlockingShadowProposal,
+    shadowCautionReasonsEcho: [] as string[],
+    shadowTraceDetail: params.shadowTraceDetail,
+  });
+
+  if (!input.pairwise.available || !pwCand) {
+    return fail({
+      decisionRule: "shadow_pairwise_unavailable_current_display_preserved",
+      shadowReason: "pairwise_unavailable",
+      noProposalReason: "pairwise_unavailable",
+      sourcesBlockingShadowProposal: [
+        ...new Set([...input.missingSourcesAdmin, "pairwise_finalize_meta"]),
+      ],
+      shadowTraceDetail: "m52m3_shadow_pairwise_unavailable",
+    });
+  }
+
+  if (!input.rrmSim.available || !rrmCand) {
+    return fail({
+      decisionRule: "shadow_rrm_sim_unavailable_current_display_preserved",
+      shadowReason: "rrm_sim_unavailable",
+      noProposalReason: "rrm_sim_unavailable",
+      sourcesBlockingShadowProposal: [...new Set([...input.missingSourcesAdmin, "rrm_sim"])],
+      shadowTraceDetail: "m52m3_shadow_rrm_sim_unavailable",
+    });
+  }
+
+  if (input.guardrails.status === "block") {
+    return fail({
+      decisionRule: "shadow_guardrail_block_current_display_preserved",
+      shadowReason: "guardrail_block",
+      noProposalReason: "guardrail_block",
+      sourcesBlockingShadowProposal: ["guardrails_block"],
+      shadowTraceDetail: "m52m3_shadow_guardrail_block",
+    });
+  }
+
+  if (input.guardrails.status === "not_evaluated") {
+    return fail({
+      decisionRule: "shadow_guardrail_not_evaluated_current_display_preserved",
+      shadowReason: "guardrail_not_evaluated",
+      noProposalReason: "guardrail_not_evaluated",
+      sourcesBlockingShadowProposal: ["guardrails_not_evaluated"],
+      shadowTraceDetail: "m52m3_shadow_guardrail_not_evaluated",
+    });
+  }
+
+  if (input.guardrails.status !== "pass" && input.guardrails.status !== "caution") {
+    return fail({
+      decisionRule: "shadow_guardrail_not_evaluated_current_display_preserved",
+      shadowReason: "guardrail_not_evaluated",
+      noProposalReason: "guardrail_not_evaluated",
+      sourcesBlockingShadowProposal: ["guardrails_status_unsupported"],
+      shadowTraceDetail: "m52m3_shadow_guardrail_unsupported",
+    });
+  }
+
+  if (pwCand !== rrmCand) {
+    return fail({
+      decisionRule: "shadow_pairwise_rrm_conflict_current_display_preserved",
+      shadowReason: "pairwise_rrm_conflict",
+      noProposalReason: "pairwise_rrm_conflict",
+      sourcesBlockingShadowProposal: ["pairwise_rrm_mismatch"],
+      shadowTraceDetail: "m52m3_shadow_pairwise_rrm_conflict",
+    });
+  }
+
+  const consensus = pwCand;
+  const wouldChange = consensus !== current;
+  const shadowCautionReasonsEcho =
+    input.guardrails.status === "caution" ? input.guardrails.cautionReasons.slice(0, 8) : [];
+
+  return {
+    m5ProposedDisplayCandidateUserId: consensus,
+    wouldChangeCurrentDisplay: wouldChange,
+    decisionRule: "shadow_pairwise_rrm_consensus",
+    shadowReason: "pairwise_rrm_consensus",
+    noProposalReason: null,
+    sourcesBlockingShadowProposal: [],
+    shadowMissingSources: [],
+    shadowCautionReasonsEcho,
+    shadowTraceDetail: "m52m3_shadow_pairwise_rrm_consensus",
+  };
 }
 
 /**
@@ -453,22 +645,65 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
     },
   ];
 
+  const availableSources = buildAvailableSourcesLabels({
+    pairwiseAvailable: pairwise.available === true,
+    rrmSimAvailable: rrmSim.available === true,
+  });
+
+  let m5ProposedDisplayCandidateUserId: string | null = null;
+  let wouldChangeCurrentDisplay = false;
+  let decisionRule: MultiSourceFinalDecisionReadonlyM51M0["decisionRule"] =
+    "current_display_preserved_readonly";
+  let shadowTraceDetail = "m52m0_shadow_mode_disabled";
+
+  const m52Shadow = shadowEnabled
+    ? computeM52M3ShadowProposal({
+        currentDisplayCandidateUserId: display.displayCandidateUserId,
+        pairwise,
+        rrmSim,
+        guardrails,
+        missingSourcesAdmin: missingSources,
+      })
+    : null;
+
+  if (shadowEnabled && m52Shadow) {
+    m5ProposedDisplayCandidateUserId = m52Shadow.m5ProposedDisplayCandidateUserId;
+    wouldChangeCurrentDisplay = m52Shadow.wouldChangeCurrentDisplay;
+    decisionRule = m52Shadow.decisionRule;
+    shadowTraceDetail = m52Shadow.shadowTraceDetail;
+  }
+
   const shadow: MultiSourceShadowContractM52M0Readonly = shadowEnabled
     ? {
         shadowModeRequested: true,
         shadowContractEvaluated: true,
-        shadowDisplayProposalComputed: false,
-        noProposalReason: "m52m0_shadow_contract_only_insufficient_wiring_for_shadow_candidate",
-        sourcesBlockingShadowProposal: [...missingSources],
-        nextMilestonesNote:
-          "M5.2-M1 shadow source wiring; M5.2-M2 shadow proposed candidate; M5.2-M3 DB shadow run record; M5.3 enabled display",
+        shadowDisplayProposalComputed: true,
+        proposedDisplayCandidateUserId: m52Shadow!.m5ProposedDisplayCandidateUserId,
+        wouldChangeCurrentDisplay: m52Shadow!.wouldChangeCurrentDisplay,
+        appliedToDisplay: false,
+        noProposalReason: m52Shadow!.noProposalReason,
+        sourcesBlockingShadowProposal: m52Shadow!.sourcesBlockingShadowProposal,
+        reason: m52Shadow!.shadowReason,
+        availableSources,
+        missingSources: m52Shadow!.shadowMissingSources,
+        decisionRule,
+        shadowCautionReasonsEcho: m52Shadow!.shadowCautionReasonsEcho,
+        nextMilestonesNote: "M5.3 enabled display is required before applying this proposal.",
       }
     : {
         shadowModeRequested: false,
         shadowContractEvaluated: false,
         shadowDisplayProposalComputed: false,
+        proposedDisplayCandidateUserId: null,
+        wouldChangeCurrentDisplay: false,
+        appliedToDisplay: false,
         noProposalReason: "shadow_mode_disabled",
         sourcesBlockingShadowProposal: [],
+        reason: null,
+        availableSources: [],
+        missingSources: [],
+        decisionRule: null,
+        shadowCautionReasonsEcho: [],
         nextMilestonesNote:
           "Set PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED=true to surface shadow contract without changing display.",
       };
@@ -476,14 +711,11 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
   if (shadowEnabled) {
     decisionTrace.push({
       step: "shadow_contract_readonly",
-      detail: "m52m0_no_shadow_decision_engine",
+      detail: shadowTraceDetail,
     });
   }
 
   const mode: MultiSourceFinalDecisionReadonlyM51M0["mode"] = shadowEnabled ? "shadow" : "readonly";
-  const decisionRule: MultiSourceFinalDecisionReadonlyM51M0["decisionRule"] = shadowEnabled
-    ? "shadow_no_change_due_to_insufficient_m5_sources"
-    : "current_display_preserved_readonly";
 
   return {
     schemaVersion: MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION,
@@ -496,9 +728,9 @@ export function buildMultiSourceFinalDecisionReadonlyM51M0(
     },
     currentDisplayCandidateUserId: display.displayCandidateUserId,
     currentDisplaySourceType: display.displaySourceType,
-    m5ProposedDisplayCandidateUserId: null,
+    m5ProposedDisplayCandidateUserId,
     m5AppliedToDisplay: false,
-    wouldChangeCurrentDisplay: false,
+    wouldChangeCurrentDisplay,
     decisionRule,
     sources: {
       static: {

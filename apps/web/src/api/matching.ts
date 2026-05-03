@@ -68,7 +68,7 @@ export type MatchingResultResponse = {
    */
   multiSourceFinalDecision?: {
     schemaVersion: 1;
-    sourceVersion: "m5.2-m0-multi-source-final-decision-shadow-contract-v1";
+    sourceVersion: "m5.2-m3-multi-source-final-decision-shadow-proposal-v1";
     mode: "readonly" | "shadow";
     baseline: {
       matchResultCandidateUserId: string;
@@ -83,10 +83,16 @@ export type MatchingResultResponse = {
       | "static_fallback";
     m5ProposedDisplayCandidateUserId: string | null;
     m5AppliedToDisplay: false;
-    wouldChangeCurrentDisplay: false;
+    wouldChangeCurrentDisplay: boolean;
     decisionRule:
       | "current_display_preserved_readonly"
-      | "shadow_no_change_due_to_insufficient_m5_sources";
+      | "shadow_no_change_due_to_insufficient_m5_sources"
+      | "shadow_pairwise_unavailable_current_display_preserved"
+      | "shadow_rrm_sim_unavailable_current_display_preserved"
+      | "shadow_guardrail_block_current_display_preserved"
+      | "shadow_guardrail_not_evaluated_current_display_preserved"
+      | "shadow_pairwise_rrm_conflict_current_display_preserved"
+      | "shadow_pairwise_rrm_consensus";
     sources: {
       static: { available: true; candidateUserId: string; summary: string };
       pairwise:
@@ -134,7 +140,7 @@ export type MatchingResultResponse = {
             frozenAt: string | null;
           };
       guardrails: {
-        status: "not_evaluated" | "caution";
+        status: "pass" | "not_evaluated" | "caution" | "block";
         blockReasons: string[];
         cautionReasons: string[];
         sourceSummary: string;
@@ -144,8 +150,16 @@ export type MatchingResultResponse = {
       shadowModeRequested: boolean;
       shadowContractEvaluated: boolean;
       shadowDisplayProposalComputed: boolean;
-      noProposalReason: string;
+      proposedDisplayCandidateUserId: string | null;
+      wouldChangeCurrentDisplay: boolean;
+      appliedToDisplay: false;
+      noProposalReason: string | null;
       sourcesBlockingShadowProposal: string[];
+      reason: string | null;
+      availableSources: string[];
+      missingSources: string[];
+      decisionRule: string | null;
+      shadowCautionReasonsEcho: string[];
       nextMilestonesNote: string;
     };
     admin: {
