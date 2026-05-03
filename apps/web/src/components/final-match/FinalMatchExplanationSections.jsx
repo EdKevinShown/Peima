@@ -16,6 +16,13 @@ const card = {
 
 const h2 = { margin: "0 0 0.55rem", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" };
 
+const subHeading = {
+  margin: "0 0 0.4rem",
+  fontSize: "0.82rem",
+  fontWeight: 600,
+  color: "#64748b",
+};
+
 /**
  * M5.5-UI-R3: plain-language sections; no raw API copy, no ellipsis truncation, no internal terms on the main path.
  */
@@ -37,10 +44,11 @@ export default function FinalMatchExplanationSections({
   const coexist = useMemo(() => buildPlainCoexistence(insights, matchReview), [insights, matchReview]);
 
   const topics = Array.isArray(openingTopics) ? openingTopics.filter((t) => typeof t === "string" && t.trim()) : [];
-  const chatBullets = useMemo(
-    () => buildPlainChatPredictionBullets(interactionSim, topics),
-    [interactionSim, topics],
-  );
+  /** 仅在一次成功的 lite 请求后展示，避免与「可以先问」下的开场话题混淆。 */
+  const generatedChatBullets = useMemo(() => {
+    if (interactionSim == null || typeof interactionSim !== "object") return [];
+    return buildPlainChatPredictionBullets(interactionSim, topics).slice(0, 4);
+  }, [interactionSim, topics]);
 
   const reviewScore = matchReview?.reviewStaticScore;
   const hasReview = matchReview && typeof reviewScore === "number";
@@ -143,11 +151,14 @@ export default function FinalMatchExplanationSections({
           第一次可以这样聊
         </h2>
         {topics.length ? (
-          <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.15rem", color: "#334155", lineHeight: 1.55, fontSize: "0.95rem" }}>
-            {topics.slice(0, 3).map((t, i) => (
-              <li key={i}>{t.trim()}</li>
-            ))}
-          </ul>
+          <>
+            <p style={subHeading}>可以先问：</p>
+            <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.15rem", color: "#334155", lineHeight: 1.55, fontSize: "0.95rem" }}>
+              {topics.slice(0, 3).map((t, i) => (
+                <li key={i}>{t.trim()}</li>
+              ))}
+            </ul>
+          </>
         ) : (
           <p style={{ margin: "0 0 0.75rem", color: "#64748b", fontSize: "0.9rem" }}>可以从周末安排、最近开心的小事、平时的生活节奏这类轻松话题开始。</p>
         )}
@@ -174,13 +185,18 @@ export default function FinalMatchExplanationSections({
             暂时无法生成聊天预判，请稍后再试。你也可以先从轻松话题开始聊天。
           </p>
         ) : null}
-        <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.15rem", color: "#475569", lineHeight: 1.55, fontSize: "0.9rem" }}>
-          {chatBullets.map((tip, i) => (
-            <li key={i} style={{ marginBottom: "0.3rem" }}>
-              {tip}
-            </li>
-          ))}
-        </ul>
+        {generatedChatBullets.length > 0 ? (
+          <>
+            <p style={{ ...subHeading, marginTop: "0.75rem" }}>生成后的聊天建议：</p>
+            <ul style={{ margin: 0, paddingLeft: "1.15rem", color: "#475569", lineHeight: 1.55, fontSize: "0.9rem" }}>
+              {generatedChatBullets.map((tip, i) => (
+                <li key={i} style={{ marginBottom: "0.3rem" }}>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </section>
     </div>
   );
