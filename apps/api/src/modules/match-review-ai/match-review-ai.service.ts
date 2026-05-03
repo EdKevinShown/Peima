@@ -57,9 +57,13 @@ export class MatchReviewAiService {
     const matchRow = await this.matchingService.getLatestResultForUser(
       tokenUserId,
     );
-    if (matchRow.candidateUserId !== cid) {
+    /** Align with `GET /matching/result`: UI sends `displayCandidateUserId` when it differs from stored `candidateUserId` (e.g. RRM Top2). */
+    const staticId = matchRow.candidateUserId.trim();
+    const displayId = matchRow.displayCandidateUserId.trim();
+    const allowed = cid === staticId || cid === displayId;
+    if (!allowed) {
       throw new ForbiddenException(
-        "candidateUserId does not match your latest match result",
+        "candidateUserId must match your latest match result (static or display candidate)",
       );
     }
 
