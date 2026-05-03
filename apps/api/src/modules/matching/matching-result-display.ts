@@ -23,7 +23,9 @@ export type MatchResultDisplaySourceType =
   | "match_result_original"
   | "static_final"
   | "pairwise_final"
-  | "static_fallback";
+  | "static_fallback"
+  /** M5.3-C1: union member reserved for M5.3-C2 resolver; not returned by `resolveMatchResultDisplay` yet. */
+  | "rrm_top2_bounded_selector";
 
 export type MatchResultDisplayFields = {
   displayCandidateUserId: string;

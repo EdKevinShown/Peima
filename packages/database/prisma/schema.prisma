@@ -52,6 +52,8 @@ model User {
   aiPairwiseDecisionJobs   AiPairwiseDecisionJob[]
   /// M3.8-M11：finalize-with-pairwise sidecar（不写 MatchResult.candidateUserId / 不改 finalScore）。
   pairwisePoolFinalizeMeta PairwisePoolFinalizeMeta[]
+  /// M5.3-C1：RRM Top2 display 侧车（不写 MatchResult.candidateUserId / 不改 finalScore）。
+  matchResultRrmTop2DisplayMeta MatchResultRrmTop2DisplayMeta[]
   chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
 
   @@map("users")
@@ -228,6 +230,28 @@ model PairwisePoolFinalizeMeta {
   @@map("pairwise_pool_finalize_meta")
 }
 
+/// M5.3-C1: parallel sidecar for RRM Top2 bounded display decision (does not write MatchResult.candidateUserId / finalScore).
+model MatchResultRrmTop2DisplayMeta {
+  id              String    @id @default(cuid())
+  matchResultId   String    @unique
+  viewerUserId    String
+  schemaVersion   Int
+  sourceVersion   String
+  top2Fingerprint String?
+  frozen            Boolean   @default(true)
+  frozenAt        DateTime?
+  meta              Json
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  matchResult MatchResult @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
+  viewer      User        @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@index([viewerUserId])
+  @@index([frozen, updatedAt])
+  @@map("match_result_rrm_top2_display_meta")
+}
+
 /// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).
 model QuestionnaireAnswer {
   id          String   @id @default(cuid())
@@ -359,8 +383,9 @@ model MatchResult {
 
   user      User       @relation("MatchResultViewer", fields: [userId], references: [id], onDelete: Cascade)
   candidate User       @relation("MatchResultCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
-  batch     MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
+  batch                MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  conversations        Conversation[]
+  rrmTop2DisplayMeta   MatchResultRrmTop2DisplayMeta?
 
   @@map("match_results")
 }
