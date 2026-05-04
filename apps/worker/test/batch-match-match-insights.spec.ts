@@ -20,6 +20,18 @@ const BANDS = [
 ] as const;
 
 describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
+  let prevDry: string | undefined;
+
+  beforeEach(() => {
+    prevDry = process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+    delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+  });
+
+  afterEach(() => {
+    if (prevDry === undefined) delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+    else process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = prevDry;
+  });
+
   const candidate = {
     age: 28,
     city: "上海",

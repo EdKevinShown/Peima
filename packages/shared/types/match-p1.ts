@@ -129,6 +129,68 @@ export type MatchInsightsRrmDecisionShadow = {
   generatedAt: string;
 };
 
+/** M6.3-r3: bounded decision dry-run meta (audit only; does not change MatchResult). */
+export const MATCH_INSIGHTS_RRM_BOUNDED_DECISION_SOURCE_VERSION =
+  "m6.3-rrm-bounded-decision-v1" as const;
+
+export type MatchInsightsRrmBoundedDecisionRef = {
+  kind: "user";
+  id?: string;
+  redacted?: boolean;
+};
+
+export type MatchInsightsRrmBoundedDecisionDecision =
+  | "would_use_baseline"
+  | "would_switch_to_rrm"
+  | "fallback_baseline";
+
+export type MatchInsightsRrmBoundedDecisionSource =
+  | "baseline"
+  | "rrm_shadow_bounded"
+  | "fallback";
+
+export type MatchInsightsRrmBoundedDecisionFallbackReason =
+  | "flag_off"
+  | "missing_shadow"
+  | "shadow_not_switch"
+  | "malformed_shadow"
+  | "missing_score_shadow_v2"
+  | "missing_selected_top2"
+  | "target_not_in_top2"
+  | "missing_candidate_user"
+  | "missing_candidate_profile"
+  | "guardrail_blocked"
+  | "context_flags_high_risk"
+  | "source_version_mismatch"
+  | "evaluation_gate_not_satisfied"
+  | "unexpected_exception";
+
+export type MatchInsightsRrmBoundedDecision = {
+  schemaVersion: 1;
+  sourceType: "rrm_bounded_decision";
+  sourceVersion: typeof MATCH_INSIGHTS_RRM_BOUNDED_DECISION_SOURCE_VERSION;
+  mode: "dry_run";
+  decision: MatchInsightsRrmBoundedDecisionDecision;
+  baselineRef: MatchInsightsRrmBoundedDecisionRef;
+  boundedRef?: MatchInsightsRrmBoundedDecisionRef;
+  decisionSource: MatchInsightsRrmBoundedDecisionSource;
+  wouldSwitch: boolean;
+  fallbackUsed: boolean;
+  fallbackReason: MatchInsightsRrmBoundedDecisionFallbackReason | null;
+  guardrails: {
+    blocked: boolean;
+    blockReasons: string[];
+  };
+  inputPresence: {
+    scoreShadowV2: boolean;
+    rrmDecisionShadow: boolean;
+    rrmV2Top2Selector: boolean;
+    selectedTop2: boolean;
+    scoreShadowV1LegacyPresent: boolean;
+  };
+  generatedAt: string;
+};
+
 export type MatchInsights = {
   explanation: {
     whyMatch: string;
@@ -144,4 +206,6 @@ export type MatchInsights = {
   rrmV2Top2Selector?: MatchInsightsRrmV2Top2SelectorShadow;
   /** M6.1-r3: optional; only written when `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED=1`. */
   rrmDecisionShadow?: MatchInsightsRrmDecisionShadow;
+  /** M6.3-r3: optional dry-run; only when `PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED=1`. */
+  rrmBoundedDecision?: MatchInsightsRrmBoundedDecision;
 };

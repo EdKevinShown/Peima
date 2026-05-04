@@ -29,6 +29,7 @@ import {
 } from "./rrm-v2-top2-selector.js";
 import { readM6RrmDecisionShadowEnv } from "./batch-match-rrm-decision-shadow-env.js";
 import { buildRrmDecisionShadowPayload } from "./batch-match-rrm-decision-shadow.js";
+import { buildRrmBoundedDecisionDryRunPayload } from "./batch-match-rrm-bounded-decision.js";
 
 function toScoreShadowV2(
   r: RelationshipProfileScoreV2Result,
@@ -101,6 +102,7 @@ function buildRrmV2Top2SelectorShadowFromPool(
 /**
  * P1-1 placeholder + M6.0-J3 scoreShadowV2 + M6.0-R3 rrmV2Top2Selector shadow (no scoreShadow v1 write).
  * M6.1-r3: optional `rrmDecisionShadow` when `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED=1` (shadow-only).
+ * M6.3-r3: optional `rrmBoundedDecision` dry-run meta when `PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED=1` (audit only).
  * Does not read questionnaire answers as raw payloads, tokens, or RRM outputs.
  */
 export function buildWorkerMatchInsightsForBestMatch(params: {
@@ -147,6 +149,13 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
       finalScore: params.finalScore ?? params.components.finalScore,
       insights: out,
     });
+  }
+  const bounded = buildRrmBoundedDecisionDryRunPayload({
+    insights: out,
+    baselineCandidateUserId: params.baselineCandidateUserId ?? "",
+  });
+  if (bounded != null) {
+    out.rrmBoundedDecision = bounded;
   }
   return out;
 }
