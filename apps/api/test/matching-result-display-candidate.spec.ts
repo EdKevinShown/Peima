@@ -1,7 +1,10 @@
 import type { MatchResult } from "@peima/database";
 import { RRM_SIM_SOURCE_VERSION } from "../src/modules/ai-simulation-v1/rrm-sim.constants";
 import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "../src/modules/matching/matching-rrm-sim-readonly-summary";
-import { resolveMatchResultDisplay } from "../src/modules/matching/matching-result-display";
+import {
+  buildResolvedMatchProjection,
+  resolveMatchResultDisplay,
+} from "../src/modules/matching/matching-result-display";
 import { MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE } from "../src/modules/matching/rrm-top2-display-meta.types";
 
 /** Sync with `packages/shared/types/match-p1.ts` (M6 tests only; avoid runtime `@peima/shared` root import). */
@@ -860,5 +863,90 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       expect(r.displaySourceType).toBe("pairwise_final");
       expect(r.displayCandidateUserId).toBe("cand-winner");
     });
+  });
+});
+
+describe("buildResolvedMatchProjection (M6.5-C1)", () => {
+  it("baseline only: resolved and targets follow baseline; no warnings", () => {
+    const baseline = "cand-a";
+    const p = buildResolvedMatchProjection(
+      baseline,
+      {
+        displayCandidateUserId: baseline,
+        displaySourceType: "match_result_original",
+        finalMatchDecisionMeta: null,
+      },
+      { displayResolverErrored: false },
+    );
+    expect(p.baselineCandidateUserId).toBe(baseline);
+    expect(p.displayCandidateUserId).toBe(baseline);
+    expect(p.decisionCandidateUserId).toBeNull();
+    expect(p.decisionSourceType).toBeNull();
+    expect(p.resolvedCandidateUserId).toBe(baseline);
+    expect(p.resolvedSourceType).toBe("match_result_original");
+    expect(p.scoreOwnerCandidateUserId).toBe(baseline);
+    expect(p.explanationOwnerCandidateUserId).toBe(baseline);
+    expect(p.chatTargetUserId).toBe(baseline);
+    expect(p.timelineTargetUserId).toBe(baseline);
+    expect(p.feedbackTargetUserId).toBe(baseline);
+    expect(p.fallbackUsed).toBe(false);
+    expect(p.fallbackReason).toBeNull();
+    expect(p.consistencyWarnings).toEqual([]);
+  });
+
+  it("display differs from baseline: resolved follows display; owners stay baseline; warnings", () => {
+    const baseline = "cand-a";
+    const displayId = "cand-b";
+    const p = buildResolvedMatchProjection(
+      baseline,
+      {
+        displayCandidateUserId: displayId,
+        displaySourceType: "rrm_top2_v2_selector_readonly",
+        finalMatchDecisionMeta: null,
+      },
+      { displayResolverErrored: false },
+    );
+    expect(p.resolvedCandidateUserId).toBe(displayId);
+    expect(p.resolvedSourceType).toBe("rrm_top2_v2_selector_readonly");
+    expect(p.scoreOwnerCandidateUserId).toBe(baseline);
+    expect(p.explanationOwnerCandidateUserId).toBe(baseline);
+    expect(p.chatTargetUserId).toBe(displayId);
+    expect(p.timelineTargetUserId).toBe(displayId);
+    expect(p.feedbackTargetUserId).toBe(displayId);
+    const codes = p.consistencyWarnings.map((w) => w.code).sort();
+    expect(codes).toEqual(
+      [
+        "display_candidate_differs_from_candidate_user_id",
+        "explanation_owner_mismatch",
+        "score_owner_mismatch",
+      ].sort(),
+    );
+  });
+
+  it("display resolver errored: fallback baseline + resolved_fallback_to_baseline warning", () => {
+    const baseline = "cand-a";
+    const p = buildResolvedMatchProjection(
+      baseline,
+      {
+        displayCandidateUserId: baseline,
+        displaySourceType: "match_result_original",
+        finalMatchDecisionMeta: null,
+      },
+      { displayResolverErrored: true },
+    );
+    expect(p.resolvedCandidateUserId).toBe(baseline);
+    expect(p.fallbackUsed).toBe(true);
+    expect(p.fallbackReason).toBe("display_resolver_failed");
+    expect(p.consistencyWarnings.some((w) => w.code === "resolved_fallback_to_baseline")).toBe(true);
+  });
+
+  it("no true decision: decision fields null", () => {
+    const p = buildResolvedMatchProjection(
+      "x",
+      { displayCandidateUserId: "x", displaySourceType: "match_result_original", finalMatchDecisionMeta: null },
+      { displayResolverErrored: false },
+    );
+    expect(p.decisionCandidateUserId).toBeNull();
+    expect(p.decisionSourceType).toBeNull();
   });
 });

@@ -5,6 +5,10 @@ import { MatchReviewAiConfigService } from "../src/modules/match-review-ai/match
 import { MatchReviewAiService } from "../src/modules/match-review-ai/match-review-ai.service";
 import { MatchingService } from "../src/modules/matching/matching.service";
 import type { MatchResultViewerPayload } from "../src/modules/matching/matching.service";
+import {
+  buildResolvedMatchProjection,
+  type MatchResultDisplayFields,
+} from "../src/modules/matching/matching-result-display";
 import { resolveRelationshipProfileScoreV2Shadow } from "../src/modules/matching/matching-relationship-profile-score-v2";
 import { QuestionnaireService } from "../src/modules/questionnaire/questionnaire.service";
 
@@ -20,21 +24,32 @@ const stubProfile = {
 } as const;
 
 function minimalMatchRow(
-  over: Partial<Pick<MatchResultViewerPayload, "candidateUserId" | "displayCandidateUserId">> = {},
+  over: Partial<MatchResultViewerPayload> = {},
 ): MatchResultViewerPayload {
+  const candidateUserId = over.candidateUserId ?? "cand-static";
+  const displayCandidateUserId = over.displayCandidateUserId ?? candidateUserId;
+  const displaySourceType =
+    over.displaySourceType ?? ("match_result_original" as MatchResultDisplayFields["displaySourceType"]);
+  const display: MatchResultDisplayFields = {
+    displayCandidateUserId,
+    displaySourceType,
+    finalMatchDecisionMeta: over.finalMatchDecisionMeta ?? null,
+  };
+  const resolvedProjection = buildResolvedMatchProjection(candidateUserId, display, {
+    displayResolverErrored: false,
+  });
   const base = {
     id: "mr-spec-1",
     userId: "viewer-spec-1",
-    candidateUserId: "cand-static",
-    displayCandidateUserId: "cand-static",
-    displaySourceType: "match_result_original" as const,
-    finalMatchDecisionMeta: null,
+    candidateUserId,
     batchId: "batch-1",
     finalScore: 0.75,
     reasonSummary: "ok",
     status: "active",
     createdAt: new Date("2026-05-01T00:00:00.000Z"),
     updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+    ...display,
+    ...resolvedProjection,
     multiSourceFinalDecision: {
       sources: {
         static: {},
@@ -55,7 +70,7 @@ function minimalMatchRow(
     relationshipProfileScore: { score: null, source: "missing" },
     relationshipProfileScoreV2: resolveRelationshipProfileScoreV2Shadow(null),
   } as MatchResultViewerPayload;
-  return { ...base, ...over };
+  return { ...base, ...over } as MatchResultViewerPayload;
 }
 
 async function makeService(matching: Pick<MatchingService, "getLatestResultForUser">) {

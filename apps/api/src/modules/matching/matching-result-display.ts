@@ -226,3 +226,106 @@ export async function resolveMatchResultDisplay(
     finalMatchDecisionMeta: null,
   };
 }
+
+/** M6.5-C1: viewer-safe resolved candidate projection for `GET /matching/result` (no true bounded; no raw RRM meta reads). */
+export type MatchResultConsistencyWarning = {
+  code: string;
+  severity: "info" | "warning" | "blocking";
+  message: string;
+};
+
+export type ResolvedMatchProjectionFields = {
+  baselineCandidateUserId: string;
+  displayCandidateUserId: string;
+  decisionCandidateUserId: null;
+  resolvedCandidateUserId: string;
+  resolvedSourceType: string;
+  decisionSourceType: null;
+  fallbackUsed: boolean;
+  fallbackReason: string | null;
+  scoreOwnerCandidateUserId: string;
+  explanationOwnerCandidateUserId: string;
+  chatTargetUserId: string;
+  timelineTargetUserId: string;
+  feedbackTargetUserId: string;
+  consistencyWarnings: MatchResultConsistencyWarning[];
+};
+
+/**
+ * Pure projection from existing display resolver output + baseline.
+ * Does not read `matchInsights.rrmDecisionShadow` / `rrmBoundedDecision` for decision switching.
+ */
+export function buildResolvedMatchProjection(
+  baselineCandidateUserId: string,
+  display: MatchResultDisplayFields,
+  opts: { displayResolverErrored: boolean },
+): ResolvedMatchProjectionFields {
+  const baseline = baselineCandidateUserId.trim();
+  const displayId = display.displayCandidateUserId?.trim() ?? "";
+
+  let resolvedCandidateUserId: string;
+  let resolvedSourceType: string;
+  let fallbackUsed = false;
+  let fallbackReason: string | null = null;
+  const consistencyWarnings: MatchResultConsistencyWarning[] = [];
+
+  if (opts.displayResolverErrored) {
+    resolvedCandidateUserId = baseline;
+    resolvedSourceType = "match_result_original";
+    fallbackUsed = true;
+    fallbackReason = "display_resolver_failed";
+    consistencyWarnings.push({
+      code: "resolved_fallback_to_baseline",
+      severity: "warning",
+      message: "Display resolver failed; using baseline candidate.",
+    });
+  } else if (displayId) {
+    resolvedCandidateUserId = displayId;
+    resolvedSourceType = display.displaySourceType;
+  } else {
+    resolvedCandidateUserId = baseline;
+    resolvedSourceType = "match_result_original";
+    fallbackUsed = true;
+    fallbackReason = "display_missing";
+    consistencyWarnings.push({
+      code: "resolved_fallback_to_baseline",
+      severity: "warning",
+      message: "Display candidate missing; using baseline candidate.",
+    });
+  }
+
+  if (!opts.displayResolverErrored && displayId && displayId !== baseline) {
+    consistencyWarnings.push({
+      code: "display_candidate_differs_from_candidate_user_id",
+      severity: "info",
+      message: "Display candidate differs from persisted match result candidate.",
+    });
+    consistencyWarnings.push({
+      code: "score_owner_mismatch",
+      severity: "warning",
+      message: "Score owner remains baseline candidate until score contract is extended.",
+    });
+    consistencyWarnings.push({
+      code: "explanation_owner_mismatch",
+      severity: "warning",
+      message: "Explanation owner remains baseline candidate until explanation contract is extended.",
+    });
+  }
+
+  return {
+    baselineCandidateUserId: baseline,
+    displayCandidateUserId: displayId || baseline,
+    decisionCandidateUserId: null,
+    resolvedCandidateUserId,
+    resolvedSourceType,
+    decisionSourceType: null,
+    fallbackUsed,
+    fallbackReason,
+    scoreOwnerCandidateUserId: baseline,
+    explanationOwnerCandidateUserId: baseline,
+    chatTargetUserId: resolvedCandidateUserId,
+    timelineTargetUserId: resolvedCandidateUserId,
+    feedbackTargetUserId: resolvedCandidateUserId,
+    consistencyWarnings,
+  };
+}

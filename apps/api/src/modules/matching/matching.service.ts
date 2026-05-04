@@ -11,7 +11,12 @@ import {
   buildMultiSourceFinalDecisionReadonlyM51M0,
   type MultiSourceFinalDecisionReadonlyM51M0,
 } from "./matching-multi-source-final-decision-m51m0";
-import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
+import {
+  buildResolvedMatchProjection,
+  resolveMatchResultDisplay,
+  type MatchResultDisplayFields,
+  type ResolvedMatchProjectionFields,
+} from "./matching-result-display";
 import {
   resolveRelationshipProfileScoreShadow,
   type ViewerSafeRelationshipProfileScoreShadow,
@@ -29,9 +34,12 @@ export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
 };
 
+export type { MatchResultConsistencyWarning, ResolvedMatchProjectionFields } from "./matching-result-display";
+
 /** M3.8-M13 + M5.1 / M5.2-M0: `GET /matching/result` — row + display + multi-source sidecar (optional shadow contract via env, no display mutation). */
 export type MatchResultViewerPayload = MatchResult &
-  MatchResultDisplayFields & {
+  MatchResultDisplayFields &
+  ResolvedMatchProjectionFields & {
     multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;
     /** M6.0-B: parsed from `reasonSummary` only; viewer-safe numbers + source enum. */
     scoreBreakdown: ViewerSafeScoreBreakdown;
@@ -122,7 +130,21 @@ export class MatchingService {
     if (!result) {
       throw new NotFoundException(`No match result for user ${userId}`);
     }
-    const display = await resolveMatchResultDisplay(this.prisma, result);
+    let display: MatchResultDisplayFields;
+    let displayResolverErrored = false;
+    try {
+      display = await resolveMatchResultDisplay(this.prisma, result);
+    } catch {
+      displayResolverErrored = true;
+      display = {
+        displayCandidateUserId: result.candidateUserId,
+        displaySourceType: "match_result_original",
+        finalMatchDecisionMeta: null,
+      };
+    }
+    const resolvedProjection = buildResolvedMatchProjection(result.candidateUserId, display, {
+      displayResolverErrored,
+    });
     const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });
@@ -137,6 +159,7 @@ export class MatchingService {
     return {
       ...result,
       ...display,
+      ...resolvedProjection,
       multiSourceFinalDecision,
       scoreBreakdown,
       relationshipProfileScore,

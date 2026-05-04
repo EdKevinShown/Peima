@@ -101,6 +101,13 @@ export type ViewerSafeFinalMatchDecisionMeta = {
   appliedToWorkerRanking: boolean;
 };
 
+/** M6.5-C1: aligned with API `consistencyWarnings` projection. */
+export type MatchingResultConsistencyWarning = {
+  code: string;
+  severity: "info" | "warning" | "blocking";
+  message: string;
+};
+
 /**
  * GET `/matching/result/:userId` 的 JSON 形状。
  * M4.3：最终匹配页仅重组展示与折叠策略；不改变本响应字段含义或服务端决策。
@@ -138,6 +145,24 @@ export type MatchingResultResponse = {
    * When true, UI may show baseline-path copy (R8); do not infer from matchInsights on the client.
    */
   fallbackUsed?: boolean;
+  /** M6.5-C1: projection-layer fallback reason when `resolved*` falls back to baseline. */
+  fallbackReason?: string | null;
+  /** M6.5-C1: explicit baseline (usually `candidateUserId`). */
+  baselineCandidateUserId?: string | null;
+  /** M6.5-C1: true bounded target — not wired; `null` until pilot. */
+  decisionCandidateUserId?: string | null;
+  /** M6.5-C1: UX anchor for page + actions (follows display resolver when set). */
+  resolvedCandidateUserId?: string | null;
+  /** M6.5-C1: why `resolvedCandidateUserId` was chosen. */
+  resolvedSourceType?: string | null;
+  /** M6.5-C1: decision audit — `null` until true bounded is implemented. */
+  decisionSourceType?: string | null;
+  scoreOwnerCandidateUserId?: string | null;
+  explanationOwnerCandidateUserId?: string | null;
+  chatTargetUserId?: string | null;
+  timelineTargetUserId?: string | null;
+  feedbackTargetUserId?: string | null;
+  consistencyWarnings?: MatchingResultConsistencyWarning[];
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
   /**
    * M5.1 / M5.2-M0: multi-source sidecar + optional shadow **contract** (`PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED`).
