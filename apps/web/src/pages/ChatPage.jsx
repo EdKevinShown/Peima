@@ -593,8 +593,12 @@ export default function ChatPage() {
     const q = new URLSearchParams();
     q.set("conversationId", conversationId);
     if (userId) q.set("userId", userId);
+    /** M6.6-C4：进入 Copilot 时透传 Final Match handoff，便于 CopilotPage 比对。 */
+    if (expectedPeerUserId) {
+      q.set("finalMatchPeerUserId", expectedPeerUserId);
+    }
     return `/copilot?${q.toString()}`;
-  }, [conversationId, userId]);
+  }, [conversationId, userId, expectedPeerUserId]);
 
   const timelineHref = useMemo(() => {
     if (!conversationId) return "/chat/timeline";
@@ -798,6 +802,20 @@ export default function ChatPage() {
                 ? "最终匹配入口传入对象与当前会话对象不一致，沟通建议仍基于当前会话。"
                 : "沟通建议基于当前会话生成。"}
             </p>
+            {isDebugMode && (expectedPeerUserId || actualConversationPeerUserId) ? (
+              <p
+                style={{
+                  margin: "0 0 0.45rem",
+                  fontSize: "0.72rem",
+                  color: "#94a3b8",
+                  lineHeight: 1.45,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
+                调试：copilot 归因 = 当前会话 peer（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)} ·
+                handoff expected（脱敏）{maskPeerIdForDebug(expectedPeerUserId)}
+              </p>
+            ) : null}
             <CopilotInsightCard insights={copilotInsights} />
           </div>
           <div
