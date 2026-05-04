@@ -119,6 +119,19 @@ describe("tryParseRrmV2SelectorReadonlyDisplayFromMatchInsights", () => {
     ).toBeNull();
   });
 
+  it.each([
+    ["hasLowBand", { hasLowBand: true, top2GapLarge: false, hasStrongConflictBand: false, anyBelowSuggestedFloor: false }],
+    ["hasStrongConflictBand", { hasLowBand: false, top2GapLarge: false, hasStrongConflictBand: true, anyBelowSuggestedFloor: false }],
+    ["anyBelowSuggestedFloor", { hasLowBand: false, top2GapLarge: false, hasStrongConflictBand: false, anyBelowSuggestedFloor: true }],
+  ] as const)("returns null when contextFlags.%s true", (_label, flags) => {
+    expect(
+      tryParseRrmV2SelectorReadonlyDisplayFromMatchInsights({
+        scoreShadowV2: v2(),
+        rrmV2Top2Selector: selectorBase({ contextFlags: flags }),
+      }),
+    ).toBeNull();
+  });
+
   it("returns null when top1 mismatch", () => {
     expect(
       tryParseRrmV2SelectorReadonlyDisplayFromMatchInsights({

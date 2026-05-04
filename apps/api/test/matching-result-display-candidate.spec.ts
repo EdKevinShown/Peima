@@ -793,5 +793,72 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       expect(r.displaySourceType).toBe("match_result_original");
       expect(r.displayCandidateUserId).toBe("cand-static");
     });
+
+    it("M6 flag on + invalid selector version → fallback pairwise (no throw)", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const row = mr({
+        candidateUserId: "cand-static",
+        finalScore: 0.4,
+        matchInsights: {
+          scoreShadowV2: scoreShadowV2Fixture(),
+          rrmV2Top2Selector: { ...rrmV2SelectorFixture("cand-m6"), version: "wrong-shadow-version" },
+        },
+      } as Partial<MatchResult>);
+      const r = await resolveMatchResultDisplay(prisma, row);
+      expect(r.displaySourceType).toBe("pairwise_final");
+      expect(row.candidateUserId).toBe("cand-static");
+      expect(row.finalScore).toBe(0.4);
+    });
+
+    it("M6 flag on + top1 user row missing → fallback pairwise (no throw)", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadowV2: scoreShadowV2Fixture(),
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+      expect(r.displayCandidateUserId).toBe("cand-winner");
+    });
   });
 });
