@@ -85,6 +85,85 @@ function formatV2NullableNumber(n, digits) {
   return n.toFixed(digits);
 }
 
+/** M6.0-H2: `VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE=1` 启用主视觉 V2。 */
+function readV2PrimaryScoreFlag() {
+  return import.meta.env.VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE === "1";
+}
+
+const V2_PRIMARY_BANDS = new Set(["high", "good", "medium", "low", "strong_conflict"]);
+
+function resolveV2BandSubtitle(band) {
+  if (!band || typeof band !== "string") return "";
+  const m = {
+    high: "高度适配",
+    good: "较好适配",
+    medium: "中等适配",
+    low: "低适配，建议谨慎了解",
+    strong_conflict: "存在明显关系冲突",
+  };
+  return m[band] || "";
+}
+
+/** M6.0-H2：主分数数据源（仅前端；不改 API / worker）。 */
+function resolvePrimaryMatchScore(result) {
+  const finalScore = result?.finalScore ?? null;
+
+  if (!readV2PrimaryScoreFlag()) {
+    return { kind: "legacy", finalScore };
+  }
+  if (!result) {
+    return {
+      kind: "legacy_fallback",
+      finalScore: null,
+      reason: "missing",
+      fallbackUsed: true,
+      heroHint: "该结果生成较早，暂无 V2 关系画像分。",
+    };
+  }
+
+  const v2 = result?.relationshipProfileScoreV2;
+  if (
+    v2?.source === "match_insights_score_shadow_v2" &&
+    typeof v2.displayScore100 === "number" &&
+    Number.isFinite(v2.displayScore100) &&
+    v2.displayScore100 >= 0 &&
+    v2.displayScore100 <= 100
+  ) {
+    const band =
+      typeof v2.band === "string" && V2_PRIMARY_BANDS.has(v2.band) ? v2.band : null;
+    const n = Math.round(v2.displayScore100);
+    return {
+      kind: "v2",
+      finalScore,
+      displayScore100: n,
+      scoreText: String(n),
+      suffix: "/ 100",
+      title: "关系画像适配度",
+      subtitle: band ? resolveV2BandSubtitle(band) : "",
+      footnote: "该分数基于双方 20 维关系画像、核心轴差异与冲突惩罚计算。",
+      fallbackUsed: false,
+    };
+  }
+
+  if (v2?.source === "invalid") {
+    return {
+      kind: "legacy_fallback",
+      finalScore,
+      reason: "invalid",
+      fallbackUsed: true,
+      heroHint: null,
+    };
+  }
+
+  return {
+    kind: "legacy_fallback",
+    finalScore,
+    reason: "missing",
+    fallbackUsed: true,
+    heroHint: "该结果生成较早，暂无 V2 关系画像分。",
+  };
+}
+
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
@@ -397,6 +476,8 @@ export default function FinalMatchPage() {
     () => result?.displaySourceType === "rrm_top2_bounded_selector",
     [result?.displaySourceType],
   );
+  /** M6.0-H2: 主视觉 V2 vs legacy（feature flag）。 */
+  const primaryResolution = useMemo(() => resolvePrimaryMatchScore(result), [result]);
   const sidecarStatus = useMemo(() => {
     const candidateUserId = effectiveDisplayCandidateId;
     const hasJobId = aiSimJobId.length > 0;
@@ -1221,7 +1302,22 @@ export default function FinalMatchPage() {
             createdAt={result.createdAt}
             formatScoreDisplay={formatScoreDisplay}
             formatDateShort={formatDateShort}
+            primaryResolution={primaryResolution}
           />
+          {primaryResolution.kind === "legacy_fallback" && primaryResolution.reason === "invalid" ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.85rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              V2 shadow 数据异常，已使用旧版匹配指数。
+            </p>
+          ) : null}
 
           <section
             style={{
@@ -1236,6 +1332,9 @@ export default function FinalMatchPage() {
           >
             <p style={{ margin: "0 0 0.2rem", fontSize: "0.78rem", color: "#0f766e", fontWeight: 600, letterSpacing: "0.02em" }}>
               关系画像适配度
+              {primaryResolution.kind === "v2" ? (
+                <span style={{ fontWeight: 500, color: "#64748b" }}>（v1 shadow 对照，刻度与主视觉 V2 不同）</span>
+              ) : null}
             </p>
             <p style={{ margin: "0 0 0.55rem", fontSize: "1.55rem", fontWeight: 800, color: "#115e59", lineHeight: 1.15 }}>
               {formatRelationshipProfilePercent(result.relationshipProfileScore?.score)}
@@ -1442,7 +1541,9 @@ export default function FinalMatchPage() {
               })()}
             </div>
             <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
-              这是新的 V2 关系画像适配分，当前仅用于 shadow 对照，不会改变最终匹配对象或 legacy 匹配指数。
+              {readV2PrimaryScoreFlag() && primaryResolution.kind === "v2"
+                ? "以下为 V2 shadow 明细；主视觉已在灰度中使用 V2 展示分。legacy 匹配指数仍在「匹配分数构成」与技术区保留。"
+                : "这是新的 V2 关系画像适配分，当前仅用于 shadow 对照，不会改变最终匹配对象或 legacy 匹配指数。"}
             </p>
           </details>
 

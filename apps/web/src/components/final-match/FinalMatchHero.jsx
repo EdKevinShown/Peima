@@ -10,6 +10,7 @@ const heroStyle = {
 
 /**
  * M5.5-UI-R4: top hero — RRM 时区分「展示对象」与「基础适配分数」语义，不暗示分数含关系节奏。
+ * M6.0-H2: optional V2 primary score (`primaryResolution.kind === "v2"`).
  */
 export default function FinalMatchHero({
   isRrmDisplay,
@@ -17,8 +18,11 @@ export default function FinalMatchHero({
   createdAt,
   formatScoreDisplay,
   formatDateShort,
+  primaryResolution,
 }) {
   const intro = pickHeroMainIntro(isRrmDisplay);
+  const pr = primaryResolution ?? { kind: "legacy", finalScore };
+  const isV2Primary = pr.kind === "v2";
   const scoreLabel = isRrmDisplay ? "基础适配指数" : "匹配指数";
   const scoreHintInline = "这个分数表示资料与问卷的综合适配程度，可以帮助你理解本轮排序的参考。";
 
@@ -37,7 +41,55 @@ export default function FinalMatchHero({
         {intro}
       </p>
       <div style={{ marginTop: "0.85rem", paddingTop: "1rem", borderTop: "1px solid rgba(148,163,184,0.35)" }}>
-        {isRrmDisplay ? (
+        {isV2Primary ? (
+          <>
+            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
+              {pr.title}
+            </p>
+            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>
+              <span>{pr.scoreText}</span>
+              <span style={{ fontSize: "1.15rem", fontWeight: 700, color: "#3b82f6", marginLeft: "0.15rem" }}>
+                {pr.suffix}
+              </span>
+            </p>
+            {pr.subtitle ? (
+              <p
+                style={{
+                  margin: "0.45rem 0 0",
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  color: "#334155",
+                }}
+              >
+                {pr.subtitle}
+              </p>
+            ) : null}
+            {pr.footnote ? (
+              <p
+                style={{
+                  margin: "0.5rem 0 0",
+                  fontSize: "0.82rem",
+                  color: "#475569",
+                  lineHeight: 1.55,
+                }}
+              >
+                {pr.footnote}
+              </p>
+            ) : null}
+            {isRrmDisplay ? (
+              <p
+                style={{
+                  margin: "0.55rem 0 0",
+                  fontSize: "0.82rem",
+                  color: "#475569",
+                  lineHeight: 1.55,
+                }}
+              >
+                当前展示对象还结合了相处节奏判断；上方为关系画像适配度（V2），与 legacy 匹配指数不同，详见下方技术区。
+              </p>
+            ) : null}
+          </>
+        ) : isRrmDisplay ? (
           <>
             <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>{scoreLabel}</p>
             <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
@@ -60,6 +112,19 @@ export default function FinalMatchHero({
             <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
           </>
         )}
+        {pr.kind === "legacy_fallback" && pr.heroHint ? (
+          <p
+            style={{
+              margin: "0.55rem 0 0",
+              fontSize: "0.82rem",
+              color: "#64748b",
+              lineHeight: 1.55,
+            }}
+            role="status"
+          >
+            {pr.heroHint}
+          </p>
+        ) : null}
         <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>结果更新于 {formatDateShort(createdAt)}</p>
       </div>
     </header>
