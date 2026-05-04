@@ -8,7 +8,8 @@
     "prebuild": "pnpm --filter @peima/ai-simulation-v1-runner run build:worker && pnpm --filter @peima/ai-pairwise-decision-runner run build:worker",
     "build": "pnpm --filter @peima/shared build && tsc",
     "start": "node dist/main.js",
-    "batch-match": "tsx src/main.ts --batch-match"
+    "batch-match": "tsx src/main.ts --batch-match",
+    "test": "jest --config ./jest.config.cjs"
   },
   "dependencies": {
     "@peima/ai-pairwise-decision-runner": "workspace:*",
@@ -18,7 +19,10 @@
     "node-cron": "^4.2.1"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
