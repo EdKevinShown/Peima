@@ -54,6 +54,11 @@ export function FinalMatchTechnicalDetailsContent({
   feedbackTargetUserId,
   scoreOwnerCandidateUserId,
   explanationOwnerCandidateUserId,
+  /** M6.6-C5：与 resolved 展示对象比较；仅技术区展示。 */
+  scoreOwnerMismatch = false,
+  explanationOwnerMismatch = false,
+  apiConsistencyHasScoreOwnerMismatch = false,
+  apiConsistencyHasExplanationOwnerMismatch = false,
   resolvedFallbackReason,
   consistencyWarnings,
   finalMatchDecisionMeta,
@@ -126,7 +131,13 @@ export function FinalMatchTechnicalDetailsContent({
         <p style={{ margin: "0.15rem 0" }}>
           displayCandidateUserId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{displayCandidateUserId || "—"}</code>
         </p>
-        {resolvedCandidateUserId || resolvedSourceType || chatTargetUserId || timelineTargetUserId || feedbackTargetUserId ? (
+        {resolvedCandidateUserId ||
+        resolvedSourceType ||
+        chatTargetUserId ||
+        timelineTargetUserId ||
+        feedbackTargetUserId ||
+        scoreOwnerCandidateUserId ||
+        explanationOwnerCandidateUserId ? (
           <>
             <p style={{ margin: "0.55rem 0 0.15rem", fontWeight: 600, color: "#64748b" }}>M6.5-C2 · resolved 投影（与主路径 fallback 一致）</p>
             <p style={{ margin: "0.15rem 0" }}>
@@ -155,6 +166,25 @@ export function FinalMatchTechnicalDetailsContent({
             <p style={{ margin: "0.15rem 0" }}>
               explanationOwnerCandidateUserId：
               <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{explanationOwnerCandidateUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.45rem 0 0.15rem", fontWeight: 600, color: "#64748b" }}>M6.6-C5 · owner 对齐（只读）</p>
+            <p style={{ margin: "0.15rem 0", fontSize: "0.74rem", lineHeight: 1.5 }}>
+              scoreOwnerMismatch：<code>{String(scoreOwnerMismatch)}</code>
+              {apiConsistencyHasScoreOwnerMismatch ? (
+                <span style={{ color: "#94a3b8" }}>
+                  {" "}
+                  · API 已含 <code>score_owner_mismatch</code>（主路径分数区不重复短提示）
+                </span>
+              ) : null}
+            </p>
+            <p style={{ margin: "0.15rem 0", fontSize: "0.74rem", lineHeight: 1.5 }}>
+              explanationOwnerMismatch：<code>{String(explanationOwnerMismatch)}</code>
+              {apiConsistencyHasExplanationOwnerMismatch ? (
+                <span style={{ color: "#94a3b8" }}>
+                  {" "}
+                  · API 已含 <code>explanation_owner_mismatch</code>（主路径说明区不重复短提示）
+                </span>
+              ) : null}
             </p>
             {resolvedFallbackReason != null && resolvedFallbackReason !== "" ? (
               <p style={{ margin: "0.15rem 0" }}>

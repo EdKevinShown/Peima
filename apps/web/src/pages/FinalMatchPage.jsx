@@ -558,6 +558,43 @@ export default function FinalMatchPage() {
     return result.consistencyWarnings.filter((w) => w && w.severity === "blocking");
   }, [result?.consistencyWarnings]);
   const actionsBlockedByConsistency = blockingConsistencyWarnings.length > 0;
+
+  const hasApiScoreOwnerMismatchWarning = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return false;
+    return result.consistencyWarnings.some((w) => w && w.code === "score_owner_mismatch");
+  }, [result?.consistencyWarnings]);
+
+  const hasApiExplanationOwnerMismatchWarning = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return false;
+    return result.consistencyWarnings.some((w) => w && w.code === "explanation_owner_mismatch");
+  }, [result?.consistencyWarnings]);
+
+  /** M6.6-C5：与 API owner 比较；字段缺失不误报。 */
+  const scoreOwnerMismatch = useMemo(() => {
+    const r = typeof resolvedCandidateUserId === "string" ? resolvedCandidateUserId.trim() : "";
+    const s =
+      result?.scoreOwnerCandidateUserId != null && typeof result.scoreOwnerCandidateUserId === "string"
+        ? result.scoreOwnerCandidateUserId.trim()
+        : "";
+    if (!r || !s) return false;
+    return r !== s;
+  }, [resolvedCandidateUserId, result?.scoreOwnerCandidateUserId]);
+
+  const explanationOwnerMismatch = useMemo(() => {
+    const r = typeof resolvedCandidateUserId === "string" ? resolvedCandidateUserId.trim() : "";
+    const e =
+      result?.explanationOwnerCandidateUserId != null &&
+      typeof result.explanationOwnerCandidateUserId === "string"
+        ? result.explanationOwnerCandidateUserId.trim()
+        : "";
+    if (!r || !e) return false;
+    return r !== e;
+  }, [resolvedCandidateUserId, result?.explanationOwnerCandidateUserId]);
+
+  /** API 已列出时不在主路径重复同一类提示。 */
+  const showScoreOwnerMainHint = scoreOwnerMismatch && !hasApiScoreOwnerMismatchWarning;
+  const showExplanationOwnerMainHint = explanationOwnerMismatch && !hasApiExplanationOwnerMismatchWarning;
+
   /** M5.5-UI-R4: 关系节奏影响展示对象；finalScore 仍仅为基础适配参考，不由关系节奏重算。 */
   const isRrmDisplay = useMemo(
     () => result?.displaySourceType === "rrm_top2_bounded_selector",
@@ -1559,6 +1596,21 @@ export default function FinalMatchPage() {
             </p>
           ) : null}
 
+          {showExplanationOwnerMainHint ? (
+            <p
+              role="note"
+              style={{
+                marginTop: "1rem",
+                fontSize: "0.85rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              当前说明内容仍按稳定基线对象生成，后续阶段会进一步统一说明归属。
+            </p>
+          ) : null}
+
           {!isValidMatchInsights(result.matchInsights) ? (
             <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
               结构化匹配解读暂不可用。你可以在页面底部展开「技术来源说明」，查看系统侧保存的原始字段与读数摘要。
@@ -1680,6 +1732,19 @@ export default function FinalMatchPage() {
                 当前候选人展示可能已与批次主排序略有差异；下方分项仍反映批次主算法口径，未随只读展示辅助路径改写。
               </p>
             ) : null}
+            {showScoreOwnerMainHint ? (
+              <p
+                role="note"
+                style={{
+                  margin: "0.45rem 0 0",
+                  fontSize: "0.78rem",
+                  color: "#92400e",
+                  lineHeight: 1.55,
+                }}
+              >
+                当前匹配分数仍按稳定基线对象计算，未重新计算为展示对象专属分数。
+              </p>
+            ) : null}
           </details>
 
           <details
@@ -1797,6 +1862,10 @@ export default function FinalMatchPage() {
               feedbackTargetUserId={feedbackTargetUserId}
               scoreOwnerCandidateUserId={result.scoreOwnerCandidateUserId}
               explanationOwnerCandidateUserId={result.explanationOwnerCandidateUserId}
+              scoreOwnerMismatch={scoreOwnerMismatch}
+              explanationOwnerMismatch={explanationOwnerMismatch}
+              apiConsistencyHasScoreOwnerMismatch={hasApiScoreOwnerMismatchWarning}
+              apiConsistencyHasExplanationOwnerMismatch={hasApiExplanationOwnerMismatchWarning}
               resolvedFallbackReason={result.fallbackReason}
               consistencyWarnings={result.consistencyWarnings}
               finalMatchDecisionMeta={result.finalMatchDecisionMeta}
