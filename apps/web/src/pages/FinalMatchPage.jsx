@@ -468,6 +468,11 @@ export default function FinalMatchPage() {
     () => result?.displaySourceType === "rrm_top2_bounded_selector",
     [result?.displaySourceType],
   );
+  /** M6.0-r8: server-resolved readonly display path（前端不解析 matchInsights / scoreShadow）。 */
+  const isRrmV2ReadonlyDisplay = useMemo(
+    () => result?.displaySourceType === "rrm_top2_v2_selector_readonly",
+    [result?.displaySourceType],
+  );
   /** M6.0-H2: 主视觉 V2 vs legacy（feature flag）。 */
   const primaryResolution = useMemo(() => resolvePrimaryMatchScore(result), [result]);
   const sidecarStatus = useMemo(() => {
@@ -1296,6 +1301,92 @@ export default function FinalMatchPage() {
             formatDateShort={formatDateShort}
             primaryResolution={primaryResolution}
           />
+          {(() => {
+            const dst = result.displaySourceType;
+            const fb = typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : null;
+            const baselineOriginal = !dst || dst === "match_result_original";
+            const enhanced =
+              dst === "static_final" ||
+              dst === "pairwise_final" ||
+              dst === "static_fallback" ||
+              dst === "rrm_top2_bounded_selector";
+
+            if (isRrmV2ReadonlyDisplay) {
+              return (
+                <div
+                  role="status"
+                  style={{
+                    marginTop: "0.85rem",
+                    padding: "0.75rem 0.95rem",
+                    borderRadius: 10,
+                    border: "1px solid #bae6fd",
+                    background: "linear-gradient(90deg, #f0f9ff 0%, #ffffff 100%)",
+                    maxWidth: 560,
+                    lineHeight: 1.65,
+                    fontSize: "0.88rem",
+                    color: "#0c4a6e",
+                  }}
+                >
+                  <p style={{ margin: "0 0 0.45rem", fontWeight: 600 }}>展示说明</p>
+                  <p style={{ margin: 0 }}>
+                    本次展示经过 RRM V2 只读候选选择器辅助排序。它只影响展示说明，不改变主匹配结果。
+                  </p>
+                  <p style={{ margin: "0.55rem 0 0" }}>
+                    主匹配分数与系统记录的主候选人未改写；如需核对字段，请展开下方「技术来源说明」。
+                  </p>
+                </div>
+              );
+            }
+            if (fb === true) {
+              return (
+                <p
+                  role="status"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.88rem",
+                    color: "#334155",
+                    lineHeight: 1.6,
+                    maxWidth: 520,
+                  }}
+                >
+                  当前展示使用稳定基线路径。
+                </p>
+              );
+            }
+            if (baselineOriginal) {
+              return (
+                <p
+                  role="note"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.86rem",
+                    color: "#475569",
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  展示来源：稳定基线（与批次主结果一致）。
+                </p>
+              );
+            }
+            if (enhanced) {
+              return (
+                <p
+                  role="note"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.86rem",
+                    color: "#475569",
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  展示来源：已有增强展示路径（仅影响展示对象或说明，不改写入库的主匹配分数与主候选人）。
+                </p>
+              );
+            }
+            return null;
+          })()}
           {primaryResolution.kind === "legacy_fallback" && primaryResolution.reason === "invalid" ? (
             <p
               role="status"
@@ -1417,6 +1508,10 @@ export default function FinalMatchPage() {
               <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
                 关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
               </p>
+            ) : isRrmV2ReadonlyDisplay ? (
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+                当前候选人展示可能已与批次主排序略有差异；下方分项仍反映批次主算法口径，未随只读展示辅助路径改写。
+              </p>
             ) : null}
           </details>
 
@@ -1525,6 +1620,9 @@ export default function FinalMatchPage() {
             </summary>
             <FinalMatchTechnicalDetailsContent
               displaySourceType={result.displaySourceType}
+              displayResolverFallbackUsed={
+                typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : undefined
+              }
               finalMatchDecisionMeta={result.finalMatchDecisionMeta}
               readoutFusion={readoutFusion}
               candidateUserId={result.candidateUserId}

@@ -44,6 +44,8 @@ function JsonBlock({ value, maxHeight = 320 }) {
  */
 export function FinalMatchTechnicalDetailsContent({
   displaySourceType,
+  /** M6.0-r8: optional echo when API adds `fallbackUsed` on GET payload. */
+  displayResolverFallbackUsed,
   finalMatchDecisionMeta,
   readoutFusion,
   candidateUserId,
@@ -68,6 +70,18 @@ export function FinalMatchTechnicalDetailsContent({
       <p style={{ margin: "0.2rem 0" }}>
         展示来源类型：<code>{displaySourceType || "—"}</code>
       </p>
+      {typeof displayResolverFallbackUsed === "boolean" ? (
+        <p style={{ margin: "0.2rem 0" }}>
+          displayResolver fallbackUsed：<code>{String(displayResolverFallbackUsed)}</code>
+        </p>
+      ) : null}
+      {displaySourceType === "rrm_top2_v2_selector_readonly" ? (
+        <p style={{ margin: "0.35rem 0 0", fontSize: "0.74rem", color: "#64748b", lineHeight: 1.5 }}>
+          M6 readonly display：服务端在 <code>resolveMatchResultDisplay</code> 中解析；本页对<strong>该路径</strong>仅消费已返回的{" "}
+          <code>displaySourceType</code>，不解析 <code>matchInsights.rrmV2Top2Selector</code>，不从{" "}
+          <code>matchInsights</code> 读取原始 <code>scoreShadowV2</code> / <code>scoreShadow</code> 来推断展示来源。
+        </p>
+      ) : null}
       <p style={{ margin: "0.2rem 0" }}>
         finalScore（API 原值）：<code>{finalScore == null ? "—" : String(finalScore)}</code>
       </p>

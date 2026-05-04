@@ -129,7 +129,14 @@ export type MatchingResultResponse = {
     | "pairwise_final"
     | "static_fallback"
     /** M5.3-C1: reserved for M5.3-C2; GET still returns M3.8 values until resolver branch lands. */
-    | "rrm_top2_bounded_selector";
+    | "rrm_top2_bounded_selector"
+    /** M6.0-r6: readonly display from `matchInsights` (server-resolved only; no client-side RRM). */
+    | "rrm_top2_v2_selector_readonly";
+  /**
+   * Optional future / side-channel flag; current `GET /matching/result` may omit.
+   * When true, UI may show baseline-path copy (R8); do not infer from matchInsights on the client.
+   */
+  fallbackUsed?: boolean;
   finalMatchDecisionMeta?: ViewerSafeFinalMatchDecisionMeta | null;
   /**
    * M5.1 / M5.2-M0: multi-source sidecar + optional shadow **contract** (`PEIMA_M5_FINAL_DECISION_SHADOW_ENABLED`).
@@ -150,7 +157,8 @@ export type MatchingResultResponse = {
       | "static_final"
       | "pairwise_final"
       | "static_fallback"
-      | "rrm_top2_bounded_selector";
+      | "rrm_top2_bounded_selector"
+      | "rrm_top2_v2_selector_readonly";
     m5ProposedDisplayCandidateUserId: string | null;
     m5AppliedToDisplay: false;
     wouldChangeCurrentDisplay: boolean;
