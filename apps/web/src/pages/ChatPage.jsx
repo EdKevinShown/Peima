@@ -456,7 +456,8 @@ export default function ChatPage() {
     setFeedbackResult(null);
     setFeedbackSubmitting(true);
     try {
-      const targetUserId = conversation?.candidateUserId || undefined;
+      /** M6.6-C3：归因始终为当前会话对象（= actual peer）；handoff mismatch 时不写入 expected。 */
+      const feedbackAttributionTargetUserId = actualConversationPeerUserId || undefined;
       const structuredPayload = {
         schemaVersion: 1,
         kind: "p6.12_conversation_v0",
@@ -468,7 +469,7 @@ export default function ChatPage() {
         safetyFeeling: feedbackSafetyFeeling,
         awkwardness: feedbackAwkwardness,
         ...(matchResultIdParam ? { matchResultId: matchResultIdParam } : {}),
-        ...(targetUserId ? { targetUserId } : {}),
+        ...(feedbackAttributionTargetUserId ? { targetUserId: feedbackAttributionTargetUserId } : {}),
       };
       await submitFeedback({
         userId,
@@ -500,7 +501,7 @@ export default function ChatPage() {
     feedbackReplyQuality,
     feedbackSafetyFeeling,
     feedbackAwkwardness,
-    conversation,
+    actualConversationPeerUserId,
     matchResultIdParam,
   ]);
 
@@ -800,16 +801,51 @@ export default function ChatPage() {
             <CopilotInsightCard insights={copilotInsights} />
           </div>
           <div
+            data-m65-feedback-target-user-id={actualConversationPeerUserId || undefined}
             style={{
               borderTop: "1px dashed #ddd",
               paddingTop: "0.65rem",
               marginBottom: "0.7rem",
             }}
+            aria-label="会话反馈"
           >
             <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.4rem" }}>记录本次会话反馈</h3>
             <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.5rem" }}>
               仅用于改进体验（P6.12 结构化），对方不会看到；与匹配分、排序无关。
             </p>
+            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.45rem", lineHeight: 1.5 }}>
+              本页反馈按当前会话对象归因。
+            </p>
+            {handoffPeerMismatch ? (
+              <p
+                role="note"
+                style={{
+                  margin: "0 0 0.5rem",
+                  fontSize: "0.78rem",
+                  color: "#a16207",
+                  lineHeight: 1.5,
+                  maxWidth: 520,
+                }}
+              >
+                最终匹配入口对象与当前会话不一致；提交仍将写入当前聊天对象，不会写入另一用户。
+              </p>
+            ) : null}
+            {isDebugMode && (actualConversationPeerUserId || expectedPeerUserId) ? (
+              <p
+                style={{
+                  margin: "0 0 0.5rem",
+                  fontSize: "0.72rem",
+                  color: "#94a3b8",
+                  lineHeight: 1.45,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
+                调试：P6.12 targetUserId（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)}
+                {expectedPeerUserId
+                  ? ` · handoff expected（脱敏）${maskPeerIdForDebug(expectedPeerUserId)}`
+                  : ""}
+              </p>
+            ) : null}
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.45rem" }}>
               <label htmlFor="p4-feedback-rating">总评</label>
               <select

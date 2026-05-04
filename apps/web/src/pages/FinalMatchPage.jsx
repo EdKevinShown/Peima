@@ -1600,6 +1600,9 @@ export default function FinalMatchPage() {
             <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
               <strong>下一步：</strong>准备好后点击「进入聊天」。如需核对模拟侧车、补充说明或原始技术字段，请展开页面底部的「技术来源说明」。
             </p>
+            <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5, maxWidth: 440 }}>
+              结构化反馈请在聊天页提交；本页 footer 的 data-m65-feedback-target-user-id 与 API 的 feedback 目标链一致，供自动化读取。
+            </p>
             <button
               type="button"
               style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
