@@ -7,7 +7,6 @@ import {
   buildWorkerMatchInsightsForBestMatch,
   matchInsightsRrmV2Top2SelectorShadowFromCandidateRows,
 } from "../src/jobs/batch-match-match-insights";
-import { SCORING_VERSION_M60_SHADOW } from "../src/jobs/matching-score";
 import type { UserProfileLike } from "../src/jobs/matching-score";
 import { G1R_PROFILE_AXIS_KEYS } from "../src/jobs/relationship-profile-score-v2";
 import { RELATIONSHIP_PROFILE_SCORE_V2_VERSION } from "../src/jobs/relationship-profile-score-v2";
@@ -39,7 +38,7 @@ const components = {
 };
 
 describe("rrmV2Top2Selector shadow (R3)", () => {
-  it("1. matchInsights keeps scoreShadow v1, scoreShadowV2, rrmV2Top2Selector, placeholders", () => {
+  it("1. matchInsights keeps scoreShadowV2, rrmV2Top2Selector, placeholders (no v1 write)", () => {
     const vp = fullUserProfile(0.55);
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
@@ -51,7 +50,7 @@ describe("rrmV2Top2Selector shadow (R3)", () => {
         { candidateUserId: "cand-b", candidateProfile: fullUserProfile(0.57) },
       ],
     });
-    expect(mi.scoreShadow?.scoringVersion).toBe(SCORING_VERSION_M60_SHADOW);
+    expect(mi.scoreShadow).toBeUndefined();
     expect(mi.scoreShadowV2?.scoringVersion).toBe(RELATIONSHIP_PROFILE_SCORE_V2_VERSION);
     expect(mi.rrmV2Top2Selector?.version).toBe("m6.0-rrm-v2-top2-selector-shadow-v1");
     expect(mi.explanation?.strengths?.length).toBeGreaterThan(0);

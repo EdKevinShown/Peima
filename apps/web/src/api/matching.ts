@@ -42,9 +42,10 @@ export type MatchingScoreBreakdown = {
   source: MatchingScoreBreakdownSource;
 };
 
-/** M6.0-C/E：关系画像适配度 shadow；E 优先 `matchInsights.scoreShadow`。 */
+/** M6.0-C / M6.0-r10：关系画像适配度 shadow；优先 V2 shadow，其次 reasonSummary 分解。 */
 export type RelationshipProfileScoreShadowSource =
   | "match_insights_score_shadow"
+  | "match_insights_score_shadow_v2"
   | "score_breakdown_profile_score"
   | "missing";
 

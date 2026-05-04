@@ -66,13 +66,28 @@ describe("M6.0-E worker scoreShadow (matching-score)", () => {
     expect(shadow.relationshipProfileScore).toBeLessThanOrEqual(1);
   });
 
-  it("merges scoreShadow into matchInsights without dropping placeholder keys", () => {
+  it("merges scoreShadowV2 into matchInsights without dropping placeholder keys", () => {
     const components = computeFinalScoreV1(params);
     const base = buildMatchInsightsPlaceholder(components, params.candidateUser);
-    const merged = { ...base, scoreShadow: buildScoreShadowM60(components) };
+    const v2Row = {
+      scoringVersion: "m6.0-relationship-profile-score-v2-shadow",
+      rawCompatibilityScore: 0.5,
+      weightedBaseScore: 0.5,
+      penaltyTotal: 0,
+      cappedRawScore: 0.5,
+      displayScore100: 50,
+      band: "medium" as const,
+      capApplied: null,
+      coreConflictCount: 0,
+      strongConflictCount: 0,
+      redFlagConflictCount: 0,
+      validAxisCount: 4,
+      skippedAxisCount: 0,
+      source: "profile_v2_shadow" as const,
+    };
+    const merged = { ...base, scoreShadowV2: v2Row };
     expect(merged.explanation?.whyMatch).toContain("预览=");
     expect(Array.isArray(merged.openingTopics)).toBe(true);
-    expect(merged.scoreShadow?.relationshipProfileScore).toBe(components.profileScore);
-    expect(merged.scoreShadow?.finalScoreV1).toBe(components.finalScore);
+    expect(merged.scoreShadowV2?.displayScore100).toBe(50);
   });
 });

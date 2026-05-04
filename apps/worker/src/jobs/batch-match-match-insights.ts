@@ -14,7 +14,6 @@ const MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION =
   "m6.0-rrm-v2-top2-selector-shadow-v1" as const;
 import { buildMatchInsightsPlaceholder } from "./match-insights-placeholder.js";
 import {
-  buildScoreShadowM60,
   type CandidateUserLike,
   type ScoreComponentsV1,
   type UserProfileLike,
@@ -98,7 +97,7 @@ function buildRrmV2Top2SelectorShadowFromPool(
 }
 
 /**
- * P1-1 placeholder + M6 scoreShadow v1 + M6.0-J3 scoreShadowV2 + M6.0-R3 rrmV2Top2Selector shadow.
+ * P1-1 placeholder + M6.0-J3 scoreShadowV2 + M6.0-R3 rrmV2Top2Selector shadow (no scoreShadow v1 write).
  * Does not read questionnaire answers as raw payloads, tokens, or RRM outputs.
  */
 export function buildWorkerMatchInsightsForBestMatch(params: {
@@ -126,7 +125,6 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
   );
   const out: MatchInsights = {
     ...base,
-    scoreShadow: buildScoreShadowM60(params.components),
     scoreShadowV2: toScoreShadowV2(v2),
   };
   if (params.v2SelectorCandidates != null) {

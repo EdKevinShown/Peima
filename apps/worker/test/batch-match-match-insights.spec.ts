@@ -1,5 +1,4 @@
 import { buildWorkerMatchInsightsForBestMatch } from "../src/jobs/batch-match-match-insights";
-import { SCORING_VERSION_M60_SHADOW } from "../src/jobs/matching-score";
 import type { UserProfileLike } from "../src/jobs/matching-score";
 import { G1R_PROFILE_AXIS_KEYS } from "../src/jobs/relationship-profile-score-v2";
 import { RELATIONSHIP_PROFILE_SCORE_V2_VERSION } from "../src/jobs/relationship-profile-score-v2";
@@ -38,7 +37,7 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
     finalScore: 0.63,
   };
 
-  it("1–2. keeps scoreShadow v1 and adds scoreShadowV2", () => {
+  it("1–2. writes scoreShadowV2 only (no scoreShadow v1 write)", () => {
     const vp = fullUserProfile(0.55);
     const cp = fullUserProfile(0.56);
     const mi = buildWorkerMatchInsightsForBestMatch({
@@ -47,12 +46,7 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
       viewerProfile: vp,
       candidateProfile: cp,
     });
-    expect(mi.scoreShadow).toBeDefined();
-    expect(mi.scoreShadow?.scoringVersion).toBe(SCORING_VERSION_M60_SHADOW);
-    expect(mi.scoreShadow?.finalScoreV1).toBe(components.finalScore);
-    expect(mi.scoreShadow?.relationshipProfileScore).toBe(
-      components.profileScore,
-    );
+    expect(mi.scoreShadow).toBeUndefined();
     expect(mi.scoreShadowV2).toBeDefined();
     expect(mi.scoreShadowV2?.scoringVersion).toBe(
       RELATIONSHIP_PROFILE_SCORE_V2_VERSION,
@@ -108,26 +102,26 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
     expect(c.finalScore).toBe(components.finalScore);
   });
 
-  it("8. without v2 pool, scoreShadow / scoreShadowV2 JSON does not embed candidateUserId", () => {
+  it("8. without v2 pool, scoreShadowV2 JSON does not embed candidateUserId", () => {
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
       candidate,
       viewerProfile: fullUserProfile(0.5),
       candidateProfile: fullUserProfile(0.5),
     });
-    const s = JSON.stringify(mi.scoreShadow) + JSON.stringify(mi.scoreShadowV2);
+    const s = JSON.stringify(mi.scoreShadowV2);
     expect(s).not.toMatch(/candidateUserId/);
     expect(mi.rrmV2Top2Selector).toBeUndefined();
   });
 
-  it("9. scoreShadow v1 and V2 coexist without key collision", () => {
+  it("9. scoreShadowV2 present without v1 key collision", () => {
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
       candidate,
       viewerProfile: fullUserProfile(0.5),
       candidateProfile: fullUserProfile(0.6),
     });
-    expect(mi.scoreShadow?.finalScoreV1).toBeDefined();
+    expect(mi.scoreShadow).toBeUndefined();
     expect(mi.scoreShadowV2?.displayScore100).toBeDefined();
     expect(Object.keys(mi).sort()).toEqual(
       expect.arrayContaining([
@@ -135,13 +129,12 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
         "explanation",
         "openingTopics",
         "riskFlags",
-        "scoreShadow",
         "scoreShadowV2",
       ]),
     );
   });
 
-  it("11. with v2 pool: scoreShadow v1 + scoreShadowV2 + rrmV2Top2Selector + placeholders coexist", () => {
+  it("11. with v2 pool: scoreShadowV2 + rrmV2Top2Selector + placeholders coexist", () => {
     const vp = fullUserProfile(0.55);
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
@@ -153,7 +146,7 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
         { candidateUserId: "cand-b", candidateProfile: fullUserProfile(0.57) },
       ],
     });
-    expect(mi.scoreShadow?.scoringVersion).toBe(SCORING_VERSION_M60_SHADOW);
+    expect(mi.scoreShadow).toBeUndefined();
     expect(mi.scoreShadowV2?.scoringVersion).toBe(RELATIONSHIP_PROFILE_SCORE_V2_VERSION);
     expect(mi.rrmV2Top2Selector?.version).toBe("m6.0-rrm-v2-top2-selector-shadow-v1");
     expect(mi.rrmV2Top2Selector?.eligible).toBe(true);
