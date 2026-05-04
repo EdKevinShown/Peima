@@ -59,14 +59,6 @@ function formatScoreBreakdownPercent(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-/** M6.0-C：关系画像适配度 shadow（0–1）→ 百分数一位小数；缺失显示「暂无」。 */
-function formatRelationshipProfilePercent(score) {
-  if (score == null || typeof score !== "number" || Number.isNaN(score) || !Number.isFinite(score)) {
-    return "暂无";
-  }
-  return `${(score * 100).toFixed(1)}%`;
-}
-
 /** M6.0-J4：V2 band → 简短中文标签（技术区）。 */
 function formatV2BandLabelCn(band) {
   const m = {
@@ -1319,37 +1311,6 @@ export default function FinalMatchPage() {
             </p>
           ) : null}
 
-          <section
-            style={{
-              marginTop: "0.9rem",
-              padding: "0.9rem 1rem",
-              borderRadius: 10,
-              border: "1px solid #ccfbf1",
-              background: "linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%)",
-              maxWidth: 520,
-            }}
-            aria-label="关系画像适配度 shadow"
-          >
-            <p style={{ margin: "0 0 0.2rem", fontSize: "0.78rem", color: "#0f766e", fontWeight: 600, letterSpacing: "0.02em" }}>
-              关系画像适配度
-              {primaryResolution.kind === "v2" ? (
-                <span style={{ fontWeight: 500, color: "#64748b" }}>（v1 shadow 对照，刻度与主视觉 V2 不同）</span>
-              ) : null}
-            </p>
-            <p style={{ margin: "0 0 0.55rem", fontSize: "1.55rem", fontWeight: 800, color: "#115e59", lineHeight: 1.15 }}>
-              {formatRelationshipProfilePercent(result.relationshipProfileScore?.score)}
-            </p>
-            <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.55 }}>
-              关系画像适配度主要来自双方 20 维关系画像的相似度。它不同于当前 legacy 匹配指数；当前 legacy
-              匹配指数还包含候选池基础分、偏好命中分和风格匹配分。
-            </p>
-            {isRrmDisplay ? (
-              <p style={{ margin: "0.45rem 0 0", fontSize: "0.82rem", color: "#475569", lineHeight: 1.55 }}>
-                关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
-              </p>
-            ) : null}
-          </section>
-
           {!isValidMatchInsights(result.matchInsights) ? (
             <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
               结构化匹配解读暂不可用。你可以在页面底部展开「技术来源说明」，查看系统侧保存的原始字段与读数摘要。
@@ -1543,7 +1504,7 @@ export default function FinalMatchPage() {
             <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
               {readV2PrimaryScoreFlag() && primaryResolution.kind === "v2"
                 ? "以下为 V2 shadow 明细；主视觉已在灰度中使用 V2 展示分。legacy 匹配指数仍在「匹配分数构成」与技术区保留。"
-                : "这是新的 V2 关系画像适配分，当前仅用于 shadow 对照，不会改变最终匹配对象或 legacy 匹配指数。"}
+                : "以下为 V2 关系画像适配分实验明细与审计字段，不改变最终匹配对象或 legacy 匹配指数。"}
             </p>
           </details>
 
@@ -1568,6 +1529,7 @@ export default function FinalMatchPage() {
               readoutFusion={readoutFusion}
               candidateUserId={result.candidateUserId}
               displayCandidateUserId={effectiveDisplayCandidateId}
+              relationshipProfileScoreV1={result.relationshipProfileScore ?? null}
               finalScore={result.finalScore}
               reasonSummary={result.reasonSummary}
               multiSourceFinalDecision={result.multiSourceFinalDecision}

@@ -1,6 +1,15 @@
 /**
  * M5.5-UI-R1 / R3: technical fields — default collapsed; full text in scroll areas (no half-sentence truncation).
+ * M6.0-H3: optional v1 shadow audit line (folded; not a user-facing score card).
  */
+
+/** 0–1 → 百分数一位小数；缺失显示「暂无」。 */
+function formatV1ShadowAuditPercent(score) {
+  if (score == null || typeof score !== "number" || Number.isNaN(score) || !Number.isFinite(score)) {
+    return "暂无";
+  }
+  return `${(score * 100).toFixed(1)}%`;
+}
 
 function JsonBlock({ value, maxHeight = 320 }) {
   let text = "—";
@@ -39,6 +48,8 @@ export function FinalMatchTechnicalDetailsContent({
   readoutFusion,
   candidateUserId,
   displayCandidateUserId,
+  /** M6.0-H3: API `relationshipProfileScore`（v1 shadow）；主流程不再展示，仅技术审计。 */
+  relationshipProfileScoreV1,
   finalScore,
   reasonSummary,
   multiSourceFinalDecision,
@@ -60,6 +71,28 @@ export function FinalMatchTechnicalDetailsContent({
       <p style={{ margin: "0.2rem 0" }}>
         finalScore（API 原值）：<code>{finalScore == null ? "—" : String(finalScore)}</code>
       </p>
+
+      {relationshipProfileScoreV1 != null &&
+      typeof relationshipProfileScoreV1 === "object" &&
+      !Array.isArray(relationshipProfileScoreV1) ? (
+        <details style={{ marginTop: "0.45rem", fontSize: "0.76rem", color: "#64748b" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 500, userSelect: "none" }}>
+            旧版 relationshipProfileScore v1（仅技术审计）
+          </summary>
+          <p style={{ margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+            读数（0–1 → %）：<strong style={{ color: "#334155" }}>{formatV1ShadowAuditPercent(relationshipProfileScoreV1.score)}</strong>
+            {relationshipProfileScoreV1.source ? (
+              <>
+                {" "}
+                · source：<code>{String(relationshipProfileScoreV1.source)}</code>
+              </>
+            ) : null}
+          </p>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.45 }}>
+            与主视觉 V2 刻度与定义不同；不作为用户可见关系画像主分。
+          </p>
+        </details>
+      ) : null}
 
       <details style={{ marginTop: "0.45rem" }}>
         <summary style={{ cursor: "pointer", fontWeight: 500, color: "#475569", userSelect: "none" }}>内部标识符（默认折叠）</summary>
