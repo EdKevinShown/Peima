@@ -1,5 +1,5 @@
 /**
- * M6.1-r3: `rrmDecisionShadow` behind `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED`.
+ * M6.1-r3/r4: `rrmDecisionShadow` behind `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED` (regression matrix).
  */
 
 import { buildRrmDecisionShadowPayload } from "../src/jobs/batch-match-rrm-decision-shadow";
@@ -60,9 +60,11 @@ describe("M6.1 rrmDecisionShadow", () => {
     });
   }
 
-  it("1. flag off — does not write rrmDecisionShadow", () => {
+  it("1. flag off — does not write rrmDecisionShadow; scoreShadowV2 present; no v1", () => {
     const mi = insightsWithPool();
     expect(mi.rrmDecisionShadow).toBeUndefined();
+    expect(mi.scoreShadow).toBeUndefined();
+    expect(mi.scoreShadowV2).toBeDefined();
   });
 
   it("2. flag on + valid selector + baseline same as Top2[0] → same_as_baseline", () => {
@@ -130,7 +132,128 @@ describe("M6.1 rrmDecisionShadow", () => {
     expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("missing_rrm_v2_top2_selector");
   });
 
-  it("6. flag on + contextFlags high risk → no_shadow_decision", () => {
+  it("6. flag on + invalid selector version → no_shadow_decision", () => {
+    const base = insightsWithPool();
+    const corrupt = {
+      ...base,
+      rrmV2Top2Selector: {
+        ...base.rrmV2Top2Selector!,
+        version: "wrong-selector-version",
+      },
+    };
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const s = buildRrmDecisionShadowPayload({
+      baselineCandidateUserId: "cand-a",
+      finalScore: components.finalScore,
+      insights: corrupt,
+    });
+    expect(s.shadow.decision).toBe("no_shadow_decision");
+    expect(s.guardrails.blockReasons).toContain("invalid_selector_payload");
+  });
+
+  it("7. flag on + empty selectedTop2 → no_shadow_decision", () => {
+    const base = insightsWithPool();
+    const corrupt = {
+      ...base,
+      rrmV2Top2Selector: {
+        ...base.rrmV2Top2Selector!,
+        selectedTop2: [],
+      },
+    };
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const s = buildRrmDecisionShadowPayload({
+      baselineCandidateUserId: "cand-a",
+      finalScore: components.finalScore,
+      insights: corrupt,
+    });
+    expect(s.shadow.decision).toBe("no_shadow_decision");
+    expect(s.guardrails.blockReasons).toContain("empty_selected_top2");
+  });
+
+  it("8. flag on + eligible false → no_shadow_decision (eligible_not_true)", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [{ candidateUserId: "only", candidateProfile: fullUserProfile(0.56) }],
+      baselineCandidateUserId: "only",
+    });
+    expect(mi.rrmV2Top2Selector?.eligible).toBe(false);
+    expect(mi.rrmDecisionShadow?.shadow.decision).toBe("no_shadow_decision");
+    expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("eligible_not_true");
+  });
+
+  it("9. flag on + reason !== ok → blockReasons includes reason_not_ok", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [{ candidateUserId: "only", candidateProfile: fullUserProfile(0.56) }],
+      baselineCandidateUserId: "only",
+    });
+    expect(mi.rrmV2Top2Selector?.reason).not.toBe("ok");
+    expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("reason_not_ok");
+  });
+
+  it("10a. flag on + hasStrongConflictBand → no_shadow_decision", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "near", candidateProfile: fullUserProfile(0.56) },
+        { candidateUserId: "opp", candidateProfile: fullUserProfile(0) },
+      ],
+      baselineCandidateUserId: "near",
+    });
+    expect(mi.rrmV2Top2Selector?.contextFlags.hasStrongConflictBand).toBe(true);
+    expect(mi.rrmDecisionShadow?.shadow.decision).toBe("no_shadow_decision");
+    expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("has_strong_conflict_band");
+  });
+
+  it("10b. flag on + anyBelowSuggestedFloor → no_shadow_decision", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "hi", candidateProfile: fullUserProfile(0.56) },
+        { candidateUserId: "lo", candidateProfile: fullUserProfile(0.28) },
+      ],
+      baselineCandidateUserId: "hi",
+    });
+    expect(mi.rrmV2Top2Selector?.contextFlags.anyBelowSuggestedFloor).toBe(true);
+    expect(mi.rrmDecisionShadow?.shadow.decision).toBe("no_shadow_decision");
+    expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("any_below_suggested_floor");
+  });
+
+  it("10c. flag on + top2GapLarge → no_shadow_decision", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "hi", candidateProfile: fullUserProfile(0.56) },
+        { candidateUserId: "mid", candidateProfile: fullUserProfile(0.28) },
+      ],
+      baselineCandidateUserId: "hi",
+    });
+    expect(mi.rrmV2Top2Selector?.contextFlags.top2GapLarge).toBe(true);
+    expect(mi.rrmDecisionShadow?.shadow.decision).toBe("no_shadow_decision");
+    expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("top2_gap_large");
+  });
+
+  it("10d. flag on + hasLowBand → no_shadow_decision", () => {
     process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
@@ -148,7 +271,7 @@ describe("M6.1 rrmDecisionShadow", () => {
     expect(mi.rrmDecisionShadow?.guardrails.blockReasons).toContain("has_low_band");
   });
 
-  it("7. scoreShadow v1 missing — non-blocking; inputPresence false", () => {
+  it("11. scoreShadow v1 missing — non-blocking; inputPresence false", () => {
     process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
     const base = insightsWithPool();
     const top1 = base.rrmV2Top2Selector!.selectedTop2[0]!.candidateUserId;
@@ -165,7 +288,7 @@ describe("M6.1 rrmDecisionShadow", () => {
     expect(mi.rrmDecisionShadow?.shadow.decision).toBe("same_as_baseline");
   });
 
-  it("8. malformed selectedTop2 row → no_shadow_decision, no throw", () => {
+  it("12. malformed selectedTop2 row → no_shadow_decision, no throw", () => {
     const base = insightsWithPool();
     const corrupt = {
       ...base,
@@ -188,6 +311,22 @@ describe("M6.1 rrmDecisionShadow", () => {
     });
     expect(s.shadow.decision).toBe("no_shadow_decision");
     expect(s.guardrails.blockReasons).toContain("parse_error");
+  });
+
+  it("13. components.finalScore unchanged after insights + shadow merge", () => {
+    const base = insightsWithPool();
+    const top1 = base.rrmV2Top2Selector!.selectedTop2[0]!.candidateUserId;
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const c = { ...components };
+    buildWorkerMatchInsightsForBestMatch({
+      components: c,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: pool,
+      baselineCandidateUserId: top1,
+    });
+    expect(c.finalScore).toBe(components.finalScore);
   });
 
   it('"TRUE" does not enable shadow', () => {
