@@ -44,6 +44,13 @@ function minimalMatchRow(
       missingSources: [],
       notes: [],
     } as unknown as MatchResultViewerPayload["multiSourceFinalDecision"],
+    scoreBreakdown: {
+      previewPoolScore: null,
+      preferenceScore: null,
+      styleScore: null,
+      profileScore: null,
+      source: "parse_failed",
+    },
   } as MatchResultViewerPayload;
   return { ...base, ...over };
 }

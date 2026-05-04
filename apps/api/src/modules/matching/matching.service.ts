@@ -12,6 +12,10 @@ import {
   type MultiSourceFinalDecisionReadonlyM51M0,
 } from "./matching-multi-source-final-decision-m51m0";
 import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
+import {
+  parseScoreBreakdownFromReasonSummary,
+  type ViewerSafeScoreBreakdown,
+} from "./matching-score-breakdown";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
@@ -21,6 +25,8 @@ export type MatchStatusPayload = {
 export type MatchResultViewerPayload = MatchResult &
   MatchResultDisplayFields & {
     multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;
+    /** M6.0-B: parsed from `reasonSummary` only; viewer-safe numbers + source enum. */
+    scoreBreakdown: ViewerSafeScoreBreakdown;
   };
 
 @Injectable()
@@ -108,6 +114,7 @@ export class MatchingService {
     const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });
-    return { ...result, ...display, multiSourceFinalDecision };
+    const scoreBreakdown = parseScoreBreakdownFromReasonSummary(result.reasonSummary);
+    return { ...result, ...display, multiSourceFinalDecision, scoreBreakdown };
   }
 }

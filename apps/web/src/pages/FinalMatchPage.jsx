@@ -51,6 +51,14 @@ function formatScoreDisplay(v) {
   return Number.isInteger(r) ? String(Math.round(x)) : r.toFixed(1);
 }
 
+/** M6.0-B：v1 分项（0–1）→ 百分数一位小数；缺失或非有限数显示「暂无」。 */
+function formatScoreBreakdownPercent(value) {
+  if (value == null || typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
+    return "暂无";
+  }
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
@@ -1253,6 +1261,50 @@ export default function FinalMatchPage() {
               刷新匹配结果
             </button>
           </footer>
+
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f1f5f9",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="匹配分数构成"
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
+              匹配分数构成
+            </summary>
+            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>候选池基础分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.previewPoolScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>偏好命中分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.preferenceScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>风格匹配分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.styleScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>问卷画像分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.profileScore)}
+              </p>
+            </div>
+            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+              当前匹配指数由多项信号综合而来。候选池基础分和偏好命中分较高时，总分可能保持在较高区间；问卷画像分反映双方
+              20 维关系画像的相似度。
+            </p>
+            {isRrmDisplay ? (
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+                关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
+              </p>
+            ) : null}
+          </details>
 
           <details
             style={{

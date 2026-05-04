@@ -23,6 +23,17 @@ export type MatchInsights = {
   chatSimulationSummary: string;
 };
 
+/** M6.0-B：从 `reasonSummary` 解析的 v1 分项；不含 raw 文本。 */
+export type MatchingScoreBreakdownSource = "reason_summary_v1" | "missing" | "parse_failed";
+
+export type MatchingScoreBreakdown = {
+  previewPoolScore: number | null;
+  preferenceScore: number | null;
+  styleScore: number | null;
+  profileScore: number | null;
+  source: MatchingScoreBreakdownSource;
+};
+
 /** M3.8-M13: viewer-safe finalize 摘要（无 raw pairwise / dimensions / strongRisk）。 */
 export type ViewerSafeFinalMatchDecisionMeta = {
   sourceType: string;
@@ -54,6 +65,8 @@ export type MatchingResultResponse = {
   createdAt: string;
   updatedAt: string;
   matchInsights?: MatchInsights | null;
+  /** M6.0-B：服务端从 `reasonSummary` 解析；旧客户端未升级时可缺省。 */
+  scoreBreakdown?: MatchingScoreBreakdown;
   /** M3.8-M13：与 `candidateUserId` 可能不同；Final 页应优先用于展示与对端资料。 */
   displayCandidateUserId?: string;
   displaySourceType?:
