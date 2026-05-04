@@ -332,6 +332,12 @@ export async function runBatchMatch(): Promise<void> {
         candidate: best.candidate,
         viewerProfile: viewerProf,
         candidateProfile: toProfileLike(bestCandidateProfRow ?? null),
+        v2SelectorCandidates: scored.map((s) => ({
+          candidateUserId: s.item.candidateUserId,
+          candidateProfile: toProfileLike(
+            profileMap.get(s.item.candidateUserId) ?? null,
+          ),
+        })),
       });
 
       await prisma.matchResult.create({

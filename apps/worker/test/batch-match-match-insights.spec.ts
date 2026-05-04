@@ -108,14 +108,16 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
     expect(c.finalScore).toBe(components.finalScore);
   });
 
-  it("8. matchInsights does not embed candidateUserId", () => {
+  it("8. without v2 pool, scoreShadow / scoreShadowV2 JSON does not embed candidateUserId", () => {
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,
       candidate,
       viewerProfile: fullUserProfile(0.5),
       candidateProfile: fullUserProfile(0.5),
     });
-    expect(JSON.stringify(mi)).not.toMatch(/candidateUserId/);
+    const s = JSON.stringify(mi.scoreShadow) + JSON.stringify(mi.scoreShadowV2);
+    expect(s).not.toMatch(/candidateUserId/);
+    expect(mi.rrmV2Top2Selector).toBeUndefined();
   });
 
   it("9. scoreShadow v1 and V2 coexist without key collision", () => {
@@ -137,6 +139,28 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
         "scoreShadowV2",
       ]),
     );
+  });
+
+  it("11. with v2 pool: scoreShadow v1 + scoreShadowV2 + rrmV2Top2Selector + placeholders coexist", () => {
+    const vp = fullUserProfile(0.55);
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: vp,
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "cand-a", candidateProfile: fullUserProfile(0.56) },
+        { candidateUserId: "cand-b", candidateProfile: fullUserProfile(0.57) },
+      ],
+    });
+    expect(mi.scoreShadow?.scoringVersion).toBe(SCORING_VERSION_M60_SHADOW);
+    expect(mi.scoreShadowV2?.scoringVersion).toBe(RELATIONSHIP_PROFILE_SCORE_V2_VERSION);
+    expect(mi.rrmV2Top2Selector?.version).toBe("m6.0-rrm-v2-top2-selector-shadow-v1");
+    expect(mi.rrmV2Top2Selector?.eligible).toBe(true);
+    expect(mi.rrmV2Top2Selector?.reason).toBe("ok");
+    expect(mi.rrmV2Top2Selector?.selectedTop2).toHaveLength(2);
+    expect(mi.explanation?.whyMatch).toBeTruthy();
+    expect(mi.openingTopics?.length).toBeGreaterThan(0);
   });
 
   it("10. preserves explanation / openingTopics / riskFlags / chatSimulationSummary", () => {

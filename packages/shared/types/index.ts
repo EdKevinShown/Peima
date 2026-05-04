@@ -4,8 +4,10 @@ export type Empty = Record<string, never>;
 
 export type {
   MatchInsights,
+  MatchInsightsRrmV2Top2SelectorShadow,
   MatchInsightsScoreShadowV2,
 } from "./match-p1";
+export { MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION } from "./match-p1";
 
 export type {
   P2SourceMetadata,
