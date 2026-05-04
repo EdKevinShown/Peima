@@ -168,6 +168,35 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
     expect(mi.openingTopics?.length).toBeGreaterThan(0);
   });
 
+  it("M6.3-r4 Case 13: dry-run + shadow writes rrmBoundedDecision without breaking v2/shadow", () => {
+    const prevShadow = process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED;
+    const prevDry = process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = "1";
+    const vp = fullUserProfile(0.55);
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: vp,
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "cand-a", candidateProfile: fullUserProfile(0.56) },
+        { candidateUserId: "cand-b", candidateProfile: fullUserProfile(0.57) },
+      ],
+      baselineCandidateUserId: "cand-a",
+    });
+    expect(mi.scoreShadowV2).toBeDefined();
+    expect(mi.scoreShadow).toBeUndefined();
+    expect(mi.rrmV2Top2Selector?.eligible).toBe(true);
+    expect(mi.rrmDecisionShadow?.shadow.decision).toBe("same_as_baseline");
+    expect(mi.rrmBoundedDecision?.decision).toBe("would_use_baseline");
+    expect(mi.rrmBoundedDecision?.sourceType).toBe("rrm_bounded_decision");
+    if (prevShadow === undefined) delete process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED;
+    else process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = prevShadow;
+    if (prevDry === undefined) delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+    else process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = prevDry;
+  });
+
   it("10. preserves explanation / openingTopics / riskFlags / chatSimulationSummary", () => {
     const mi = buildWorkerMatchInsightsForBestMatch({
       components,

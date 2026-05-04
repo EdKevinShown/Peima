@@ -1,11 +1,13 @@
 /**
- * M6.3-r3: `rrmBoundedDecision` dry-run meta behind `PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED`.
+ * M6.3-r3 / M6.3-r4: `rrmBoundedDecision` dry-run meta behind `PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED`.
  */
 
+import { readM6RrmBoundedDecisionDryRunEnv } from "../src/jobs/batch-match-rrm-bounded-decision-env";
 import { buildRrmBoundedDecisionDryRunPayload } from "../src/jobs/batch-match-rrm-bounded-decision";
 import { buildRrmDecisionShadowPayload } from "../src/jobs/batch-match-rrm-decision-shadow";
 import { buildWorkerMatchInsightsForBestMatch } from "../src/jobs/batch-match-match-insights";
 import type { UserProfileLike } from "../src/jobs/matching-score";
+import type { MatchInsights } from "@peima/shared/types";
 import { G1R_PROFILE_AXIS_KEYS } from "../src/jobs/relationship-profile-score-v2";
 
 function fullUserProfile(v: number): UserProfileLike {
@@ -120,6 +122,7 @@ describe("M6.3 rrmBoundedDecision dry-run", () => {
     expect(mi.rrmBoundedDecision?.wouldSwitch).toBe(true);
     expect(mi.rrmBoundedDecision?.boundedRef?.id).toBe("cand-a");
     expect(mi.rrmBoundedDecision?.baselineRef.id).toBe("other-than-top1");
+    expect(components.finalScore).toBe(0.63);
   });
 
   it("5. flag on + no_shadow_decision → fallback_baseline / shadow_not_switch", () => {
@@ -238,5 +241,80 @@ describe("M6.3 rrmBoundedDecision dry-run", () => {
       baselineCandidateUserId: "cand-a",
     });
     expect(mi.rrmBoundedDecision).toBeUndefined();
+  });
+
+  it("M6.3-r4 Case 1b: DRY_RUN env only literal \"1\" enables", () => {
+    for (const v of [undefined, "", "0", "true", "TRUE", "yes"]) {
+      if (v === undefined) delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED;
+      else process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = v;
+      expect(readM6RrmBoundedDecisionDryRunEnv().enabled).toBe(false);
+    }
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = "1";
+    expect(readM6RrmBoundedDecisionDryRunEnv().enabled).toBe(true);
+  });
+
+  it("M6.3-r4 Case 8: empty selectedTop2 → missing_selected_top2", () => {
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: pool,
+      baselineCandidateUserId: "other-than-top1",
+    });
+    const sel = { ...mi.rrmV2Top2Selector!, selectedTop2: [] };
+    const b = buildRrmBoundedDecisionDryRunPayload({
+      insights: { ...mi, rrmV2Top2Selector: sel },
+      baselineCandidateUserId: "other-than-top1",
+    });
+    expect(b?.decision).toBe("fallback_baseline");
+    expect(b?.fallbackReason).toBe("missing_selected_top2");
+  });
+
+  it("M6.3-r4 Case 10: shadow sourceVersion mismatch → source_version_mismatch", () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = "1";
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: pool,
+      baselineCandidateUserId: "cand-a",
+    });
+    const sh = structuredClone(mi.rrmDecisionShadow!) as typeof mi.rrmDecisionShadow;
+    (sh as { sourceVersion: string }).sourceVersion = "wrong-version";
+    const b = buildRrmBoundedDecisionDryRunPayload({
+      insights: { ...mi, rrmDecisionShadow: sh },
+      baselineCandidateUserId: "cand-a",
+    });
+    expect(b?.fallbackReason).toBe("source_version_mismatch");
+  });
+
+  it("M6.3-r4 Case 12: unexpected throw during read → unexpected_exception; no throw out", () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED = "1";
+    process.env.PEIMA_M6_RRM_DECISION_SHADOW_ENABLED = "1";
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: pool,
+      baselineCandidateUserId: "cand-a",
+    });
+    const proxied = new Proxy(mi, {
+      get(target, prop, receiver) {
+        if (prop === "scoreShadowV2") throw new Error("forced");
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    const b = buildRrmBoundedDecisionDryRunPayload({
+      insights: proxied as MatchInsights,
+      baselineCandidateUserId: "cand-a",
+    });
+    expect(b?.decision).toBe("fallback_baseline");
+    expect(b?.fallbackReason).toBe("unexpected_exception");
   });
 });

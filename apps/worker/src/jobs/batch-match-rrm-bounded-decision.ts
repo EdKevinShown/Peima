@@ -211,8 +211,28 @@ export function buildRrmBoundedDecisionDryRunPayload(
       generatedAt: new Date().toISOString(),
     };
   } catch {
-    const insights = input.insights;
     const baselineTrim = input.baselineCandidateUserId.trim();
-    return fallbackPayload(insights, baselineTrim, "unexpected_exception");
+    /** Avoid re-reading `insights` (may throw); dry-run audit only. */
+    return {
+      schemaVersion: 1,
+      sourceType: "rrm_bounded_decision",
+      sourceVersion: MATCH_INSIGHTS_RRM_BOUNDED_DECISION_SOURCE_VERSION,
+      mode: "dry_run",
+      decision: "fallback_baseline",
+      baselineRef: baselineTrim ? userRef(baselineTrim) : { kind: "user" },
+      decisionSource: "fallback",
+      wouldSwitch: false,
+      fallbackUsed: true,
+      fallbackReason: "unexpected_exception",
+      guardrails: { blocked: false, blockReasons: [] },
+      inputPresence: {
+        scoreShadowV2: false,
+        rrmDecisionShadow: false,
+        rrmV2Top2Selector: false,
+        selectedTop2: false,
+        scoreShadowV1LegacyPresent: false,
+      },
+      generatedAt: new Date().toISOString(),
+    };
   }
 }
