@@ -6,7 +6,6 @@ import {
   type UserImage,
 } from "@peima/database";
 import {
-  buildScoreShadowM60,
   computeFinalScoreV1,
   formatReasonSummaryV1,
   type CandidateUserLike,
@@ -14,7 +13,7 @@ import {
   type UserProfileLike,
   type ViewerPreferenceLike,
 } from "./matching-score.js";
-import { buildMatchInsightsPlaceholder } from "./match-insights-placeholder.js";
+import { buildWorkerMatchInsightsForBestMatch } from "./batch-match-match-insights.js";
 
 const BATCH_STATUS = {
   RUNNING: "running",
@@ -327,14 +326,13 @@ export async function runBatchMatch(): Promise<void> {
 
       const best = scored[0];
 
-      const matchInsightsBase = buildMatchInsightsPlaceholder(
-        best.components,
-        best.candidate,
-      );
-      const matchInsights = {
-        ...matchInsightsBase,
-        scoreShadow: buildScoreShadowM60(best.components),
-      };
+      const bestCandidateProfRow = profileMap.get(best.item.candidateUserId);
+      const matchInsights = buildWorkerMatchInsightsForBestMatch({
+        components: best.components,
+        candidate: best.candidate,
+        viewerProfile: viewerProf,
+        candidateProfile: toProfileLike(bestCandidateProfRow ?? null),
+      });
 
       await prisma.matchResult.create({
         data: {

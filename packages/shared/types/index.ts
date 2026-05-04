@@ -2,7 +2,10 @@
 
 export type Empty = Record<string, never>;
 
-export type { MatchInsights } from "./match-p1";
+export type {
+  MatchInsights,
+  MatchInsightsScoreShadowV2,
+} from "./match-p1";
 
 export type {
   P2SourceMetadata,
