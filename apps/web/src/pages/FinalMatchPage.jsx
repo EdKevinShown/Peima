@@ -38,6 +38,20 @@ function formatDateShort(iso) {
   }
 }
 
+/**
+ * M6.5-C3: first non-empty trimmed id among API / projection fallbacks (chat · timeline · feedback).
+ * @param {...unknown} ids
+ * @returns {string | null}
+ */
+function resolveTargetId(...ids) {
+  for (const id of ids) {
+    if (id == null) continue;
+    const s = String(id).trim();
+    if (s !== "") return s;
+  }
+  return null;
+}
+
 /** 主视图分数：0–1 内为匹配指数百分制；否则按 0–100 展示整数或一位小数。 */
 function formatScoreDisplay(v) {
   if (v == null || Number.isNaN(Number(v))) return "—";
@@ -458,38 +472,92 @@ export default function FinalMatchPage() {
   /** M5.4-M2：generate + 二次 enqueue 阶段。 */
   const [rematchPreparingPool, setRematchPreparingPool] = useState(false);
   const [rematchError, setRematchError] = useState(null);
-  /** M6.5-C2: 优先 API `resolvedCandidateUserId`，兼容旧 GET（回退 display → baseline）。 */
+  /** M6.5-C3: 主展示锚点 = resolved → display → baseline（与 GET 投影一致；不单独猜 candidate）。 */
   const resolvedCandidateUserId = useMemo(
     () =>
-      String(
-        result?.resolvedCandidateUserId ||
-          result?.displayCandidateUserId ||
-          result?.candidateUserId ||
-          "",
-      ).trim(),
+      resolveTargetId(
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
     [result?.resolvedCandidateUserId, result?.displayCandidateUserId, result?.candidateUserId],
   );
   /** M3.8-M13 + M6.5-C2: 主展示 / 侧车与 resolved 对齐。 */
   const effectiveDisplayCandidateId = resolvedCandidateUserId;
-  /** M6.5-C2: 动作入口目标（服务端建会话仍传 matchResultId；此处为客户端单一锚点）。 */
+  /**
+   * M6.5-C3: 与 M6.5-r4 一致 — chatTarget → resolved → display → baseline。
+   * 建连仍只传 matchResultId；此处为 gating / handoff 声明的 peer（见 navigate query）。
+   */
   const chatTargetUserId = useMemo(
-    () => String(result?.chatTargetUserId || resolvedCandidateUserId || "").trim(),
-    [result?.chatTargetUserId, resolvedCandidateUserId],
+    () =>
+      resolveTargetId(
+        result?.chatTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.chatTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
   );
   const timelineTargetUserId = useMemo(
-    () => String(result?.timelineTargetUserId || resolvedCandidateUserId || "").trim(),
-    [result?.timelineTargetUserId, resolvedCandidateUserId],
+    () =>
+      resolveTargetId(
+        result?.timelineTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.timelineTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
   );
-  /** M6.5-C2: 预留与 API 对齐；C3 将接到反馈入口。 */
+  /**
+   * M6.5-C3: feedbackTarget → resolved → display → baseline。
+   * 页内尚无独立 feedback POST；供 C4+ / 自动化读取 footer `data-m65-feedback-target-user-id`。
+   */
   const feedbackTargetUserId = useMemo(
-    () => String(result?.feedbackTargetUserId || resolvedCandidateUserId || "").trim(),
-    [result?.feedbackTargetUserId, resolvedCandidateUserId],
+    () =>
+      resolveTargetId(
+        result?.feedbackTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.feedbackTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
   );
   const explanationTargetUserId = useMemo(
     () =>
-      String(result?.explanationOwnerCandidateUserId || resolvedCandidateUserId || "").trim(),
-    [result?.explanationOwnerCandidateUserId, resolvedCandidateUserId],
+      resolveTargetId(
+        result?.explanationOwnerCandidateUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.explanationOwnerCandidateUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
   );
+  /** M6.5-r4 §10：仅 blocking 级一致性提示可阻断聊天 / 时间线入口（info / warning 不挡主按钮）。 */
+  const blockingConsistencyWarnings = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return [];
+    return result.consistencyWarnings.filter((w) => w && w.severity === "blocking");
+  }, [result?.consistencyWarnings]);
+  const actionsBlockedByConsistency = blockingConsistencyWarnings.length > 0;
   /** M5.5-UI-R4: 关系节奏影响展示对象；finalScore 仍仅为基础适配参考，不由关系节奏重算。 */
   const isRrmDisplay = useMemo(
     () => result?.displaySourceType === "rrm_top2_bounded_selector",
@@ -785,6 +853,10 @@ export default function FinalMatchPage() {
       if (isRrmDisplay) {
         q.set("rhythmRecommended", "1");
       }
+      /** M6.5-C3: handoff 声明 peer（Chat/Timeline 仍以会话与 matchResultId 为准；下游可渐进消费）。 */
+      if (chatTargetUserId) {
+        q.set("finalMatchPeerUserId", chatTargetUserId);
+      }
       navigate(`/chat?${q.toString()}`);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
@@ -807,6 +879,9 @@ export default function FinalMatchPage() {
       }
       if (isRrmDisplay) {
         q.set("rhythmRecommended", "1");
+      }
+      if (timelineTargetUserId) {
+        q.set("finalMatchPeerUserId", timelineTargetUserId);
       }
       navigate(`/chat/timeline?${q.toString()}`);
     } catch (e) {
@@ -1509,6 +1584,7 @@ export default function FinalMatchPage() {
           ) : null}
 
           {/* —— 主流程底部行动区 —— */}
+          {/* M6.5-C3: 反馈 POST 若在子组件落地，应优先读取本 footer 的 data-m65-feedback-target-user-id（= feedbackTargetUserId 链）。 */}
           <footer
             data-m65-feedback-target-user-id={feedbackTargetUserId || undefined}
             style={{
@@ -1528,14 +1604,14 @@ export default function FinalMatchPage() {
               type="button"
               style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
               onClick={onEnterChat}
-              disabled={!userId || !chatTargetUserId}
+              disabled={!userId || !chatTargetUserId || actionsBlockedByConsistency}
             >
               进入聊天
             </button>
             <button
               type="button"
               onClick={onViewTimeline}
-              disabled={!userId || !timelineTargetUserId}
+              disabled={!userId || !timelineTargetUserId || actionsBlockedByConsistency}
               style={{
                 ...btnTertiary,
                 marginTop: 0,
@@ -1548,6 +1624,11 @@ export default function FinalMatchPage() {
             <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
               刷新匹配结果
             </button>
+            {actionsBlockedByConsistency ? (
+              <p role="status" style={{ margin: 0, fontSize: "0.8rem", color: "#991b1b", lineHeight: 1.5, maxWidth: 440 }}>
+                存在「重要」级一致性提示时，本页暂不开放进入聊天与时间线；请查看上方说明或技术来源。
+              </p>
+            ) : null}
           </footer>
 
           <details
@@ -1821,6 +1902,18 @@ export default function FinalMatchPage() {
               <p style={{ margin: "0.25rem 0" }}>
                 当前展示对象 ID（displayCandidateUserId · {result.displaySourceType || "—"}）：
                 <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{effectiveDisplayCandidateId}</code>
+              </p>
+              <p style={{ margin: "0.25rem 0", fontWeight: 600, color: "#64748b" }}>M6.5-C3 · 动作锚点（resolveTargetId 链）</p>
+              <p style={{ margin: "0.15rem 0" }}>
+                chatTargetUserId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{chatTargetUserId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.15rem 0" }}>
+                timelineTargetUserId：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{timelineTargetUserId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.15rem 0" }}>
+                feedbackTargetUserId：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{feedbackTargetUserId || "—"}</code>
               </p>
               <p style={{ margin: "0.25rem 0" }}>
                 结果时间（createdAt 原文）：<code style={{ fontSize: "0.74rem" }}>{formatDate(result.createdAt)}</code>
