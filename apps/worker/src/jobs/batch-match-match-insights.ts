@@ -3,7 +3,15 @@ import type {
   MatchInsightsRrmV2Top2SelectorShadow,
   MatchInsightsScoreShadowV2,
 } from "@peima/shared/types";
-import { MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION } from "@peima/shared/types";
+
+/**
+ * Must match `MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION` in
+ * `packages/shared/types/match-p1.ts`. Declared here so worker runtime does not
+ * import `@peima/shared/types` as a value (Node would load `types/index.ts` and
+ * fail ESM resolution for extensionless `./match-p1`).
+ */
+const MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION =
+  "m6.0-rrm-v2-top2-selector-shadow-v1" as const;
 import { buildMatchInsightsPlaceholder } from "./match-insights-placeholder.js";
 import {
   buildScoreShadowM60,
