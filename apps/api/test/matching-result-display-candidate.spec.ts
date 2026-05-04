@@ -4,6 +4,10 @@ import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "../src/modules/matching/m
 import { resolveMatchResultDisplay } from "../src/modules/matching/matching-result-display";
 import { MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE } from "../src/modules/matching/rrm-top2-display-meta.types";
 
+/** Sync with `packages/shared/types/match-p1.ts` (M6 tests only; avoid runtime `@peima/shared` root import). */
+const MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION =
+  "m6.0-rrm-v2-top2-selector-shadow-v1" as const;
+
 function mr(over: Partial<MatchResult> = {}): MatchResult {
   return {
     id: "mr-1",
@@ -46,6 +50,7 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
     ENABLED: process.env.PAIRWISE_FINAL_MATCH_ENABLED,
     MODE: process.env.PAIRWISE_FINAL_MATCH_MODE,
     RRM_TOP2: process.env.PEIMA_M5_RRM_TOP2_ENABLED,
+    M6_RRM_V2_DISPLAY: process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED,
   };
 
   afterEach(() => {
@@ -53,6 +58,8 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
     process.env.PAIRWISE_FINAL_MATCH_MODE = prev.MODE;
     if (prev.RRM_TOP2 === undefined) delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
     else process.env.PEIMA_M5_RRM_TOP2_ENABLED = prev.RRM_TOP2;
+    if (prev.M6_RRM_V2_DISPLAY === undefined) delete process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED;
+    else process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = prev.M6_RRM_V2_DISPLAY;
   });
 
   function rrmSimSummaryPayload(winner: string, baseline: string) {
@@ -109,9 +116,12 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
   function mockPrisma(opts: {
     finalizeRows?: { frozen: boolean; meta: unknown }[];
     userIds?: Set<string>;
+    /** Users that have a `userProfile` row (defaults to same set as `userIds`). Pass `new Set()` to simulate missing profiles. */
+    profileUserIds?: Set<string>;
     rrmTop2Row?: { frozen: boolean; meta: unknown; top2Fingerprint: string | null } | null;
   }) {
     const userIds = opts.userIds ?? new Set(["cand-static", "cand-winner"]);
+    const profileUserIds = opts.profileUserIds ?? userIds;
     return {
       pairwisePoolFinalizeMeta: {
         findMany: jest.fn(async () => opts.finalizeRows ?? []),
@@ -122,6 +132,11 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       user: {
         findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
           userIds.has(where.id) ? { id: where.id } : null,
+        ),
+      },
+      userProfile: {
+        findUnique: jest.fn(async ({ where }: { where: { userId: string } }) =>
+          profileUserIds.has(where.userId) ? { userId: where.userId } : null,
         ),
       },
     } as unknown as import("../src/common/prisma/prisma.service").PrismaService;
@@ -518,6 +533,265 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
       );
       expect(r.displaySourceType).toBe("rrm_top2_bounded_selector");
       expect(r.displayCandidateUserId).toBe("cand-winner");
+    });
+  });
+
+  describe("M6.0-r6 RRM V2 selector readonly display", () => {
+    function scoreShadowV2Fixture() {
+      return {
+        scoringVersion: "m6.0-relationship-profile-score-v2-shadow" as const,
+        rawCompatibilityScore: 1,
+        weightedBaseScore: 1,
+        penaltyTotal: 0,
+        cappedRawScore: 1,
+        displayScore100: 72,
+        band: "medium" as const,
+        capApplied: null,
+        coreConflictCount: 0,
+        strongConflictCount: 0,
+        redFlagConflictCount: 0,
+        validAxisCount: 4,
+        skippedAxisCount: 0,
+        source: "profile_v2_shadow" as const,
+      };
+    }
+
+    function rrmV2SelectorFixture(top1: string, top2?: string) {
+      return {
+        version: MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION,
+        eligible: true,
+        reason: "ok" as const,
+        selectedTop2: [
+          { candidateUserId: top1, displayScore100: 80, band: "good" as const },
+          ...(top2
+            ? [{ candidateUserId: top2, displayScore100: 70, band: "medium" as const }]
+            : []),
+        ],
+        top1CandidateUserId: top1,
+        top2CandidateUserId: top2 ?? null,
+        top2Gap: 10,
+        contextFlags: {
+          top2GapLarge: false,
+          hasLowBand: false,
+          hasStrongConflictBand: false,
+          anyBelowSuggestedFloor: false,
+        },
+        thresholds: { suggestedFloorDisplayScore100: 50, largeGapThreshold: 20 },
+      };
+    }
+
+    it("M6 flag off → ignores valid rrmV2Top2Selector (pairwise path)", async () => {
+      delete process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED;
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadowV2: scoreShadowV2Fixture(),
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6", "cand-static"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+      expect(r.displayCandidateUserId).toBe("cand-winner");
+    });
+
+    it("M6 flag TRUE (not 1) → disabled, pairwise wins", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "TRUE";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadowV2: scoreShadowV2Fixture(),
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+    });
+
+    it("M6 flag on + valid payload + user/profile → rrm_top2_v2_selector_readonly", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseProposalRecommendation: "pairwise_winner_eligible",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const row = mr({
+        candidateUserId: "cand-static",
+        finalScore: 0.55,
+        matchInsights: {
+          scoreShadowV2: scoreShadowV2Fixture(),
+          rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6", "cand-static"),
+        },
+      } as Partial<MatchResult>);
+      const r = await resolveMatchResultDisplay(prisma, row);
+      expect(r.displaySourceType).toBe("rrm_top2_v2_selector_readonly");
+      expect(r.displayCandidateUserId).toBe("cand-m6");
+      expect(r.finalMatchDecisionMeta).toBeNull();
+      expect(row.candidateUserId).toBe("cand-static");
+      expect(row.finalScore).toBe(0.55);
+    });
+
+    it("M6 flag on + missing scoreShadowV2 → fallback pairwise", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+    });
+
+    it("M6 flag on + only scoreShadow v1 + valid selector → fallback (v2 required)", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-winner", "cand-m6"]),
+        finalizeRows: [
+          {
+            frozen: true,
+            meta: metaV1({
+              mode: "enabled",
+              sourceType: "pairwise_final",
+              pairwiseWinnerCandidateUserId: "cand-winner",
+              selectedCandidateUserId: "cand-winner",
+              staticTop1CandidateUserId: "cand-static",
+            }),
+          },
+        ],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadow: {
+              finalScoreV1: 0.5,
+              relationshipProfileScore: 0.5,
+              scoringVersion: "m6.0-profile-score-shadow-v1",
+            },
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("pairwise_final");
+    });
+
+    it("M6 flag on + no scoreShadow v1 + v2 present → M6 path ok", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "1";
+      process.env.PAIRWISE_FINAL_MATCH_MODE = "enabled";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-m6"]),
+        finalizeRows: [],
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadowV2: scoreShadowV2Fixture(),
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("rrm_top2_v2_selector_readonly");
+      expect(r.displayCandidateUserId).toBe("cand-m6");
+    });
+
+    it("M6 flag on + missing user profile → fallback to original when no pairwise", async () => {
+      process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = "1";
+      delete process.env.PEIMA_M5_RRM_TOP2_ENABLED;
+      process.env.PAIRWISE_FINAL_MATCH_ENABLED = "0";
+      const prisma = mockPrisma({
+        userIds: new Set(["cand-static", "cand-m6"]),
+        profileUserIds: new Set(["cand-static"]),
+      });
+      const r = await resolveMatchResultDisplay(
+        prisma,
+        mr({
+          matchInsights: {
+            scoreShadowV2: scoreShadowV2Fixture(),
+            rrmV2Top2Selector: rrmV2SelectorFixture("cand-m6"),
+          },
+        } as Partial<MatchResult>),
+      );
+      expect(r.displaySourceType).toBe("match_result_original");
+      expect(r.displayCandidateUserId).toBe("cand-static");
     });
   });
 });
