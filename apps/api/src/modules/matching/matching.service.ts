@@ -13,7 +13,7 @@ import {
 } from "./matching-multi-source-final-decision-m51m0";
 import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
 import {
-  buildRelationshipProfileScoreShadow,
+  resolveRelationshipProfileScoreShadow,
   type ViewerSafeRelationshipProfileScoreShadow,
 } from "./matching-relationship-profile-score";
 import {
@@ -121,7 +121,10 @@ export class MatchingService {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });
     const scoreBreakdown = parseScoreBreakdownFromReasonSummary(result.reasonSummary);
-    const relationshipProfileScore = buildRelationshipProfileScoreShadow(scoreBreakdown);
+    const relationshipProfileScore = resolveRelationshipProfileScoreShadow(
+      result.matchInsights,
+      scoreBreakdown,
+    );
     return { ...result, ...display, multiSourceFinalDecision, scoreBreakdown, relationshipProfileScore };
   }
 }

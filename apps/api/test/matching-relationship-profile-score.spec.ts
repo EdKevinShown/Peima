@@ -1,4 +1,8 @@
-import { buildRelationshipProfileScoreShadow } from "../src/modules/matching/matching-relationship-profile-score";
+import {
+  buildRelationshipProfileScoreShadow,
+  resolveRelationshipProfileScoreShadow,
+  tryReadRelationshipProfileScoreFromScoreShadow,
+} from "../src/modules/matching/matching-relationship-profile-score";
 import type { ViewerSafeScoreBreakdown } from "../src/modules/matching/matching-score-breakdown";
 
 describe("buildRelationshipProfileScoreShadow", () => {
@@ -69,6 +73,97 @@ describe("buildRelationshipProfileScoreShadow", () => {
     expect(buildRelationshipProfileScoreShadow(breakdown)).toEqual({
       score: null,
       source: "missing",
+    });
+  });
+});
+
+describe("tryReadRelationshipProfileScoreFromScoreShadow", () => {
+  it("reads valid scoreShadow", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: 0.89,
+        relationshipProfileScore: 0.821217,
+        scoringVersion: "m6.0-profile-score-shadow-v1",
+      },
+    };
+    expect(tryReadRelationshipProfileScoreFromScoreShadow(mi)).toBe(0.821217);
+  });
+
+  it("rejects wrong scoringVersion", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: 0.89,
+        relationshipProfileScore: 0.82,
+        scoringVersion: "other",
+      },
+    };
+    expect(tryReadRelationshipProfileScoreFromScoreShadow(mi)).toBeNull();
+  });
+
+  it("rejects out-of-range relationshipProfileScore", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: 0.89,
+        relationshipProfileScore: 1.2,
+        scoringVersion: "m6.0-profile-score-shadow-v1",
+      },
+    };
+    expect(tryReadRelationshipProfileScoreFromScoreShadow(mi)).toBeNull();
+  });
+
+  it("rejects invalid finalScoreV1", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: NaN,
+        relationshipProfileScore: 0.8,
+        scoringVersion: "m6.0-profile-score-shadow-v1",
+      },
+    };
+    expect(tryReadRelationshipProfileScoreFromScoreShadow(mi)).toBeNull();
+  });
+});
+
+describe("resolveRelationshipProfileScoreShadow", () => {
+  const breakdownOk: ViewerSafeScoreBreakdown = {
+    previewPoolScore: 0.8,
+    preferenceScore: 1,
+    styleScore: 1,
+    profileScore: 0.77,
+    source: "reason_summary_v1",
+  };
+
+  it("prefers matchInsights.scoreShadow when valid", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: 0.9,
+        relationshipProfileScore: 0.88,
+        scoringVersion: "m6.0-profile-score-shadow-v1",
+      },
+    };
+    expect(resolveRelationshipProfileScoreShadow(mi, breakdownOk)).toEqual({
+      score: 0.88,
+      source: "match_insights_score_shadow",
+    });
+  });
+
+  it("falls back to scoreBreakdown when scoreShadow missing", () => {
+    expect(resolveRelationshipProfileScoreShadow({}, breakdownOk)).toEqual({
+      score: 0.77,
+      source: "score_breakdown_profile_score",
+    });
+  });
+
+  it("falls back when scoreShadow invalid", () => {
+    const mi = {
+      scoreShadow: {
+        finalScoreV1: 0.9,
+        relationshipProfileScore: 2,
+        scoringVersion: "m6.0-profile-score-shadow-v1",
+      },
+    };
+    expect(resolveRelationshipProfileScoreShadow(mi, breakdownOk)).toEqual({
+      score: 0.77,
+      source: "score_breakdown_profile_score",
     });
   });
 });

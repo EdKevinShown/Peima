@@ -6,6 +6,7 @@ import {
   type UserImage,
 } from "@peima/database";
 import {
+  buildScoreShadowM60,
   computeFinalScoreV1,
   formatReasonSummaryV1,
   type CandidateUserLike,
@@ -326,6 +327,15 @@ export async function runBatchMatch(): Promise<void> {
 
       const best = scored[0];
 
+      const matchInsightsBase = buildMatchInsightsPlaceholder(
+        best.components,
+        best.candidate,
+      );
+      const matchInsights = {
+        ...matchInsightsBase,
+        scoreShadow: buildScoreShadowM60(best.components),
+      };
+
       await prisma.matchResult.create({
         data: {
           userId: q.userId,
@@ -333,10 +343,7 @@ export async function runBatchMatch(): Promise<void> {
           batchId: batch.id,
           finalScore: best.components.finalScore,
           reasonSummary: formatReasonSummaryV1(best.components),
-          matchInsights: buildMatchInsightsPlaceholder(
-            best.components,
-            best.candidate,
-          ),
+          matchInsights,
           status: RESULT_STATUS_READY,
         },
       });

@@ -10,6 +10,13 @@ export type MatchingStatusResponse = {
   status: MatchingStatus;
 };
 
+/** M6.0-E：worker 写入的 shadow（旧行可能无）。 */
+export type MatchingMatchInsightsScoreShadowM60 = {
+  finalScoreV1: number;
+  relationshipProfileScore: number;
+  scoringVersion: "m6.0-profile-score-shadow-v1";
+};
+
 /** P1-1 optional JSON on MatchResult; keys are API contract. */
 export type MatchInsights = {
   explanation: {
@@ -21,6 +28,7 @@ export type MatchInsights = {
   riskFlags: string[];
   openingTopics: string[];
   chatSimulationSummary: string;
+  scoreShadow?: MatchingMatchInsightsScoreShadowM60;
 };
 
 /** M6.0-B：从 `reasonSummary` 解析的 v1 分项；不含 raw 文本。 */
@@ -34,8 +42,9 @@ export type MatchingScoreBreakdown = {
   source: MatchingScoreBreakdownSource;
 };
 
-/** M6.0-C：关系画像适配度 shadow；首版来自 `scoreBreakdown.profileScore`。 */
+/** M6.0-C/E：关系画像适配度 shadow；E 优先 `matchInsights.scoreShadow`。 */
 export type RelationshipProfileScoreShadowSource =
+  | "match_insights_score_shadow"
   | "score_breakdown_profile_score"
   | "missing";
 
