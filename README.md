@@ -33,8 +33,8 @@
 | **P6.8 / P6.10 / 会话入口（已本地验证）** | **P6.8**：ChatPage 可生成建议，进入 **`profile-suggestions`（mine / accept / dismiss）**；**accept** 作为 **layer1 / 维度类补充信号** 写入聚合路径；**dismiss** 不写画像；不以单次聊天强改主标签为产品目标。**P6.10**：生成按钮具备最小禁用态与说明；已有 **pending** 时禁用；前后端提示与 **`docs/P6/acceptance/P6.8-*`、`P6.10-*`** 及当前实现一致。**会话 URL**：`/chat`、`/copilot`、`/chat/timeline` 在仅有 **`userId`**（query 或 `localStorage.peimaUserId`）时可 **`createConversation` + `replace` 补全 `conversationId`**；三页互跳保持同一会话参数（`apps/web/src/hooks/useEnsureConversationInUrl.js`）。 |
 | **profile-suggestions 可读性** | **`GET /profile-suggestions/mine`** 与 Chat「画像更新建议」依赖 **`profile_update_suggestions` 与当前 Prisma schema / migrations 对齐**；库未迁移到最新时列表仍可能失败（见下「本地联调注意」）。 |
 | **P0** | 端到端主流程可跑通并保持稳定（见下文「P0 主链路」）。 |
-| **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分）、submit 写 **`user_profile` 20 G1-R + `confidence`**（旧六维已停写）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`q01`–`q12` 与 `q25` 已为 `canonical`**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** 固定 **17** 条用例与当前闸门一致。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId` 返回第一层分支画像（hits / 按题 opportunities / rate / adjustedScore）、dominant / uncertain、**`labels`**（`primary` 可为 null / `candidates` / `styleLabels` 对外 ≤3）、**`displayPrimary`（永非空）**、**`overallExplanation`**（`title` + `paragraph`，规则拼装、非 AI）；Web **`/questionnaire-profile`**；二十轴 float 仍为 `user_profile` **次级**连续值，**不参与**标签与总体解释主依据。专篇 **`docs/P4/P4.3-questionnaire-profile-v3.md`**。（摘要；**全文与六条核心口径**见下「权威说明」。） |
-| **问卷 / G1-R — 尚未完成** | **`q13`–`q30` 仍未全部 `canonical`**（除 **`q25`** 外该段其余题当前多为 **`draft`**）→ **不能**宣称「**30 题**全 `canonical` / 全量正式生产真源与计分已结案」；**`confidence`** 分母含全部 canonical 题，未升格题仍会稀释比例；v2 轴上仍可能因 **`draft`** 题无贡献而为 **`null`**。问卷画像 **v3 只读层**依赖已存答卷与上述闸门，**不**改变本行事实。**worker / matching** 与 **20 维 G1-R** 全链路消费对齐、**matching/worker 读取 v3 分支画像**等 **未**作为已交付能力写入本 README；**P6.8** 聊天驱动画像补全等 **仍属 P6 线**（见下文「P6.8」与 `docs/P6/`），**未**与问卷 v3 只读 API 自动联动。全仓 **e2e** 若仍有旧题数假设需另任务跟进。 |
+| **问卷 / G1-R — 已完成（代码已落地）** | **30 题**（`q01`–`q30`）**均为 `canonical`（M6.0-Q2）**、**`sourceTier`** 闸门、**`scoreQuestionnaireG1r`**（仅 **`canonical`** 参与 v2 计分；**当前即全部 30 题**）、submit 写 **`user_profile` 20 G1-R + `confidence`**（**`confidence` 分母 = 30**）、DTO **30** 条、公开 **`GET /questionnaire/questions`** 无 `tags`/`sourceTier`、Web 跟 **`questions.length`**、**`questionnaire.controller.ts` 审读零改动**；**`apps/api/test/questionnaire.scorer.regression.e2e-spec.ts`** + **`questionnaire-canonical-q29-q30.spec.ts`** 与闸门一致。**问卷画像 v3（只读）**已合入：`GET /questionnaire/profile/:userId` 返回第一层分支画像（hits / 按题 opportunities / rate / adjustedScore）、dominant / uncertain、**`labels`**、**`displayPrimary`（永非空）**、**`overallExplanation`**；Web **`/questionnaire-profile`**。专篇 **`docs/P4/P4.3-questionnaire-profile-v3.md`**；**M6.0-Q2 记录**见 **`docs/M6/M6.0-q2-promote-q29-q30-canonical.md`**。（摘要；**全文**见下「权威说明」。） |
+| **问卷 / G1-R — 仍以其它文档为准的缺口** | **worker / matching** 与 **20 维 G1-R** 全链路消费对齐、**matching/worker 读取 v3 分支画像**等 **未**作为已交付能力写入本 README；**P6.8** 聊天驱动画像补全等 **仍属 P6 线**，**未**与问卷 v3 只读 API 自动联动。全仓 **e2e** 若仍有旧题数或旧闸门假设需另任务跟进。 |
 | **P1（已完成）** | P1-1～P1-6 均已落地，均为 **规则/占位** 层，不替代真实模型推理。 |
 | **P2-MVP（已完成）** | 数据表 + API + Web 聊天页轻感知层；Copilot 仅为 **基础建议层**（只读、不落库）；analytics **我的统计** 为计数级只读接口。 |
 | **P2.5（已完成）** | 见下文「P2.5 产品化补完」；与 **P6.1～P6.10** 已落地能力并存，**不**表示全仓已接入统一 Agent / simulation 主链。 |
@@ -72,7 +72,6 @@
 
 ### 未完成 / 仍以其它文档为准
 
-- **`q13`–`q30` 尚未全部 `canonical`**（除 **`q25`** 外该段多为 **`draft`**）→ **不能**写「30 题全 canonical / 全量正式生产计分已结案」；见 **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**。
 - **P6.8** 为 **P6 线下一条业务切片**（聊天会话驱动画像补全建议），**不是**问卷画像 v3 已交付内容；**未**与 v3 只读 API 做自动联动；见 **`docs/P6/acceptance/P6.8-conversation-profile-completion-round1.md`**。
 
 ### 文档中不应写成的口径（与当前仓库不符）
@@ -80,7 +79,7 @@
 - matching / worker **已消费** v3 分支画像或 `displayPrimary` 参与决策。
 - `overallExplanation` **已接 LLM** 或由模型主写。
 - 问卷画像 v3 **已与 P6.8 自动联动**。
-- **30 题已全 `canonical`**。
+- **`q29`/`q30` 仍为 `draft`、或 `confidence` 分母仍为 28**（与 **M6.0-Q2** 后实现不符）。
 
 **P6（Copilot 模型化 + 独立 AI 结果层 + P6.8 + P6.9 + P6.10）**
 
@@ -369,7 +368,7 @@ docker compose up -d --build api worker web
 | `docs/P2` | **P2 范围、状态、验证、P2.5 联调清单**（见下文文档索引） |
 | `docs/P3` | **P3 关系时间线**阶段收口、验收 checklist、推送前清单（见下文文档索引） |
 | `docs/M5` | **M5 / M5.6**：RRM Top2 controlled production path、hook job outbox、runner / apply 记录与 staging 口径等（详见下文「文档索引」**M5 / M5.6** 小节） |
-| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；**另含** **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**（G1-R 问卷 Batch 2 状态与测试记录；**`q01`–`q12`+`q25` canonical** 与 **17** 条 scorer 回归口径；**非**「30 题全 `canonical` / 全量正式生产」宣称）与 **`docs/P4/P4.3-questionnaire-profile-v3.md`**（问卷画像 v3 只读：分支累计、标签、`displayPrimary`、`overallExplanation`、API 与页面边界）；P5 已落地；**P6** 含 **P6.1～P6.4**（Copilot）、**P6.5～P6.7**（独立切片）、**P6.8**（聊天画像补全）、**P6.9**（该链路治理收口）、**P6.10**（ChatPage UX hinting 收口）、**`docs/P6/archive/historical/P6-ai-production-evolution-plan.md`**（演进规划）；详见下文「文档索引」 |
+| `docs/P4`～`docs/P6` | **P4 已完成 5 个最小切片并有收口文档**；**另含** **`docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`**（G1-R 问卷 Batch 2 状态与测试记录；**30 题全 `canonical`（M6.0-Q2）** 与 **17** 条 scorer 回归 + **`questionnaire-canonical-q29-q30`**）与 **`docs/P4/P4.3-questionnaire-profile-v3.md`**（问卷画像 v3 只读）；**`docs/M6/M6.0-q2-promote-q29-q30-canonical.md`**（q29/q30 升格记录）；P5 已落地；**P6** 见下文「文档索引」 |
 
 ## 当前项目结构（P0 / P1 / P2-MVP / P2.5 / P3 / P5 / P6 切片）
 
@@ -479,7 +478,7 @@ docker compose up -d --build api worker web
 ## 当前已跑通的 P0 主链路
 
 1. `/login` 登录（注册/登录，保存 `peimaToken` 与 `peimaUserId`）
-2. `/questionnaire` 提交问卷（生成/更新用户画像；须答满**当前版本**全部题目，**现为 30**；画像写入为 **G1-R v2**，生产计分仅来自 **`canonical`** 题；**`q01`–`q12` 与 `q25` 已 canonical**，**`q13`–`q30` 仍未全部 canonical**，**`confidence`** 按全部 canonical 题数为分母，见上表「问卷 / G1-R」）
+2. `/questionnaire` 提交问卷（生成/更新用户画像；须答满**当前版本**全部题目，**现为 30**；画像写入为 **G1-R v2**，**`q01`–`q30` 均为 `canonical`**；**`confidence`** 分母为 **30**，见上表「问卷 / G1-R」与 **`docs/M6/M6.0-q2-promote-q29-q30-canonical.md`**）
 3. （可选）`/questionnaire-profile` 查看 **问卷画像 v3 只读**（须已有 `UserProfile` 与答卷；`?userId=` 或登录态与 `getQuestionnaireProfile` 一致；详见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**）
 4. 准备候选用户和图片数据（候选用户需有 images）
 5. `/preview-pool` 生成并展示 6 人预览池
@@ -492,7 +491,7 @@ docker compose up -d --build api worker web
 
 - `/login`：注册/登录，token 与 userId 持久化
 - `/my-images`：为**当前登录用户**添加图片记录（粘贴可访问的 **HTTPS 图片直链**；需 JWT）；用于预览池「至少 6 名带图候选」数据准备
-- `/questionnaire`：**GET** 拉取当前版本题库（题数随版本变化，**现为 30**）；**POST** 须答满全部题目后提交；公开题面无 `tags`/`sourceTier`；**v2 画像**见上表「问卷 / G1-R」（**`q01`–`q12` 与 `q25` 已 canonical**；**30 题全 `canonical` 未完成**）
+- `/questionnaire`：**GET** 拉取当前版本题库（题数随版本变化，**现为 30**）；**POST** 须答满全部题目后提交；公开题面无 `tags`/`sourceTier`；**v2 画像**见上表「问卷 / G1-R」（**`q01`–`q30` 已全 `canonical`（M6.0-Q2）**）
 - `/questionnaire-profile`：**问卷画像 v3 只读**；调用 `GET /questionnaire/profile/:userId`；展示分支累计、标签、`displayPrimary`、`overallExplanation`、次级二十轴 float（见 **`docs/P4/P4.3-questionnaire-profile-v3.md`**）
 - `/preview-pool`：最新 6 人池（**P6 第二步**：rank1–2 **`visual`**、3–4 **`preference`**、5–6 **`backup`**；默认 **full / full / locked**，借位视觉槽可为 **blurred**）；**P1**：条目可展示 `itemMeta` 占位文案；专文 **`docs/P6/truth/P6-preview-pool-layered-selection-v0.md`**
 - `/matching-waiting`：匹配状态（waiting / processing / ready）
@@ -809,7 +808,8 @@ docker compose exec worker node apps/worker/dist/main.js --batch-match
 - `docs/P4/P4-current-slice-status.md`：当前 P4 五个切片的阶段收口文档（当前阶段口径以此文档为准）
 - `docs/P4/P4-web-conventions.md`：Web 跨模块约定（API / 文案 / sourceType）
 - `docs/P4/P4-ux-checklist.md`：手动验收清单
-- `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**`q01`–`q12`+`q25` canonical**、**17** 条 `questionnaire.scorer.regression` 口径、controller 零改动说明与「**非**30 题全 `canonical` / 全量正式生产」边界
+- `docs/P4/P4.2-questionnaire-G1R-batch2AB-snapshot.md`：**G1-R 问卷 Batch 2-A / 2-B** 状态说明、**30 题 `canonical`（M6.0-Q2）**、**17** 条 `questionnaire.scorer.regression` + **`questionnaire-canonical-q29-q30`**、controller 零改动说明
+- `docs/M6/M6.0-q2-promote-q29-q30-canonical.md`：**M6.0-Q2** `q29`/`q30` 升格与回归提示
 - `docs/P4/P4.3-questionnaire-profile-v3.md`：**问卷画像 v3 只读** — 目标、运行逻辑、分支累计、dominant/uncertain、主/候选/风格、`displayPrimary`、风格 top3、`overallExplanation`、`GET /questionnaire/profile/:userId`、`/questionnaire-profile`、二十轴 float 定位、边界、**与 P6.8 一句关系**、附录代码入口与 Jest（**不含** matching/worker 消费 v3、**不含** P6.8 联动实现）
 
 **P5（治理与运营 — 已完成）**
