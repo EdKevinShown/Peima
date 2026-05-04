@@ -53,6 +53,37 @@ export type MatchingRelationshipProfileScoreShadow = {
   source: RelationshipProfileScoreShadowSource;
 };
 
+/** M6.0-J4：服务端从 `matchInsights.scoreShadowV2` 解析；viewer-safe。 */
+export type MatchingRelationshipProfileScoreV2Band =
+  | "strong_conflict"
+  | "low"
+  | "medium"
+  | "good"
+  | "high"
+  | "missing";
+
+export type MatchingRelationshipProfileScoreV2Source =
+  | "match_insights_score_shadow_v2"
+  | "missing"
+  | "invalid";
+
+export type MatchingRelationshipProfileScoreV2 = {
+  scoringVersion: string;
+  rawCompatibilityScore: number | null;
+  weightedBaseScore: number | null;
+  penaltyTotal: number | null;
+  cappedRawScore: number | null;
+  displayScore100: number | null;
+  band: MatchingRelationshipProfileScoreV2Band;
+  capApplied: number | null;
+  coreConflictCount: number | null;
+  strongConflictCount: number | null;
+  redFlagConflictCount: number | null;
+  validAxisCount: number | null;
+  skippedAxisCount: number | null;
+  source: MatchingRelationshipProfileScoreV2Source;
+};
+
 /** M3.8-M13: viewer-safe finalize 摘要（无 raw pairwise / dimensions / strongRisk）。 */
 export type ViewerSafeFinalMatchDecisionMeta = {
   sourceType: string;
@@ -88,6 +119,8 @@ export type MatchingResultResponse = {
   scoreBreakdown?: MatchingScoreBreakdown;
   /** M6.0-C：shadow；旧客户端未升级时可缺省。 */
   relationshipProfileScore?: MatchingRelationshipProfileScoreShadow;
+  /** M6.0-J4：V2 shadow；旧客户端未升级时可缺省。 */
+  relationshipProfileScoreV2?: MatchingRelationshipProfileScoreV2;
   /** M3.8-M13：与 `candidateUserId` 可能不同；Final 页应优先用于展示与对端资料。 */
   displayCandidateUserId?: string;
   displaySourceType?:

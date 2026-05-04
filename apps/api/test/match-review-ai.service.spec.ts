@@ -5,6 +5,7 @@ import { MatchReviewAiConfigService } from "../src/modules/match-review-ai/match
 import { MatchReviewAiService } from "../src/modules/match-review-ai/match-review-ai.service";
 import { MatchingService } from "../src/modules/matching/matching.service";
 import type { MatchResultViewerPayload } from "../src/modules/matching/matching.service";
+import { resolveRelationshipProfileScoreV2Shadow } from "../src/modules/matching/matching-relationship-profile-score-v2";
 import { QuestionnaireService } from "../src/modules/questionnaire/questionnaire.service";
 
 const stubProfile = {
@@ -52,6 +53,7 @@ function minimalMatchRow(
       source: "parse_failed",
     },
     relationshipProfileScore: { score: null, source: "missing" },
+    relationshipProfileScoreV2: resolveRelationshipProfileScoreV2Shadow(null),
   } as MatchResultViewerPayload;
   return { ...base, ...over };
 }

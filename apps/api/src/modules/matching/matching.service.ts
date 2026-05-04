@@ -17,6 +17,10 @@ import {
   type ViewerSafeRelationshipProfileScoreShadow,
 } from "./matching-relationship-profile-score";
 import {
+  resolveRelationshipProfileScoreV2Shadow,
+  type ViewerSafeRelationshipProfileScoreV2,
+} from "./matching-relationship-profile-score-v2";
+import {
   parseScoreBreakdownFromReasonSummary,
   type ViewerSafeScoreBreakdown,
 } from "./matching-score-breakdown";
@@ -33,6 +37,8 @@ export type MatchResultViewerPayload = MatchResult &
     scoreBreakdown: ViewerSafeScoreBreakdown;
     /** M6.0-C: shadow; first version = `scoreBreakdown.profileScore` when available. */
     relationshipProfileScore: ViewerSafeRelationshipProfileScoreShadow;
+    /** M6.0-J4: V2 shadow from `matchInsights.scoreShadowV2` when valid. */
+    relationshipProfileScoreV2: ViewerSafeRelationshipProfileScoreV2;
   };
 
 @Injectable()
@@ -125,6 +131,16 @@ export class MatchingService {
       result.matchInsights,
       scoreBreakdown,
     );
-    return { ...result, ...display, multiSourceFinalDecision, scoreBreakdown, relationshipProfileScore };
+    const relationshipProfileScoreV2 = resolveRelationshipProfileScoreV2Shadow(
+      result.matchInsights,
+    );
+    return {
+      ...result,
+      ...display,
+      multiSourceFinalDecision,
+      scoreBreakdown,
+      relationshipProfileScore,
+      relationshipProfileScoreV2,
+    };
   }
 }

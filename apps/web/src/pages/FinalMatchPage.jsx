@@ -67,6 +67,24 @@ function formatRelationshipProfilePercent(score) {
   return `${(score * 100).toFixed(1)}%`;
 }
 
+/** M6.0-J4：V2 band → 简短中文标签（技术区）。 */
+function formatV2BandLabelCn(band) {
+  const m = {
+    strong_conflict: "强分歧",
+    low: "偏低",
+    medium: "中等",
+    good: "较好适配",
+    high: "高度适配",
+    missing: "—",
+  };
+  return m[band] || "—";
+}
+
+function formatV2NullableNumber(n, digits) {
+  if (n == null || typeof n !== "number" || !Number.isFinite(n)) return "—";
+  return n.toFixed(digits);
+}
+
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
@@ -1340,6 +1358,92 @@ export default function FinalMatchPage() {
                 关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
               </p>
             ) : null}
+          </details>
+
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f0fdf4",
+              borderRadius: 10,
+              border: "1px solid #bbf7d0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="V2 关系画像适配度实验"
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#14532d", userSelect: "none", fontSize: "0.92rem" }}>
+              V2 关系画像适配度（实验）
+            </summary>
+            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+              {(() => {
+                const v2 = result.relationshipProfileScoreV2;
+                const src = v2?.source;
+                if (src === "match_insights_score_shadow_v2" && v2) {
+                  const bandCn = formatV2BandLabelCn(v2.band);
+                  const bandEn = v2.band && v2.band !== "missing" ? v2.band : "—";
+                  const capText =
+                    v2.capApplied == null || typeof v2.capApplied !== "number"
+                      ? "暂无（null）"
+                      : formatV2NullableNumber(v2.capApplied, 3);
+                  return (
+                    <>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>展示分：</strong>
+                        {v2.displayScore100 != null ? `${v2.displayScore100} / 100` : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>档位：</strong>
+                        {bandCn} / {bandEn}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>原始画像分（raw，cap 前）：</strong>
+                        {formatV2NullableNumber(v2.rawCompatibilityScore, 3)}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem", fontSize: "0.76rem", color: "#64748b" }}>
+                        <strong>capped 内部 0–1：</strong>
+                        {formatV2NullableNumber(v2.cappedRawScore, 3)}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>penalty：</strong>
+                        {v2.penaltyTotal != null ? String(v2.penaltyTotal) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>cap：</strong>
+                        {capText}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>核心冲突数：</strong>
+                        {v2.coreConflictCount != null ? String(v2.coreConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>强冲突数：</strong>
+                        {v2.strongConflictCount != null ? String(v2.strongConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>红线冲突数：</strong>
+                        {v2.redFlagConflictCount != null ? String(v2.redFlagConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>有效维度：</strong>
+                        {v2.validAxisCount != null ? String(v2.validAxisCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>跳过维度：</strong>
+                        {v2.skippedAxisCount != null ? String(v2.skippedAxisCount) : "—"}
+                      </p>
+                    </>
+                  );
+                }
+                if (src === "invalid") {
+                  return <p style={{ margin: 0 }}>V2 shadow 数据异常，暂不展示。</p>;
+                }
+                return <p style={{ margin: 0 }}>暂无 V2 shadow。</p>;
+              })()}
+            </div>
+            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+              这是新的 V2 关系画像适配分，当前仅用于 shadow 对照，不会改变最终匹配对象或 legacy 匹配指数。
+            </p>
           </details>
 
           <details
