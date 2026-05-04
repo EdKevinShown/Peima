@@ -59,6 +59,14 @@ function formatScoreBreakdownPercent(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+/** M6.0-C：关系画像适配度 shadow（0–1）→ 百分数一位小数；缺失显示「暂无」。 */
+function formatRelationshipProfilePercent(score) {
+  if (score == null || typeof score !== "number" || Number.isNaN(score) || !Number.isFinite(score)) {
+    return "暂无";
+  }
+  return `${(score * 100).toFixed(1)}%`;
+}
+
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
@@ -1196,6 +1204,34 @@ export default function FinalMatchPage() {
             formatScoreDisplay={formatScoreDisplay}
             formatDateShort={formatDateShort}
           />
+
+          <section
+            style={{
+              marginTop: "0.9rem",
+              padding: "0.9rem 1rem",
+              borderRadius: 10,
+              border: "1px solid #ccfbf1",
+              background: "linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%)",
+              maxWidth: 520,
+            }}
+            aria-label="关系画像适配度 shadow"
+          >
+            <p style={{ margin: "0 0 0.2rem", fontSize: "0.78rem", color: "#0f766e", fontWeight: 600, letterSpacing: "0.02em" }}>
+              关系画像适配度
+            </p>
+            <p style={{ margin: "0 0 0.55rem", fontSize: "1.55rem", fontWeight: 800, color: "#115e59", lineHeight: 1.15 }}>
+              {formatRelationshipProfilePercent(result.relationshipProfileScore?.score)}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.55 }}>
+              关系画像适配度主要来自双方 20 维关系画像的相似度。它不同于当前 legacy 匹配指数；当前 legacy
+              匹配指数还包含候选池基础分、偏好命中分和风格匹配分。
+            </p>
+            {isRrmDisplay ? (
+              <p style={{ margin: "0.45rem 0 0", fontSize: "0.82rem", color: "#475569", lineHeight: 1.55 }}>
+                关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
+              </p>
+            ) : null}
+          </section>
 
           {!isValidMatchInsights(result.matchInsights) ? (
             <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>

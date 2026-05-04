@@ -34,6 +34,16 @@ export type MatchingScoreBreakdown = {
   source: MatchingScoreBreakdownSource;
 };
 
+/** M6.0-C：关系画像适配度 shadow；首版来自 `scoreBreakdown.profileScore`。 */
+export type RelationshipProfileScoreShadowSource =
+  | "score_breakdown_profile_score"
+  | "missing";
+
+export type MatchingRelationshipProfileScoreShadow = {
+  score: number | null;
+  source: RelationshipProfileScoreShadowSource;
+};
+
 /** M3.8-M13: viewer-safe finalize 摘要（无 raw pairwise / dimensions / strongRisk）。 */
 export type ViewerSafeFinalMatchDecisionMeta = {
   sourceType: string;
@@ -67,6 +77,8 @@ export type MatchingResultResponse = {
   matchInsights?: MatchInsights | null;
   /** M6.0-B：服务端从 `reasonSummary` 解析；旧客户端未升级时可缺省。 */
   scoreBreakdown?: MatchingScoreBreakdown;
+  /** M6.0-C：shadow；旧客户端未升级时可缺省。 */
+  relationshipProfileScore?: MatchingRelationshipProfileScoreShadow;
   /** M3.8-M13：与 `candidateUserId` 可能不同；Final 页应优先用于展示与对端资料。 */
   displayCandidateUserId?: string;
   displaySourceType?:

@@ -51,6 +51,7 @@ function minimalMatchRow(
       profileScore: null,
       source: "parse_failed",
     },
+    relationshipProfileScore: { score: null, source: "missing" },
   } as MatchResultViewerPayload;
   return { ...base, ...over };
 }

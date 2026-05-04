@@ -13,6 +13,10 @@ import {
 } from "./matching-multi-source-final-decision-m51m0";
 import { resolveMatchResultDisplay, type MatchResultDisplayFields } from "./matching-result-display";
 import {
+  buildRelationshipProfileScoreShadow,
+  type ViewerSafeRelationshipProfileScoreShadow,
+} from "./matching-relationship-profile-score";
+import {
   parseScoreBreakdownFromReasonSummary,
   type ViewerSafeScoreBreakdown,
 } from "./matching-score-breakdown";
@@ -27,6 +31,8 @@ export type MatchResultViewerPayload = MatchResult &
     multiSourceFinalDecision: MultiSourceFinalDecisionReadonlyM51M0;
     /** M6.0-B: parsed from `reasonSummary` only; viewer-safe numbers + source enum. */
     scoreBreakdown: ViewerSafeScoreBreakdown;
+    /** M6.0-C: shadow; first version = `scoreBreakdown.profileScore` when available. */
+    relationshipProfileScore: ViewerSafeRelationshipProfileScoreShadow;
   };
 
 @Injectable()
@@ -115,6 +121,7 @@ export class MatchingService {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });
     const scoreBreakdown = parseScoreBreakdownFromReasonSummary(result.reasonSummary);
-    return { ...result, ...display, multiSourceFinalDecision, scoreBreakdown };
+    const relationshipProfileScore = buildRelationshipProfileScoreShadow(scoreBreakdown);
+    return { ...result, ...display, multiSourceFinalDecision, scoreBreakdown, relationshipProfileScore };
   }
 }
