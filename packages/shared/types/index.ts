@@ -4,6 +4,8 @@ export type Empty = Record<string, never>;
 
 export type {
   MatchInsights,
+  MatchInsightsRrmDecisionShadow,
+  MatchInsightsRrmDecisionShadowBlockReason,
   MatchInsightsRrmV2Top2SelectorShadow,
   MatchInsightsScoreShadowV2,
 } from "./match-p1";

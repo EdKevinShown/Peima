@@ -338,6 +338,8 @@ export async function runBatchMatch(): Promise<void> {
             profileMap.get(s.item.candidateUserId) ?? null,
           ),
         })),
+        baselineCandidateUserId: best.item.candidateUserId,
+        finalScore: best.components.finalScore,
       });
 
       await prisma.matchResult.create({

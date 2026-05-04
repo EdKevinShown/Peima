@@ -27,6 +27,8 @@ import {
   type RrmV2Top2CandidateInput,
   type RrmV2Top2SelectorOptions,
 } from "./rrm-v2-top2-selector.js";
+import { readM6RrmDecisionShadowEnv } from "./batch-match-rrm-decision-shadow-env.js";
+import { buildRrmDecisionShadowPayload } from "./batch-match-rrm-decision-shadow.js";
 
 function toScoreShadowV2(
   r: RelationshipProfileScoreV2Result,
@@ -98,6 +100,7 @@ function buildRrmV2Top2SelectorShadowFromPool(
 
 /**
  * P1-1 placeholder + M6.0-J3 scoreShadowV2 + M6.0-R3 rrmV2Top2Selector shadow (no scoreShadow v1 write).
+ * M6.1-r3: optional `rrmDecisionShadow` when `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED=1` (shadow-only).
  * Does not read questionnaire answers as raw payloads, tokens, or RRM outputs.
  */
 export function buildWorkerMatchInsightsForBestMatch(params: {
@@ -114,6 +117,10 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
     candidateProfile: UserProfileLike;
   }>;
   v2SelectorOptions?: RrmV2Top2SelectorOptions;
+  /** M6.1-r3: formal winner user id for shadow baseline (no DB lookup here). */
+  baselineCandidateUserId?: string;
+  /** M6.1-r3: defaults to `components.finalScore` for shadow `finalScoreBand`. */
+  finalScore?: number;
 }): MatchInsights {
   const base = buildMatchInsightsPlaceholder(
     params.components,
@@ -133,6 +140,13 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
       params.v2SelectorCandidates,
       params.v2SelectorOptions,
     );
+  }
+  if (readM6RrmDecisionShadowEnv().enabled) {
+    out.rrmDecisionShadow = buildRrmDecisionShadowPayload({
+      baselineCandidateUserId: params.baselineCandidateUserId ?? "",
+      finalScore: params.finalScore ?? params.components.finalScore,
+      insights: out,
+    });
   }
   return out;
 }

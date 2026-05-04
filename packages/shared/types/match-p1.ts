@@ -58,6 +58,77 @@ export type MatchInsightsRrmV2Top2SelectorShadow = {
   reason: MatchInsightsRrmV2Top2SelectorReason;
 };
 
+/** M6.1-r3: RRM decision shadow (observation only; does not change MatchResult). */
+export type MatchInsightsRrmDecisionShadowRef = {
+  kind: "match_result" | "user";
+  redacted: true;
+};
+
+export type MatchInsightsRrmDecisionShadowDecision =
+  | "same_as_baseline"
+  | "switch_to_top2_candidate"
+  | "no_shadow_decision";
+
+export type MatchInsightsRrmDecisionShadowBlockReason =
+  | "missing_score_shadow_v2"
+  | "missing_rrm_v2_top2_selector"
+  | "invalid_selector_payload"
+  | "empty_selected_top2"
+  | "missing_candidate_user"
+  | "missing_candidate_profile"
+  | "has_low_band"
+  | "has_strong_conflict_band"
+  | "any_below_suggested_floor"
+  | "top2_gap_large"
+  | "reason_not_ok"
+  | "eligible_not_true"
+  | "parse_error"
+  | "unexpected_exception";
+
+export type MatchInsightsRrmDecisionShadow = {
+  schemaVersion: 1;
+  sourceType: "rrm_decision_shadow";
+  sourceVersion: "m6.1-rrm-decision-shadow-v1";
+  matchResultRef: MatchInsightsRrmDecisionShadowRef;
+  baseline: {
+    candidateRef: MatchInsightsRrmDecisionShadowRef;
+    source: "worker_current_winner";
+    finalScoreBand: "low" | "medium" | "high" | "unknown";
+    rank: 1;
+  };
+  shadow: {
+    candidateRef: MatchInsightsRrmDecisionShadowRef;
+    rankWithinSelectedTop2: 1 | 2;
+    decision: MatchInsightsRrmDecisionShadowDecision;
+    reasonCode: string;
+    confidenceBand: "low" | "medium" | "high" | "unknown";
+  };
+  comparison: {
+    sameAsBaseline: boolean;
+    switchSuggested: boolean;
+    top2GapBand: "small" | "medium" | "large" | "unknown";
+    scoreDeltaBand: "small" | "medium" | "large" | "unknown";
+    riskFlags: string[];
+  };
+  guardrails: {
+    blocked: boolean;
+    blockReasons: MatchInsightsRrmDecisionShadowBlockReason[];
+    blockedByLowBand: boolean;
+    blockedByStrongConflict: boolean;
+    blockedByMissingProfile: boolean;
+    blockedByInvalidSelector: boolean;
+    blockedByBelowSuggestedFloor: boolean;
+    blockedByParseError: boolean;
+  };
+  inputPresence: {
+    scoreShadowV2: boolean;
+    rrmV2Top2Selector: boolean;
+    selectedTop2: boolean;
+    scoreShadowV1LegacyPresent: boolean;
+  };
+  generatedAt: string;
+};
+
 export type MatchInsights = {
   explanation: {
     whyMatch: string;
@@ -71,4 +142,6 @@ export type MatchInsights = {
   scoreShadow?: MatchInsightsScoreShadowM60;
   scoreShadowV2?: MatchInsightsScoreShadowV2;
   rrmV2Top2Selector?: MatchInsightsRrmV2Top2SelectorShadow;
+  /** M6.1-r3: optional; only written when `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED=1`. */
+  rrmDecisionShadow?: MatchInsightsRrmDecisionShadow;
 };
