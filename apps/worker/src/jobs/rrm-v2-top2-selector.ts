@@ -1,12 +1,12 @@
 /**
- * M6.0-R2 — pure helper: pick V2 Top2 subset for future RRM gating (no RRM call, no DB, no resolver).
+ * M6.0-R2B — pure helper: stable V2 Top2 from a pool + risk context for always-on RRM (no RRM call, no DB, no resolver).
  * @see docs/M6/M6.0-r1-rrm-v2-integration-scan-plan.md
  * @see docs/M6/M6.0-r2-v2-top2-selector-helper.md
  */
 
 import { RELATIONSHIP_PROFILE_SCORE_V2_VERSION } from "./relationship-profile-score-v2.js";
 
-const V2_BANDS_ALL = new Set([
+const V2_BANDS_ALL = new Set<string>([
   "high",
   "good",
   "medium",
@@ -29,53 +29,65 @@ export type RrmV2Top2CandidateInput = {
   } | null;
 };
 
-export type RrmV2Top2AllowBand = "medium" | "good" | "high";
+/** V2 shadow band enum; validated before appearing on `selectedTop2`. */
+export type RrmV2Top2Band = "strong_conflict" | "low" | "medium" | "good" | "high";
 
 export type RrmV2Top2SelectorOptions = {
-  minDisplayScore100?: number;
-  maxTop2Gap?: number;
-  allowBands?: readonly RrmV2Top2AllowBand[];
+  /** Hint only: scores below this on either selected row set `anyBelowSuggestedFloor`. Default 65. */
+  suggestedFloorDisplayScore100?: number;
+  /** Hint only: Top1−Top2 above this sets `top2GapLarge`. Default 12. */
+  largeGapThreshold?: number;
 };
 
 export type RrmV2Top2SelectorReason =
   | "ok"
   | "not_enough_valid_v2_candidates"
-  | "top2_below_min_score"
-  | "top2_gap_too_large"
   | "invalid_score_shadow_v2";
+
+export type RrmV2Top2ContextFlags = {
+  top2GapLarge: boolean;
+  hasLowBand: boolean;
+  hasStrongConflictBand: boolean;
+  anyBelowSuggestedFloor: boolean;
+};
+
+export type RrmV2Top2Thresholds = {
+  suggestedFloorDisplayScore100: number;
+  largeGapThreshold: number;
+};
 
 export type RrmV2Top2SelectedRow = {
   candidateUserId: string;
   displayScore100: number;
-  band: string;
+  band: RrmV2Top2Band;
 };
 
 export type RrmV2Top2SelectorResult = {
+  /** True iff two distinct valid V2 rows were selected as Top2 (RRM must arbitrate within this pair). */
   eligible: boolean;
   selectedTop2: RrmV2Top2SelectedRow[];
   top1CandidateUserId: string | null;
   top2CandidateUserId: string | null;
-  reason: RrmV2Top2SelectorReason;
   top2Gap: number | null;
+  contextFlags: RrmV2Top2ContextFlags;
+  thresholds: RrmV2Top2Thresholds;
+  reason: RrmV2Top2SelectorReason;
 };
 
-const DEFAULT_MIN = 65;
-const DEFAULT_GAP = 12;
-const DEFAULT_ALLOW_BANDS: readonly RrmV2Top2AllowBand[] = ["medium", "good", "high"];
+const DEFAULT_SUGGESTED_FLOOR = 65;
+const DEFAULT_LARGE_GAP = 12;
 
 type ParsedRow = {
   candidateUserId: string;
   displayScore100: number;
-  band: string;
+  band: RrmV2Top2Band;
 };
 
 function normId(id: string): string {
   return String(id ?? "").trim();
 }
 
-function parseValidScoreShadowV2(
-  row: RrmV2Top2CandidateInput,
-): ParsedRow | null {
+function parseValidScoreShadowV2(row: RrmV2Top2CandidateInput): ParsedRow | null {
   const id = normId(row.candidateUserId);
   if (!id) return null;
 
@@ -90,55 +102,78 @@ function parseValidScoreShadowV2(
   if (typeof score !== "number" || !Number.isFinite(score)) return null;
   if (score < 0 || score > 100) return null;
 
-  const band = typeof s.band === "string" ? s.band.trim() : "";
-  if (!V2_BANDS_ALL.has(band)) return null;
+  const bandRaw = typeof s.band === "string" ? s.band.trim() : "";
+  if (!V2_BANDS_ALL.has(bandRaw)) return null;
 
-  return { candidateUserId: id, displayScore100: score, band };
+  return {
+    candidateUserId: id,
+    displayScore100: score,
+    band: bandRaw as RrmV2Top2Band,
+  };
 }
 
-function mergeOptions(
-  options?: RrmV2Top2SelectorOptions,
-): Required<RrmV2Top2SelectorOptions> {
-  const allowBands =
-    options?.allowBands != null && options.allowBands.length > 0
-      ? options.allowBands
-      : DEFAULT_ALLOW_BANDS;
+function mergeOptions(options?: RrmV2Top2SelectorOptions): RrmV2Top2Thresholds {
   return {
-    minDisplayScore100:
-      typeof options?.minDisplayScore100 === "number" &&
-      Number.isFinite(options.minDisplayScore100)
-        ? options.minDisplayScore100
-        : DEFAULT_MIN,
-    maxTop2Gap:
-      typeof options?.maxTop2Gap === "number" && Number.isFinite(options.maxTop2Gap)
-        ? options.maxTop2Gap
-        : DEFAULT_GAP,
-    allowBands,
+    suggestedFloorDisplayScore100:
+      typeof options?.suggestedFloorDisplayScore100 === "number" &&
+      Number.isFinite(options.suggestedFloorDisplayScore100)
+        ? options.suggestedFloorDisplayScore100
+        : DEFAULT_SUGGESTED_FLOOR,
+    largeGapThreshold:
+      typeof options?.largeGapThreshold === "number" && Number.isFinite(options.largeGapThreshold)
+        ? options.largeGapThreshold
+        : DEFAULT_LARGE_GAP,
+  };
+}
+
+function neutralContextFlags(): RrmV2Top2ContextFlags {
+  return {
+    top2GapLarge: false,
+    hasLowBand: false,
+    hasStrongConflictBand: false,
+    anyBelowSuggestedFloor: false,
+  };
+}
+
+function buildContextFlags(
+  b0: ParsedRow,
+  b1: ParsedRow,
+  gap: number,
+  thresholds: RrmV2Top2Thresholds,
+): RrmV2Top2ContextFlags {
+  return {
+    top2GapLarge: gap > thresholds.largeGapThreshold,
+    hasLowBand: b0.band === "low" || b1.band === "low",
+    hasStrongConflictBand: b0.band === "strong_conflict" || b1.band === "strong_conflict",
+    anyBelowSuggestedFloor:
+      b0.displayScore100 < thresholds.suggestedFloorDisplayScore100 ||
+      b1.displayScore100 < thresholds.suggestedFloorDisplayScore100,
   };
 }
 
 /**
- * Decide whether RRM may intervene on a V2-ranked Top2 pair from a preview-pool-sized candidate list.
- * Does not call RRM, does not read DB, does not mutate inputs.
+ * Select the top two valid V2 shadow rows by `displayScore100` (desc, tie-break `candidateUserId`).
+ * Does not gate RRM: low band, strong_conflict, wide gap, or low score only influence `contextFlags`.
  */
 export function selectV2Top2Candidates(
   candidates: readonly RrmV2Top2CandidateInput[],
   options?: RrmV2Top2SelectorOptions,
 ): RrmV2Top2SelectorResult {
-  const opt = mergeOptions(options);
-  const allowSet = new Set<string>(opt.allowBands);
+  const thresholds = mergeOptions(options);
 
-  const empty: RrmV2Top2SelectorResult = {
+  const ineligibleBase = (): RrmV2Top2SelectorResult => ({
     eligible: false,
     selectedTop2: [],
     top1CandidateUserId: null,
     top2CandidateUserId: null,
-    reason: "not_enough_valid_v2_candidates",
     top2Gap: null,
-  };
+    contextFlags: neutralContextFlags(),
+    thresholds,
+    reason: "not_enough_valid_v2_candidates",
+  });
 
   if (!Array.isArray(candidates) || candidates.length === 0) {
-    return empty;
+    return ineligibleBase();
   }
 
   const parsedStrict: ParsedRow[] = [];
@@ -154,11 +189,13 @@ export function selectV2Top2Candidates(
         selectedTop2: [],
         top1CandidateUserId: null,
         top2CandidateUserId: null,
-        reason: "invalid_score_shadow_v2",
         top2Gap: null,
+        contextFlags: neutralContextFlags(),
+        thresholds,
+        reason: "invalid_score_shadow_v2",
       };
     }
-    return empty;
+    return ineligibleBase();
   }
 
   /** Dedupe by candidateUserId: keep best (highest displayScore100, then lexicographic id). */
@@ -173,54 +210,22 @@ export function selectV2Top2Candidates(
       bestById.set(p.candidateUserId, p);
     }
   }
-  const deduped = [...bestById.values()];
-
-  const poolBand = deduped.filter((p) => allowSet.has(p.band));
-  poolBand.sort((a, b) => {
+  const pool = [...bestById.values()];
+  pool.sort((a, b) => {
     if (b.displayScore100 !== a.displayScore100) {
       return b.displayScore100 - a.displayScore100;
     }
     return a.candidateUserId.localeCompare(b.candidateUserId);
   });
 
-  if (poolBand.length < 2) {
-    return {
-      eligible: false,
-      selectedTop2: [],
-      top1CandidateUserId: null,
-      top2CandidateUserId: null,
-      reason: "not_enough_valid_v2_candidates",
-      top2Gap: null,
-    };
+  if (pool.length < 2) {
+    return ineligibleBase();
   }
 
-  const b0 = poolBand[0];
-  const b1 = poolBand[1];
+  const b0 = pool[0];
+  const b1 = pool[1];
   const gap = b0.displayScore100 - b1.displayScore100;
-
-  const baseIds = {
-    top1CandidateUserId: b0.candidateUserId,
-    top2CandidateUserId: b1.candidateUserId,
-    top2Gap: gap,
-  };
-
-  if (b0.displayScore100 < opt.minDisplayScore100 || b1.displayScore100 < opt.minDisplayScore100) {
-    return {
-      eligible: false,
-      selectedTop2: [],
-      ...baseIds,
-      reason: "top2_below_min_score",
-    };
-  }
-
-  if (gap > opt.maxTop2Gap) {
-    return {
-      eligible: false,
-      selectedTop2: [],
-      ...baseIds,
-      reason: "top2_gap_too_large",
-    };
-  }
+  const contextFlags = buildContextFlags(b0, b1, gap, thresholds);
 
   return {
     eligible: true,
@@ -236,14 +241,16 @@ export function selectV2Top2Candidates(
         band: b1.band,
       },
     ],
-    ...baseIds,
+    top1CandidateUserId: b0.candidateUserId,
+    top2CandidateUserId: b1.candidateUserId,
+    top2Gap: gap,
+    contextFlags,
+    thresholds,
     reason: "ok",
   };
 }
 
-function allHadShadowObjectAndInvalid(
-  candidates: readonly RrmV2Top2CandidateInput[],
-): boolean {
+function allHadShadowObjectAndInvalid(candidates: readonly RrmV2Top2CandidateInput[]): boolean {
   if (candidates.length === 0) return false;
   for (const c of candidates) {
     const s = c.scoreShadowV2;
