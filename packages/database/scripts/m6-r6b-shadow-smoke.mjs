@@ -5,6 +5,7 @@
  * Run from monorepo root:
  *   node --env-file=.env packages/database/scripts/m6-r6b-shadow-smoke.mjs prep
  *   node --env-file=.env packages/database/scripts/m6-r6b-shadow-smoke.mjs summarize
+ *   node --env-file=.env packages/database/scripts/m6-r6b-shadow-smoke.mjs bounded-metrics [--limit=N]
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -95,6 +96,31 @@ async function cmdPrep() {
   }
 }
 
+function summarizeRrmBoundedDecision(b) {
+  if (!b || typeof b !== "object") return null;
+  return {
+    schemaVersion: b.schemaVersion,
+    sourceType: b.sourceType,
+    sourceVersion: b.sourceVersion,
+    mode: b.mode,
+    decision: b.decision,
+    decisionSource: b.decisionSource,
+    wouldSwitch: b.wouldSwitch,
+    fallbackUsed: b.fallbackUsed,
+    fallbackReason: b.fallbackReason ?? null,
+    guardrailsBlocked: Boolean(b.guardrails?.blocked),
+    inputPresence: b.inputPresence
+      ? {
+          scoreShadowV2: Boolean(b.inputPresence.scoreShadowV2),
+          rrmDecisionShadow: Boolean(b.inputPresence.rrmDecisionShadow),
+          rrmV2Top2Selector: Boolean(b.inputPresence.rrmV2Top2Selector),
+          selectedTop2: Boolean(b.inputPresence.selectedTop2),
+          scoreShadowV1LegacyPresent: Boolean(b.inputPresence.scoreShadowV1LegacyPresent),
+        }
+      : null,
+  };
+}
+
 function summarizeMatchInsights(mi) {
   if (!mi || typeof mi !== "object") {
     return { matchInsights: "missing_or_null" };
@@ -103,11 +129,14 @@ function summarizeMatchInsights(mi) {
   const v1 = mi.scoreShadow;
   const sel = mi.rrmV2Top2Selector;
   const sh = mi.rrmDecisionShadow;
+  const bd = mi.rrmBoundedDecision;
   return {
     scoreShadowV2Present: Boolean(v2),
     scoreShadowV1Present: Boolean(v1),
     rrmV2Top2SelectorPresent: Boolean(sel),
     rrmDecisionShadowPresent: Boolean(sh),
+    rrmBoundedDecisionPresent: Boolean(bd),
+    rrmBoundedDecision: summarizeRrmBoundedDecision(bd),
     rrmDecisionShadow: sh
       ? {
           schemaVersion: sh.schemaVersion,
@@ -154,12 +183,85 @@ async function cmdSummarize() {
   }
 }
 
+function parseLimitArg(argv, fallback) {
+  const raw = argv.find((a) => a.startsWith("--limit="));
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw.slice("--limit=".length), 10);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(500, n);
+}
+
+async function cmdBoundedMetrics() {
+  tryLoadMonorepoDotEnv();
+  if (!process.env.DATABASE_URL) {
+    console.error(JSON.stringify({ ok: false, reason: "DATABASE_URL_missing" }));
+    process.exit(1);
+  }
+  const limit = parseLimitArg(process.argv, 50);
+  const prisma = new PrismaClient();
+  try {
+    const rows = await prisma.matchResult.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { matchInsights: true },
+    });
+    const sampleSize = rows.length;
+    let withBounded = 0;
+    let wouldUseBaseline = 0;
+    let wouldSwitchToRrm = 0;
+    let fallbackBaseline = 0;
+    let v1LegacyWhenBounded = 0;
+    /** @type {Record<string, number>} */
+    const fallbackReasonDist = {};
+
+    for (const r of rows) {
+      const b = r.matchInsights?.rrmBoundedDecision;
+      if (!b) continue;
+      withBounded++;
+      if (b.inputPresence?.scoreShadowV1LegacyPresent) v1LegacyWhenBounded++;
+      if (b.decision === "would_use_baseline") wouldUseBaseline++;
+      else if (b.decision === "would_switch_to_rrm") wouldSwitchToRrm++;
+      else if (b.decision === "fallback_baseline") fallbackBaseline++;
+      const fr = b.fallbackReason ?? "null";
+      fallbackReasonDist[fr] = (fallbackReasonDist[fr] ?? 0) + 1;
+    }
+
+    const safeDiv = (a, d) => (d > 0 ? a / d : null);
+    const out = {
+      ok: true,
+      sampleSize,
+      boundedDecisionCoverageRate: safeDiv(withBounded, sampleSize),
+      wouldUseBaselineRate: safeDiv(wouldUseBaseline, withBounded),
+      wouldSwitchToRrmRate: safeDiv(wouldSwitchToRrm, withBounded),
+      fallbackBaselineRate: safeDiv(fallbackBaseline, withBounded),
+      v1LegacyPresenceRate: safeDiv(v1LegacyWhenBounded, withBounded),
+      fallbackReasonDistribution: fallbackReasonDist,
+      counts: {
+        withBounded,
+        wouldUseBaseline,
+        wouldSwitchToRrm,
+        fallbackBaseline,
+        v1LegacyWhenBounded,
+      },
+      note:
+        sampleSize < 10 || withBounded < 5
+          ? "smoke_only_not_quality_conclusion"
+          : null,
+    };
+    console.log(JSON.stringify(out, null, 2));
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 const cmd = process.argv[2] ?? "help";
 if (cmd === "prep") {
   await cmdPrep();
 } else if (cmd === "summarize") {
   await cmdSummarize();
+} else if (cmd === "bounded-metrics") {
+  await cmdBoundedMetrics();
 } else {
-  console.log("usage: node ... m6-r6b-shadow-smoke.mjs prep|summarize");
+  console.log("usage: node ... m6-r6b-shadow-smoke.mjs prep|summarize|bounded-metrics [--limit=N]");
   process.exit(0);
 }
