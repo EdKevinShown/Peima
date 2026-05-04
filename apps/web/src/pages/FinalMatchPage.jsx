@@ -458,10 +458,37 @@ export default function FinalMatchPage() {
   /** M5.4-M2：generate + 二次 enqueue 阶段。 */
   const [rematchPreparingPool, setRematchPreparingPool] = useState(false);
   const [rematchError, setRematchError] = useState(null);
-  /** M3.8-M13: 展示与下游 API（复审 / 侧车）一致用 displayCandidateUserId，无则回退 MatchResult.candidateUserId。 */
-  const effectiveDisplayCandidateId = useMemo(
-    () => String(result?.displayCandidateUserId || result?.candidateUserId || "").trim(),
-    [result?.displayCandidateUserId, result?.candidateUserId],
+  /** M6.5-C2: 优先 API `resolvedCandidateUserId`，兼容旧 GET（回退 display → baseline）。 */
+  const resolvedCandidateUserId = useMemo(
+    () =>
+      String(
+        result?.resolvedCandidateUserId ||
+          result?.displayCandidateUserId ||
+          result?.candidateUserId ||
+          "",
+      ).trim(),
+    [result?.resolvedCandidateUserId, result?.displayCandidateUserId, result?.candidateUserId],
+  );
+  /** M3.8-M13 + M6.5-C2: 主展示 / 侧车与 resolved 对齐。 */
+  const effectiveDisplayCandidateId = resolvedCandidateUserId;
+  /** M6.5-C2: 动作入口目标（服务端建会话仍传 matchResultId；此处为客户端单一锚点）。 */
+  const chatTargetUserId = useMemo(
+    () => String(result?.chatTargetUserId || resolvedCandidateUserId || "").trim(),
+    [result?.chatTargetUserId, resolvedCandidateUserId],
+  );
+  const timelineTargetUserId = useMemo(
+    () => String(result?.timelineTargetUserId || resolvedCandidateUserId || "").trim(),
+    [result?.timelineTargetUserId, resolvedCandidateUserId],
+  );
+  /** M6.5-C2: 预留与 API 对齐；C3 将接到反馈入口。 */
+  const feedbackTargetUserId = useMemo(
+    () => String(result?.feedbackTargetUserId || resolvedCandidateUserId || "").trim(),
+    [result?.feedbackTargetUserId, resolvedCandidateUserId],
+  );
+  const explanationTargetUserId = useMemo(
+    () =>
+      String(result?.explanationOwnerCandidateUserId || resolvedCandidateUserId || "").trim(),
+    [result?.explanationOwnerCandidateUserId, resolvedCandidateUserId],
   );
   /** M5.5-UI-R4: 关系节奏影响展示对象；finalScore 仍仅为基础适配参考，不由关系节奏重算。 */
   const isRrmDisplay = useMemo(
@@ -604,11 +631,11 @@ export default function FinalMatchPage() {
   }, [aiSimJobId]);
 
   const onFetchMatchReview = useCallback(async () => {
-    if (!effectiveDisplayCandidateId) return;
+    if (!explanationTargetUserId) return;
     setMatchReviewError(null);
     setMatchReviewLoading(true);
     try {
-      const data = await postMatchReviewAi(effectiveDisplayCandidateId);
+      const data = await postMatchReviewAi(explanationTargetUserId);
       setMatchReview(data);
     } catch (e) {
       console.warn("[FinalMatchPage] match review failed", e);
@@ -617,7 +644,7 @@ export default function FinalMatchPage() {
     } finally {
       setMatchReviewLoading(false);
     }
-  }, [effectiveDisplayCandidateId]);
+  }, [explanationTargetUserId]);
 
   const onFetchInteractionSim = useCallback(async () => {
     if (!result?.id) return;
@@ -741,9 +768,10 @@ export default function FinalMatchPage() {
   }, [generatedDeeplink, userId, deeplinkJobIdInput]);
 
   const onEnterChat = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !chatTargetUserId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
+      /** M6.5-C2: 客户端锚点为 `chatTargetUserId`；建连仍传 matchResultId，由服务端 `resolveMatchResultDisplay` 与 C1 投影一致。 */
       const conv = result?.id
         ? await createConversation(userId, { matchResultId: result.id })
         : await createConversation(userId);
@@ -761,10 +789,10 @@ export default function FinalMatchPage() {
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate, result?.id, isRrmDisplay]);
+  }, [userId, navigate, result?.id, isRrmDisplay, chatTargetUserId]);
 
   const onViewTimeline = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !timelineTargetUserId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
       const conv = result?.id
@@ -784,7 +812,7 @@ export default function FinalMatchPage() {
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate, result?.id, isRrmDisplay]);
+  }, [userId, navigate, result?.id, isRrmDisplay, timelineTargetUserId]);
 
   return (
     <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>
@@ -1301,6 +1329,60 @@ export default function FinalMatchPage() {
             formatDateShort={formatDateShort}
             primaryResolution={primaryResolution}
           />
+          {Array.isArray(result.consistencyWarnings) && result.consistencyWarnings.length > 0 ? (
+            <div
+              role="region"
+              aria-label="一致性提示"
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.55rem 0.75rem",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fafafa",
+                fontSize: "0.84rem",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              {result.consistencyWarnings.map((w, idx) => {
+                const sev = w.severity === "blocking" ? "blocking" : w.severity === "warning" ? "warning" : "info";
+                const color = sev === "blocking" ? "#991b1b" : sev === "warning" ? "#a16207" : "#475569";
+                const border = sev === "blocking" ? "#fecaca" : sev === "warning" ? "#fde047" : "#cbd5e1";
+                const label = sev === "blocking" ? "重要" : sev === "warning" ? "提醒" : "说明";
+                return (
+                  <p
+                    key={`${w.code}-${idx}`}
+                    style={{
+                      margin: idx === 0 ? 0 : "0.5rem 0 0",
+                      color,
+                      borderLeft: `3px solid ${border}`,
+                      paddingLeft: "0.45rem",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem" }}>{label}</strong>：{w.message}
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
+          {result.fallbackUsed &&
+          (result.fallbackReason === "display_resolver_failed" || result.fallbackReason === "display_missing") ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.55rem",
+                fontSize: "0.82rem",
+                color: "#475569",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              本次结果已回退到稳定基线展示。
+              {result.fallbackReason ? (
+                <span style={{ color: "#64748b" }}>（{String(result.fallbackReason)}）</span>
+              ) : null}
+            </p>
+          ) : null}
           {(() => {
             const dst = result.displaySourceType;
             const fb = typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : null;
@@ -1428,6 +1510,7 @@ export default function FinalMatchPage() {
 
           {/* —— 主流程底部行动区 —— */}
           <footer
+            data-m65-feedback-target-user-id={feedbackTargetUserId || undefined}
             style={{
               marginTop: "1.5rem",
               paddingTop: "1.15rem",
@@ -1445,14 +1528,14 @@ export default function FinalMatchPage() {
               type="button"
               style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
               onClick={onEnterChat}
-              disabled={!userId}
+              disabled={!userId || !chatTargetUserId}
             >
               进入聊天
             </button>
             <button
               type="button"
               onClick={onViewTimeline}
-              disabled={!userId}
+              disabled={!userId || !timelineTargetUserId}
               style={{
                 ...btnTertiary,
                 marginTop: 0,
@@ -1623,6 +1706,15 @@ export default function FinalMatchPage() {
               displayResolverFallbackUsed={
                 typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : undefined
               }
+              resolvedCandidateUserId={resolvedCandidateUserId}
+              resolvedSourceType={result.resolvedSourceType}
+              chatTargetUserId={chatTargetUserId}
+              timelineTargetUserId={timelineTargetUserId}
+              feedbackTargetUserId={feedbackTargetUserId}
+              scoreOwnerCandidateUserId={result.scoreOwnerCandidateUserId}
+              explanationOwnerCandidateUserId={result.explanationOwnerCandidateUserId}
+              resolvedFallbackReason={result.fallbackReason}
+              consistencyWarnings={result.consistencyWarnings}
               finalMatchDecisionMeta={result.finalMatchDecisionMeta}
               readoutFusion={readoutFusion}
               candidateUserId={result.candidateUserId}

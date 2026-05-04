@@ -46,6 +46,16 @@ export function FinalMatchTechnicalDetailsContent({
   displaySourceType,
   /** M6.0-r8: optional echo when API adds `fallbackUsed` on GET payload. */
   displayResolverFallbackUsed,
+  /** M6.5-C2: GET resolved projection（折叠；与主流程一致，不解析 raw RRM meta）。 */
+  resolvedCandidateUserId,
+  resolvedSourceType,
+  chatTargetUserId,
+  timelineTargetUserId,
+  feedbackTargetUserId,
+  scoreOwnerCandidateUserId,
+  explanationOwnerCandidateUserId,
+  resolvedFallbackReason,
+  consistencyWarnings,
   finalMatchDecisionMeta,
   readoutFusion,
   candidateUserId,
@@ -116,6 +126,49 @@ export function FinalMatchTechnicalDetailsContent({
         <p style={{ margin: "0.15rem 0" }}>
           displayCandidateUserId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{displayCandidateUserId || "—"}</code>
         </p>
+        {resolvedCandidateUserId || resolvedSourceType || chatTargetUserId || timelineTargetUserId || feedbackTargetUserId ? (
+          <>
+            <p style={{ margin: "0.55rem 0 0.15rem", fontWeight: 600, color: "#64748b" }}>M6.5-C2 · resolved 投影（与主路径 fallback 一致）</p>
+            <p style={{ margin: "0.15rem 0" }}>
+              resolvedCandidateUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{resolvedCandidateUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              resolvedSourceType：<code>{resolvedSourceType || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              chatTargetUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{chatTargetUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              timelineTargetUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{timelineTargetUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              feedbackTargetUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{feedbackTargetUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              scoreOwnerCandidateUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{scoreOwnerCandidateUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              explanationOwnerCandidateUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{explanationOwnerCandidateUserId || "—"}</code>
+            </p>
+            {resolvedFallbackReason != null && resolvedFallbackReason !== "" ? (
+              <p style={{ margin: "0.15rem 0" }}>
+                projection fallbackReason：<code>{String(resolvedFallbackReason)}</code>
+              </p>
+            ) : null}
+            {Array.isArray(consistencyWarnings) && consistencyWarnings.length > 0 ? (
+              <>
+                <p style={{ margin: "0.35rem 0 0.15rem", fontWeight: 600, color: "#64748b" }}>consistencyWarnings</p>
+                <JsonBlock value={consistencyWarnings} maxHeight={220} />
+              </>
+            ) : null}
+          </>
+        ) : null}
       </details>
 
       <p style={{ margin: "0.45rem 0 0.15rem", fontWeight: 600, color: "#64748b" }}>reasonSummary（原文）</p>
