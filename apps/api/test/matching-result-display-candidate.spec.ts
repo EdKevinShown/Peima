@@ -2,6 +2,7 @@ import type { MatchResult } from "@peima/database";
 import { RRM_SIM_SOURCE_VERSION } from "../src/modules/ai-simulation-v1/rrm-sim.constants";
 import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "../src/modules/matching/matching-rrm-sim-readonly-summary";
 import {
+  applyResolvedScoreProjection,
   buildResolvedMatchProjection,
   resolveMatchResultDisplay,
   tryResolveRrmBoundedDecisionReadLayerOverride,
@@ -966,6 +967,11 @@ describe("tryResolveRrmBoundedDecisionReadLayerOverride (M6.8-C1)", () => {
       decisionSourceType: null,
       fallbackUsed: false,
       fallbackReason: null,
+      resolvedFinalScore: null,
+      resolvedScoreOwnerCandidateUserId: "cand-a",
+      resolvedScoreSourceType: null,
+      scoreProjectionFallbackUsed: true,
+      scoreProjectionFallbackReason: "top2_score_snapshot_missing",
       scoreOwnerCandidateUserId: "cand-a",
       explanationOwnerCandidateUserId: "cand-a",
       chatTargetUserId: "cand-a",
@@ -1120,5 +1126,141 @@ describe("tryResolveRrmBoundedDecisionReadLayerOverride (M6.8-C1)", () => {
     (insights.rrmBoundedDecision as any).inputPresence.scoreShadowV1LegacyPresent = false;
     const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
     expect(out.resolvedCandidateUserId).toBe("cand-b");
+  });
+});
+
+describe("applyResolvedScoreProjection (M6.10-C2)", () => {
+  function baseProjection() {
+    return {
+      baselineCandidateUserId: "cand-a",
+      displayCandidateUserId: "cand-a",
+      decisionCandidateUserId: null,
+      resolvedCandidateUserId: "cand-b",
+      resolvedSourceType: "rrm_bounded_decision_read_layer",
+      decisionSourceType: "rrm_bounded_decision_read_layer",
+      fallbackUsed: false,
+      fallbackReason: null,
+      resolvedFinalScore: null,
+      resolvedScoreOwnerCandidateUserId: "cand-a",
+      resolvedScoreSourceType: null,
+      scoreProjectionFallbackUsed: true,
+      scoreProjectionFallbackReason: "top2_score_snapshot_missing" as const,
+      scoreOwnerCandidateUserId: "cand-a",
+      explanationOwnerCandidateUserId: "cand-a",
+      chatTargetUserId: "cand-b",
+      timelineTargetUserId: "cand-b",
+      feedbackTargetUserId: "cand-b",
+      consistencyWarnings: [{ code: "score_owner_mismatch", severity: "warning" as const, message: "x" }],
+    };
+  }
+
+  function top2Snapshot() {
+    return {
+      top2ScoreSnapshot: {
+        schemaVersion: 1,
+        sourceType: "top2_score_snapshot",
+        sourceVersion: "m6.10-top2-score-snapshot-v1",
+        items: [
+          {
+            candidateUserId: "cand-b",
+            rank: 1,
+            finalScore: 0.91,
+            displayScore100: 88,
+            band: "high",
+            components: {
+              previewPoolScore: 0.8,
+              preferenceScore: 0.8,
+              styleScore: 0.8,
+              profileScore: 0.8,
+              finalScore: 0.91,
+            },
+            scoreOwnerCandidateUserId: "cand-b",
+          },
+          {
+            candidateUserId: "cand-a",
+            rank: 2,
+            finalScore: 0.82,
+            displayScore100: 80,
+            band: "good",
+            components: {
+              previewPoolScore: 0.7,
+              preferenceScore: 0.7,
+              styleScore: 0.7,
+              profileScore: 0.7,
+              finalScore: 0.82,
+            },
+            scoreOwnerCandidateUserId: "cand-a",
+          },
+        ],
+      },
+    };
+  }
+
+  it("resolved candidate found in top2 snapshot → uses resolved candidate score", () => {
+    const out = applyResolvedScoreProjection({
+      current: baseProjection(),
+      matchInsights: top2Snapshot(),
+      baselineFinalScore: 0.82,
+    });
+    expect(out.resolvedFinalScore).toBe(0.91);
+    expect(out.resolvedScoreOwnerCandidateUserId).toBe("cand-b");
+    expect(out.resolvedScoreSourceType).toBe("top2_score_snapshot");
+    expect(out.scoreProjectionFallbackUsed).toBe(false);
+    expect(out.scoreProjectionFallbackReason).toBeNull();
+    expect(out.scoreOwnerCandidateUserId).toBe("cand-b");
+    expect(out.consistencyWarnings.some((w) => w.code === "score_owner_mismatch")).toBe(false);
+  });
+
+  it("resolved candidate missing in snapshot → fallback baseline and keep mismatch", () => {
+    const payload = top2Snapshot();
+    payload.top2ScoreSnapshot.items = [payload.top2ScoreSnapshot.items[1]!];
+    const out = applyResolvedScoreProjection({
+      current: baseProjection(),
+      matchInsights: payload,
+      baselineFinalScore: 0.82,
+    });
+    expect(out.resolvedFinalScore).toBe(0.82);
+    expect(out.resolvedScoreSourceType).toBeNull();
+    expect(out.scoreProjectionFallbackUsed).toBe(true);
+    expect(out.scoreProjectionFallbackReason).toBe("resolved_candidate_not_in_top2_snapshot");
+    expect(out.scoreOwnerCandidateUserId).toBe("cand-a");
+    expect(out.consistencyWarnings.some((w) => w.code === "score_owner_mismatch")).toBe(true);
+  });
+
+  it("snapshot missing → fallback top2_score_snapshot_missing", () => {
+    const out = applyResolvedScoreProjection({
+      current: baseProjection(),
+      matchInsights: {},
+      baselineFinalScore: 0.82,
+    });
+    expect(out.resolvedFinalScore).toBe(0.82);
+    expect(out.scoreProjectionFallbackUsed).toBe(true);
+    expect(out.scoreProjectionFallbackReason).toBe("top2_score_snapshot_missing");
+  });
+
+  it("snapshot malformed → fallback malformed_top2_score_snapshot without throw", () => {
+    const out = applyResolvedScoreProjection({
+      current: baseProjection(),
+      matchInsights: { top2ScoreSnapshot: { schemaVersion: 2 } },
+      baselineFinalScore: 0.82,
+    });
+    expect(out.scoreProjectionFallbackUsed).toBe(true);
+    expect(out.scoreProjectionFallbackReason).toBe("malformed_top2_score_snapshot");
+  });
+
+  it("resolved candidate is baseline should not report mismatch", () => {
+    const current = baseProjection();
+    current.resolvedCandidateUserId = "cand-a";
+    current.scoreOwnerCandidateUserId = "cand-a";
+    current.consistencyWarnings = [];
+    const payload = top2Snapshot();
+    const out = applyResolvedScoreProjection({
+      current,
+      matchInsights: payload,
+      baselineFinalScore: 0.82,
+    });
+    expect(out.resolvedFinalScore).toBe(0.82);
+    expect(out.scoreOwnerCandidateUserId).toBe("cand-a");
+    expect(out.consistencyWarnings.some((w) => w.code === "score_owner_mismatch")).toBe(false);
   });
 });

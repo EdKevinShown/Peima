@@ -10,6 +10,8 @@ export type {
   MatchInsightsRrmDecisionShadowBlockReason,
   MatchInsightsRrmV2Top2SelectorShadow,
   MatchInsightsScoreShadowV2,
+  MatchInsightsTop2ScoreSnapshot,
+  MatchInsightsTop2ScoreSnapshotItem,
 } from "./match-p1";
 export {
   MATCH_INSIGHTS_RRM_BOUNDED_DECISION_SOURCE_VERSION,

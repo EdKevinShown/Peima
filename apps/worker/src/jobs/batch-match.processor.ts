@@ -337,6 +337,7 @@ export async function runBatchMatch(): Promise<void> {
           candidateProfile: toProfileLike(
             profileMap.get(s.item.candidateUserId) ?? null,
           ),
+          scoreComponents: s.components,
         })),
         baselineCandidateUserId: best.item.candidateUserId,
         finalScore: best.components.finalScore,

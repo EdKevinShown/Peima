@@ -2,6 +2,7 @@ import type {
   MatchInsights,
   MatchInsightsRrmV2Top2SelectorShadow,
   MatchInsightsScoreShadowV2,
+  MatchInsightsTop2ScoreSnapshot,
 } from "@peima/shared/types";
 
 /**
@@ -12,6 +13,7 @@ import type {
  */
 const MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION =
   "m6.0-rrm-v2-top2-selector-shadow-v1" as const;
+const TOP2_SCORE_SNAPSHOT_SOURCE_VERSION = "m6.10-top2-score-snapshot-v1" as const;
 import { buildMatchInsightsPlaceholder } from "./match-insights-placeholder.js";
 import {
   type CandidateUserLike,
@@ -83,7 +85,11 @@ export function matchInsightsRrmV2Top2SelectorShadowFromCandidateRows(
 
 function buildRrmV2Top2SelectorShadowFromPool(
   viewerProfile: UserProfileLike,
-  pool: ReadonlyArray<{ candidateUserId: string; candidateProfile: UserProfileLike }>,
+  pool: ReadonlyArray<{
+    candidateUserId: string;
+    candidateProfile: UserProfileLike;
+    scoreComponents?: ScoreComponentsV1 | null;
+  }>,
   options?: RrmV2Top2SelectorOptions,
 ): MatchInsightsRrmV2Top2SelectorShadow {
   const rows: RrmV2Top2CandidateInput[] = pool.map((row) => {
@@ -97,6 +103,67 @@ function buildRrmV2Top2SelectorShadowFromPool(
     };
   });
   return buildRrmV2Top2SelectorShadowFromSelectorRows(rows, options);
+}
+
+function toNumOrNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function buildTop2ScoreSnapshot(
+  selectedTop2: MatchInsightsRrmV2Top2SelectorShadow["selectedTop2"],
+  pool: ReadonlyArray<{
+    candidateUserId: string;
+    candidateProfile: UserProfileLike;
+    scoreComponents?: ScoreComponentsV1 | null;
+  }>,
+): MatchInsightsTop2ScoreSnapshot {
+  const scoreByCandidateId = new Map<
+    string,
+    {
+      previewPoolScore: number | null;
+      preferenceScore: number | null;
+      styleScore: number | null;
+      profileScore: number | null;
+      finalScore: number | null;
+    }
+  >();
+  for (const row of pool) {
+    const id = row.candidateUserId.trim();
+    if (!id || scoreByCandidateId.has(id)) continue;
+    const c = row.scoreComponents;
+    scoreByCandidateId.set(id, {
+      previewPoolScore: toNumOrNull(c?.previewPoolScore),
+      preferenceScore: toNumOrNull(c?.preferenceScore),
+      styleScore: toNumOrNull(c?.styleScore),
+      profileScore: toNumOrNull(c?.profileScore),
+      finalScore: toNumOrNull(c?.finalScore),
+    });
+  }
+
+  return {
+    schemaVersion: 1,
+    sourceType: "top2_score_snapshot",
+    sourceVersion: TOP2_SCORE_SNAPSHOT_SOURCE_VERSION,
+    items: selectedTop2.slice(0, 2).map((row, idx) => {
+      const candidateUserId = row.candidateUserId.trim();
+      const components = scoreByCandidateId.get(candidateUserId) ?? {
+        previewPoolScore: null,
+        preferenceScore: null,
+        styleScore: null,
+        profileScore: null,
+        finalScore: null,
+      };
+      return {
+        candidateUserId,
+        rank: (idx + 1) as 1 | 2,
+        finalScore: components.finalScore,
+        displayScore100: toNumOrNull(row.displayScore100),
+        band: row.band ?? null,
+        components,
+        scoreOwnerCandidateUserId: candidateUserId,
+      };
+    }),
+  };
 }
 
 /**
@@ -117,6 +184,7 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
   v2SelectorCandidates?: ReadonlyArray<{
     candidateUserId: string;
     candidateProfile: UserProfileLike;
+    scoreComponents?: ScoreComponentsV1 | null;
   }>;
   v2SelectorOptions?: RrmV2Top2SelectorOptions;
   /** M6.1-r3: formal winner user id for shadow baseline (no DB lookup here). */
@@ -141,6 +209,10 @@ export function buildWorkerMatchInsightsForBestMatch(params: {
       params.viewerProfile,
       params.v2SelectorCandidates,
       params.v2SelectorOptions,
+    );
+    out.top2ScoreSnapshot = buildTop2ScoreSnapshot(
+      out.rrmV2Top2Selector.selectedTop2,
+      params.v2SelectorCandidates,
     );
   }
   if (readM6RrmDecisionShadowEnv().enabled) {

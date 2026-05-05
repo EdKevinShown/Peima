@@ -58,6 +58,29 @@ export type MatchInsightsRrmV2Top2SelectorShadow = {
   reason: MatchInsightsRrmV2Top2SelectorReason;
 };
 
+export type MatchInsightsTop2ScoreSnapshotItem = {
+  candidateUserId: string;
+  rank: 1 | 2;
+  finalScore: number | null;
+  displayScore100: number | null;
+  band: "strong_conflict" | "low" | "medium" | "good" | "high" | null;
+  components: {
+    previewPoolScore: number | null;
+    preferenceScore: number | null;
+    styleScore: number | null;
+    profileScore: number | null;
+    finalScore: number | null;
+  };
+  scoreOwnerCandidateUserId: string;
+};
+
+export type MatchInsightsTop2ScoreSnapshot = {
+  schemaVersion: 1;
+  sourceType: "top2_score_snapshot";
+  sourceVersion: "m6.10-top2-score-snapshot-v1";
+  items: MatchInsightsTop2ScoreSnapshotItem[];
+};
+
 /** M6.1-r3: RRM decision shadow (observation only; does not change MatchResult). */
 export type MatchInsightsRrmDecisionShadowRef = {
   kind: "match_result" | "user";
@@ -204,6 +227,7 @@ export type MatchInsights = {
   scoreShadow?: MatchInsightsScoreShadowM60;
   scoreShadowV2?: MatchInsightsScoreShadowV2;
   rrmV2Top2Selector?: MatchInsightsRrmV2Top2SelectorShadow;
+  top2ScoreSnapshot?: MatchInsightsTop2ScoreSnapshot;
   /** M6.1-r3: optional; only written when `PEIMA_M6_RRM_DECISION_SHADOW_ENABLED=1`. */
   rrmDecisionShadow?: MatchInsightsRrmDecisionShadow;
   /** M6.3-r3: optional dry-run; only when `PEIMA_M6_RRM_BOUNDED_DECISION_DRY_RUN_ENABLED=1`. */

@@ -164,8 +164,61 @@ describe("buildWorkerMatchInsightsForBestMatch (J3 shadow merge)", () => {
     expect(mi.rrmV2Top2Selector?.eligible).toBe(true);
     expect(mi.rrmV2Top2Selector?.reason).toBe("ok");
     expect(mi.rrmV2Top2Selector?.selectedTop2).toHaveLength(2);
+    expect(mi.top2ScoreSnapshot?.schemaVersion).toBe(1);
+    expect(mi.top2ScoreSnapshot?.sourceType).toBe("top2_score_snapshot");
+    expect(mi.top2ScoreSnapshot?.sourceVersion).toBe("m6.10-top2-score-snapshot-v1");
+    expect(mi.top2ScoreSnapshot?.items).toHaveLength(2);
     expect(mi.explanation?.whyMatch).toBeTruthy();
     expect(mi.openingTopics?.length).toBeGreaterThan(0);
+  });
+
+  it("12. top2ScoreSnapshot aligns rank/order with selectedTop2 and keeps score fields", () => {
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        {
+          candidateUserId: "cand-a",
+          candidateProfile: fullUserProfile(0.56),
+          scoreComponents: { ...components, finalScore: 0.66 },
+        },
+        {
+          candidateUserId: "cand-b",
+          candidateProfile: fullUserProfile(0.57),
+          scoreComponents: { ...components, finalScore: 0.61 },
+        },
+      ],
+    });
+    const top2 = mi.rrmV2Top2Selector?.selectedTop2 ?? [];
+    const snap = mi.top2ScoreSnapshot?.items ?? [];
+    expect(top2).toHaveLength(2);
+    expect(snap).toHaveLength(2);
+    expect(snap[0]?.rank).toBe(1);
+    expect(snap[1]?.rank).toBe(2);
+    expect(snap[0]?.candidateUserId).toBe(top2[0]?.candidateUserId);
+    expect(snap[1]?.candidateUserId).toBe(top2[1]?.candidateUserId);
+    expect(snap[0]?.displayScore100).toBe(top2[0]?.displayScore100 ?? null);
+    expect(snap[0]?.band).toBe(top2[0]?.band ?? null);
+    expect(typeof snap[0]?.scoreOwnerCandidateUserId).toBe("string");
+    expect(snap[0]?.finalScore).not.toBeNull();
+    expect(snap[0]?.components.finalScore).toBe(snap[0]?.finalScore);
+  });
+
+  it("13. top2 unavailable does not throw; snapshot items stays empty", () => {
+    const mi = buildWorkerMatchInsightsForBestMatch({
+      components,
+      candidate,
+      viewerProfile: fullUserProfile(0.55),
+      candidateProfile: fullUserProfile(0.56),
+      v2SelectorCandidates: [
+        { candidateUserId: "cand-only", candidateProfile: fullUserProfile(0.56) },
+      ],
+    });
+    expect(mi.rrmV2Top2Selector?.eligible).toBe(false);
+    expect(mi.top2ScoreSnapshot).toBeDefined();
+    expect(mi.top2ScoreSnapshot?.items).toHaveLength(0);
   });
 
   it("M6.3-r4 Case 13: dry-run + shadow writes rrmBoundedDecision without breaking v2/shadow", () => {

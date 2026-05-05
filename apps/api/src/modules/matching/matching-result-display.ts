@@ -248,6 +248,11 @@ export type ResolvedMatchProjectionFields = {
   chatTargetUserId: string;
   timelineTargetUserId: string;
   feedbackTargetUserId: string;
+  resolvedFinalScore: number | null;
+  resolvedScoreOwnerCandidateUserId: string | null;
+  resolvedScoreSourceType: string | null;
+  scoreProjectionFallbackUsed: boolean;
+  scoreProjectionFallbackReason: string | null;
   consistencyWarnings: MatchResultConsistencyWarning[];
 };
 
@@ -326,8 +331,124 @@ export function buildResolvedMatchProjection(
     chatTargetUserId: resolvedCandidateUserId,
     timelineTargetUserId: resolvedCandidateUserId,
     feedbackTargetUserId: resolvedCandidateUserId,
+    resolvedFinalScore: null,
+    resolvedScoreOwnerCandidateUserId: baseline,
+    resolvedScoreSourceType: null,
+    scoreProjectionFallbackUsed: true,
+    scoreProjectionFallbackReason: "top2_score_snapshot_missing",
     consistencyWarnings,
   };
+}
+
+export type ResolvedScoreProjectionFallbackReason =
+  | "top2_score_snapshot_missing"
+  | "resolved_candidate_missing"
+  | "resolved_candidate_not_in_top2_snapshot"
+  | "resolved_score_missing"
+  | "malformed_top2_score_snapshot"
+  | "unexpected_exception";
+
+type ResolvedScoreProjectionFields = {
+  resolvedFinalScore: number | null;
+  resolvedScoreOwnerCandidateUserId: string | null;
+  resolvedScoreSourceType: string | null;
+  scoreProjectionFallbackUsed: boolean;
+  scoreProjectionFallbackReason: ResolvedScoreProjectionFallbackReason | null;
+  scoreOwnerCandidateUserId: string;
+  consistencyWarnings: MatchResultConsistencyWarning[];
+};
+
+function withoutWarning(
+  list: MatchResultConsistencyWarning[],
+  code: string,
+): MatchResultConsistencyWarning[] {
+  const next = list.filter((w) => w.code !== code);
+  return next.length === list.length ? list : next;
+}
+
+function isFiniteNumber(x: unknown): x is number {
+  return typeof x === "number" && Number.isFinite(x);
+}
+
+export function applyResolvedScoreProjection(params: {
+  current: ResolvedMatchProjectionFields;
+  matchInsights: unknown;
+  baselineFinalScore: number | null;
+}): ResolvedScoreProjectionFields {
+  const { current, matchInsights, baselineFinalScore } = params;
+  const baselineOwner = current.baselineCandidateUserId || null;
+  const baselineScore = isFiniteNumber(baselineFinalScore) ? baselineFinalScore : null;
+  const resolvedCandidate = current.resolvedCandidateUserId?.trim() ?? "";
+  const fallback = (
+    reason: ResolvedScoreProjectionFallbackReason,
+  ): ResolvedScoreProjectionFields => ({
+    resolvedFinalScore: baselineScore,
+    resolvedScoreOwnerCandidateUserId: baselineOwner,
+    resolvedScoreSourceType: null,
+    scoreProjectionFallbackUsed: true,
+    scoreProjectionFallbackReason: reason,
+    scoreOwnerCandidateUserId: current.baselineCandidateUserId,
+    consistencyWarnings:
+      current.resolvedCandidateUserId !== current.baselineCandidateUserId
+        ? withWarning(current.consistencyWarnings, {
+            code: "score_owner_mismatch",
+            severity: "warning",
+            message: "Score owner remains baseline candidate until score contract is extended.",
+          })
+        : current.consistencyWarnings,
+  });
+
+  if (!resolvedCandidate) {
+    return fallback("resolved_candidate_missing");
+  }
+
+  try {
+    const insights = asRecord(matchInsights);
+    if (!insights) return fallback("malformed_top2_score_snapshot");
+    const snapshot = asRecord(insights.top2ScoreSnapshot);
+    if (!snapshot) return fallback("top2_score_snapshot_missing");
+    if (
+      snapshot.schemaVersion !== 1 ||
+      snapshot.sourceType !== "top2_score_snapshot" ||
+      snapshot.sourceVersion !== "m6.10-top2-score-snapshot-v1"
+    ) {
+      return fallback("malformed_top2_score_snapshot");
+    }
+    const items = Array.isArray(snapshot.items) ? snapshot.items : null;
+    if (!items) return fallback("malformed_top2_score_snapshot");
+    const hit = items.find((row) => {
+      const r = asRecord(row);
+      const id = typeof r?.candidateUserId === "string" ? r.candidateUserId.trim() : "";
+      return id === resolvedCandidate;
+    });
+    if (!hit) return fallback("resolved_candidate_not_in_top2_snapshot");
+    const rec = asRecord(hit);
+    if (!rec) return fallback("malformed_top2_score_snapshot");
+    const score = rec.finalScore;
+    if (!isFiniteNumber(score)) return fallback("resolved_score_missing");
+    const owner =
+      (typeof rec.scoreOwnerCandidateUserId === "string" && rec.scoreOwnerCandidateUserId.trim()) ||
+      (typeof rec.candidateUserId === "string" && rec.candidateUserId.trim()) ||
+      resolvedCandidate;
+    return {
+      resolvedFinalScore: score,
+      resolvedScoreOwnerCandidateUserId: owner,
+      resolvedScoreSourceType: "top2_score_snapshot",
+      scoreProjectionFallbackUsed: false,
+      scoreProjectionFallbackReason: null,
+      scoreOwnerCandidateUserId: owner,
+      consistencyWarnings:
+        owner === current.resolvedCandidateUserId
+          ? withoutWarning(current.consistencyWarnings, "score_owner_mismatch")
+          : withWarning(current.consistencyWarnings, {
+              code: "score_owner_mismatch",
+              severity: "warning",
+              message: "Score owner remains baseline candidate until score contract is extended.",
+            }),
+    };
+  } catch {
+    return fallback("unexpected_exception");
+  }
 }
 
 export type RrmBoundedReadLayerFallbackReason =
@@ -472,6 +593,11 @@ export async function tryResolveRrmBoundedDecisionReadLayerOverride(
       chatTargetUserId: target,
       timelineTargetUserId: target,
       feedbackTargetUserId: target,
+      resolvedFinalScore: current.resolvedFinalScore,
+      resolvedScoreOwnerCandidateUserId: current.resolvedScoreOwnerCandidateUserId,
+      resolvedScoreSourceType: current.resolvedScoreSourceType,
+      scoreProjectionFallbackUsed: current.scoreProjectionFallbackUsed,
+      scoreProjectionFallbackReason: current.scoreProjectionFallbackReason,
       fallbackUsed: false,
       fallbackReason: null,
       consistencyWarnings: withWarning(current.consistencyWarnings, {

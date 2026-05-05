@@ -12,6 +12,7 @@ import {
   type MultiSourceFinalDecisionReadonlyM51M0,
 } from "./matching-multi-source-final-decision-m51m0";
 import {
+  applyResolvedScoreProjection,
   buildResolvedMatchProjection,
   resolveMatchResultDisplay,
   type MatchResultDisplayFields,
@@ -156,6 +157,11 @@ export class MatchingService {
           !!(await this.prisma.userProfile.findUnique({ where: { userId: id }, select: { userId: true } })),
       },
     );
+    const resolvedScoreProjection = applyResolvedScoreProjection({
+      current: resolvedProjection,
+      matchInsights: result.matchInsights,
+      baselineFinalScore: result.finalScore,
+    });
     const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });
@@ -171,6 +177,7 @@ export class MatchingService {
       ...result,
       ...display,
       ...resolvedProjection,
+      ...resolvedScoreProjection,
       multiSourceFinalDecision,
       scoreBreakdown,
       relationshipProfileScore,

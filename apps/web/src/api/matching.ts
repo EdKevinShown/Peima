@@ -158,6 +158,11 @@ export type MatchingResultResponse = {
   /** M6.5-C1: decision audit — `null` until true bounded is implemented. */
   decisionSourceType?: string | null;
   scoreOwnerCandidateUserId?: string | null;
+  resolvedFinalScore?: number | null;
+  resolvedScoreOwnerCandidateUserId?: string | null;
+  resolvedScoreSourceType?: string | null;
+  scoreProjectionFallbackUsed?: boolean;
+  scoreProjectionFallbackReason?: string | null;
   explanationOwnerCandidateUserId?: string | null;
   chatTargetUserId?: string | null;
   timelineTargetUserId?: string | null;
