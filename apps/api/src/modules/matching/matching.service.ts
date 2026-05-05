@@ -16,6 +16,7 @@ import {
   resolveMatchResultDisplay,
   type MatchResultDisplayFields,
   type ResolvedMatchProjectionFields,
+  tryResolveRrmBoundedDecisionReadLayerOverride,
 } from "./matching-result-display";
 import {
   resolveRelationshipProfileScoreShadow,
@@ -142,9 +143,19 @@ export class MatchingService {
         finalMatchDecisionMeta: null,
       };
     }
-    const resolvedProjection = buildResolvedMatchProjection(result.candidateUserId, display, {
+    const resolvedBase = buildResolvedMatchProjection(result.candidateUserId, display, {
       displayResolverErrored,
     });
+    const resolvedProjection = await tryResolveRrmBoundedDecisionReadLayerOverride(
+      result.matchInsights,
+      resolvedBase,
+      {
+        hasUser: async (id: string) =>
+          !!(await this.prisma.user.findUnique({ where: { id }, select: { id: true } })),
+        hasUserProfile: async (id: string) =>
+          !!(await this.prisma.userProfile.findUnique({ where: { userId: id }, select: { userId: true } })),
+      },
+    );
     const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
       shadowEnabled: readM5FinalDecisionShadowEnabled(),
     });

@@ -237,10 +237,10 @@ export type MatchResultConsistencyWarning = {
 export type ResolvedMatchProjectionFields = {
   baselineCandidateUserId: string;
   displayCandidateUserId: string;
-  decisionCandidateUserId: null;
+  decisionCandidateUserId: string | null;
   resolvedCandidateUserId: string;
   resolvedSourceType: string;
-  decisionSourceType: null;
+  decisionSourceType: string | null;
   fallbackUsed: boolean;
   fallbackReason: string | null;
   scoreOwnerCandidateUserId: string;
@@ -328,4 +328,160 @@ export function buildResolvedMatchProjection(
     feedbackTargetUserId: resolvedCandidateUserId,
     consistencyWarnings,
   };
+}
+
+export type RrmBoundedReadLayerFallbackReason =
+  | "flag_off"
+  | "bounded_decision_missing"
+  | "bounded_decision_malformed"
+  | "incompatible_mode"
+  | "decision_not_switch"
+  | "would_switch_false"
+  | "bounded_target_missing"
+  | "bounded_target_user_missing"
+  | "bounded_target_profile_missing"
+  | "guardrail_blocked"
+  | "bounded_fallback_reason_present"
+  | "missing_score_shadow_v2"
+  | "missing_rrm_decision_shadow"
+  | "missing_rrm_v2_selector"
+  | "missing_selected_top2"
+  | "target_same_as_baseline"
+  | "target_outside_top2"
+  | "unexpected_exception";
+
+function readM6RrmBoundedDecisionEnabledEnv(): boolean {
+  return process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED === "1";
+}
+
+function hasWarning(list: MatchResultConsistencyWarning[], code: string): boolean {
+  return list.some((w) => w.code === code);
+}
+
+function withWarning(
+  list: MatchResultConsistencyWarning[],
+  warning: MatchResultConsistencyWarning,
+): MatchResultConsistencyWarning[] {
+  if (hasWarning(list, warning.code)) return list;
+  return [...list, warning];
+}
+
+function asRecord(x: unknown): Record<string, unknown> | null {
+  return x != null && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : null;
+}
+
+type UserProfileChecker = {
+  hasUser(userId: string): Promise<boolean>;
+  hasUserProfile(userId: string): Promise<boolean>;
+};
+
+function ensureOwnerMismatchWarnings(next: ResolvedMatchProjectionFields): ResolvedMatchProjectionFields {
+  let warnings = next.consistencyWarnings;
+  if (next.resolvedCandidateUserId !== next.scoreOwnerCandidateUserId) {
+    warnings = withWarning(warnings, {
+      code: "score_owner_mismatch",
+      severity: "warning",
+      message: "Score owner remains baseline candidate until score contract is extended.",
+    });
+  }
+  if (next.resolvedCandidateUserId !== next.explanationOwnerCandidateUserId) {
+    warnings = withWarning(warnings, {
+      code: "explanation_owner_mismatch",
+      severity: "warning",
+      message: "Explanation owner remains baseline candidate until explanation contract is extended.",
+    });
+  }
+  if (warnings === next.consistencyWarnings) return next;
+  return { ...next, consistencyWarnings: warnings };
+}
+
+export async function tryResolveRrmBoundedDecisionReadLayerOverride(
+  matchInsights: unknown,
+  current: ResolvedMatchProjectionFields,
+  checker: UserProfileChecker,
+): Promise<ResolvedMatchProjectionFields> {
+  if (!readM6RrmBoundedDecisionEnabledEnv()) {
+    return current;
+  }
+
+  const applyFallback = (reason: RrmBoundedReadLayerFallbackReason): ResolvedMatchProjectionFields => ({
+    ...current,
+    fallbackUsed: true,
+    fallbackReason: current.fallbackUsed ? current.fallbackReason : reason,
+    consistencyWarnings: withWarning(current.consistencyWarnings, {
+      code: "rrm_bounded_read_layer_fallback",
+      severity: "info",
+      message: "RRM bounded read-layer override was not applied; baseline projection remains.",
+    }),
+  });
+
+  try {
+    const insights = asRecord(matchInsights);
+    if (!insights) return applyFallback("bounded_decision_malformed");
+
+    const bounded = asRecord(insights.rrmBoundedDecision);
+    if (!bounded) return applyFallback("bounded_decision_missing");
+
+    if (bounded.schemaVersion !== 1 || bounded.sourceType !== "rrm_bounded_decision") {
+      return applyFallback("bounded_decision_malformed");
+    }
+    if (bounded.sourceVersion !== "m6.3-rrm-bounded-decision-v1") {
+      return applyFallback("bounded_decision_malformed");
+    }
+    if (bounded.mode !== "dry_run") return applyFallback("incompatible_mode");
+    if (bounded.decision !== "would_switch_to_rrm") return applyFallback("decision_not_switch");
+    if (bounded.wouldSwitch !== true) return applyFallback("would_switch_false");
+
+    if (bounded.fallbackUsed === true || bounded.fallbackReason != null) {
+      return applyFallback("bounded_fallback_reason_present");
+    }
+
+    const guardrails = asRecord(bounded.guardrails);
+    if (guardrails?.blocked === true) return applyFallback("guardrail_blocked");
+
+    const ip = asRecord(bounded.inputPresence);
+    if (!ip || ip.scoreShadowV2 !== true) return applyFallback("missing_score_shadow_v2");
+    if (ip.rrmDecisionShadow !== true) return applyFallback("missing_rrm_decision_shadow");
+    if (ip.rrmV2Top2Selector !== true) return applyFallback("missing_rrm_v2_selector");
+    if (ip.selectedTop2 !== true) return applyFallback("missing_selected_top2");
+
+    const boundedRef = asRecord(bounded.boundedRef);
+    const target = typeof boundedRef?.id === "string" ? boundedRef.id.trim() : "";
+    if (!target) return applyFallback("bounded_target_missing");
+    if (target === current.baselineCandidateUserId) return applyFallback("target_same_as_baseline");
+
+    const selector = asRecord(insights.rrmV2Top2Selector);
+    const selectedTop2 = Array.isArray(selector?.selectedTop2) ? selector?.selectedTop2 : [];
+    if (!selectedTop2.length) return applyFallback("missing_selected_top2");
+    const top2Ids = selectedTop2
+      .map((r) => (asRecord(r) && typeof r.candidateUserId === "string" ? r.candidateUserId.trim() : ""))
+      .filter((x) => x.length > 0);
+    if (!top2Ids.includes(target)) return applyFallback("target_outside_top2");
+
+    const userOk = await checker.hasUser(target);
+    if (!userOk) return applyFallback("bounded_target_user_missing");
+    const profileOk = await checker.hasUserProfile(target);
+    if (!profileOk) return applyFallback("bounded_target_profile_missing");
+
+    const activated = ensureOwnerMismatchWarnings({
+      ...current,
+      decisionCandidateUserId: target,
+      decisionSourceType: "rrm_bounded_decision_read_layer",
+      resolvedCandidateUserId: target,
+      resolvedSourceType: "rrm_bounded_decision_read_layer",
+      chatTargetUserId: target,
+      timelineTargetUserId: target,
+      feedbackTargetUserId: target,
+      fallbackUsed: false,
+      fallbackReason: null,
+      consistencyWarnings: withWarning(current.consistencyWarnings, {
+        code: "rrm_bounded_read_layer_active",
+        severity: "info",
+        message: "RRM bounded read-layer override is active.",
+      }),
+    });
+    return activated;
+  } catch {
+    return applyFallback("unexpected_exception");
+  }
 }

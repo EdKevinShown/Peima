@@ -4,6 +4,7 @@ import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "../src/modules/matching/m
 import {
   buildResolvedMatchProjection,
   resolveMatchResultDisplay,
+  tryResolveRrmBoundedDecisionReadLayerOverride,
 } from "../src/modules/matching/matching-result-display";
 import { MATCH_RESULT_RRM_TOP2_DISPLAY_META_SOURCE_TYPE } from "../src/modules/matching/rrm-top2-display-meta.types";
 
@@ -54,6 +55,7 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
     MODE: process.env.PAIRWISE_FINAL_MATCH_MODE,
     RRM_TOP2: process.env.PEIMA_M5_RRM_TOP2_ENABLED,
     M6_RRM_V2_DISPLAY: process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED,
+    M6_RRM_BOUNDED_READ_LAYER: process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED,
   };
 
   afterEach(() => {
@@ -63,6 +65,8 @@ describe("resolveMatchResultDisplay (M3.8-M13)", () => {
     else process.env.PEIMA_M5_RRM_TOP2_ENABLED = prev.RRM_TOP2;
     if (prev.M6_RRM_V2_DISPLAY === undefined) delete process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED;
     else process.env.PEIMA_M6_RRM_V2_SELECTOR_DISPLAY_ENABLED = prev.M6_RRM_V2_DISPLAY;
+    if (prev.M6_RRM_BOUNDED_READ_LAYER === undefined) delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED;
+    else process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = prev.M6_RRM_BOUNDED_READ_LAYER;
   });
 
   function rrmSimSummaryPayload(winner: string, baseline: string) {
@@ -948,5 +952,173 @@ describe("buildResolvedMatchProjection (M6.5-C1)", () => {
     );
     expect(p.decisionCandidateUserId).toBeNull();
     expect(p.decisionSourceType).toBeNull();
+  });
+});
+
+describe("tryResolveRrmBoundedDecisionReadLayerOverride (M6.8-C1)", () => {
+  function baseProjection(over: Partial<ReturnType<typeof buildResolvedMatchProjection>> = {}) {
+    return {
+      baselineCandidateUserId: "cand-a",
+      displayCandidateUserId: "cand-a",
+      decisionCandidateUserId: null,
+      resolvedCandidateUserId: "cand-a",
+      resolvedSourceType: "match_result_original",
+      decisionSourceType: null,
+      fallbackUsed: false,
+      fallbackReason: null,
+      scoreOwnerCandidateUserId: "cand-a",
+      explanationOwnerCandidateUserId: "cand-a",
+      chatTargetUserId: "cand-a",
+      timelineTargetUserId: "cand-a",
+      feedbackTargetUserId: "cand-a",
+      consistencyWarnings: [],
+      ...over,
+    };
+  }
+
+  function validInsights(target = "cand-b") {
+    return {
+      rrmV2Top2Selector: {
+        selectedTop2: [{ candidateUserId: target }, { candidateUserId: "cand-a" }],
+      },
+      rrmBoundedDecision: {
+        schemaVersion: 1,
+        sourceType: "rrm_bounded_decision",
+        sourceVersion: "m6.3-rrm-bounded-decision-v1",
+        mode: "dry_run",
+        decision: "would_switch_to_rrm",
+        wouldSwitch: true,
+        fallbackUsed: false,
+        fallbackReason: null,
+        boundedRef: { kind: "user", id: target },
+        guardrails: { blocked: false, blockReasons: [] },
+        inputPresence: {
+          scoreShadowV2: true,
+          rrmDecisionShadow: true,
+          rrmV2Top2Selector: true,
+          selectedTop2: true,
+          scoreShadowV1LegacyPresent: false,
+        },
+      },
+    };
+  }
+
+  const okChecker = {
+    hasUser: jest.fn(async () => true),
+    hasUserProfile: jest.fn(async () => true),
+  };
+
+  afterEach(() => {
+    delete process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED;
+    jest.clearAllMocks();
+  });
+
+  it("flag off keeps old projection even if payload is valid", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "0";
+    const current = baseProjection();
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(validInsights(), current, okChecker);
+    expect(out).toEqual(current);
+  });
+
+  it("flag on + valid payload switches resolved and targets to bounded target", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(
+      validInsights("cand-b"),
+      baseProjection(),
+      okChecker,
+    );
+    expect(out.decisionCandidateUserId).toBe("cand-b");
+    expect(out.decisionSourceType).toBe("rrm_bounded_decision_read_layer");
+    expect(out.resolvedCandidateUserId).toBe("cand-b");
+    expect(out.resolvedSourceType).toBe("rrm_bounded_decision_read_layer");
+    expect(out.chatTargetUserId).toBe("cand-b");
+    expect(out.timelineTargetUserId).toBe("cand-b");
+    expect(out.feedbackTargetUserId).toBe("cand-b");
+    expect(out.fallbackUsed).toBe(false);
+    expect(out.fallbackReason).toBeNull();
+    expect(out.consistencyWarnings.some((w) => w.code === "rrm_bounded_read_layer_active")).toBe(true);
+    expect(out.consistencyWarnings.some((w) => w.code === "score_owner_mismatch")).toBe(true);
+    expect(out.scoreOwnerCandidateUserId).toBe("cand-a");
+  });
+
+  it("decision not switch falls back without throwing", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const insights = validInsights();
+    (insights.rrmBoundedDecision as any).decision = "would_use_baseline";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
+    expect(out.resolvedCandidateUserId).toBe("cand-a");
+    expect(out.fallbackUsed).toBe(true);
+    expect(out.fallbackReason).toBe("decision_not_switch");
+    expect(out.consistencyWarnings.some((w) => w.code === "rrm_bounded_read_layer_fallback")).toBe(true);
+  });
+
+  it("guardrail blocked falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const insights = validInsights();
+    (insights.rrmBoundedDecision as any).guardrails.blocked = true;
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
+    expect(out.fallbackReason).toBe("guardrail_blocked");
+  });
+
+  it("missing scoreShadowV2 presence falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const insights = validInsights();
+    (insights.rrmBoundedDecision as any).inputPresence.scoreShadowV2 = false;
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
+    expect(out.fallbackReason).toBe("missing_score_shadow_v2");
+  });
+
+  it("missing target user falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(validInsights(), baseProjection(), {
+      hasUser: jest.fn(async () => false),
+      hasUserProfile: jest.fn(async () => true),
+    });
+    expect(out.fallbackReason).toBe("bounded_target_user_missing");
+  });
+
+  it("missing target profile falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(validInsights(), baseProjection(), {
+      hasUser: jest.fn(async () => true),
+      hasUserProfile: jest.fn(async () => false),
+    });
+    expect(out.fallbackReason).toBe("bounded_target_profile_missing");
+  });
+
+  it("malformed bounded decision falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(
+      { rrmBoundedDecision: "bad" },
+      baseProjection(),
+      okChecker,
+    );
+    expect(out.fallbackReason).toBe("bounded_decision_missing");
+  });
+
+  it("target same as baseline falls back", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(
+      validInsights("cand-a"),
+      baseProjection(),
+      okChecker,
+    );
+    expect(out.fallbackReason).toBe("target_same_as_baseline");
+  });
+
+  it("payload without target falls back bounded_target_missing", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const insights = validInsights();
+    delete (insights.rrmBoundedDecision as any).boundedRef;
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
+    expect(out.fallbackReason).toBe("bounded_target_missing");
+  });
+
+  it("no scoreShadow v1 does not block valid activation", async () => {
+    process.env.PEIMA_M6_RRM_BOUNDED_DECISION_ENABLED = "1";
+    const insights = validInsights("cand-b");
+    (insights.rrmBoundedDecision as any).inputPresence.scoreShadowV1LegacyPresent = false;
+    const out = await tryResolveRrmBoundedDecisionReadLayerOverride(insights, baseProjection(), okChecker);
+    expect(out.resolvedCandidateUserId).toBe("cand-b");
   });
 });
