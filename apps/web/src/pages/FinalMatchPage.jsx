@@ -91,6 +91,18 @@ function formatV2NullableNumber(n, digits) {
   return n.toFixed(digits);
 }
 
+function resolveScoreProjectionFallbackHint(reason) {
+  const map = {
+    top2_score_snapshot_missing: "暂未找到候选人分数快照",
+    resolved_candidate_missing: "暂未确认最终展示对象",
+    resolved_candidate_not_in_top2_snapshot: "最终展示对象不在 Top2 分数快照中",
+    resolved_score_missing: "候选人分数缺失",
+    malformed_top2_score_snapshot: "分数快照结构异常",
+    unexpected_exception: "分数投影异常",
+  };
+  return typeof reason === "string" && map[reason] ? map[reason] : "当前分数暂时回退到基线分数";
+}
+
 /** M6.0-H2: `VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE=1` 启用主视觉 V2。 */
 function readV2PrimaryScoreFlag() {
   return import.meta.env.VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE === "1";
@@ -606,7 +618,16 @@ export default function FinalMatchPage() {
     [result?.displaySourceType],
   );
   /** M6.0-H2: 主视觉 V2 vs legacy（feature flag）。 */
-  const primaryResolution = useMemo(() => resolvePrimaryMatchScore(result), [result]);
+  const effectiveFinalScore = useMemo(() => {
+    if (typeof result?.resolvedFinalScore === "number" && Number.isFinite(result.resolvedFinalScore)) {
+      return result.resolvedFinalScore;
+    }
+    return result?.finalScore ?? null;
+  }, [result?.resolvedFinalScore, result?.finalScore]);
+  const primaryResolution = useMemo(
+    () => resolvePrimaryMatchScore(result ? { ...result, finalScore: effectiveFinalScore } : result),
+    [result, effectiveFinalScore],
+  );
   const sidecarStatus = useMemo(() => {
     const candidateUserId = effectiveDisplayCandidateId;
     const hasJobId = aiSimJobId.length > 0;
@@ -1435,12 +1456,39 @@ export default function FinalMatchPage() {
           ) : null}
           <FinalMatchHero
             isRrmDisplay={isRrmDisplay}
-            finalScore={result.finalScore}
+            finalScore={effectiveFinalScore}
             createdAt={result.createdAt}
             formatScoreDisplay={formatScoreDisplay}
             formatDateShort={formatDateShort}
             primaryResolution={primaryResolution}
           />
+          {result.scoreProjectionFallbackUsed === true ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.84rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              当前分数暂时回退到基线分数（{resolveScoreProjectionFallbackHint(result.scoreProjectionFallbackReason)}）。
+            </p>
+          ) : result.resolvedScoreSourceType === "top2_score_snapshot" ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.84rem",
+                color: "#166534",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              当前分数已按最终展示对象计算（来源：Top2 分数快照）。
+            </p>
+          ) : null}
           {Array.isArray(result.consistencyWarnings) && result.consistencyWarnings.length > 0 ? (
             <div
               role="region"
@@ -1861,6 +1909,11 @@ export default function FinalMatchPage() {
               timelineTargetUserId={timelineTargetUserId}
               feedbackTargetUserId={feedbackTargetUserId}
               scoreOwnerCandidateUserId={result.scoreOwnerCandidateUserId}
+              resolvedFinalScore={result.resolvedFinalScore}
+              resolvedScoreOwnerCandidateUserId={result.resolvedScoreOwnerCandidateUserId}
+              resolvedScoreSourceType={result.resolvedScoreSourceType}
+              scoreProjectionFallbackUsed={result.scoreProjectionFallbackUsed}
+              scoreProjectionFallbackReason={result.scoreProjectionFallbackReason}
               explanationOwnerCandidateUserId={result.explanationOwnerCandidateUserId}
               scoreOwnerMismatch={scoreOwnerMismatch}
               explanationOwnerMismatch={explanationOwnerMismatch}

@@ -53,6 +53,11 @@ export function FinalMatchTechnicalDetailsContent({
   timelineTargetUserId,
   feedbackTargetUserId,
   scoreOwnerCandidateUserId,
+  resolvedFinalScore,
+  resolvedScoreOwnerCandidateUserId,
+  resolvedScoreSourceType,
+  scoreProjectionFallbackUsed,
+  scoreProjectionFallbackReason,
   explanationOwnerCandidateUserId,
   /** M6.6-C5：与 resolved 展示对象比较；仅技术区展示。 */
   scoreOwnerMismatch = false,
@@ -162,6 +167,32 @@ export function FinalMatchTechnicalDetailsContent({
             <p style={{ margin: "0.15rem 0" }}>
               scoreOwnerCandidateUserId：
               <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{scoreOwnerCandidateUserId || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              baseline finalScore：
+              <code style={{ fontSize: "0.74rem" }}>{finalScore == null ? "—" : String(finalScore)}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              resolvedFinalScore：
+              <code style={{ fontSize: "0.74rem" }}>
+                {resolvedFinalScore == null ? "—" : String(resolvedFinalScore)}
+              </code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              resolvedScoreOwnerCandidateUserId：
+              <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>
+                {resolvedScoreOwnerCandidateUserId || "—"}
+              </code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              resolvedScoreSourceType：<code>{resolvedScoreSourceType || "—"}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              scoreProjectionFallbackUsed：
+              <code>{scoreProjectionFallbackUsed == null ? "—" : String(scoreProjectionFallbackUsed)}</code>
+            </p>
+            <p style={{ margin: "0.15rem 0" }}>
+              scoreProjectionFallbackReason：<code>{scoreProjectionFallbackReason || "—"}</code>
             </p>
             <p style={{ margin: "0.15rem 0" }}>
               explanationOwnerCandidateUserId：
