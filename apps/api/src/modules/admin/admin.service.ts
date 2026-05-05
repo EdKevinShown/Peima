@@ -23,6 +23,47 @@ function isBatchMatchTriggerDisabled(): boolean {
 }
 
 /**
+ * When triggering batch-match from the API subprocess helper:
+ *
+ * - Default (`!== "1"`): run `pnpm --filter @peima/worker run batch-match` (tsx + src).
+ *   This matches local dev worker behavior and avoids stale `apps/worker/dist/main.js`
+ *   missing newer fields such as `matchInsights.top2ScoreSnapshot`.
+ *
+ * - Opt-in (`=== "1"`): run `node apps/worker/dist/main.js --batch-match` when dist exists
+ *   (after `pnpm --filter @peima/worker build`).
+ */
+export function shouldBatchMatchSubprocessUseCompiledWorkerDistEnv(env: NodeJS.ProcessEnv): boolean {
+  const v = env.PEIMA_BATCH_MATCH_SUBPROCESS_USE_DIST?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Pure resolution for tests + single spawn site (M6.10-C5). */
+export function resolveBatchMatchSubprocessPlan(params: {
+  monorepoRoot: string;
+  nodeExecPath: string;
+  workerDistMainJsExists: boolean;
+  env: NodeJS.ProcessEnv;
+}): { cwd: string; command: string; args: string[]; shell: boolean } {
+  const workerMainJs = join(params.monorepoRoot, "apps", "worker", "dist", "main.js");
+  const useDist =
+    shouldBatchMatchSubprocessUseCompiledWorkerDistEnv(params.env) && params.workerDistMainJsExists;
+  if (useDist) {
+    return {
+      cwd: params.monorepoRoot,
+      command: params.nodeExecPath,
+      args: [workerMainJs, "--batch-match"],
+      shell: false,
+    };
+  }
+  return {
+    cwd: params.monorepoRoot,
+    command: "pnpm",
+    args: ["--filter", "@peima/worker", "run", "batch-match"],
+    shell: true,
+  };
+}
+
+/**
  * Resolve monorepo root (contains apps/api and apps/worker).
  * API is usually started with cwd = apps/api.
  */
@@ -143,24 +184,18 @@ export class AdminService {
     );
     const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : 180000;
 
-    const node = process.execPath;
-    let result: { code: number; stdout: string; stderr: string };
+    const plan = resolveBatchMatchSubprocessPlan({
+      monorepoRoot: root,
+      nodeExecPath: process.execPath,
+      workerDistMainJsExists: existsSync(workerMainJs),
+      env: process.env,
+    });
 
-    if (existsSync(workerMainJs)) {
-      result = await spawnWithOutput(
-        node,
-        [workerMainJs, "--batch-match"],
-        { cwd: root, env: process.env },
-        timeoutMs,
-      );
-    } else {
-      result = await spawnWithOutput(
-        "pnpm",
-        ["--filter", "@peima/worker", "run", "batch-match"],
-        { cwd: root, env: process.env, shell: true },
-        timeoutMs,
-      );
-    }
+    const result = await spawnWithOutput(plan.command, plan.args, {
+      cwd: plan.cwd,
+      env: process.env,
+      shell: plan.shell,
+    }, timeoutMs);
 
     if (result.code !== 0) {
       const tail = (result.stderr + result.stdout).slice(-4000);
