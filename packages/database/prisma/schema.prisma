@@ -23,6 +23,10 @@ model User {
   occupation       String   @default("")
   relationshipGoal String   @default("")
   bio              String   @default("") @db.Text
+  /// P7.2: set when user submits onboarding aesthetic tags (not inferred from legacy styleTags).
+  onboardingPhotoAestheticCompletedAt DateTime?
+  /// P7.2: set when user acknowledges onboarding photo preview ("继续完成关系画像"); gates questionnaire.
+  onboardingPhotoPreviewCompletedAt   DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -57,8 +61,51 @@ model User {
   /// M5.6-B1：RRM Top2 display hook outbox rows（durable intent；consumer 未接）。
   matchResultRrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
   chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
+  /// P7.2: onboarding-only photo preview pools (never read by batch-match worker).
+  onboardingPhotoPreviewPools OnboardingPhotoPreviewPool[]
+  onboardingPhotoPreviewPoolItemsAsViewer OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemViewer")
+  onboardingPhotoPreviewPoolItemsAsCandidate OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemCandidate")
 
   @@map("users")
+}
+
+/// P7.2: viewer onboarding photo preview (3+2+1); isolated from `PreviewPool` / worker.
+model OnboardingPhotoPreviewPool {
+  id            String   @id @default(cuid())
+  userId        String
+  status        String
+  sourceVersion String   @default("onboarding-photo-preview-v1")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user  User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OnboardingPhotoPreviewPoolItem[]
+
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@map("onboarding_photo_preview_pools")
+}
+
+model OnboardingPhotoPreviewPoolItem {
+  id              String   @id @default(cuid())
+  poolId          String
+  userId          String
+  candidateUserId String
+  tier            String
+  displayMode     String
+  rankInPool      Int
+  score           Float?
+  reasonTags      String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pool      OnboardingPhotoPreviewPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  viewer    User                       @relation("OnboardingPhotoPreviewPoolItemViewer", fields: [userId], references: [id], onDelete: Cascade)
+  candidate User                       @relation("OnboardingPhotoPreviewPoolItemCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, rankInPool])
+  @@index([poolId])
+  @@index([userId, poolId])
+  @@map("onboarding_photo_preview_pool_items")
 }
 
 /// Partner / filter preferences for matching (one row per user; extend with new scalar/array columns or JSON later).

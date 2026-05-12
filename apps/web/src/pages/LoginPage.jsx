@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import { getMe, login, register } from "../api/auth";
+import { getOnboardingPhotoStatus } from "../api/onboarding";
 
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   return (
@@ -50,10 +51,18 @@ export default function LoginPage() {
       // P0：最小验证，确保 /auth/me 在当前 token 下可用
       await getMe();
 
-      // Phase G v0.1：登录后主路径 → 问卷 / 资料完善（先问卷）
-      navigate(`/questionnaire?userId=${encodeURIComponent(res.user.id)}`, {
-        replace: true,
-      });
+      // P7.1：照片 + 审美门禁后再进入问卷
+      const uid = encodeURIComponent(res.user.id);
+      const status = await getOnboardingPhotoStatus();
+      if (status.nextStep === "photo_upload") {
+        navigate(`/onboarding/photo-upload?userId=${uid}`, { replace: true });
+      } else if (status.nextStep === "photo_preference") {
+        navigate(`/onboarding/photo-preference?userId=${uid}`, { replace: true });
+      } else if (status.nextStep === "photo_preview") {
+        navigate(`/onboarding/photo-preview?userId=${uid}`, { replace: true });
+      } else {
+        navigate(`/questionnaire?userId=${uid}`, { replace: true });
+      }
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {

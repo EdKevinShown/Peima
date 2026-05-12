@@ -213,8 +213,10 @@ export default function AccountPage() {
       <p style={{ marginBottom: "1rem", fontSize: "0.85rem" }}>
         <Link to="/">首页</Link>
         {" · "}
-        <Link to={`/my-images?userId=${encodeURIComponent(userId || "")}`}>
-          我的图片
+        <Link
+          to={`/onboarding/photo-upload?userId=${encodeURIComponent(userId || "")}`}
+        >
+          上传照片
         </Link>
         {" · "}
         <Link to={`/my-activity?userId=${encodeURIComponent(userId || "")}`}>

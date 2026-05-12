@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import MainAppShell from "../components/layout/MainAppShell";
 import FinalMatchPage from "../pages/FinalMatchPage";
 import MatchingWaitingPage from "../pages/MatchingWaitingPage";
@@ -10,11 +10,25 @@ import ChatPage from "../pages/ChatPage";
 import CopilotPage from "../pages/CopilotPage";
 import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
 import LoginPage from "../pages/LoginPage";
-import UserImagesPage from "../pages/UserImagesPage";
 import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
 import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
 import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
+import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
+import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
+import OnboardingPhotoPreviewPage from "../pages/OnboardingPhotoPreviewPage";
+import { resolveUserId } from "../utils/resolveUserId";
+import { getOnboardingPhotoStatus } from "../api/onboarding";
+
+/** P7 收口：旧 /my-images 统一进 onboarding 上传页，避免绕过审美与预览门禁。 */
+function LegacyMyImagesRedirect() {
+  const [searchParams] = useSearchParams();
+  const userId = resolveUserId(searchParams);
+  const to = userId
+    ? `/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`
+    : "/onboarding/photo-upload";
+  return <Navigate to={to} replace />;
+}
 
 function readPeimaUserId() {
   try {
@@ -24,9 +38,12 @@ function readPeimaUserId() {
   }
 }
 
-/** Phase G v0.3：最小产品入口（非路由清单）；主 CTA 仅登录 / 继续等待页。 */
+/** Phase G v0.3 + P7：首页主 CTA 按 onboarding 状态分流；主导航为照片 onboarding 流程。 */
 function HomePage() {
+  const navigate = useNavigate();
   const [userId, setUserId] = useState(readPeimaUserId);
+  const [ctaBusy, setCtaBusy] = useState(false);
+
   useEffect(() => {
     setUserId(readPeimaUserId());
     const onStorage = (e) => {
@@ -37,10 +54,29 @@ function HomePage() {
   }, []);
 
   const loggedIn = Boolean(userId);
-  const primaryHref = loggedIn
-    ? `/matching-waiting?userId=${encodeURIComponent(userId)}`
-    : "/login";
-  const primaryLabel = loggedIn ? "继续匹配流程" : "登录 / 注册";
+  const uidEnc = userId ? encodeURIComponent(userId) : "";
+
+  const onContinueFlow = useCallback(async () => {
+    if (!userId) return;
+    setCtaBusy(true);
+    try {
+      const status = await getOnboardingPhotoStatus();
+      const q = `?userId=${encodeURIComponent(userId)}`;
+      if (status.nextStep === "photo_upload") {
+        navigate(`/onboarding/photo-upload${q}`);
+      } else if (status.nextStep === "photo_preference") {
+        navigate(`/onboarding/photo-preference${q}`);
+      } else if (status.nextStep === "photo_preview") {
+        navigate(`/onboarding/photo-preview${q}`);
+      } else {
+        navigate(`/questionnaire${q}`);
+      }
+    } catch {
+      navigate(`/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`);
+    } finally {
+      setCtaBusy(false);
+    }
+  }, [userId, navigate]);
 
   const primaryBtn = {
     display: "inline-block",
@@ -55,6 +91,9 @@ function HomePage() {
     textDecoration: "none",
     cursor: "pointer",
   };
+
+  const navLink = { color: "#475569", fontWeight: 500 };
+  const q = userId ? `?userId=${uidEnc}` : "";
 
   return (
     <main style={{ maxWidth: 520, margin: "2rem auto", padding: "0 1rem" }}>
@@ -71,28 +110,58 @@ function HomePage() {
         </h1>
         <p style={{ margin: 0, color: "#475569", fontSize: "0.95rem", lineHeight: 1.55 }}>
           {loggedIn
-            ? "欢迎回来。从匹配等待页可查看进度、结果就绪后的说明，并前往最终结果与聊天。"
-            : "用手机号登录后，完成问卷与匹配流程，即可查看结果并与匹配对象聊天。"}
+            ? "欢迎回来。请先完成照片与第一印象预览，再填写关系画像问卷；之后可在匹配等待页查看进度与结果。"
+            : "用手机号登录后，按步骤完成照片、审美偏好与预览，再填写关系画像问卷并进入匹配流程。"}
         </p>
-        <Link to={primaryHref} style={primaryBtn}>
-          {primaryLabel}
-        </Link>
         {loggedIn ? (
-          <p style={{ margin: "0.85rem 0 0", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.45 }}>
-            需要改资料或图片？请用{" "}
-            <Link to="/account" style={{ color: "#475569" }}>
-              账户
-            </Link>
-            {" · "}
-            <Link to="/questionnaire" style={{ color: "#475569" }}>
-              问卷
-            </Link>
-            {" · "}
-            <Link to="/my-images" style={{ color: "#475569" }}>
-              我的图片
-            </Link>
-            。
-          </p>
+          <button
+            type="button"
+            disabled={ctaBusy}
+            onClick={() => void onContinueFlow()}
+            style={{ ...primaryBtn, opacity: ctaBusy ? 0.75 : 1 }}
+          >
+            {ctaBusy ? "正在进入…" : "继续匹配流程"}
+          </button>
+        ) : (
+          <Link to="/login" style={primaryBtn}>
+            登录 / 注册
+          </Link>
+        )}
+        {loggedIn ? (
+          <div style={{ margin: "1rem 0 0", fontSize: "0.86rem", color: "#475569", lineHeight: 1.65 }}>
+            <div style={{ fontWeight: 600, color: "#334155", marginBottom: "0.35rem" }}>照片与第一印象</div>
+            <p style={{ margin: "0 0 0.5rem" }}>
+              <Link to={`/onboarding/photo-upload${q}`} style={navLink}>
+                上传 / 更新照片
+              </Link>
+              {" · "}
+              <Link to={`/onboarding/photo-preference${q}`} style={navLink}>
+                审美偏好
+              </Link>
+              {" · "}
+              <Link to={`/onboarding/photo-preview${q}`} style={navLink}>
+                第一印象预览池
+              </Link>
+            </p>
+            <div style={{ fontWeight: 600, color: "#334155", margin: "0.75rem 0 0.35rem" }}>问卷与匹配</div>
+            <p style={{ margin: "0 0 0.5rem" }}>
+              <Link to={`/questionnaire${q}`} style={navLink}>
+                关系画像问卷
+              </Link>
+              <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>
+                （须先完成照片与预览等步骤，未满足时打开会跳转到对应环节）
+              </span>
+            </p>
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+              <Link to={`/matching-waiting${q}`} style={{ color: "#64748b" }}>
+                匹配等待
+              </Link>
+              {" · "}
+              <Link to="/account" style={{ color: "#64748b" }}>
+                账户
+              </Link>
+            </p>
+          </div>
         ) : null}
       </div>
 
@@ -101,7 +170,7 @@ function HomePage() {
           更多（页面索引与内部入口）
         </summary>
         <p style={{ margin: "0.65rem 0 0.5rem", color: "#94a3b8", fontSize: "0.78rem" }}>
-          以下链接供开发与排障使用，不在主流程中。
+          以下含正式匹配候选池等，供开发排障；日常请用上方「第一印象预览池」。
         </p>
         <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.1rem", lineHeight: 1.65 }}>
           <li>
@@ -109,19 +178,25 @@ function HomePage() {
             {" · "}
             <Link to="/account">账户</Link>
             {" · "}
-            <Link to="/my-images">我的图片</Link>
+            <Link to={`/onboarding/photo-upload${q}`}>上传 / 更新照片</Link>
+            {" · "}
+            <Link to={`/onboarding/photo-preference${q}`}>审美偏好</Link>
+            {" · "}
+            <Link to={`/onboarding/photo-preview${q}`}>第一印象预览池</Link>
             {" · "}
             <Link to="/my-activity">我的反馈与动态</Link>
           </li>
           <li>
-            <Link to="/questionnaire">问卷</Link>
+            <Link to={`/questionnaire${q}`}>关系画像问卷</Link>
             {" · "}
             <Link to="/questionnaire-profile">问卷画像</Link>
             {" · "}
-            <Link to="/preview-pool">预览池</Link>
+            <Link to="/preview-pool" style={{ color: "#94a3b8" }}>
+              正式匹配候选池（旧 /preview-pool）
+            </Link>
           </li>
           <li>
-            <Link to="/matching-waiting">匹配等待</Link>
+            <Link to={`/matching-waiting${q}`}>匹配等待</Link>
             {" · "}
             <Link to="/final-match">最终结果</Link>
           </li>
@@ -162,8 +237,11 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding/photo-upload" element={<OnboardingPhotoUploadPage />} />
+      <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
+      <Route path="/onboarding/photo-preview" element={<OnboardingPhotoPreviewPage />} />
       <Route path="/preview-pool" element={<PreviewPoolPage />} />
-      <Route path="/my-images" element={<UserImagesPage />} />
+      <Route path="/my-images" element={<LegacyMyImagesRedirect />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
       <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
