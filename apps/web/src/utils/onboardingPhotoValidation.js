@@ -1,36 +1,41 @@
-/** P7.3：上传前轻量校验（与后端 5MB、jpeg/png/webp/gif 能力对齐；前端推荐不含 gif）。 */
+/**
+ * P7.3 MVP：onboarding 照片上传前校验（格式、大小、可解码）。
+ * 与后端 `images/upload` 的 5MB 上限及 MIME 白名单对齐；不引入 AI / 人脸识别。
+ */
+
 export const ONBOARDING_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
  * @param {File | null | undefined} file
- * @returns {string | null} 错误文案；null 表示通过基础校验
+ * @returns {string | null} 错误文案；null 表示通过
  */
 export function validateOnboardingPhotoFileBasics(file) {
   if (!file || file.size === 0) {
-    return "请选择一张有效的图片。";
+    return "请选择一张有效的照片。";
   }
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return "请上传 JPG、PNG 或 WebP 格式的照片（暂不建议使用 GIF）。";
+    return "请上传 JPG、PNG 或 WebP 格式的照片。";
   }
   if (file.size > ONBOARDING_PHOTO_MAX_BYTES) {
-    return "文件过大，请上传不超过 5MB 的照片。";
+    return "照片不能超过 5MB，请压缩后重新上传。";
   }
   return null;
 }
 
 /**
+ * 尝试解码图片（不校验分辨率）。
  * @param {File} file
- * @returns {Promise<{ width: number; height: number }>}
+ * @returns {Promise<void>}
  */
-export function measureImageDimensions(file) {
+function probeImageDecode(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      resolve();
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -44,14 +49,43 @@ export function measureImageDimensions(file) {
  * @param {File} file
  * @returns {Promise<string | null>} 错误文案；null 表示通过
  */
-export async function validateOnboardingPhotoDimensions(file) {
+export async function validateOnboardingPhotoCanDecode(file) {
   try {
-    const { width, height } = await measureImageDimensions(file);
-    if (width < 300 || height < 300) {
-      return "图片分辨率偏低，请上传宽、高均至少约 300 像素的照片，以便获得更清晰的预览。";
-    }
+    await probeImageDecode(file);
     return null;
   } catch {
-    return "图片格式可能无效或已损坏，请重新选择。";
+    return "这张图片无法读取，请换一张清晰照片。";
   }
+}
+
+/**
+ * 将后端 / 网络错误映射为对用户友好的中文（不暴露堆栈与英文技术细节）。
+ * @param {unknown} err
+ * @returns {string}
+ */
+export function mapOnboardingPhotoUploadError(err) {
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  const r = raw.toLowerCase();
+
+  if (r.includes("unsupported") && r.includes("type")) {
+    return "请上传 JPG、PNG 或 WebP 格式的照片。";
+  }
+  if (r.includes("empty file") || r.includes("file is required")) {
+    return "这张图片无法读取，请换一张清晰照片。";
+  }
+  if (
+    r.includes("413") ||
+    r.includes("too large") ||
+    r.includes("entity too large") ||
+    r.includes("limit")
+  ) {
+    return "照片不能超过 5MB，请压缩后重新上传。";
+  }
+  if (r.includes("network") || r.includes("failed to fetch")) {
+    return "网络异常，上传未完成，请检查连接后重试。";
+  }
+  if (raw.trim()) {
+    return "上传未完成，请稍后重试。";
+  }
+  return "上传未完成，请稍后重试。";
 }
