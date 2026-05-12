@@ -10,22 +10,38 @@ import {
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
 
-const TAG_OPTIONS = [
-  "清爽自然",
-  "甜美可爱",
-  "酷感个性",
-  "成熟稳重",
-  "文艺温柔",
-  "运动阳光",
-  "生活感",
-  "精致感",
-  "松弛感",
-  "氛围感",
-  "简约干净",
-  "有个性",
+const TAG_GROUPS = [
+  {
+    title: "整体气质",
+    tags: ["清爽自然", "甜美可爱", "酷感个性", "成熟稳重", "文艺温柔", "运动阳光"],
+  },
+  {
+    title: "照片感觉",
+    tags: ["生活感", "精致感", "松弛感", "氛围感", "简约干净", "有个性"],
+  },
+  {
+    title: "优先关注",
+    tags: ["笑容", "穿搭", "气质", "五官", "身材比例", "整体感觉"],
+  },
 ];
 
+const ALL_TAGS = TAG_GROUPS.flatMap((g) => g.tags);
 const MAX_TAGS = 8;
+
+const groupBox = {
+  marginBottom: "1.35rem",
+  padding: "1rem",
+  borderRadius: 12,
+  border: "1px solid #e2e8f0",
+  background: "#fff",
+};
+
+const groupTitle = {
+  fontSize: "0.95rem",
+  fontWeight: 700,
+  color: "#0f172a",
+  marginBottom: "0.65rem",
+};
 
 export default function OnboardingPhotoPreferencePage() {
   const navigate = useNavigate();
@@ -36,6 +52,8 @@ export default function OnboardingPhotoPreferencePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
+
+  const previewQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
 
   const toggle = useCallback((tag) => {
     setSelected((prev) => {
@@ -52,7 +70,7 @@ export default function OnboardingPhotoPreferencePage() {
 
   const load = useCallback(async () => {
     if (!userId) {
-      setError(new Error("缺少 userId：请先登录"));
+      setError(new Error("请先登录后再设置审美偏好。"));
       setLoading(false);
       return;
     }
@@ -69,7 +87,7 @@ export default function OnboardingPhotoPreferencePage() {
       }
       const me = await getOnboardingPhotoPreferencesMe();
       const initial = new Set(
-        (me.styleTags || []).filter((t) => TAG_OPTIONS.includes(t)),
+        (me.styleTags || []).filter((t) => ALL_TAGS.includes(t)),
       );
       setSelected(initial);
     } catch (e) {
@@ -87,7 +105,7 @@ export default function OnboardingPhotoPreferencePage() {
     if (!userId) return;
     const tags = [...selected];
     if (tags.length < 1) {
-      setError(new Error("请至少选择 1 个标签"));
+      setError(new Error("请至少选择 1 项"));
       return;
     }
     setSubmitting(true);
@@ -97,7 +115,14 @@ export default function OnboardingPhotoPreferencePage() {
       await postOnboardingPhotoPreviewPoolGenerate();
       navigate(`/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(
+        new Error(
+          raw.includes("候选") || raw.includes("预览池")
+            ? raw
+            : `保存或生成预览池时出现问题，请稍后重试。${raw ? `（${raw}）` : ""}`,
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -109,17 +134,17 @@ export default function OnboardingPhotoPreferencePage() {
         审美偏好
       </h1>
       <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1rem" }}>
-        你可以随时更新你更容易被什么类型吸引。这些选择用于初始审美预览，不代表最终匹配结果。
+        告诉我们你更容易被什么类型吸引。这个选择只用于第一印象预览池，不代表最终匹配结果。
       </p>
       <p style={{ marginBottom: "1rem", fontSize: "0.88rem", color: "#64748b" }}>
-        至少选 1 个，最多 {MAX_TAGS} 个。
+        至少选 1 项，最多 {MAX_TAGS} 项。可多组搭配选择。
       </p>
       <p style={{ marginBottom: "1.25rem", fontSize: "0.88rem" }}>
         <Link to="/">首页</Link>
         {" · "}
-        <Link to={`/onboarding/photo-upload?userId=${encodeURIComponent(userId || "")}`}>
-          返回照片设置
-        </Link>
+        <Link to={`/onboarding/photo-upload${previewQs}`}>返回照片设置</Link>
+        {" · "}
+        <Link to={`/onboarding/photo-preview${previewQs}`}>查看第一印象预览池</Link>
       </p>
 
       {loading && <LoadingState label="加载中…" />}
@@ -131,36 +156,40 @@ export default function OnboardingPhotoPreferencePage() {
 
       {!loading && userId && (
         <>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.5rem",
-              marginBottom: "1.25rem",
-            }}
-          >
-            {TAG_OPTIONS.map((tag) => {
-              const on = selected.has(tag);
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggle(tag)}
-                  style={{
-                    padding: "0.45rem 0.75rem",
-                    borderRadius: 999,
-                    border: on ? "2px solid #1e293b" : "1px solid #cbd5e1",
-                    background: on ? "#1e293b" : "#fff",
-                    color: on ? "#fff" : "#334155",
-                    cursor: "pointer",
-                    fontSize: "0.88rem",
-                  }}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
+          {TAG_GROUPS.map((group) => (
+            <section key={group.title} style={groupBox}>
+              <div style={groupTitle}>{group.title}</div>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
+                }}
+              >
+                {group.tags.map((tag) => {
+                  const on = selected.has(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggle(tag)}
+                      style={{
+                        padding: "0.45rem 0.75rem",
+                        borderRadius: 999,
+                        border: on ? "2px solid #1e293b" : "1px solid #cbd5e1",
+                        background: on ? "#1e293b" : "#f8fafc",
+                        color: on ? "#fff" : "#334155",
+                        cursor: "pointer",
+                        fontSize: "0.88rem",
+                      }}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
           <button
             type="button"
             onClick={onSubmit}

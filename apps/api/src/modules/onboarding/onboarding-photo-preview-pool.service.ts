@@ -270,11 +270,11 @@ export class OnboardingPhotoPreviewPoolService {
       },
     });
     if (!user) {
-      throw new NotFoundException(`User ${viewerUserId} not found`);
+      throw new NotFoundException("未找到当前用户，请重新登录后再试。");
     }
     if (!user.onboardingPhotoAestheticCompletedAt) {
       throw new BadRequestException(
-        "complete onboarding photo preferences before generating the preview pool",
+        "请先完成审美偏好，再生成第一印象预览池。",
       );
     }
 
@@ -282,7 +282,7 @@ export class OnboardingPhotoPreviewPoolService {
       where: { userId: viewerUserId },
     });
     if (imageCount < 1) {
-      throw new BadRequestException("upload at least one photo before generating the preview pool");
+      throw new BadRequestException("请先上传至少一张照片，再生成预览池。");
     }
 
     const prefRow = await this.prisma.userPreference.findUnique({
@@ -294,7 +294,7 @@ export class OnboardingPhotoPreviewPoolService {
     const gAll = await this.collectGatedCandidates(viewerUserId, gatePref);
     if (gAll.length < 6) {
       throw new BadRequestException(
-        `not enough candidates for onboarding preview pool: need 6 other users with image + questionnaire profile; gated=${gAll.length}`,
+        `当前符合条件的候选用户不足，无法生成完整的第一印象预览池（至少需要 6 位；当前约 ${gAll.length} 位）。请稍后再试，或邀请更多好友完善资料与照片。`,
       );
     }
 
@@ -307,12 +307,12 @@ export class OnboardingPhotoPreviewPoolService {
 
     const reflow = pickOldest(gAll, used);
     if (!reflow) {
-      throw new BadRequestException("could not assign reflow slot (candidate pool exhausted)");
+      throw new BadRequestException("暂时无法分配预览位，请稍后重试。");
     }
     used.add(reflow.id);
 
     if (used.size !== 6) {
-      throw new BadRequestException("internal: expected 6 unique candidate ids");
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
     }
 
     const slotDefs: {
@@ -448,7 +448,7 @@ export class OnboardingPhotoPreviewPoolService {
     });
     if (!pool || pool.items.length !== 6) {
       throw new BadRequestException(
-        "active onboarding photo preview pool with 6 items is required before continuing",
+        "需要先生成包含 6 人的活跃预览池后，才能继续填写关系画像。",
       );
     }
     await this.prisma.user.update({

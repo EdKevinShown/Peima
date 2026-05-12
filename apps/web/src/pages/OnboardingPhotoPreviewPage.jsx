@@ -10,11 +10,14 @@ import {
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
 
-function tierTitle(tier) {
-  if (tier === "aesthetic_fit") return "符合你审美的人";
-  if (tier === "style_similar") return "和你风格相近的人";
-  if (tier === "reflow") return "系统保留推荐";
-  return tier;
+function formatReasonLine(tags) {
+  if (!tags || !tags.length) return "符合你的审美偏好";
+  const shown = tags.filter(
+    (t) =>
+      !String(t).startsWith("onboarding-") && !String(t).startsWith("tier:"),
+  );
+  if (!shown.length) return "符合你的审美偏好";
+  return shown.join(" · ");
 }
 
 export default function OnboardingPhotoPreviewPage() {
@@ -39,7 +42,7 @@ export default function OnboardingPhotoPreviewPage() {
 
   const load = useCallback(async () => {
     if (!userId) {
-      setError(new Error("缺少 userId：请先登录"));
+      setError(new Error("请先登录后再查看预览池。"));
       setLoading(false);
       return;
     }
@@ -77,7 +80,11 @@ export default function OnboardingPhotoPreviewPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(
-        new Error(`暂时无法生成预览池，请稍后重试。${msg ? `（${msg}）` : ""}`),
+        new Error(
+          msg
+            ? msg
+            : "暂时无法生成预览池，请稍后重试。",
+        ),
       );
     } finally {
       setRegenerating(false);
@@ -92,13 +99,21 @@ export default function OnboardingPhotoPreviewPage() {
       await postOnboardingPhotoPreviewPoolAcknowledge();
       navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        new Error(
+          msg || "暂时无法继续，请稍后重试。",
+        ),
+      );
     } finally {
       setContinuing(false);
     }
   }, [userId, navigate]);
 
   const items = data?.items ? [...data.items].sort((a, b) => a.rankInPool - b.rankInPool) : [];
+  const aesthetic = items.filter((i) => i.tier === "aesthetic_fit");
+  const styleSimilar = items.filter((i) => i.tier === "style_similar");
+  const reflowItems = items.filter((i) => i.tier === "reflow");
 
   const prefQs = `?userId=${encodeURIComponent(userId || "")}`;
   const canOfferGenerate =
@@ -118,13 +133,106 @@ export default function OnboardingPhotoPreviewPage() {
     cursor: "pointer",
   };
 
+  const sectionHead = {
+    fontSize: "1.05rem",
+    fontWeight: 700,
+    color: "#0f172a",
+    marginBottom: "0.35rem",
+  };
+
+  const sectionSub = {
+    fontSize: "0.86rem",
+    color: "#64748b",
+    lineHeight: 1.55,
+    marginBottom: "0.85rem",
+  };
+
+  const cardShell = {
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    padding: "0.85rem 1rem",
+    background: "#fff",
+    marginBottom: "0.75rem",
+  };
+
+  function renderPoolItem(it) {
+    const reason = formatReasonLine(it.reasonTags || []);
+    if (it.displayMode === "hidden") {
+      return (
+        <div key={it.id} style={cardShell}>
+          <div
+            style={{
+              minHeight: 120,
+              borderRadius: 8,
+              background: "#f1f5f9",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              padding: "0.75rem",
+              textAlign: "center",
+              fontSize: "0.88rem",
+              lineHeight: 1.5,
+            }}
+          >
+            <span style={{ fontWeight: 600, marginBottom: "0.35rem" }}>探索位 · 照片不展示</span>
+            <span>
+              系统保留了一个探索推荐，完成关系画像后会参与更完整的判断。
+            </span>
+          </div>
+        </div>
+      );
+    }
+    if (it.displayMode === "blurred") {
+      return (
+        <div key={it.id} style={cardShell}>
+          {it.imageUrl ? (
+            <img
+              src={it.imageUrl}
+              alt=""
+              style={{
+                maxWidth: "100%",
+                maxHeight: 220,
+                borderRadius: 8,
+                objectFit: "contain",
+                filter: "blur(8px)",
+              }}
+            />
+          ) : (
+            <div style={{ color: "#94a3b8", fontSize: "0.88rem" }}>暂无图片</div>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div key={it.id} style={cardShell}>
+        <div style={{ fontSize: "0.82rem", color: "#64748b", marginBottom: "0.5rem" }}>{reason}</div>
+        {it.imageUrl ? (
+          <img
+            src={it.imageUrl}
+            alt=""
+            style={{
+              maxWidth: "100%",
+              maxHeight: 240,
+              borderRadius: 8,
+              objectFit: "contain",
+            }}
+          />
+        ) : (
+          <div style={{ color: "#94a3b8", fontSize: "0.88rem" }}>暂无图片</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem", color: "#0f172a" }}>
         你的第一印象预览池
       </h1>
       <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55, marginBottom: "1rem" }}>
-        以下为 onboarding 预览示例，不代表最终匹配对象。可随时重新生成预览池；最终匹配仍基于 20 维关系画像与系统主链。
+        这是根据你的照片和审美偏好生成的初始预览，不是最终匹配结果。最终匹配还会基于后续关系画像完成。
       </p>
       <p style={{ marginBottom: "1rem", fontSize: "0.88rem" }}>
         <Link to="/">首页</Link>
@@ -141,14 +249,15 @@ export default function OnboardingPhotoPreviewPage() {
 
       {!loading && !data && needPreferenceFirst && (
         <p style={{ color: "#64748b", fontSize: "0.92rem", marginBottom: "1rem" }}>
-          请先完成审美偏好后再生成预览池。
+          请先完成审美偏好后再生成预览池。{" "}
+          <Link to={`/onboarding/photo-preference${prefQs}`}>前往审美偏好</Link>
         </p>
       )}
 
       {!loading && canOfferGenerate && (
         <div style={{ marginBottom: "1.25rem" }}>
           <p style={{ color: "#64748b", fontSize: "0.92rem", marginBottom: "0.75rem" }}>
-            当前没有活跃的预览池。若已完成审美偏好，可点击下方生成 3+2+1 预览。
+            当前没有活跃的预览池。你已具备照片与审美偏好，可点击下方生成 3+2+1 第一印象预览。
           </p>
           <button
             type="button"
@@ -218,56 +327,25 @@ export default function OnboardingPhotoPreviewPage() {
             </button>
           </div>
 
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "1rem" }}>
-            {items.map((it) => (
-              <li
-                key={it.id}
-                style={{
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  padding: "0.85rem 1rem",
-                  background: "#fff",
-                }}
-              >
-                <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: "0.35rem" }}>
-                  {tierTitle(it.tier)}
-                </div>
-                <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: "0.5rem" }}>
-                  #{it.rankInPool} · {it.displayMode}
-                </div>
-                {it.displayMode === "hidden" ? (
-                  <div
-                    style={{
-                      minHeight: 120,
-                      borderRadius: 8,
-                      background: "#f1f5f9",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#64748b",
-                      fontWeight: 600,
-                    }}
-                  >
-                    不展示照片
-                  </div>
-                ) : it.imageUrl ? (
-                  <img
-                    src={it.imageUrl}
-                    alt=""
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: 220,
-                      borderRadius: 8,
-                      objectFit: "contain",
-                      filter: it.displayMode === "blurred" ? "blur(6px)" : undefined,
-                    }}
-                  />
-                ) : (
-                  <div style={{ color: "#94a3b8", fontSize: "0.88rem" }}>暂无图片</div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <section style={{ marginBottom: "1.75rem" }}>
+            <h2 style={sectionHead}>符合你审美的人</h2>
+            <p style={sectionSub}>共 3 人 · 清晰展示照片 · 卡片标签示意你的偏好方向</p>
+            {aesthetic.map((it) => renderPoolItem(it))}
+          </section>
+
+          <section style={{ marginBottom: "1.75rem" }}>
+            <h2 style={sectionHead}>和你风格相近的人</h2>
+            <p style={sectionSub}>
+              共 2 人 · 图片作模糊处理。与你的气质或风格相近，完成后续画像可进一步判断关系适配度。
+            </p>
+            {styleSimilar.map((it) => renderPoolItem(it))}
+          </section>
+
+          <section style={{ marginBottom: "0.5rem" }}>
+            <h2 style={sectionHead}>系统保留推荐</h2>
+            <p style={sectionSub}>共 1 人 · 不展示真实照片 · 占位说明</p>
+            {reflowItems.map((it) => renderPoolItem(it))}
+          </section>
         </>
       )}
 
