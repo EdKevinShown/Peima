@@ -11,6 +11,10 @@ export type UserImageRow = {
   detectionScoreJson?: Record<string, unknown> | null;
   detectionRulesVersion?: string | null;
   detectedAt?: string | null;
+  reviewStatus?: string;
+  reviewReasonCodes?: string[];
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
 };
 
 export async function listUserImages(userId: string) {

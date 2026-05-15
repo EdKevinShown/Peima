@@ -11,6 +11,9 @@ export type OnboardingPhotoStatus = {
   hasPassingPhoto?: boolean;
   hasPhotoPreference: boolean;
   nextStep: OnboardingPhotoNextStep;
+  /** P7.4-r1d-b: informational; does not gate onboarding. */
+  hasPhotoUnderReview?: boolean;
+  photoReviewStatusSummary?: "pending_review" | "none";
 };
 
 export type OnboardingPhotoPreviewItem = {

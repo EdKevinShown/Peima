@@ -25,6 +25,7 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
         count: jest
           .fn()
           .mockResolvedValueOnce(0)
+          .mockResolvedValueOnce(0)
           .mockResolvedValueOnce(0),
       },
     };
@@ -34,6 +35,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
       hasPassingPhoto: false,
       hasPhotoPreference: false,
       nextStep: "photo_upload",
+      hasPhotoUnderReview: false,
+      photoReviewStatusSummary: "none",
     });
   });
 
@@ -49,6 +52,7 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
         count: jest
           .fn()
           .mockResolvedValueOnce(2)
+          .mockResolvedValueOnce(0)
           .mockResolvedValueOnce(0),
       },
     };
@@ -58,6 +62,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
       hasPassingPhoto: false,
       hasPhotoPreference: false,
       nextStep: "photo_upload",
+      hasPhotoUnderReview: false,
+      photoReviewStatusSummary: "none",
     });
   });
 
@@ -73,7 +79,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
         count: jest
           .fn()
           .mockResolvedValueOnce(1)
-          .mockResolvedValueOnce(1),
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(0),
       },
     };
     const svc = await createService(prisma);
@@ -82,6 +89,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
       hasPassingPhoto: true,
       hasPhotoPreference: false,
       nextStep: "photo_preference",
+      hasPhotoUnderReview: false,
+      photoReviewStatusSummary: "none",
     });
   });
 
@@ -97,7 +106,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
         count: jest
           .fn()
           .mockResolvedValueOnce(1)
-          .mockResolvedValueOnce(1),
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(0),
       },
     };
     const svc = await createService(prisma);
@@ -106,6 +116,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
       hasPassingPhoto: true,
       hasPhotoPreference: true,
       nextStep: "photo_preview",
+      hasPhotoUnderReview: false,
+      photoReviewStatusSummary: "none",
     });
   });
 
@@ -121,7 +133,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
         count: jest
           .fn()
           .mockResolvedValueOnce(1)
-          .mockResolvedValueOnce(1),
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(0),
       },
     };
     const svc = await createService(prisma);
@@ -130,6 +143,8 @@ describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
       hasPassingPhoto: true,
       hasPhotoPreference: true,
       nextStep: "questionnaire",
+      hasPhotoUnderReview: false,
+      photoReviewStatusSummary: "none",
     });
   });
 

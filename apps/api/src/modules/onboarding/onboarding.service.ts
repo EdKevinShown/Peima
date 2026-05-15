@@ -18,6 +18,10 @@ export type OnboardingPhotoStatusPayload = {
   /** True after user completes onboarding aesthetic tags (P7.2 flag), not legacy styleTags alone. */
   hasPhotoPreference: boolean;
   nextStep: OnboardingPhotoNextStep;
+  /** P7.4-r1d-b: read-only; does not gate onboarding. */
+  hasPhotoUnderReview: boolean;
+  /** `pending_review` | `none` — informational only. */
+  photoReviewStatusSummary: "pending_review" | "none";
 };
 
 const USABLE_DETECTION_STATUSES = ["passed", "skipped"] as const;
@@ -76,6 +80,11 @@ export class OnboardingService {
     });
     const hasPassingPhoto = passingCount > 0;
 
+    const underReviewCount = await this.prisma.userImage.count({
+      where: { userId, reviewStatus: "pending_review" },
+    });
+    const hasPhotoUnderReview = underReviewCount > 0;
+
     const aestheticDone = user.onboardingPhotoAestheticCompletedAt != null;
     const previewAck = user.onboardingPhotoPreviewCompletedAt != null;
 
@@ -95,6 +104,10 @@ export class OnboardingService {
       hasPassingPhoto,
       hasPhotoPreference: aestheticDone,
       nextStep,
+      hasPhotoUnderReview,
+      photoReviewStatusSummary: hasPhotoUnderReview
+        ? "pending_review"
+        : "none",
     };
   }
 

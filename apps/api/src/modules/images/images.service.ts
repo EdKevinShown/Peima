@@ -13,6 +13,8 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
 import type { MemoryUploadedFile } from "./memory-uploaded-file";
 import { UserImageDetectionService } from "./user-image-detection.service";
+import { toUserImagePublicDto, type UserImagePublicDto } from "./user-image-public.dto";
+import { resolveUserImageReviewStateFromDetection } from "./user-image-review-status";
 import type { UserImageDetectionResult } from "./user-image-quality-detection";
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -44,7 +46,12 @@ export class ImagesService {
     }
   }
 
-  private detectionToCreateFields(detection: UserImageDetectionResult) {
+  private detectionAndReviewToCreateFields(detection: UserImageDetectionResult) {
+    const review = resolveUserImageReviewStateFromDetection({
+      detectionStatus: detection.status,
+      detectionReasonCodes: detection.reasonCodes,
+      detectionScoreJson: detection.scoreJson,
+    });
     return {
       detectionStatus: detection.status,
       detectionReasonCodes: detection.reasonCodes,
@@ -54,7 +61,15 @@ export class ImagesService {
           : (detection.scoreJson as Prisma.InputJsonValue),
       detectionRulesVersion: detection.rulesVersion,
       detectedAt: new Date(),
+      reviewStatus: review.reviewStatus,
+      reviewReasonCodes: review.reviewReasonCodes,
     };
+  }
+
+  private reviewFieldsForLegacySkippedDetection() {
+    return resolveUserImageReviewStateFromDetection({
+      detectionStatus: "skipped",
+    });
   }
 
   private toCreateInput(dto: CreateUserImageDto): Prisma.UserImageCreateInput {
@@ -65,6 +80,7 @@ export class ImagesService {
       detectionStatus: "skipped",
       detectionReasonCodes: [],
       detectedAt: new Date(),
+      ...this.reviewFieldsForLegacySkippedDetection(),
     };
 
     if (dto.faceEmbedding !== undefined) {
@@ -86,11 +102,12 @@ export class ImagesService {
     return input;
   }
 
-  async create(dto: CreateUserImageDto) {
+  async create(dto: CreateUserImageDto): Promise<UserImagePublicDto> {
     await this.ensureUserExists(dto.userId);
-    return this.prisma.userImage.create({
+    const row = await this.prisma.userImage.create({
       data: this.toCreateInput(dto),
     });
+    return toUserImagePublicDto(row);
   }
 
   private extFromMimetype(mimetype: string): string | null {
@@ -104,7 +121,7 @@ export class ImagesService {
     userId: string,
     file: MemoryUploadedFile,
     publicBaseUrl: string,
-  ): Promise<UserImage> {
+  ): Promise<UserImagePublicDto> {
     const ext = this.extFromMimetype(file.mimetype);
     if (!ext) {
       throw new BadRequestException(
@@ -125,24 +142,35 @@ export class ImagesService {
 
     const detection = await this.userImageDetection.detectFromBuffer(buf);
 
-    return this.prisma.userImage.create({
+    const row = await this.prisma.userImage.create({
       data: {
         user: { connect: { id: userId } },
         imageUrl,
-        ...this.detectionToCreateFields(detection),
+        ...this.detectionAndReviewToCreateFields(detection),
       },
     });
+    return toUserImagePublicDto(row);
   }
 
-  async findAllByUser(userId: string) {
+  async findAllByUser(userId: string): Promise<UserImagePublicDto[]> {
     await this.ensureUserExists(userId);
-    return this.prisma.userImage.findMany({
+    const rows = await this.prisma.userImage.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
     });
+    return rows.map(toUserImagePublicDto);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<UserImagePublicDto> {
+    const row = await this.prisma.userImage.findUnique({ where: { id } });
+    if (!row) {
+      throw new NotFoundException(`Image ${id} not found`);
+    }
+    return toUserImagePublicDto(row);
+  }
+
+  /** @internal auth checks need userId from full row */
+  async findOneRecord(id: string): Promise<UserImage> {
     const row = await this.prisma.userImage.findUnique({ where: { id } });
     if (!row) {
       throw new NotFoundException(`Image ${id} not found`);
@@ -151,7 +179,7 @@ export class ImagesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    await this.findOneRecord(id);
     await this.prisma.userImage.delete({ where: { id } });
   }
 }

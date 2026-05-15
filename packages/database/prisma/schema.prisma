@@ -146,12 +146,20 @@ model UserImage {
   detectionScoreJson    Json?
   detectionRulesVersion String?
   detectedAt            DateTime?
+  /// P7.4-r1d-b: human/ops review (separate from machine detectionStatus)
+  reviewStatus          String    @default("not_required")
+  reviewReasonCodes     String[]  @default([])
+  reviewedAt            DateTime?
+  reviewedByUserId      String?
+  reviewNote            String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, detectionStatus, createdAt])
+  @@index([reviewStatus, createdAt])
+  @@index([userId, reviewStatus])
   @@map("user_images")
 }
 
