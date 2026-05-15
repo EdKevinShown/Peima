@@ -625,7 +625,7 @@ export class OnboardingPhotoPreviewPoolService {
       },
     });
 
-    void Promise.resolve(
+    await Promise.resolve(
       this.visualRankingShadow.computeShadow({
         viewerUserId,
         poolId: created.id,
