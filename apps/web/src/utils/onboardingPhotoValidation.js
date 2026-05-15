@@ -120,15 +120,31 @@ export function extractDetectionWarnings(scoreJson) {
     : [];
 }
 
+/** P7.4-r1c-a：多人脸 warning 主文案 */
+export const MULTIPLE_FACES_WARNING_MAIN =
+  "建议上传单人照片，避免影响匹配体验。";
+
+/** P7.4-r1c-a：多人脸 warning 辅文案 */
+export const MULTIPLE_FACES_WARNING_DETAIL =
+  "如果照片中有其他人，系统可能无法准确判断你的照片风格。";
+
 /**
  * @param {string} code
  * @returns {string | null}
  */
 export function mapDetectionWarningToMessage(code) {
   if (code === "MULTIPLE_FACES") {
-    return "检测到多张人脸，建议使用仅包含你本人的照片，以获得更准确的预览。";
+    return MULTIPLE_FACES_WARNING_MAIN;
   }
   return null;
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} scoreJson
+ * @returns {boolean}
+ */
+export function hasMultipleFacesWarning(scoreJson) {
+  return extractDetectionWarnings(scoreJson).includes("MULTIPLE_FACES");
 }
 
 /**

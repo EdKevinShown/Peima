@@ -14,8 +14,9 @@ import {
   mapOnboardingPhotoUploadError,
   canProceedToPhotoPreference,
   mapDetectionReasonCodesToMessage,
-  extractDetectionWarnings,
-  mapDetectionWarningToMessage,
+  hasMultipleFacesWarning,
+  MULTIPLE_FACES_WARNING_DETAIL,
+  MULTIPLE_FACES_WARNING_MAIN,
 } from "../utils/onboardingPhotoValidation";
 
 export default function OnboardingPhotoUploadPage() {
@@ -32,6 +33,7 @@ export default function OnboardingPhotoUploadPage() {
   const fileInputRef = useRef(null);
 
   const [hasPassingPhoto, setHasPassingPhoto] = useState(false);
+  const [photoWarning, setPhotoWarning] = useState(null);
   const previewQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
 
   const hasPhoto = existingImages.length > 0;
@@ -69,12 +71,14 @@ export default function OnboardingPhotoUploadPage() {
 
   const openFilePicker = useCallback(() => {
     setError(null);
+    setPhotoWarning(null);
     fileInputRef.current?.click();
   }, []);
 
   const onPickFile = useCallback(async (e) => {
     const f = e.target.files?.[0];
     setError(null);
+    setPhotoWarning(null);
     if (!f) {
       setPickedFile(null);
       return;
@@ -110,6 +114,7 @@ export default function OnboardingPhotoUploadPage() {
     }
     setUploading(true);
     setError(null);
+    setPhotoWarning(null);
     try {
       const row = await uploadUserImageFile(userId, pickedFile);
       setPickedFile(null);
@@ -128,13 +133,16 @@ export default function OnboardingPhotoUploadPage() {
         );
         return;
       }
-      const warnings = extractDetectionWarnings(row.detectionScoreJson);
-      const warnMsg = warnings
-        .map(mapDetectionWarningToMessage)
-        .find((m) => m);
-      navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`, {
-        state: warnMsg ? { photoWarning: warnMsg } : undefined,
-      });
+      setExistingImages((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+      setHasPassingPhoto(true);
+      if (hasMultipleFacesWarning(row.detectionScoreJson)) {
+        setPhotoWarning({
+          main: MULTIPLE_FACES_WARNING_MAIN,
+          detail: MULTIPLE_FACES_WARNING_DETAIL,
+        });
+        return;
+      }
+      navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
       setError(new Error(mapOnboardingPhotoUploadError(e)));
     } finally {
@@ -181,6 +189,24 @@ export default function OnboardingPhotoUploadPage() {
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
         </p>
+      )}
+      {photoWarning && (
+        <div
+          role="status"
+          style={{
+            color: "#92400e",
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: 10,
+            padding: "0.75rem 0.9rem",
+            fontSize: "0.9rem",
+            lineHeight: 1.55,
+            marginBottom: "1rem",
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 600 }}>{photoWarning.main}</p>
+          <p style={{ margin: "0.45rem 0 0", fontWeight: 400 }}>{photoWarning.detail}</p>
+        </div>
       )}
 
       {!loading && userId && (
