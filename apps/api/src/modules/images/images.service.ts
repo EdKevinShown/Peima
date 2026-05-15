@@ -12,6 +12,8 @@ import { writeFile } from "node:fs/promises";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
 import type { MemoryUploadedFile } from "./memory-uploaded-file";
+import { UserImageDetectionService } from "./user-image-detection.service";
+import type { UserImageQualityDetectionResult } from "./user-image-quality-detection";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -26,7 +28,10 @@ export class ImagesService {
   private readonly uploadDir =
     process.env.UPLOAD_DIR ?? join(process.cwd(), "uploads", "user-images");
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userImageDetection: UserImageDetectionService,
+  ) {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
@@ -39,11 +44,27 @@ export class ImagesService {
     }
   }
 
+  private detectionToCreateFields(detection: UserImageQualityDetectionResult) {
+    return {
+      detectionStatus: detection.status,
+      detectionReasonCodes: detection.reasonCodes,
+      detectionScoreJson:
+        detection.scores === null
+          ? Prisma.JsonNull
+          : (detection.scores as Prisma.InputJsonValue),
+      detectionRulesVersion: detection.rulesVersion,
+      detectedAt: new Date(),
+    };
+  }
+
   private toCreateInput(dto: CreateUserImageDto): Prisma.UserImageCreateInput {
     const input: Prisma.UserImageCreateInput = {
       user: { connect: { id: dto.userId } },
       imageUrl: dto.imageUrl,
       styleTags: dto.styleTags ?? [],
+      detectionStatus: "skipped",
+      detectionReasonCodes: [],
+      detectedAt: new Date(),
     };
 
     if (dto.faceEmbedding !== undefined) {
@@ -77,7 +98,7 @@ export class ImagesService {
   }
 
   /**
-   * Saves multipart file to disk and creates a row with a public URL under /uploads/user-images/.
+   * Saves multipart file to disk, runs P7.4-r1a quality detection, creates row.
    */
   async createFromUpload(
     userId: string,
@@ -99,7 +120,18 @@ export class ImagesService {
     await writeFile(dest, buf);
     const base = publicBaseUrl.replace(/\/$/, "");
     const imageUrl = `${base}/uploads/user-images/${stored}`;
-    return this.create({ userId, imageUrl });
+
+    await this.ensureUserExists(userId);
+
+    const detection = await this.userImageDetection.detectFromBuffer(buf);
+
+    return this.prisma.userImage.create({
+      data: {
+        user: { connect: { id: userId } },
+        imageUrl,
+        ...this.detectionToCreateFields(detection),
+      },
+    });
   }
 
   async findAllByUser(userId: string) {

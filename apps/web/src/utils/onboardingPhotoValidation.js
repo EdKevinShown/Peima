@@ -89,3 +89,32 @@ export function mapOnboardingPhotoUploadError(err) {
   }
   return "上传未完成，请稍后重试。";
 }
+
+/** P7.4-r1a：后端 detectionReasonCodes → 中文提示 */
+export function mapDetectionReasonCodesToMessage(reasonCodes) {
+  const codes = Array.isArray(reasonCodes) ? reasonCodes : [];
+  if (codes.includes("UNREADABLE_IMAGE")) {
+    return "这张图片无法读取，请换一张清晰照片。";
+  }
+  if (codes.includes("TOO_DARK")) {
+    return "照片偏暗，建议到光线更亮的环境重新拍摄。";
+  }
+  if (codes.includes("TOO_BLUR")) {
+    return "照片不够清晰，请对焦后重新拍摄或换一张更清晰的照片。";
+  }
+  return "这张照片暂时不适合使用，请换一张更清晰的本人照片。";
+}
+
+/**
+ * @param {string | undefined} detectionStatus
+ * @param {string[] | undefined} reasonCodes
+ * @returns {boolean} 是否可进入审美偏好页
+ */
+export function canProceedToPhotoPreference(detectionStatus, reasonCodes) {
+  if (!detectionStatus) return true;
+  if (detectionStatus === "passed" || detectionStatus === "skipped") return true;
+  if (detectionStatus === "failed") return false;
+  return false;
+}
+
+export { mapDetectionReasonCodesToMessage as detectionFailureMessage };

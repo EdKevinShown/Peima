@@ -1,9 +1,8 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { OnboardingService } from "../src/modules/onboarding/onboarding.service";
 
-describe("OnboardingService (P7.2 status)", () => {
+describe("OnboardingService (P7.2 + P7.4-r1a status)", () => {
   async function createService(prisma: Record<string, unknown>) {
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -22,17 +21,23 @@ describe("OnboardingService (P7.2 status)", () => {
           onboardingPhotoPreviewCompletedAt: null,
         }),
       },
-      userImage: { count: jest.fn().mockResolvedValue(0) },
+      userImage: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(0)
+          .mockResolvedValueOnce(0),
+      },
     };
     const svc = await createService(prisma);
     await expect(svc.getPhotoStatus("u1")).resolves.toEqual({
       hasPhoto: false,
+      hasPassingPhoto: false,
       hasPhotoPreference: false,
       nextStep: "photo_upload",
     });
   });
 
-  it("nextStep photo_preference when has photo but aesthetic not completed (ignore legacy styleTags)", async () => {
+  it("nextStep photo_upload when only failed images (hasPhoto true, hasPassingPhoto false)", async () => {
     const prisma = {
       user: {
         findUnique: jest.fn().mockResolvedValue({
@@ -40,11 +45,41 @@ describe("OnboardingService (P7.2 status)", () => {
           onboardingPhotoPreviewCompletedAt: null,
         }),
       },
-      userImage: { count: jest.fn().mockResolvedValue(1) },
+      userImage: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(2)
+          .mockResolvedValueOnce(0),
+      },
     };
     const svc = await createService(prisma);
     await expect(svc.getPhotoStatus("u1")).resolves.toEqual({
       hasPhoto: true,
+      hasPassingPhoto: false,
+      hasPhotoPreference: false,
+      nextStep: "photo_upload",
+    });
+  });
+
+  it("nextStep photo_preference when has passing or skipped photo", async () => {
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          onboardingPhotoAestheticCompletedAt: null,
+          onboardingPhotoPreviewCompletedAt: null,
+        }),
+      },
+      userImage: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(1),
+      },
+    };
+    const svc = await createService(prisma);
+    await expect(svc.getPhotoStatus("u1")).resolves.toEqual({
+      hasPhoto: true,
+      hasPassingPhoto: true,
       hasPhotoPreference: false,
       nextStep: "photo_preference",
     });
@@ -58,11 +93,17 @@ describe("OnboardingService (P7.2 status)", () => {
           onboardingPhotoPreviewCompletedAt: null,
         }),
       },
-      userImage: { count: jest.fn().mockResolvedValue(1) },
+      userImage: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(1),
+      },
     };
     const svc = await createService(prisma);
     await expect(svc.getPhotoStatus("u1")).resolves.toEqual({
       hasPhoto: true,
+      hasPassingPhoto: true,
       hasPhotoPreference: true,
       nextStep: "photo_preview",
     });
@@ -76,11 +117,17 @@ describe("OnboardingService (P7.2 status)", () => {
           onboardingPhotoPreviewCompletedAt: new Date(),
         }),
       },
-      userImage: { count: jest.fn().mockResolvedValue(1) },
+      userImage: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(1),
+      },
     };
     const svc = await createService(prisma);
     await expect(svc.getPhotoStatus("u1")).resolves.toEqual({
       hasPhoto: true,
+      hasPassingPhoto: true,
       hasPhotoPreference: true,
       nextStep: "questionnaire",
     });

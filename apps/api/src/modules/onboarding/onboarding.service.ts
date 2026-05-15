@@ -13,10 +13,14 @@ export type OnboardingPhotoNextStep =
 
 export type OnboardingPhotoStatusPayload = {
   hasPhoto: boolean;
+  /** At least one image with detectionStatus passed or skipped (legacy). */
+  hasPassingPhoto: boolean;
   /** True after user completes onboarding aesthetic tags (P7.2 flag), not legacy styleTags alone. */
   hasPhotoPreference: boolean;
   nextStep: OnboardingPhotoNextStep;
 };
+
+const USABLE_DETECTION_STATUSES = ["passed", "skipped"] as const;
 
 const MAX_STYLE_TAGS = 8;
 
@@ -64,11 +68,19 @@ export class OnboardingService {
     });
     const hasPhoto = imageCount > 0;
 
+    const passingCount = await this.prisma.userImage.count({
+      where: {
+        userId,
+        detectionStatus: { in: [...USABLE_DETECTION_STATUSES] },
+      },
+    });
+    const hasPassingPhoto = passingCount > 0;
+
     const aestheticDone = user.onboardingPhotoAestheticCompletedAt != null;
     const previewAck = user.onboardingPhotoPreviewCompletedAt != null;
 
     let nextStep: OnboardingPhotoNextStep;
-    if (!hasPhoto) {
+    if (!hasPassingPhoto) {
       nextStep = "photo_upload";
     } else if (!aestheticDone) {
       nextStep = "photo_preference";
@@ -80,6 +92,7 @@ export class OnboardingService {
 
     return {
       hasPhoto,
+      hasPassingPhoto,
       hasPhotoPreference: aestheticDone,
       nextStep,
     };

@@ -131,20 +131,27 @@ model UserPreference {
 
 /// User photo metadata + analysis snapshot (URL assumed already hosted; no binary stored here).
 model UserImage {
-  id                  String   @id @default(cuid())
-  userId              String
-  imageUrl            String
-  faceEmbedding       Json?
-  attractivenessScore Float?
-  styleTags           String[] @default([])
-  ageEstimate         Int?
-  genderEstimate      String?
-  confidence          Float?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  userId                String
+  imageUrl              String
+  faceEmbedding         Json?
+  attractivenessScore   Float?
+  styleTags             String[]  @default([])
+  ageEstimate           Int?
+  genderEstimate        String?
+  confidence            Float?
+  /// P7.4-r1a: pending | passed | failed | skipped (legacy rows default skipped)
+  detectionStatus       String    @default("skipped")
+  detectionReasonCodes  String[]  @default([])
+  detectionScoreJson    Json?
+  detectionRulesVersion String?
+  detectedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, detectionStatus, createdAt])
   @@map("user_images")
 }
 

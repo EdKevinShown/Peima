@@ -6,11 +6,14 @@ import {
   uploadUserImageFile,
 } from "../api/images";
 import { getMe } from "../api/auth";
+import { getOnboardingPhotoStatus } from "../api/onboarding";
 import { resolveUserId } from "../utils/resolveUserId";
 import {
   validateOnboardingPhotoFileBasics,
   validateOnboardingPhotoCanDecode,
   mapOnboardingPhotoUploadError,
+  canProceedToPhotoPreference,
+  mapDetectionReasonCodesToMessage,
 } from "../utils/onboardingPhotoValidation";
 
 export default function OnboardingPhotoUploadPage() {
@@ -26,8 +29,10 @@ export default function OnboardingPhotoUploadPage() {
   const [brokenImageIds, setBrokenImageIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
 
-  const hasPhoto = existingImages.length > 0;
+  const [hasPassingPhoto, setHasPassingPhoto] = useState(false);
   const previewQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+
+  const hasPhoto = existingImages.length > 0;
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -39,8 +44,15 @@ export default function OnboardingPhotoUploadPage() {
     setError(null);
     try {
       await getMe();
-      const list = await listUserImages(userId);
+      const [list, status] = await Promise.all([
+        listUserImages(userId),
+        getOnboardingPhotoStatus(),
+      ]);
       setExistingImages(Array.isArray(list) ? list : []);
+      setHasPassingPhoto(
+        status.hasPassingPhoto === true ||
+          (status.hasPassingPhoto === undefined && status.hasPhoto === true),
+      );
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
       setExistingImages([]);
@@ -97,10 +109,22 @@ export default function OnboardingPhotoUploadPage() {
     setUploading(true);
     setError(null);
     try {
-      await uploadUserImageFile(userId, pickedFile);
+      const row = await uploadUserImageFile(userId, pickedFile);
       setPickedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
+      }
+      if (
+        !canProceedToPhotoPreference(row.detectionStatus, row.detectionReasonCodes)
+      ) {
+        setExistingImages((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+        setHasPassingPhoto(false);
+        setError(
+          new Error(
+            mapDetectionReasonCodesToMessage(row.detectionReasonCodes),
+          ),
+        );
+        return;
       }
       navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
@@ -111,9 +135,9 @@ export default function OnboardingPhotoUploadPage() {
   }, [userId, pickedFile, navigate]);
 
   const onContinuePreference = useCallback(() => {
-    if (!userId || !hasPhoto) return;
+    if (!userId || !hasPassingPhoto) return;
     navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
-  }, [userId, hasPhoto, navigate]);
+  }, [userId, hasPassingPhoto, navigate]);
 
   return (
     <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
@@ -210,7 +234,7 @@ export default function OnboardingPhotoUploadPage() {
             <button type="button" onClick={() => void onUpload()} disabled={uploading || !pickedFile}>
               {uploading ? "上传中…" : "上传并继续"}
             </button>
-            <button type="button" onClick={onContinuePreference} disabled={!hasPhoto || uploading}>
+            <button type="button" onClick={onContinuePreference} disabled={!hasPassingPhoto || uploading}>
               继续选择审美偏好
             </button>
             <Link

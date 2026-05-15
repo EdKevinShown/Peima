@@ -8,6 +8,7 @@ export type OnboardingPhotoNextStep =
 
 export type OnboardingPhotoStatus = {
   hasPhoto: boolean;
+  hasPassingPhoto?: boolean;
   hasPhotoPreference: boolean;
   nextStep: OnboardingPhotoNextStep;
 };
