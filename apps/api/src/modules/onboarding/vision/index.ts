@@ -16,3 +16,4 @@ export * from "./visual-ranking-shadow-vision-input";
 export * from "./visual-ranking-shadow.builder";
 export * from "./visual-ranking-shadow-persist";
 export * from "./visual-ranking-shadow.service";
+export * from "./visual-ranking-shadow-audit";

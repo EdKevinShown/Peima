@@ -21,7 +21,8 @@
     "m56-b4b:rrm-top2-hook-job-consumer": "node dist/dev-cli/m56-b4b-rrm-top2-hook-job-consumer-cli.js",
     "m56-b5:rrm-top2-hook-job-apply": "node dist/dev-cli/m56-b5-rrm-top2-hook-job-apply-cli.js",
     "m56-b8:rrm-top2-hook-job-dry-run-poller": "node dist/dev-cli/m56-b8-rrm-top2-hook-job-dry-run-poller-cli.js",
-    "p74:r1b-face-runtime-check": "node scripts/p74-r1b-face-runtime-check.mjs"
+    "p74:r1b-face-runtime-check": "node scripts/p74-r1b-face-runtime-check.mjs",
+    "p75:r4-shadow-audit": "node dist/dev-cli/p75-r4-visual-ranking-shadow-audit-runner.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
