@@ -6,14 +6,41 @@ export type OnboardingPhotoNextStep =
   | "photo_preview"
   | "questionnaire";
 
+export type BlockingPhotoReviewStatus =
+  | "rejected"
+  | "needs_reupload"
+  | "appealed"
+  | "appeal_rejected";
+
+export type PhotoGateMessageKey =
+  | "photo_rejected"
+  | "photo_needs_reupload"
+  | "photo_appealed"
+  | "photo_appeal_rejected";
+
+export type PhotoReviewStatusSummary =
+  | "none"
+  | "pending_review"
+  | "blocked_rejected"
+  | "blocked_needs_reupload"
+  | "blocked_appealed"
+  | "blocked_appeal_rejected";
+
 export type OnboardingPhotoStatus = {
   hasPhoto: boolean;
   hasPassingPhoto?: boolean;
   hasPhotoPreference: boolean;
   nextStep: OnboardingPhotoNextStep;
-  /** P7.4-r1d-b: informational; does not gate onboarding. */
   hasPhotoUnderReview?: boolean;
-  photoReviewStatusSummary?: "pending_review" | "none";
+  photoReviewStatusSummary?: PhotoReviewStatusSummary;
+  /** P7.4-r1d-e2 */
+  hasBlockedPhoto?: boolean;
+  blockingPhotoReviewStatus?: BlockingPhotoReviewStatus | null;
+  photoGateMessageKey?: PhotoGateMessageKey | null;
+  photoGateReasonCodes?: string[];
+  passingPhotoCount?: number;
+  blockedPhotoId?: string | null;
+  passingPhotoId?: string | null;
 };
 
 export type OnboardingPhotoPreviewItem = {

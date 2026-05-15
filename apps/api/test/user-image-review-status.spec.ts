@@ -142,11 +142,15 @@ describe("OnboardingService review fields (P7.4-r1d-b)", () => {
         }),
       },
       userImage: {
-        count: jest
-          .fn()
-          .mockResolvedValueOnce(1)
-          .mockResolvedValueOnce(1)
-          .mockResolvedValueOnce(1),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "img-1",
+            detectionStatus: "skipped",
+            reviewStatus: "pending_review",
+            reviewReasonCodes: ["DETECTION_SKIPPED_REVIEW"],
+            createdAt: new Date("2026-05-15T10:00:00.000Z"),
+          },
+        ]),
       },
     };
     const svc = await createService(prisma);
@@ -155,6 +159,8 @@ describe("OnboardingService review fields (P7.4-r1d-b)", () => {
       nextStep: "photo_preference",
       hasPhotoUnderReview: true,
       photoReviewStatusSummary: "pending_review",
+      hasBlockedPhoto: false,
+      photoGateMessageKey: null,
     });
   });
 });

@@ -9,6 +9,11 @@ import { getMe } from "../api/auth";
 import { getOnboardingPhotoStatus } from "../api/onboarding";
 import { resolveUserId } from "../utils/resolveUserId";
 import {
+  getBlockedPhotoReviewBanner,
+  getPartialBlockedPhotoHint,
+  getPhotoUnderReviewMessage,
+} from "../utils/onboardingPhotoGateMessages";
+import {
   validateOnboardingPhotoFileBasics,
   validateOnboardingPhotoCanDecode,
   mapOnboardingPhotoUploadError,
@@ -19,6 +24,14 @@ import {
   MULTIPLE_FACES_WARNING_MAIN,
 } from "../utils/onboardingPhotoValidation";
 
+const bannerBase = {
+  borderRadius: 10,
+  padding: "0.75rem 0.9rem",
+  fontSize: "0.9rem",
+  lineHeight: 1.55,
+  marginBottom: "1rem",
+};
+
 export default function OnboardingPhotoUploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -27,16 +40,34 @@ export default function OnboardingPhotoUploadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [existingImages, setExistingImages] = useState([]);
+  const [photoStatus, setPhotoStatus] = useState(null);
   const [pickedFile, setPickedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [brokenImageIds, setBrokenImageIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
 
-  const [hasPassingPhoto, setHasPassingPhoto] = useState(false);
   const [photoWarning, setPhotoWarning] = useState(null);
   const previewQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
 
   const hasPhoto = existingImages.length > 0;
+  const hasPassingPhoto = photoStatus?.hasPassingPhoto === true;
+
+  const blockedBanner = useMemo(
+    () => getBlockedPhotoReviewBanner(photoStatus),
+    [photoStatus],
+  );
+  const underReviewMessage = useMemo(
+    () => getPhotoUnderReviewMessage(photoStatus),
+    [photoStatus],
+  );
+  const partialBlockedHint = useMemo(
+    () => getPartialBlockedPhotoHint(photoStatus),
+    [photoStatus],
+  );
+
+  const applyStatus = useCallback((status) => {
+    setPhotoStatus(status ?? null);
+  }, []);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -53,21 +84,38 @@ export default function OnboardingPhotoUploadPage() {
         getOnboardingPhotoStatus(),
       ]);
       setExistingImages(Array.isArray(list) ? list : []);
-      setHasPassingPhoto(
-        status.hasPassingPhoto === true ||
-          (status.hasPassingPhoto === undefined && status.hasPhoto === true),
-      );
+      applyStatus(status);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
       setExistingImages([]);
+      applyStatus(null);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, applyStatus]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const navigateByStatus = useCallback(
+    (status) => {
+      if (!userId || !status) return;
+      const q = `?userId=${encodeURIComponent(userId)}`;
+      if (status.nextStep === "photo_preference") {
+        navigate(`/onboarding/photo-preference${q}`);
+        return;
+      }
+      if (status.nextStep === "photo_preview") {
+        navigate(`/onboarding/photo-preview${q}`);
+        return;
+      }
+      if (status.nextStep === "questionnaire") {
+        navigate(`/questionnaire${q}`);
+      }
+    },
+    [userId, navigate],
+  );
 
   const openFilePicker = useCallback(() => {
     setError(null);
@@ -121,11 +169,13 @@ export default function OnboardingPhotoUploadPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      setExistingImages((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+
       if (
         !canProceedToPhotoPreference(row.detectionStatus, row.detectionReasonCodes)
       ) {
-        setExistingImages((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
-        setHasPassingPhoto(false);
+        const status = await getOnboardingPhotoStatus();
+        applyStatus(status);
         setError(
           new Error(
             mapDetectionReasonCodesToMessage(row.detectionReasonCodes),
@@ -133,8 +183,14 @@ export default function OnboardingPhotoUploadPage() {
         );
         return;
       }
-      setExistingImages((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
-      setHasPassingPhoto(true);
+
+      const status = await getOnboardingPhotoStatus();
+      applyStatus(status);
+
+      if (status.nextStep === "photo_upload" || !status.hasPassingPhoto) {
+        return;
+      }
+
       if (hasMultipleFacesWarning(row.detectionScoreJson)) {
         setPhotoWarning({
           main: MULTIPLE_FACES_WARNING_MAIN,
@@ -142,18 +198,32 @@ export default function OnboardingPhotoUploadPage() {
         });
         return;
       }
-      navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
+
+      navigateByStatus(status);
     } catch (e) {
       setError(new Error(mapOnboardingPhotoUploadError(e)));
     } finally {
       setUploading(false);
     }
-  }, [userId, pickedFile, navigate]);
+  }, [userId, pickedFile, applyStatus, navigateByStatus]);
 
-  const onContinuePreference = useCallback(() => {
-    if (!userId || !hasPassingPhoto) return;
-    navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
-  }, [userId, hasPassingPhoto, navigate]);
+  const onContinuePreference = useCallback(async () => {
+    if (!userId) return;
+    setError(null);
+    try {
+      const status = await getOnboardingPhotoStatus();
+      applyStatus(status);
+      if (!status.hasPassingPhoto) {
+        return;
+      }
+      if (status.nextStep === "photo_upload") {
+        return;
+      }
+      navigateByStatus(status);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    }
+  }, [userId, applyStatus, navigateByStatus]);
 
   return (
     <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
@@ -185,6 +255,52 @@ export default function OnboardingPhotoUploadPage() {
 
       {loading && !uploading && <LoadingState label="加载中…" />}
       {uploading && <LoadingState label="上传中…" />}
+
+      {blockedBanner ? (
+        <div
+          role="alert"
+          style={{
+            ...bannerBase,
+            color: "#991b1b",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 600 }}>{blockedBanner.main}</p>
+          {blockedBanner.detail ? (
+            <p style={{ margin: "0.45rem 0 0", fontWeight: 400 }}>{blockedBanner.detail}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!blockedBanner && underReviewMessage ? (
+        <div
+          role="status"
+          style={{
+            ...bannerBase,
+            color: "#92400e",
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+          }}
+        >
+          {underReviewMessage}
+        </div>
+      ) : null}
+
+      {!blockedBanner && partialBlockedHint ? (
+        <div
+          role="status"
+          style={{
+            ...bannerBase,
+            color: "#475569",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          {partialBlockedHint}
+        </div>
+      ) : null}
+
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
@@ -194,14 +310,10 @@ export default function OnboardingPhotoUploadPage() {
         <div
           role="status"
           style={{
+            ...bannerBase,
             color: "#92400e",
             background: "#fffbeb",
             border: "1px solid #fde68a",
-            borderRadius: 10,
-            padding: "0.75rem 0.9rem",
-            fontSize: "0.9rem",
-            lineHeight: 1.55,
-            marginBottom: "1rem",
           }}
         >
           <p style={{ margin: 0, fontWeight: 600 }}>{photoWarning.main}</p>
@@ -213,7 +325,9 @@ export default function OnboardingPhotoUploadPage() {
         <section style={{ opacity: uploading ? 0.65 : 1 }}>
           {hasPhoto ? (
             <div style={{ marginBottom: "1.25rem" }}>
-              <div style={{ fontWeight: 600, color: "#334155", marginBottom: "0.5rem", fontSize: "0.95rem" }}>
+              <div
+                style={{ fontWeight: 600, color: "#334155", marginBottom: "0.5rem", fontSize: "0.95rem" }}
+              >
                 当前照片
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem" }}>
@@ -268,7 +382,7 @@ export default function OnboardingPhotoUploadPage() {
             <button type="button" onClick={() => void onUpload()} disabled={uploading || !pickedFile}>
               {uploading ? "上传中…" : "上传并继续"}
             </button>
-            <button type="button" onClick={onContinuePreference} disabled={!hasPassingPhoto || uploading}>
+            <button type="button" onClick={() => void onContinuePreference()} disabled={!hasPassingPhoto || uploading}>
               继续选择审美偏好
             </button>
             <Link
@@ -296,8 +410,8 @@ export default function OnboardingPhotoUploadPage() {
           ) : (
             <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: "0.75rem" }}>
               {hasPhoto
-                ? "可选中新照片后点击「上传并继续」，校验通过并成功上传后将前往审美偏好。"
-                : "请先选择一张照片，校验通过并成功上传后将前往审美偏好。"}
+                ? "可选中新照片后点击「上传并继续」，校验通过并成功上传后将根据审核状态继续流程。"
+                : "请先选择一张照片，校验通过并成功上传后将根据审核状态继续流程。"}
             </p>
           )}
         </section>
