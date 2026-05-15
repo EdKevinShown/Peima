@@ -101,13 +101,15 @@ function pickTagsFromWeights(
 export function buildVisionProfileFromRules(
   input: OnboardingVisionRulesInput,
   env: OnboardingVisionEnv = readOnboardingVisionEnv(),
+  options?: { sourceVersion?: string },
 ): OnboardingVisionProfileV1 {
   const parsed = parseDetectionScoreJsonForVision(input.detectionScoreJson);
 
   if (!parsed.hasUsableSignals) {
     return createSkippedOnboardingVisionProfile(env, {
       provider: "rules",
-      sourceVersion: ONBOARDING_VISION_SOURCE_RULES,
+      sourceVersion:
+        options?.sourceVersion ?? ONBOARDING_VISION_SOURCE_RULES,
       reason: "missing_detection",
     });
   }
@@ -179,7 +181,8 @@ export function buildVisionProfileFromRules(
   return assembleOnboardingVisionProfile(
     {
       provider: "rules",
-      sourceVersion: ONBOARDING_VISION_SOURCE_RULES,
+      sourceVersion:
+        options?.sourceVersion ?? ONBOARDING_VISION_SOURCE_RULES,
       visionStatus: "ok",
       fallbackUsed: false,
       photoVisualTags,

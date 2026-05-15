@@ -7,3 +7,6 @@ export * from "./onboarding-vision-rules-provider";
 export * from "./onboarding-vision-stub-provider";
 export * from "./onboarding-vision.service";
 export * from "./onboarding-vision.module";
+export * from "./onboarding-vision-score-json.merge";
+export * from "./onboarding-vision-persist";
+export * from "./onboarding-vision-sidecar";

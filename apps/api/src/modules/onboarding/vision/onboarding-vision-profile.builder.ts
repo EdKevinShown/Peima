@@ -15,6 +15,12 @@ import { ONBOARDING_VISION_SCHEMA_VERSION } from "./onboarding-vision.types";
 export const ONBOARDING_VISION_SOURCE_RULES = "p7.5-r1-rules" as const;
 export const ONBOARDING_VISION_SOURCE_STUB = "p7.5-r1-stub" as const;
 export const ONBOARDING_VISION_SOURCE_DISABLED = "p7.5-r1-disabled" as const;
+/** P7.5-r2 persist sidecar */
+export const ONBOARDING_VISION_SOURCE_RULES_R2 = "p7.5-r2-rules" as const;
+export const ONBOARDING_VISION_SOURCE_STUB_R2 = "p7.5-r2-stub" as const;
+export const ONBOARDING_VISION_SOURCE_PERSIST_FAILED = "p7.5-r2-persist-failed" as const;
+export const ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2 =
+  "p7.5-r2-zhipu-skipped" as const;
 
 export type ProfileAssemblyParams = {
   provider: OnboardingVisionProvider;

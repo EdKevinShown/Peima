@@ -1,5 +1,5 @@
 /**
- * P7.5-r1: vision module (not imported by OnboardingModule until r2 wiring).
+ * P7.5: vision module (wired via ImagesModule for r2 score-json sidecar).
  */
 
 import { Module } from "@nestjs/common";

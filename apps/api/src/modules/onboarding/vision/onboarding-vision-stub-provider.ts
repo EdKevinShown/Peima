@@ -16,11 +16,13 @@ import type {
 export function buildVisionProfileFromStub(
   _input: OnboardingVisionRulesInput = {},
   env: OnboardingVisionEnv = readOnboardingVisionEnv(),
+  options?: { sourceVersion?: string },
 ): OnboardingVisionProfileV1 {
   return assembleOnboardingVisionProfile(
     {
       provider: "stub",
-      sourceVersion: ONBOARDING_VISION_SOURCE_STUB,
+      sourceVersion:
+        options?.sourceVersion ?? ONBOARDING_VISION_SOURCE_STUB,
       visionStatus: "ok",
       fallbackUsed: false,
       photoVisualTags: ["生活感", "简约干净", "清爽自然"],

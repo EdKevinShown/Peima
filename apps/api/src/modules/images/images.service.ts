@@ -16,6 +16,7 @@ import { UserImageDetectionService } from "./user-image-detection.service";
 import { toUserImagePublicDto, type UserImagePublicDto } from "./user-image-public.dto";
 import { resolveUserImageReviewStateFromDetection } from "./user-image-review-status";
 import type { UserImageDetectionResult } from "./user-image-quality-detection";
+import { UserImageVisionSidecarService } from "./user-image-vision-sidecar.service";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -33,6 +34,7 @@ export class ImagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userImageDetection: UserImageDetectionService,
+    private readonly visionSidecar: UserImageVisionSidecarService,
   ) {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
@@ -46,6 +48,18 @@ export class ImagesService {
     }
   }
 
+  private detectionScoreJsonForPersist(
+    detectionScoreJson: UserImageDetectionResult["scoreJson"],
+  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    const merged = this.visionSidecar.applyToDetectionScoreJson(
+      detectionScoreJson,
+    );
+    if (merged === null || merged === undefined) {
+      return Prisma.JsonNull;
+    }
+    return merged as Prisma.InputJsonValue;
+  }
+
   private detectionAndReviewToCreateFields(detection: UserImageDetectionResult) {
     const review = resolveUserImageReviewStateFromDetection({
       detectionStatus: detection.status,
@@ -55,10 +69,7 @@ export class ImagesService {
     return {
       detectionStatus: detection.status,
       detectionReasonCodes: detection.reasonCodes,
-      detectionScoreJson:
-        detection.scoreJson === null
-          ? Prisma.JsonNull
-          : (detection.scoreJson as Prisma.InputJsonValue),
+      detectionScoreJson: this.detectionScoreJsonForPersist(detection.scoreJson),
       detectionRulesVersion: detection.rulesVersion,
       detectedAt: new Date(),
       reviewStatus: review.reviewStatus,
