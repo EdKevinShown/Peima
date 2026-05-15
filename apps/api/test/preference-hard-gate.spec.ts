@@ -16,7 +16,7 @@ describe("passesPreferenceHardGate (aligned with worker computePreferenceScore d
     city: "上海",
     height: 170,
     education: "本科",
-    occupation: "工程师",
+    occupation: "制造业 / 工程 / 技术",
     relationshipGoal: "认真恋爱",
   });
 
@@ -84,7 +84,7 @@ describe("passesPreferenceHardGate (aligned with worker computePreferenceScore d
       minHeight: 160,
       maxHeight: 180,
       educationPreferences: ["本科"],
-      occupationPreferences: ["工程师"],
+      occupationPreferences: ["制造业 / 工程 / 技术"],
       relationshipGoalPreferences: ["认真恋爱"],
     };
     expect(passesPreferenceHardGate(pref, candidate())).toBe(true);

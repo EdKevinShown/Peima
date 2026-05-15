@@ -10,6 +10,13 @@ import {
 } from "@peima/shared/matching/preference-hard-gate";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateOrUpdatePreferenceDto } from "./dto/create-or-update-preference.dto";
+import {
+  ACCOUNT_CITY_VALUES,
+  ACCOUNT_EDUCATION_VALUES,
+  ACCOUNT_OCCUPATION_CATEGORY_VALUES,
+  ACCOUNT_RELATIONSHIP_GOAL_VALUES,
+  ACCOUNT_STYLE_TAG_WHITELIST,
+} from "@peima/shared/constants";
 
 const PREFERENCE_DENOM_EMPTY_MESSAGE =
   "Preferences must include at least one matchable dimension: both minAge and maxAge, preferredCities, both minHeight and maxHeight, or a non-empty education, occupation, or relationship-goal preference list.";
@@ -33,6 +40,50 @@ export class PreferencesService {
     if (minHeight != null && maxHeight != null && minHeight > maxHeight) {
       throw new BadRequestException("minHeight cannot be greater than maxHeight");
     }
+  }
+
+  private assertEachAllowed(
+    field: string,
+    values: string[] | undefined,
+    allowed: readonly string[],
+  ) {
+    if (!values?.length) return;
+    const set = new Set(allowed);
+    for (const v of values) {
+      if (!set.has(v)) {
+        throw new BadRequestException(
+          `${field} contains invalid value: ${String(v)}`,
+        );
+      }
+    }
+  }
+
+  private assertStructuredPreferenceLists(dto: CreateOrUpdatePreferenceDto) {
+    this.assertEachAllowed(
+      "preferredCities",
+      dto.preferredCities,
+      ACCOUNT_CITY_VALUES,
+    );
+    this.assertEachAllowed(
+      "educationPreferences",
+      dto.educationPreferences,
+      ACCOUNT_EDUCATION_VALUES,
+    );
+    this.assertEachAllowed(
+      "occupationPreferences",
+      dto.occupationPreferences,
+      ACCOUNT_OCCUPATION_CATEGORY_VALUES,
+    );
+    this.assertEachAllowed(
+      "relationshipGoalPreferences",
+      dto.relationshipGoalPreferences,
+      ACCOUNT_RELATIONSHIP_GOAL_VALUES,
+    );
+    this.assertEachAllowed(
+      "styleTags",
+      dto.styleTags,
+      ACCOUNT_STYLE_TAG_WHITELIST,
+    );
   }
 
   private gatePrefFromCreateDto(
@@ -111,6 +162,7 @@ export class PreferencesService {
   async upsertForUser(userId: string, dto: CreateOrUpdatePreferenceDto) {
     await this.ensureUserExists(userId);
     this.validateAgeHeightRanges(dto);
+    this.assertStructuredPreferenceLists(dto);
 
     const createData: Prisma.UserPreferenceCreateInput = {
       user: { connect: { id: userId } },

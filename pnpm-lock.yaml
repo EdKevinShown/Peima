@@ -181,6 +181,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@peima/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       react:
         specifier: ^19.0.0
         version: 19.2.5

@@ -20,6 +20,11 @@ export default defineConfig({
     strictPort: true,
   },
   resolve: {
-    alias: {},
+    alias: {
+      "@peima/shared/constants": resolve(
+        __dirname,
+        "../../packages/shared/constants/index.ts",
+      ),
+    },
   },
 });

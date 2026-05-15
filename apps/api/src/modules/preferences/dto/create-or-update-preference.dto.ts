@@ -5,67 +5,67 @@ import {
   IsOptional,
   IsString,
   Max,
-  MaxLength,
   Min,
 } from "class-validator";
+import {
+  ACCOUNT_MAX_AGE,
+  ACCOUNT_MAX_HEIGHT_CM,
+  ACCOUNT_MIN_AGE,
+  ACCOUNT_MIN_HEIGHT_CM,
+} from "@peima/shared/constants";
 
 export class CreateOrUpdatePreferenceDto {
   @IsOptional()
   @IsInt()
-  @Min(0)
-  @Max(150)
+  @Min(ACCOUNT_MIN_AGE)
+  @Max(ACCOUNT_MAX_AGE)
   minAge?: number;
 
   @IsOptional()
   @IsInt()
-  @Min(0)
-  @Max(150)
+  @Min(ACCOUNT_MIN_AGE)
+  @Max(ACCOUNT_MAX_AGE)
   maxAge?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @MaxLength(128, { each: true })
   @ArrayMaxSize(50)
   preferredCities?: string[];
 
   @IsOptional()
   @IsInt()
-  @Min(50)
-  @Max(260)
+  @Min(ACCOUNT_MIN_HEIGHT_CM)
+  @Max(ACCOUNT_MAX_HEIGHT_CM)
   minHeight?: number;
 
   @IsOptional()
   @IsInt()
-  @Min(50)
-  @Max(260)
+  @Min(ACCOUNT_MIN_HEIGHT_CM)
+  @Max(ACCOUNT_MAX_HEIGHT_CM)
   maxHeight?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @MaxLength(64, { each: true })
   @ArrayMaxSize(50)
   educationPreferences?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @MaxLength(128, { each: true })
   @ArrayMaxSize(50)
   occupationPreferences?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @MaxLength(128, { each: true })
   @ArrayMaxSize(50)
   relationshipGoalPreferences?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @MaxLength(32, { each: true })
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(24)
   styleTags?: string[];
 }

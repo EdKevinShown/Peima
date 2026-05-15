@@ -10,6 +10,7 @@
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
+    "@peima/shared": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.6.1"

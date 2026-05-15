@@ -1,30 +1,14 @@
 /**
  * P7.5-r1: closed Chinese photoVisualTags taxonomy.
+ * Tag list is sourced from `@peima/shared/constants` (P7.5-r4-j) to stay in sync with account preference styleTags whitelist.
  */
+
+import { ACCOUNT_STYLE_TAG_WHITELIST } from "@peima/shared/constants";
 
 export const PHOTO_VISUAL_TAXONOMY_VERSION = "p7.5-v1" as const;
 
-/** Onboarding aesthetic UI tags (12) + P7.5 extensions (6). */
-export const PHOTO_VISUAL_TAGS = [
-  "清爽自然",
-  "甜美可爱",
-  "酷感个性",
-  "成熟稳重",
-  "文艺温柔",
-  "运动阳光",
-  "生活感",
-  "精致感",
-  "松弛感",
-  "氛围感",
-  "简约干净",
-  "有个性",
-  "都市精致",
-  "高级感",
-  "户外感",
-  "社交感",
-  "室内日常",
-  "证件感弱",
-] as const;
+/** Onboarding aesthetic + P7.5 extensions (same strings as `UserPreference.styleTags` closed set). */
+export const PHOTO_VISUAL_TAGS = ACCOUNT_STYLE_TAG_WHITELIST;
 
 export type PhotoVisualTag = (typeof PHOTO_VISUAL_TAGS)[number];
 
