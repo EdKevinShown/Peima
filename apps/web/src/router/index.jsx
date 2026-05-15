@@ -14,6 +14,7 @@ import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
 import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
 import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
+import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import OnboardingPhotoPreviewPage from "../pages/OnboardingPhotoPreviewPage";
@@ -215,6 +216,10 @@ function HomePage() {
             <Link to="/admin/ai-sim-job-diagnostic" style={{ color: "#94a3b8" }}>
               内部诊断详情
             </Link>
+            {" · "}
+            <Link to="/admin/photo-review" style={{ color: "#94a3b8" }}>
+              照片审核
+            </Link>
           </li>
         </ul>
       </details>
@@ -245,6 +250,7 @@ export default function AppRoutes() {
       <Route path="/account" element={<AccountPage />} />
       <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
       <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
+      <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
       <Route element={<MainAppShell />}>
         <Route path="questionnaire" element={<QuestionnairePage />} />
         <Route path="questionnaire-profile" element={<QuestionnaireProfilePage />} />
