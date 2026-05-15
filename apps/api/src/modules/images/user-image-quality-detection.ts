@@ -2,8 +2,11 @@
  * P7.4-r1a + P7.4-r1b: quality + face presence detection (pure functions).
  */
 
+import { buildFaceDetectionScoreBlock } from "./user-image-primary-face";
+
 export const USER_IMAGE_DETECTION_RULES_VERSION_R1A = "p7.4-r1a-v1" as const;
 export const USER_IMAGE_DETECTION_RULES_VERSION_R1B = "p7.4-r1b-v1" as const;
+export const USER_IMAGE_DETECTION_RULES_VERSION_R1C = "p7.4-r1c-v1" as const;
 
 export type UserImageDetectionStatus =
   | "pending"
@@ -26,9 +29,26 @@ export type UserImageQualityMetrics = {
   sampleHeight: number;
 };
 
+export type UserImageFaceBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type UserImageFaceScoreFace = {
   score: number;
-  box: { x: number; y: number; width: number; height: number };
+  box: UserImageFaceBox;
+};
+
+export type UserImageFaceScoreFaceEnriched = UserImageFaceScoreFace & {
+  areaRatio: number;
+  centerDistance: number;
+  primaryScore: number;
+};
+
+export type UserImagePrimaryFace = UserImageFaceScoreFaceEnriched & {
+  index: number;
 };
 
 export type UserImageDetectionScoreJson = {
@@ -40,7 +60,8 @@ export type UserImageDetectionScoreJson = {
   };
   face?: {
     faceCount: number;
-    faces: UserImageFaceScoreFace[];
+    faces: UserImageFaceScoreFaceEnriched[];
+    primaryFace?: UserImagePrimaryFace;
   };
   warnings?: string[];
   pipeline: string[];
@@ -160,7 +181,7 @@ export function mergeQualityAndFaceDetection(params: {
         pipeline,
         faceDetectionEnabled: true,
       },
-      rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1B,
+      rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1C,
     };
   }
 
@@ -168,17 +189,23 @@ export function mergeQualityAndFaceDetection(params: {
     warnings.push("MULTIPLE_FACES");
   }
 
+  const faceBlock = buildFaceDetectionScoreBlock(
+    faces,
+    metrics.width,
+    metrics.height,
+  );
+
   return {
     status: "passed",
     reasonCodes: [],
     scoreJson: {
       quality,
-      face: { faceCount, faces },
+      face: faceBlock,
       warnings,
       pipeline,
       faceDetectionEnabled: true,
     },
-    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1B,
+    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1C,
   };
 }
 

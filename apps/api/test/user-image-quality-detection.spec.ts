@@ -6,7 +6,7 @@ import {
   mergeQualityAndFaceDetection,
   unreadableDetectionResult,
   USER_IMAGE_DETECTION_RULES_VERSION_R1A,
-  USER_IMAGE_DETECTION_RULES_VERSION_R1B,
+  USER_IMAGE_DETECTION_RULES_VERSION_R1C,
 } from "../src/modules/images/user-image-quality-detection";
 import { UserImageDetectionService } from "../src/modules/images/user-image-detection.service";
 import type { UserImageFaceDetector } from "../src/modules/images/user-image-face-detection.adapter";
@@ -80,8 +80,9 @@ describe("user-image-quality-detection (P7.4-r1a/r1b)", () => {
       });
       expect(r.status).toBe("failed");
       expect(r.reasonCodes).toEqual(["FACE_NOT_FOUND"]);
-      expect(r.rulesVersion).toBe(USER_IMAGE_DETECTION_RULES_VERSION_R1B);
+      expect(r.rulesVersion).toBe(USER_IMAGE_DETECTION_RULES_VERSION_R1C);
       expect(r.scoreJson?.face?.faceCount).toBe(0);
+      expect(r.scoreJson?.face?.primaryFace).toBeUndefined();
     });
 
     it("passed with MULTIPLE_FACES warning when faceCount > 1", () => {
@@ -97,6 +98,21 @@ describe("user-image-quality-detection (P7.4-r1a/r1b)", () => {
       expect(r.status).toBe("passed");
       expect(r.reasonCodes).toEqual([]);
       expect(r.scoreJson?.warnings).toContain("MULTIPLE_FACES");
+      expect(r.reasonCodes).not.toContain("MULTIPLE_FACES");
+      expect(r.rulesVersion).toBe(USER_IMAGE_DETECTION_RULES_VERSION_R1C);
+      expect(r.scoreJson?.face?.primaryFace).toBeDefined();
+    });
+
+    it("single face includes primaryFace at index 0", () => {
+      const r = mergeQualityAndFaceDetection({
+        metrics: baseMetrics,
+        faceCount: 1,
+        faces: [{ score: 0.88, box: { x: 300, y: 200, width: 160, height: 180 } }],
+        faceDetectionEnabled: true,
+      });
+      expect(r.status).toBe("passed");
+      expect(r.scoreJson?.face?.primaryFace?.index).toBe(0);
+      expect(r.scoreJson?.face?.faces[0]?.areaRatio).toBeGreaterThan(0);
     });
 
     it("passed without face block when face detection disabled", () => {
