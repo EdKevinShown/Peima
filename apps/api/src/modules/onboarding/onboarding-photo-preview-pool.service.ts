@@ -146,6 +146,117 @@ function pickOldest(
   return { id: c.id, score: 0.4 };
 }
 
+/** Never show the pool viewer as a candidate item (3+2+1). */
+export function isEligiblePreviewCandidate(
+  candidateUserId: string,
+  viewerUserId: string,
+): boolean {
+  return candidateUserId !== viewerUserId && candidateUserId.trim() !== "";
+}
+
+/**
+ * Product contract: exactly 6 distinct other users, or generate throws
+ * `BadRequestException` (no self-fallback; never pad with viewer).
+ */
+export function buildSixNonSelfPreviewSlots(
+  viewerUserId: string,
+  gAll: GatedRow[],
+  viewerPref: ViewerPreferenceLike,
+): {
+  slotDefs: Array<{
+    rankInPool: number;
+    tier: string;
+    displayMode: string;
+    candidateId: string;
+    score: number;
+  }>;
+  used: Set<string>;
+} {
+  const safePool = gAll.filter((c) =>
+    isEligiblePreviewCandidate(c.id, viewerUserId),
+  );
+
+  const used = new Set<string>();
+  const aesthetic = pickByStyleScore(safePool, used, viewerPref, 3);
+  for (const { id } of aesthetic) {
+    if (!isEligiblePreviewCandidate(id, viewerUserId)) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+    used.add(id);
+  }
+
+  const styleSimilar = pickByPreferenceScore(safePool, used, viewerPref, 2);
+  for (const { id } of styleSimilar) {
+    if (!isEligiblePreviewCandidate(id, viewerUserId)) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+    used.add(id);
+  }
+
+  const reflow = pickOldest(safePool, used);
+  if (!reflow || !isEligiblePreviewCandidate(reflow.id, viewerUserId)) {
+    throw new BadRequestException("暂时无法分配预览位，请稍后重试。");
+  }
+  used.add(reflow.id);
+
+  if (used.size !== 6 || used.has(viewerUserId)) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+
+  const slotDefs = [
+    {
+      rankInPool: 1,
+      tier: "aesthetic_fit",
+      displayMode: "clear",
+      candidateId: aesthetic[0]!.id,
+      score: aesthetic[0]!.score,
+    },
+    {
+      rankInPool: 2,
+      tier: "aesthetic_fit",
+      displayMode: "clear",
+      candidateId: aesthetic[1]!.id,
+      score: aesthetic[1]!.score,
+    },
+    {
+      rankInPool: 3,
+      tier: "aesthetic_fit",
+      displayMode: "clear",
+      candidateId: aesthetic[2]!.id,
+      score: aesthetic[2]!.score,
+    },
+    {
+      rankInPool: 4,
+      tier: "style_similar",
+      displayMode: "blurred",
+      candidateId: styleSimilar[0]!.id,
+      score: styleSimilar[0]!.score,
+    },
+    {
+      rankInPool: 5,
+      tier: "style_similar",
+      displayMode: "blurred",
+      candidateId: styleSimilar[1]!.id,
+      score: styleSimilar[1]!.score,
+    },
+    {
+      rankInPool: 6,
+      tier: "reflow",
+      displayMode: "hidden",
+      candidateId: reflow.id,
+      score: reflow.score,
+    },
+  ];
+
+  for (const s of slotDefs) {
+    if (!isEligiblePreviewCandidate(s.candidateId, viewerUserId)) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+  }
+
+  return { slotDefs, used };
+}
+
 export type OnboardingPhotoPreviewItemDto = {
   id: string;
   candidateUserId: string;
@@ -216,6 +327,9 @@ export class OnboardingPhotoPreviewPoolService {
 
       for (const row of rows) {
         if (out.length >= MAX_GATED_CANDIDATES) break;
+        if (!isEligiblePreviewCandidate(row.id, viewerId)) {
+          continue;
+        }
         if (
           !passesPreferenceHardGate(
             gatePref,
@@ -295,44 +409,21 @@ export class OnboardingPhotoPreviewPoolService {
     const gatePref = toPreferenceGatePref(prefRow);
     const viewerPref = toViewerPreferenceLike(prefRow);
 
-    const gAll = await this.collectGatedCandidates(viewerUserId, gatePref);
+    const gRaw = await this.collectGatedCandidates(viewerUserId, gatePref);
+    const gAll = gRaw.filter((c) =>
+      isEligiblePreviewCandidate(c.id, viewerUserId),
+    );
     if (gAll.length < 6) {
       throw new BadRequestException(
         `当前符合条件的候选用户不足，无法生成完整的第一印象预览池（至少需要 6 位；当前约 ${gAll.length} 位）。请稍后再试，或邀请更多好友完善资料与照片。`,
       );
     }
 
-    const used = new Set<string>();
-    const aesthetic = pickByStyleScore(gAll, used, viewerPref, 3);
-    for (const { id } of aesthetic) used.add(id);
-
-    const styleSimilar = pickByPreferenceScore(gAll, used, viewerPref, 2);
-    for (const { id } of styleSimilar) used.add(id);
-
-    const reflow = pickOldest(gAll, used);
-    if (!reflow) {
-      throw new BadRequestException("暂时无法分配预览位，请稍后重试。");
-    }
-    used.add(reflow.id);
-
-    if (used.size !== 6) {
-      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
-    }
-
-    const slotDefs: {
-      rankInPool: number;
-      tier: string;
-      displayMode: string;
-      candidateId: string;
-      score: number;
-    }[] = [
-      { rankInPool: 1, tier: "aesthetic_fit", displayMode: "clear", candidateId: aesthetic[0].id, score: aesthetic[0].score },
-      { rankInPool: 2, tier: "aesthetic_fit", displayMode: "clear", candidateId: aesthetic[1].id, score: aesthetic[1].score },
-      { rankInPool: 3, tier: "aesthetic_fit", displayMode: "clear", candidateId: aesthetic[2].id, score: aesthetic[2].score },
-      { rankInPool: 4, tier: "style_similar", displayMode: "blurred", candidateId: styleSimilar[0].id, score: styleSimilar[0].score },
-      { rankInPool: 5, tier: "style_similar", displayMode: "blurred", candidateId: styleSimilar[1].id, score: styleSimilar[1].score },
-      { rankInPool: 6, tier: "reflow", displayMode: "hidden", candidateId: reflow.id, score: reflow.score },
-    ];
+    const { slotDefs } = buildSixNonSelfPreviewSlots(
+      viewerUserId,
+      gAll,
+      viewerPref,
+    );
 
     await this.archiveActiveOnboardingPoolsOnly(viewerUserId);
 
@@ -361,8 +452,8 @@ export class OnboardingPhotoPreviewPoolService {
       },
     });
 
-    void this.visualRankingShadow
-      .computeShadow({
+    void Promise.resolve(
+      this.visualRankingShadow.computeShadow({
         viewerUserId,
         poolId: created.id,
         baselineItems: created.items.map((it) => ({
@@ -372,7 +463,9 @@ export class OnboardingPhotoPreviewPoolService {
           candidateUserId: it.candidateUserId,
           score: it.score,
         })),
-        gatedCandidates: gAll.map((row) => ({
+        gatedCandidates: gAll.filter((row) =>
+          isEligiblePreviewCandidate(row.id, viewerUserId),
+        ).map((row) => ({
           id: row.id,
           createdAt: row.createdAt,
           firstImageStyleTags: row.firstImageStyleTags,
@@ -385,10 +478,10 @@ export class OnboardingPhotoPreviewPoolService {
         })),
         viewerStyleTags: prefRow?.styleTags ?? [],
         viewerPref,
-      })
-      .catch(() => {
-        /* shadow must not fail pool generate */
-      });
+      }),
+    ).catch(() => {
+      /* shadow must not fail pool generate */
+    });
 
     return this.toViewerBundle(created);
   }
@@ -412,11 +505,22 @@ export class OnboardingPhotoPreviewPoolService {
       }[];
     },
   ): Promise<OnboardingPhotoPreviewPoolBundleDto> {
-    const candidateIds = [...new Set(pool.items.map((i) => i.candidateUserId))];
-    const images = await this.prisma.userImage.findMany({
-      where: { userId: { in: candidateIds } },
-      orderBy: { createdAt: "asc" },
-    });
+    const poolViewerId = pool.userId;
+    const candidateIds = [
+      ...new Set(
+        pool.items
+          .map((i) => i.candidateUserId)
+          .filter((cid) => isEligiblePreviewCandidate(cid, poolViewerId)),
+      ),
+    ];
+    const rawImages =
+      candidateIds.length === 0
+        ? []
+        : await this.prisma.userImage.findMany({
+            where: { userId: { in: candidateIds } },
+            orderBy: { createdAt: "asc" },
+          });
+    const images = Array.isArray(rawImages) ? rawImages : [];
     const firstImageUrlByUser = new Map<string, string>();
     for (const img of images) {
       if (!firstImageUrlByUser.has(img.userId)) {
@@ -437,7 +541,12 @@ export class OnboardingPhotoPreviewPoolService {
       if (it.displayMode === "hidden") {
         return base;
       }
-      const url = firstImageUrlByUser.get(it.candidateUserId) ?? null;
+      const url = isEligiblePreviewCandidate(
+        it.candidateUserId,
+        poolViewerId,
+      )
+        ? (firstImageUrlByUser.get(it.candidateUserId) ?? null)
+        : null;
       return { ...base, imageUrl: url };
     });
 
