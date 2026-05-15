@@ -26,7 +26,9 @@
     "p75:r4-e-shadow-sample": "node dist/dev-cli/p75-r4-e-shadow-sample-harness-runner.js",
     "p75:r4-backfill-vision": "node dist/dev-cli/p75-r4-f-backfill-onboarding-vision-runner.js",
     "p75:r4-import-candidate-images": "node dist/dev-cli/p75-r4-h-import-candidate-images-runner.js",
-    "p75:r4-candidate-vision-audit": "node dist/dev-cli/p75-r4-g-candidate-vision-coverage-audit-runner.js"
+    "p75:r4-candidate-vision-audit": "node dist/dev-cli/p75-r4-g-candidate-vision-coverage-audit-runner.js",
+    "p75:r4-m-preview-pool-funnel": "node dist/dev-cli/p75-r4-m-preview-pool-funnel-runner.js",
+    "p75:r4-o2-preview-pool-active-audit": "node dist/dev-cli/p75-r4-o2-preview-pool-active-audit-runner.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

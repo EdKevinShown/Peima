@@ -1,4 +1,5 @@
 import { authHeaders, baseUrl, handleJson } from "./auth";
+import { preferenceIntOrNull } from "../utils/preferenceIntOrNull.js";
 
 export type UserPreferenceRecord = {
   id: string;
@@ -54,6 +55,18 @@ export async function upsertUserPreferences(
   userId: string,
   body: UpsertPreferencePayload,
 ) {
+  const normalized: UpsertPreferencePayload = {
+    minAge: preferenceIntOrNull(body.minAge),
+    maxAge: preferenceIntOrNull(body.maxAge),
+    minHeight: preferenceIntOrNull(body.minHeight),
+    maxHeight: preferenceIntOrNull(body.maxHeight),
+    preferredCities: body.preferredCities ?? [],
+    educationPreferences: body.educationPreferences ?? [],
+    occupationPreferences: body.occupationPreferences ?? [],
+    relationshipGoalPreferences:
+      body.relationshipGoalPreferences ?? [],
+    ...(body.styleTags !== undefined ? { styleTags: body.styleTags } : {}),
+  };
   const res = await fetch(
     `${baseUrl}/preferences/${encodeURIComponent(userId)}`,
     {
@@ -62,7 +75,7 @@ export async function upsertUserPreferences(
         "Content-Type": "application/json",
         ...authHeaders(),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(normalized),
     },
   );
   return handleJson<UserPreferenceRecord>(res);

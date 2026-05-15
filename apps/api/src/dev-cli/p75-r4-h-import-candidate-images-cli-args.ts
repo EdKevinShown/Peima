@@ -13,6 +13,8 @@ export type P75R4HImportCandidateImagesCliArgs = {
   runVision: boolean;
   /** Skip rows mapped to this user id (e.g. current dev viewer); never imports into self. */
   excludeUserId?: string;
+  /** Attach `debug.nonDemoBlockedRows` (masked ids) when present — dev troubleshooting only */
+  debugBlockedRows?: boolean;
 };
 
 function takeValue(argv: string[], i: number): string | undefined {
@@ -41,6 +43,7 @@ export function parseP75R4HImportCandidateImagesCliArgs(
   let runDetection = true;
   let runVision = false;
   let excludeUserId: string | undefined;
+  let debugBlockedRows: boolean | undefined;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]!;
@@ -132,6 +135,16 @@ export function parseP75R4HImportCandidateImagesCliArgs(
         excludeUserId = v.trim() || undefined;
         i += 1;
       }
+    } else if (a.startsWith("--debugBlockedRows=")) {
+      debugBlockedRows = parseBoolArg(a.slice("--debugBlockedRows=".length), false);
+    } else if (a === "--debugBlockedRows") {
+      const v = takeValue(argv, i);
+      if (v !== undefined && !v.startsWith("--")) {
+        debugBlockedRows = parseBoolArg(v, false);
+        i += 1;
+      } else {
+        debugBlockedRows = true;
+      }
     }
   }
 
@@ -147,5 +160,6 @@ export function parseP75R4HImportCandidateImagesCliArgs(
     runDetection,
     runVision,
     excludeUserId,
+    debugBlockedRows,
   };
 }

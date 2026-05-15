@@ -21,6 +21,7 @@ import {
   isStrictBinaryPreviewGender,
   normalizeUserGenderForPreview,
 } from "./onboarding-preview-gender";
+import { previewPoolRowDisplaySourceKey } from "./onboarding-photo-preview-display-image-key";
 
 const ONBOARDING_POOL_STATUS = {
   ACTIVE: "active",
@@ -43,6 +44,8 @@ type GatedRow = {
   occupation: string;
   relationshipGoal: string;
   firstImageStyleTags: string[];
+  /** First onboarding image URL (`UserImage.createdAt` asc) for r4-o2 source dedupe. */
+  firstImageUrl: string | null;
   /** Raw `User.gender` for audit / parity; filtering uses normalization. */
   gender: string;
 };
@@ -97,6 +100,14 @@ function toPreferenceGateCandidate(
   };
 }
 
+function dedupeGatedCandidateRowsByUserId(rows: GatedRow[]): GatedRow[] {
+  const byId = new Map<string, GatedRow>();
+  for (const row of rows) {
+    if (!byId.has(row.id)) byId.set(row.id, row);
+  }
+  return Array.from(byId.values());
+}
+
 function toCandidateLike(
   row: Pick<
     GatedRow,
@@ -121,11 +132,16 @@ function toCandidateLike(
 /** Pick `take` user ids by highest style score vs viewer tags; tie-break older registration first. */
 function pickByStyleScore(
   gAll: GatedRow[],
-  exclude: Set<string>,
+  excludeIds: Set<string>,
+  excludeSourceKeys: Set<string>,
   viewerPref: ViewerPreferenceLike,
   take: number,
 ): { id: string; score: number }[] {
-  const pool = gAll.filter((c) => !exclude.has(c.id));
+  const pool = gAll.filter(
+    (c) =>
+      !excludeIds.has(c.id) &&
+      !excludeSourceKeys.has(previewPoolRowDisplaySourceKey(c)),
+  );
   const scored = pool.map((c) => ({
     id: c.id,
     score: computeStyleScore(viewerPref, {
@@ -143,11 +159,16 @@ function pickByStyleScore(
 /** Pick `take` by preference dimension score; tie-break older registration first. */
 function pickByPreferenceScore(
   gAll: GatedRow[],
-  exclude: Set<string>,
+  excludeIds: Set<string>,
+  excludeSourceKeys: Set<string>,
   viewerPref: ViewerPreferenceLike,
   take: number,
 ): { id: string; score: number }[] {
-  const pool = gAll.filter((c) => !exclude.has(c.id));
+  const pool = gAll.filter(
+    (c) =>
+      !excludeIds.has(c.id) &&
+      !excludeSourceKeys.has(previewPoolRowDisplaySourceKey(c)),
+  );
   const scored = pool.map((c) => ({
     id: c.id,
     score: computePreferenceScore(viewerPref, toCandidateLike(c)),
@@ -162,9 +183,14 @@ function pickByPreferenceScore(
 
 function pickOldest(
   gAll: GatedRow[],
-  exclude: Set<string>,
+  excludeIds: Set<string>,
+  excludeSourceKeys: Set<string>,
 ): { id: string; score: number } | null {
-  const pool = gAll.filter((c) => !exclude.has(c.id));
+  const pool = gAll.filter(
+    (c) =>
+      !excludeIds.has(c.id) &&
+      !excludeSourceKeys.has(previewPoolRowDisplaySourceKey(c)),
+  );
   if (pool.length === 0) return null;
   const ordered = [...pool].sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
@@ -203,30 +229,73 @@ export function buildSixNonSelfPreviewSlots(
     isEligiblePreviewCandidate(c.id, viewerUserId),
   );
 
-  const used = new Set<string>();
-  const aesthetic = pickByStyleScore(safePool, used, viewerPref, 3);
-  for (const { id } of aesthetic) {
-    if (!isEligiblePreviewCandidate(id, viewerUserId)) {
+  const usedIds = new Set<string>();
+  const usedSourceKeys = new Set<string>();
+
+  const rowById = (id: string): GatedRow => {
+    const r = safePool.find((c) => c.id === id);
+    if (!r) {
       throw new BadRequestException("预览池生成出现异常，请稍后重试。");
     }
-    used.add(id);
-  }
+    return r;
+  };
 
-  const styleSimilar = pickByPreferenceScore(safePool, used, viewerPref, 2);
-  for (const { id } of styleSimilar) {
-    if (!isEligiblePreviewCandidate(id, viewerUserId)) {
-      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  const absorbPicked = (picks: { id: string }[]) => {
+    for (const { id } of picks) {
+      if (!isEligiblePreviewCandidate(id, viewerUserId)) {
+        throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+      }
+      const r = rowById(id);
+      usedIds.add(id);
+      usedSourceKeys.add(previewPoolRowDisplaySourceKey(r));
     }
-    used.add(id);
-  }
+  };
 
-  const reflow = pickOldest(safePool, used);
+  const aesthetic = pickByStyleScore(
+    safePool,
+    usedIds,
+    usedSourceKeys,
+    viewerPref,
+    3,
+  );
+  if (aesthetic.length !== 3) {
+    throw new BadRequestException(
+      "当前符合条件的候选用户不足，无法生成完整的第一印象预览池（至少需要 6 位；请稍后再试，或邀请更多好友完善资料与照片。",
+    );
+  }
+  absorbPicked(aesthetic);
+
+  const styleSimilar = pickByPreferenceScore(
+    safePool,
+    usedIds,
+    usedSourceKeys,
+    viewerPref,
+    2,
+  );
+  if (styleSimilar.length !== 2) {
+    throw new BadRequestException(
+      "当前符合条件的候选用户不足，无法生成完整的第一印象预览池（至少需要 6 位；请稍后再试，或邀请更多好友完善资料与照片。",
+    );
+  }
+  absorbPicked(styleSimilar);
+
+  const reflow = pickOldest(safePool, usedIds, usedSourceKeys);
   if (!reflow || !isEligiblePreviewCandidate(reflow.id, viewerUserId)) {
     throw new BadRequestException("暂时无法分配预览位，请稍后重试。");
   }
-  used.add(reflow.id);
+  absorbPicked([reflow]);
 
-  if (used.size !== 6 || used.has(viewerUserId)) {
+  if (usedIds.size !== 6 || usedIds.has(viewerUserId)) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+  if (usedSourceKeys.size !== 6) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+
+  if (new Set(aesthetic.map((x) => x.id)).size !== aesthetic.length) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+  if (new Set(styleSimilar.map((x) => x.id)).size !== styleSimilar.length) {
     throw new BadRequestException("预览池生成出现异常，请稍后重试。");
   }
 
@@ -281,7 +350,22 @@ export function buildSixNonSelfPreviewSlots(
     }
   }
 
-  return { slotDefs, used };
+  const slotCandidateIds = slotDefs.map((s) => s.candidateId);
+  if (
+    slotCandidateIds.length !== 6 ||
+    new Set(slotCandidateIds).size !== slotCandidateIds.length
+  ) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+
+  const slotSourceKeys = slotDefs.map((s) =>
+    previewPoolRowDisplaySourceKey(rowById(s.candidateId)),
+  );
+  if (new Set(slotSourceKeys).size !== slotSourceKeys.length) {
+    throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+  }
+
+  return { slotDefs, used: usedIds };
 }
 
 export type OnboardingPhotoPreviewItemDto = {
@@ -347,7 +431,7 @@ export class OnboardingPhotoPreviewPoolService {
           images: {
             orderBy: { createdAt: "asc" },
             take: 1,
-            select: { styleTags: true },
+            select: { styleTags: true, imageUrl: true },
           },
         },
       });
@@ -390,6 +474,7 @@ export class OnboardingPhotoPreviewPoolService {
           occupation: row.occupation,
           relationshipGoal: row.relationshipGoal,
           firstImageStyleTags: first?.styleTags ?? [],
+          firstImageUrl: first?.imageUrl ?? null,
           gender: row.gender ?? "",
         });
       }
@@ -453,8 +538,8 @@ export class OnboardingPhotoPreviewPoolService {
       gatePref,
       viewerGenderNorm,
     );
-    const gAll = gRaw.filter((c) =>
-      isEligiblePreviewCandidate(c.id, viewerUserId),
+    const gAll = dedupeGatedCandidateRowsByUserId(
+      gRaw.filter((c) => isEligiblePreviewCandidate(c.id, viewerUserId)),
     );
     if (gAll.length < 6) {
       throw new BadRequestException(
@@ -471,11 +556,38 @@ export class OnboardingPhotoPreviewPoolService {
     const slotDefs = rawSlotDefs.filter((s) =>
       isEligiblePreviewCandidate(s.candidateId, viewerUserId),
     );
+    const slotCandidateIds = slotDefs.map((s) => s.candidateId);
     if (
       slotDefs.length !== 6 ||
-      slotDefs.some((s) => s.candidateId === viewerUserId)
+      slotDefs.some((s) => s.candidateId === viewerUserId) ||
+      new Set(slotCandidateIds).size !== 6
     ) {
       throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+
+    const gById = new Map(gAll.map((r) => [r.id, r]));
+    const slotSourceKeys = slotCandidateIds.map((cid) => {
+      const row = gById.get(cid);
+      if (!row) {
+        throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+      }
+      return previewPoolRowDisplaySourceKey(row);
+    });
+    if (new Set(slotSourceKeys).size !== slotSourceKeys.length) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+
+    const candRows = await this.prisma.user.findMany({
+      where: { id: { in: slotCandidateIds } },
+      select: { id: true, gender: true },
+    });
+    if (candRows.length !== 6) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
+    for (const r of candRows) {
+      if (!candidatePassesOppositeBinaryGate(viewerGenderNorm, r.gender)) {
+        throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+      }
     }
 
     await this.archiveActiveOnboardingPoolsOnly(viewerUserId);
@@ -574,24 +686,28 @@ export class OnboardingPhotoPreviewPoolService {
           .filter((cid) => isEligiblePreviewCandidate(cid, poolViewerId)),
       ),
     ];
-    const rawImages =
+    const picks =
       candidateIds.length === 0
         ? []
-        : await this.prisma.userImage.findMany({
-            where: {
-              AND: [
-                { userId: { in: candidateIds } },
-                { userId: { not: poolViewerId } },
-              ],
-            },
-            orderBy: { createdAt: "asc" },
-          });
-    const images = Array.isArray(rawImages) ? rawImages : [];
+        : await Promise.all(
+            candidateIds.map(async (candidateId) => {
+              const img = await this.prisma.userImage.findFirst({
+                where: {
+                  AND: [
+                    { userId: candidateId },
+                    { userId: { not: poolViewerId } },
+                  ],
+                },
+                orderBy: { createdAt: "asc" },
+                select: { imageUrl: true },
+              });
+              return { candidateId, imageUrl: img?.imageUrl ?? null };
+            }),
+          );
+
     const firstImageUrlByUser = new Map<string, string>();
-    for (const img of images) {
-      if (!firstImageUrlByUser.has(img.userId)) {
-        firstImageUrlByUser.set(img.userId, img.imageUrl);
-      }
+    for (const { candidateId, imageUrl } of picks) {
+      if (imageUrl) firstImageUrlByUser.set(candidateId, imageUrl);
     }
 
     const items: OnboardingPhotoPreviewItemDto[] = pool.items.map((it) => {

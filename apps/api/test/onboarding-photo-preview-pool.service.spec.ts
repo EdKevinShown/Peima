@@ -7,6 +7,7 @@ import {
   isEligiblePreviewCandidate,
 } from "../src/modules/onboarding/onboarding-photo-preview-pool.service";
 import { VisualRankingShadowService } from "../src/modules/onboarding/vision/visual-ranking-shadow.service";
+import { previewPoolRowDisplaySourceKey } from "../src/modules/onboarding/onboarding-photo-preview-display-image-key";
 
 function candidateRow(
   id: string,
@@ -14,6 +15,7 @@ function candidateRow(
   styleTags: string[],
   /** Default opposite to a male viewer preview path. */
   gender = "female",
+  firstImageUrl: string | null = `https://cdn.example.test/u/${id}-r4h-u${id}--${id}-stem--.jpg`,
 ) {
   return {
     id,
@@ -25,12 +27,12 @@ function candidateRow(
     occupation: "工程师",
     relationshipGoal: "认真恋爱",
     gender,
-    images: [{ styleTags }],
+    images: [{ styleTags, imageUrl: firstImageUrl }],
   };
 }
 
 function toGated(row: ReturnType<typeof candidateRow>) {
-  const im = row.images[0];
+  const im = row.images[0] as { styleTags: string[]; imageUrl?: string | null };
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -41,8 +43,55 @@ function toGated(row: ReturnType<typeof candidateRow>) {
     occupation: row.occupation,
     relationshipGoal: row.relationshipGoal,
     firstImageStyleTags: im?.styleTags ?? [],
+    firstImageUrl: im?.imageUrl ?? null,
     gender: row.gender ?? "",
   };
+}
+
+/** Prisma `user.findMany`: collect (batch, []) then post-slot gender verify (`id.in`). */
+function mockUserFindManyForGenerate(
+  batch: ReturnType<typeof candidateRow>[],
+): jest.Mock {
+  let collectCall = 0;
+  return jest.fn().mockImplementation((args: { where?: { id?: { in?: string[] } } }) => {
+    const ids = args?.where?.id?.in;
+    if (Array.isArray(ids)) {
+      return Promise.resolve(
+        ids.map((id) => ({
+          id,
+          gender: batch.find((r) => r.id === id)?.gender ?? "female",
+        })),
+      );
+    }
+    collectCall += 1;
+    if (collectCall === 1) return Promise.resolve(batch);
+    return Promise.resolve([]);
+  });
+}
+
+/** Mirrors Prisma `findFirst` where used in `toViewerBundle` (AND: userId eq, userId not viewer). */
+function mockUserImageFindFirst(
+  resolver: (candidateUserId: string, poolViewerId: string) => { imageUrl: string } | null,
+) {
+  return jest.fn().mockImplementation(
+    (args: { where?: { AND?: Array<{ userId?: unknown }> } }) => {
+      const and = args.where?.AND ?? [];
+      const eq = and.find((c) => typeof c.userId === "string") as
+        | { userId: string }
+        | undefined;
+      const notClause = and.find(
+        (c) =>
+          c.userId !== undefined &&
+          typeof c.userId === "object" &&
+          c.userId !== null &&
+          "not" in (c.userId as object),
+      ) as { userId: { not: string } } | undefined;
+      const candidateId = eq?.userId;
+      const viewerId = notClause?.userId?.not;
+      if (!candidateId || !viewerId) return Promise.resolve(null);
+      return Promise.resolve(resolver(candidateId, viewerId));
+    },
+  );
 }
 
 describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
@@ -79,7 +128,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       },
       userImage: {
         count: jest.fn().mockResolvedValue(1),
-        findMany: jest.fn(),
+        findFirst: jest.fn(),
       },
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({
@@ -104,7 +153,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
     (prisma.user as { findMany: jest.Mock }).findMany = jest
       .fn()
       .mockResolvedValueOnce(six)
-      .mockResolvedValue([]);
+      .mockResolvedValueOnce(six.map((r) => ({ id: r.id, gender: r.gender })));
 
     createPool.mockImplementation(async (args: { data: { items: { create: unknown[] } } }) => {
       const creates = args.data.items.create as {
@@ -132,9 +181,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       };
     });
 
-    (prisma.userImage as { findMany: jest.Mock }).findMany = jest.fn().mockResolvedValue([
-      { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
-    ]);
+    (prisma.userImage as { findFirst: jest.Mock }).findFirst =
+      mockUserImageFindFirst((cid) =>
+        cid === "a" ? { imageUrl: "https://x/a.jpg" } : null,
+      );
 
     const computeShadow = jest
       .fn()
@@ -176,7 +226,12 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       candidateUserId: string;
     }[];
     expect(items).toHaveLength(6);
+    expect(new Set(items.map((i) => i.candidateUserId)).size).toBe(6);
     expect(items.every((i) => i.candidateUserId !== "viewer-1")).toBe(true);
+    const byTier = (t: string) => items.filter((i) => i.tier === t).map((i) => i.candidateUserId);
+    expect(new Set([...byTier("aesthetic_fit"), ...byTier("style_similar"), ...byTier("reflow")]).size).toBe(
+      6,
+    );
     expect(items.filter((i) => i.tier === "aesthetic_fit" && i.displayMode === "clear")).toHaveLength(3);
     expect(items.filter((i) => i.tier === "style_similar" && i.displayMode === "blurred")).toHaveLength(2);
     expect(items.filter((i) => i.tier === "reflow" && i.displayMode === "hidden")).toHaveLength(1);
@@ -202,13 +257,15 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         findMany: jest
           .fn()
           .mockResolvedValueOnce(six)
-          .mockResolvedValue([]),
+          .mockResolvedValueOnce(six.map((r) => ({ id: r.id, gender: r.gender }))),
       },
       userImage: {
         count: jest.fn().mockResolvedValue(1),
-        findMany: jest.fn().mockResolvedValue([
-          { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
-        ]),
+        findFirst: mockUserImageFindFirst((cid) =>
+          ["a", "b", "c", "d", "e", "f"].includes(cid)
+            ? { imageUrl: `https://x/${cid}.jpg` }
+            : null,
+        ),
       },
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({
@@ -306,13 +363,17 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           onboardingPhotoAestheticCompletedAt: new Date(),
           gender: "male",
         }),
-        findMany: jest.fn().mockResolvedValueOnce(six).mockResolvedValue([]),
+        findMany: jest.fn()
+          .mockResolvedValueOnce(six)
+          .mockResolvedValueOnce(six.map((r) => ({ id: r.id, gender: r.gender }))),
       },
       userImage: {
         count: jest.fn().mockResolvedValue(1),
-        findMany: jest.fn().mockResolvedValue([
-          { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
-        ]),
+        findFirst: mockUserImageFindFirst((cid) =>
+          ["a", "b", "c", "d", "e", "f"].includes(cid)
+            ? { imageUrl: `https://x/${cid}.jpg` }
+            : null,
+        ),
       },
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({
@@ -392,9 +453,9 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         }),
       },
       userImage: {
-        findMany: jest.fn().mockResolvedValue([
-          { userId: "c1", imageUrl: "https://secret.jpg", createdAt: new Date() },
-        ]),
+        findFirst: mockUserImageFindFirst((cid) =>
+          cid === "c1" ? { imageUrl: "https://secret.jpg" } : null,
+        ),
       },
     };
     const moduleRef = await Test.createTestingModule({
@@ -430,11 +491,13 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           onboardingPhotoAestheticCompletedAt: new Date(),
           gender: "male",
         }),
-        findMany: jest.fn().mockResolvedValueOnce(polluted).mockResolvedValue([]),
+        findMany: jest.fn()
+          .mockResolvedValueOnce(polluted)
+          .mockResolvedValueOnce(six.map((r) => ({ id: r.id, gender: r.gender }))),
       },
       userImage: {
         count: jest.fn().mockResolvedValue(1),
-        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: mockUserImageFindFirst(() => null),
       },
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({
@@ -509,7 +572,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       },
       userImage: {
         count: jest.fn().mockResolvedValue(1),
-        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: mockUserImageFindFirst(() => null),
       },
       userPreference: {
         findUnique: jest.fn().mockResolvedValue({
@@ -577,38 +640,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         }),
       },
       userImage: {
-        findMany: jest.fn().mockImplementation((q: unknown) => {
-          const qw = (
-            typeof q === "object" &&
-            q !== null &&
-            "where" in q &&
-            (
-              q as {
-                where?: { AND?: Array<{ userId?: unknown }> };
-              }
-            ).where
-              ? (q as {
-                  where: { AND?: Array<{ userId?: unknown }> };
-                }).where
-              : null
-          );
-          const clauses = qw?.AND ?? [];
-          const notVx = clauses.some(
-            (c) =>
-              c.userId !== undefined &&
-              typeof c.userId === "object" &&
-              c.userId !== null &&
-              "not" in c.userId &&
-              (c.userId as { not: string }).not === "vx",
-          );
-          expect(notVx).toBe(true);
-          return Promise.resolve([
-            {
-              userId: "other-u",
-              imageUrl: otherUrl,
-              createdAt: new Date("2020-01-01"),
-            },
-          ]);
+        findFirst: mockUserImageFindFirst((candidateId, viewerId) => {
+          expect(viewerId).toBe("vx");
+          if (candidateId === "other-u") return { imageUrl: otherUrl };
+          return null;
         }),
       },
     };
@@ -691,17 +726,11 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
             onboardingPhotoAestheticCompletedAt: new Date(),
             gender: "male",
           }),
-          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+          findMany: mockUserFindManyForGenerate(batch),
         },
         userImage: {
           count: jest.fn().mockResolvedValue(1),
-          findMany: jest.fn().mockResolvedValue(
-            batch.map((r) => ({
-              userId: r.id,
-              imageUrl: `https://x/${r.id}.jpg`,
-              createdAt: r.createdAt,
-            })),
-          ),
+          findFirst: mockUserImageFindFirst((cid) => ({ imageUrl: `https://x/${cid}.jpg` })),
         },
         userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
         onboardingPhotoPreviewPool: {
@@ -758,11 +787,11 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
             onboardingPhotoAestheticCompletedAt: new Date(),
             gender: "女",
           }),
-          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+          findMany: mockUserFindManyForGenerate(batch),
         },
         userImage: {
           count: jest.fn().mockResolvedValue(1),
-          findMany: jest.fn().mockResolvedValue([]),
+          findFirst: mockUserImageFindFirst(() => null),
         },
         userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
         onboardingPhotoPreviewPool: {
@@ -799,9 +828,9 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
             onboardingPhotoAestheticCompletedAt: new Date(),
             gender: "male",
           }),
-          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+          findMany: mockUserFindManyForGenerate(batch),
         },
-        userImage: { count: jest.fn().mockResolvedValue(1), findMany: jest.fn() },
+        userImage: { count: jest.fn().mockResolvedValue(1), findFirst: jest.fn() },
         userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
         onboardingPhotoPreviewPool: {
           updateMany: jest.fn(),
@@ -840,16 +869,11 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
             onboardingPhotoAestheticCompletedAt: new Date(),
             gender: "",
           }),
-          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+          findMany: mockUserFindManyForGenerate(batch),
         },
         userImage: {
           count: jest.fn().mockResolvedValue(1),
-          findMany: jest.fn(),
-        },
-        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
-        onboardingPhotoPreviewPool: {
-          updateMany: onboardingArchive,
-          create: createOnboardingPool,
+          findFirst: jest.fn(),
         },
       };
       const mod = await Test.createTestingModule({
@@ -901,11 +925,11 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
             onboardingPhotoAestheticCompletedAt: new Date(),
             gender: "male",
           }),
-          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+          findMany: mockUserFindManyForGenerate(batch),
         },
         userImage: {
           count: jest.fn().mockResolvedValue(1),
-          findMany: jest.fn().mockResolvedValue([]),
+          findFirst: mockUserImageFindFirst(() => null),
         },
         userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
         onboardingPhotoPreviewPool: {
@@ -941,6 +965,107 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       expect(gated.some((g) => g.id === "xm" || g.id === "xu" || g.id === "xe")).toBe(false);
     });
 
+    it("generate dedupes prisma rows that share the same candidate id before slotting (P7.5-r4-o1)", async () => {
+      const sixIds = [
+        candidateRow("a", "2020-01-01", ["清爽自然"]),
+        candidateRow("b", "2020-02-01", ["生活感"]),
+        candidateRow("c", "2020-03-01", ["生活感"]),
+        candidateRow("d", "2020-04-01", ["成熟稳重"]),
+        candidateRow("e", "2020-05-01", ["运动阳光"]),
+        candidateRow("f", "2019-01-01", ["有个性"]),
+      ];
+      const aDup = candidateRow("a", "2020-01-01", ["清爽自然"]);
+      const polluted = [
+        aDup,
+        {
+          ...aDup,
+          createdAt: new Date("2021-06-01"),
+          images: [
+            {
+              styleTags: ["生活感"],
+              imageUrl: (aDup.images[0] as { imageUrl: string | null }).imageUrl,
+            },
+          ],
+        },
+        ...sixIds.slice(1),
+      ];
+      const createOnboardingPool = jest.fn().mockImplementation(async (args: {
+        data: {
+          items: {
+            create: Array<{
+              candidateUserId: string;
+              tier: string;
+              displayMode: string;
+              rankInPool: number;
+            }>;
+          };
+        };
+      }) => ({
+        id: "pool-dedupe",
+        userId: "viewer-1",
+        status: "active",
+        sourceVersion: "onboarding-photo-preview-v1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: (args.data.items.create as {
+          candidateUserId: string;
+          tier: string;
+          displayMode: string;
+          rankInPool: number;
+        }[]).map((c, i) => ({
+          id: `i-${i}`,
+          candidateUserId: c.candidateUserId,
+          tier: c.tier,
+          displayMode: c.displayMode,
+          rankInPool: c.rankInPool,
+          score: 0.5,
+          reasonTags: [],
+        })),
+      }));
+      const prisma = {
+        previewPool: { updateMany: jest.fn() },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "male",
+          }),
+          findMany: jest.fn()
+            .mockResolvedValueOnce(polluted)
+            .mockResolvedValueOnce(sixIds.map((r) => ({ id: r.id, gender: r.gender }))),
+        },
+        userImage: {
+          count: jest.fn().mockResolvedValue(1),
+          findFirst: mockUserImageFindFirst(() => null),
+        },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: jest.fn(),
+          create: createOnboardingPool,
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          {
+            provide: VisualRankingShadowService,
+            useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+          },
+        ],
+      }).compile();
+      await mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1");
+      const creates = (
+        createOnboardingPool.mock.calls[0][0] as {
+          data: { items: { create: { candidateUserId: string; tier: string }[] } };
+        }
+      ).data.items.create;
+      expect(new Set(creates.map((c) => c.candidateUserId)).size).toBe(6);
+      const byTier = (t: string) => creates.filter((c) => c.tier === t).map((c) => c.candidateUserId);
+      expect(new Set([...byTier("aesthetic_fit"), ...byTier("style_similar"), ...byTier("reflow")]).size).toBe(
+        6,
+      );
+    });
+
     it("toViewerBundle imageUrl resolves from UserImage.userId matching candidateUserId only", async () => {
       const prisma = {
         onboardingPhotoPreviewPool: {
@@ -965,18 +1090,13 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           }),
         },
         userImage: {
-          findMany: jest.fn().mockResolvedValue([
-            {
-              userId: "cx",
-              imageUrl: "https://cdn/candidate.jpg",
-              createdAt: new Date(),
-            },
-            {
-              userId: "v1",
-              imageUrl: "https://cdn/viewer.jpg",
-              createdAt: new Date(),
-            },
-          ]),
+          findFirst: mockUserImageFindFirst((cid) =>
+            cid === "cx"
+              ? { imageUrl: "https://cdn/candidate.jpg" }
+              : cid === "v1"
+                ? { imageUrl: "https://cdn/viewer.jpg" }
+                : null,
+          ),
         },
       };
       const mod = await Test.createTestingModule({
@@ -999,6 +1119,31 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       expect(isEligiblePreviewCandidate("u1", "u1")).toBe(false);
       expect(isEligiblePreviewCandidate("", "u1")).toBe(false);
       expect(isEligiblePreviewCandidate("c2", "u1")).toBe(true);
+    });
+
+    it("buildSixNonSelfPreviewSlots throws when gated pool contains duplicate candidate ids (P7.5-r4-o1)", () => {
+      const viewerPref = {
+        minAge: null,
+        maxAge: null,
+        preferredCities: [],
+        minHeight: null,
+        maxHeight: null,
+        educationPreferences: [],
+        occupationPreferences: [],
+        relationshipGoalPreferences: [],
+        styleTags: ["清爽自然"],
+      };
+      const rowA = toGated(candidateRow("a", "2020-01-01", ["清爽自然"]));
+      const gAll = [
+        rowA,
+        { ...rowA },
+        toGated(candidateRow("b", "2020-02-01", ["运动阳光"])),
+        toGated(candidateRow("c", "2020-03-01", ["成熟稳重"])),
+        toGated(candidateRow("d", "2020-04-01", ["有个性"])),
+        toGated(candidateRow("e", "2020-05-01", ["生活感"])),
+        toGated(candidateRow("f", "2018-01-01", ["简约干净"])),
+      ];
+      expect(() => buildSixNonSelfPreviewSlots("viewer-x", gAll, viewerPref)).toThrow(BadRequestException);
     });
 
     it("buildSixNonSelfPreviewSlots skips viewer embedded in gated rows", () => {
@@ -1035,6 +1180,61 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       expect(tiers.aesthetic_fit).toBe(3);
       expect(tiers.style_similar).toBe(2);
       expect(tiers.reflow).toBe(1);
+    });
+
+    it("buildSixNonSelfPreviewSlots throws when only six users but two share the same r4h display source (P7.5-r4-o2)", () => {
+      const viewerPref = {
+        minAge: null,
+        maxAge: null,
+        preferredCities: [],
+        minHeight: null,
+        maxHeight: null,
+        educationPreferences: [],
+        occupationPreferences: [],
+        relationshipGoalPreferences: [],
+        styleTags: ["清爽自然"],
+      };
+      const dup = "https://cdn/z-r4h-uu--samefile--.jpg";
+      const gAll = [
+        toGated(candidateRow("a", "2020-01-01", ["清爽自然"], "female", dup)),
+        toGated(candidateRow("b", "2020-02-01", ["生活感"], "female", dup)),
+        toGated(candidateRow("c", "2020-03-01", ["成熟稳重"], "female")),
+        toGated(candidateRow("d", "2020-04-01", ["有个性"], "female")),
+        toGated(candidateRow("e", "2020-05-01", ["运动阳光"], "female")),
+        toGated(candidateRow("f", "2018-01-01", ["简约干净"], "female")),
+      ];
+      expect(() => buildSixNonSelfPreviewSlots("vx", gAll, viewerPref)).toThrow(BadRequestException);
+    });
+
+    it("buildSixNonSelfPreviewSlots succeeds with seven users when two share one r4h source (P7.5-r4-o2)", () => {
+      const viewerPref = {
+        minAge: null,
+        maxAge: null,
+        preferredCities: [],
+        minHeight: null,
+        maxHeight: null,
+        educationPreferences: [],
+        occupationPreferences: [],
+        relationshipGoalPreferences: [],
+        styleTags: ["清爽自然"],
+      };
+      const dup = "https://cdn/z-r4h-uu--samefile--.jpg";
+      const gAll = [
+        toGated(candidateRow("a", "2020-01-01", ["清爽自然"], "female", dup)),
+        toGated(candidateRow("b", "2020-02-01", ["生活感"], "female", dup)),
+        toGated(candidateRow("c", "2020-03-01", ["成熟稳重"], "female")),
+        toGated(candidateRow("d", "2020-04-01", ["有个性"], "female")),
+        toGated(candidateRow("e", "2020-05-01", ["运动阳光"], "female")),
+        toGated(candidateRow("f", "2018-01-01", ["简约干净"], "female")),
+        toGated(candidateRow("g", "2017-06-01", ["清爽自然", "生活感"], "female")),
+      ];
+      const { slotDefs } = buildSixNonSelfPreviewSlots("vx", gAll, viewerPref);
+      expect(slotDefs).toHaveLength(6);
+      const keys = slotDefs.map((s) =>
+        previewPoolRowDisplaySourceKey(gAll.find((r) => r.id === s.candidateId)!),
+      );
+      expect(new Set(keys).size).toBe(6);
+      expect(new Set(slotDefs.map((s) => s.candidateId)).size).toBe(6);
     });
   });
 });

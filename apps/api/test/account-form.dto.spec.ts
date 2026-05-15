@@ -86,5 +86,36 @@ describe("P7.5-r4-j / r4-j1 China region + structured profile DTOs", () => {
       });
       expect(await validate(dto)).toHaveLength(0);
     });
+
+    it("accepts all-null age/height bounds (optional)", async () => {
+      const dto = plainToInstance(CreateOrUpdatePreferenceDto, {
+        minAge: null,
+        maxAge: null,
+        minHeight: null,
+        maxHeight: null,
+      });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it.each([
+      ["empty string coercion from client", { minAge: "", maxAge: "", minHeight: "", maxHeight: "" }],
+      ["partial bounds", { minAge: 18, maxAge: null, minHeight: null, maxHeight: 180 }],
+      ["only max age set", { minAge: null, maxAge: 60 }],
+      ["partial height", { minHeight: 160, maxHeight: null }],
+      ["explicit zero treated as unset", { minAge: 0 as unknown as number, maxAge: 0 as unknown as number }],
+    ])("%s — passes DTO validation", async (_label, plain) => {
+      const dto = plainToInstance(CreateOrUpdatePreferenceDto, plain as object);
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it("rejects age 61 while still allowing null omission semantics elsewhere", async () => {
+      const dto = plainToInstance(CreateOrUpdatePreferenceDto, { minAge: 61 });
+      expect(await validate(dto)).not.toHaveLength(0);
+    });
+
+    it("rejects maxAge below minimum", async () => {
+      const dto = plainToInstance(CreateOrUpdatePreferenceDto, { maxAge: 17 });
+      expect(await validate(dto)).not.toHaveLength(0);
+    });
   });
 });

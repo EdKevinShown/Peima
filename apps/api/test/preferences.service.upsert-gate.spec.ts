@@ -80,6 +80,47 @@ describe("PreferencesService upsert (optional match preferences)", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("allows create / update with only one age bound (other side null)", async () => {
+    const row = { id: "pref-1", userId };
+    const { service, create } = makeService({
+      user: { id: userId },
+      existingPref: null,
+      createResult: row,
+    });
+    await expect(
+      service.upsertForUser(userId, {
+        minAge: 18,
+        maxAge: null,
+      }),
+    ).resolves.toEqual(row);
+    expect(create.mock.calls[0]?.[0]?.data).toMatchObject({
+      minAge: 18,
+      maxAge: null,
+    });
+
+    const row2 = { id: "pref-2", userId };
+    const create2 = jest.fn().mockResolvedValue(row2);
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ id: userId }) },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: create2,
+        update: jest.fn(),
+      },
+    };
+    const service2 = new PreferencesService(prisma as never);
+    await expect(
+      service2.upsertForUser(userId, {
+        minAge: null,
+        maxAge: 60,
+      }),
+    ).resolves.toEqual(row2);
+    expect(create2.mock.calls[0]?.[0]?.data).toMatchObject({
+      minAge: null,
+      maxAge: 60,
+    });
+  });
+
   it("allows update clearing min/max age (no denom gate)", async () => {
     const existing = {
       userId,

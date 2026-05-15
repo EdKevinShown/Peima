@@ -5,7 +5,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import * as path from "node:path";
 
-export const R4_H_SCHEMA_VERSION = "p7.5-r4-h-candidate-image-import-v1" as const;
+export const R4_H_SCHEMA_VERSION = "p7.5-r4-n2-candidate-image-import-v3" as const;
 
 const IMAGE_EXT = new Set([
   ".jpg",
@@ -38,6 +38,10 @@ export function isPlannedImportGenderValid(
 export type PlannedImportRow = {
   sourceBasename: string;
   absolutePath: string;
+  /** When mapping lists a basename that does not exist under folderAbs. */
+  sourceFileMissing?: boolean;
+  /** 1-based index in mapping.json `items` for this mapping-derived row (dev debug). */
+  mappingSourceLine1Based?: number;
   targetUserId: "from-mapping" | "new";
   mappingUserId?: string;
   styleTags: string[];
@@ -92,22 +96,38 @@ export function buildImportPlan(opts: {
   tagPrefix: string;
   limit: number;
 }): PlannedImportRow[] {
-  const byFile = new Map<string, PlannedImportRow>();
   const defaultStyle = ["生活感", "清爽自然"];
 
+  /** Basenames referenced by at least one mapping line (discovery skips these entirely). */
+  const mappingListedBasenames = new Set<string>();
   if (opts.mapping?.items?.length) {
     for (const it of opts.mapping.items) {
-      const bn = path.basename(it.file).trim();
+      const bn = path.basename(String(it.file ?? "").trim()).trim();
+      if (bn && isSupportedImageBasename(bn)) {
+        mappingListedBasenames.add(bn.toLowerCase());
+      }
+    }
+  }
+
+  const mappingRows: PlannedImportRow[] = [];
+  if (opts.mapping?.items?.length) {
+    for (let idx = 0; idx < opts.mapping.items!.length; idx += 1) {
+      const it = opts.mapping.items![idx];
+      const bn = path.basename(String(it.file ?? "").trim()).trim();
       if (!bn || !isSupportedImageBasename(bn)) continue;
+
       const abs = path.join(opts.folderAbs, bn);
-      if (!existsSync(abs)) continue;
+      const present = existsSync(abs);
       const styleTags =
         Array.isArray(it.styleTags) && it.styleTags.length > 0
           ? [...it.styleTags]
           : defaultStyle;
-      byFile.set(bn.toLowerCase(), {
+
+      mappingRows.push({
         sourceBasename: bn,
         absolutePath: abs,
+        sourceFileMissing: !present,
+        mappingSourceLine1Based: idx + 1,
         targetUserId: it.userId ? "from-mapping" : "new",
         mappingUserId: it.userId,
         styleTags,
@@ -117,11 +137,12 @@ export function buildImportPlan(opts: {
     }
   }
 
+  const discovered: PlannedImportRow[] = [];
   for (const abs of listEligibleImageFiles(opts.folderAbs)) {
     const bn = path.basename(abs);
-    const key = bn.toLowerCase();
-    if (byFile.has(key)) continue;
-    byFile.set(key, {
+    if (mappingListedBasenames.has(bn.toLowerCase())) continue;
+
+    discovered.push({
       sourceBasename: bn,
       absolutePath: abs,
       targetUserId: "new",
@@ -130,10 +151,18 @@ export function buildImportPlan(opts: {
       genderNormalized: "invalid",
     });
   }
+  discovered.sort((a, b) => a.sourceBasename.localeCompare(b.sourceBasename));
 
-  const rows = [...byFile.values()];
-  rows.sort((a, b) => a.sourceBasename.localeCompare(b.sourceBasename));
-  return rows.slice(0, Math.max(opts.limit, 0));
+  const combined = [...mappingRows, ...discovered];
+  return combined.slice(0, Math.max(opts.limit, 0));
+}
+
+/**
+ * Stable segment for filenames / URL substring (ASCII only).
+ */
+function r4hSanitizeDedupSegment(s: string): string {
+  const t = s.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+  return t.slice(0, 48) || "u";
 }
 
 export function slugForImportFilename(base: string): string {
@@ -142,6 +171,17 @@ export function slugForImportFilename(base: string): string {
   return s.length > 0 ? s : "img";
 }
 
+/**
+ * Dedup substring embedded in uploaded filename + imageUrl — scoped per userId + imported file slug so
+ * different demo users can reuse the same source file safely (P7.5-r4-n1).
+ */
+export function r4hPerUserImageDedupMarker(userId: string, slug: string): string {
+  return `-r4h-u${r4hSanitizeDedupSegment(userId)}--${r4hSanitizeDedupSegment(slug)}--`;
+}
+
+/**
+ * Legacy global marker (pre r4-n1); still used to find prior imports for this user only.
+ */
 export function r4hDedupMarkerInStoredName(slug: string): string {
   return `-r4h-import-${slug}`;
 }

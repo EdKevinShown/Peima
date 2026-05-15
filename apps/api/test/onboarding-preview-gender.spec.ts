@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   candidatePassesOppositeBinaryGate,
   isStrictBinaryPreviewGender,
@@ -36,5 +38,19 @@ describe("onboarding-preview-gender (P7.5-r4-i)", () => {
     expect(candidatePassesOppositeBinaryGate("female", "unknown")).toBe(false);
     expect(candidatePassesOppositeBinaryGate("male", "male")).toBe(false);
     expect(candidatePassesOppositeBinaryGate("female", "female")).toBe(false);
+  });
+
+  it("P7.5-r4-o1: dev-assets demo mapping uses strict male/female only (counts documented in mapping _devNote_r4o1)", () => {
+    const fp = path.join(
+      __dirname,
+      "../../../dev-assets/test-user-images/mapping.json",
+    );
+    const raw = JSON.parse(fs.readFileSync(fp, "utf8")) as { items?: { gender?: string }[] };
+    expect(Array.isArray(raw.items)).toBe(true);
+    const genders = raw.items!.map((x) =>
+      normalizeUserGenderForPreview(x?.gender ?? ""),
+    );
+    expect(genders.every((g) => g === "male" || g === "female")).toBe(true);
+    expect(raw.items!.filter((x) => x?.gender === "female").length).toBeGreaterThanOrEqual(6);
   });
 });

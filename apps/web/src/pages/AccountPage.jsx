@@ -8,25 +8,68 @@ import {
 } from "../api/preferences";
 import { updateUser } from "../api/users";
 import { resolveUserId } from "../utils/resolveUserId";
+import { preferenceIntOrNull } from "../utils/preferenceIntOrNull.js";
 import {
   ACCOUNT_CITY_VALUES,
   ACCOUNT_DISPLAY_GENDER,
   ACCOUNT_EDUCATION_VALUES,
   ACCOUNT_GENDER_VALUES,
+  ACCOUNT_MAX_AGE,
+  ACCOUNT_MAX_HEIGHT_CM,
+  ACCOUNT_MIN_AGE,
+  ACCOUNT_MIN_HEIGHT_CM,
   ACCOUNT_OCCUPATION_CATEGORY_VALUES,
   ACCOUNT_RELATIONSHIP_GOAL_VALUES,
   ageOptionsInclusive,
   heightOptionsCmInclusive,
 } from "@peima/shared/constants";
+import { mapAccountApiErrorMessage } from "../utils/accountApiErrorMap";
 
 const AGES = ageOptionsInclusive();
 const HEIGHTS = heightOptionsCmInclusive();
 
-/** Empty string → null so PATCH-like upsert clears bounds (“不限制”). */
-function preferenceIntOrNull(raw) {
-  if (raw === "" || raw == null) return null;
-  const n = parseInt(String(raw), 10);
-  return Number.isFinite(n) ? n : null;
+/**
+ * When a side is non-empty in the UI, enforce allowed range; empty = no constraint.
+ * Uses the same coercion as the save payload (`preferenceIntOrNull`).
+ */
+function validatePreferenceAgeHeightInputs({
+  minAge,
+  maxAge,
+  minHeight,
+  maxHeight,
+}) {
+  const checkAgeSide = (raw) => {
+    const s = String(raw ?? "").trim();
+    if (!s) return null;
+    const n = preferenceIntOrNull(raw);
+    if (n == null) {
+      return "年龄请选择有效下拉值，不要使用非法数字。";
+    }
+    if (n < ACCOUNT_MIN_AGE || n > ACCOUNT_MAX_AGE) {
+      return `年龄须在 ${ACCOUNT_MIN_AGE}–${ACCOUNT_MAX_AGE} 岁之间。`;
+    }
+    return null;
+  };
+  const checkHeightSide = (raw) => {
+    const s = String(raw ?? "").trim();
+    if (!s) return null;
+    const n = preferenceIntOrNull(raw);
+    if (n == null) {
+      return "身高请选择有效下拉值，不要使用非法数字。";
+    }
+    if (n < ACCOUNT_MIN_HEIGHT_CM || n > ACCOUNT_MAX_HEIGHT_CM) {
+      return `身高须在 ${ACCOUNT_MIN_HEIGHT_CM}–${ACCOUNT_MAX_HEIGHT_CM} cm 之间。`;
+    }
+    return null;
+  };
+
+  return (
+    checkAgeSide(minAge) ||
+    checkAgeSide(maxAge) ||
+    checkHeightSide(minHeight) ||
+    checkHeightSide(maxHeight) ||
+    null
+  );
 }
 
 /** Scoped to this page only; avoids global CSS file. */
@@ -282,7 +325,7 @@ export default function AccountPage() {
         setRelationshipGoalPreferences([]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
       setLoading(false);
     }
@@ -327,10 +370,9 @@ export default function AccountPage() {
         ...(bio.trim() ? { bio: bio.trim() } : {}),
       };
       await updateUser(userId, payload);
-      setOkHint("资料已保存");
-      window.setTimeout(() => setOkHint(""), 3000);
+      setOkHint("资料已保存。");
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
       setSavingProfile(false);
     }
@@ -354,23 +396,31 @@ export default function AccountPage() {
     setOkHint("");
     setPrefRangeError("");
 
-    if (minAge && maxAge) {
-      const a = parseInt(minAge, 10);
-      const b = parseInt(maxAge, 10);
-      if (a > b) {
-        setPrefRangeError("年龄下限不能大于上限。");
-        setSavingPref(false);
-        return;
-      }
+    const ma = preferenceIntOrNull(minAge);
+    const xa = preferenceIntOrNull(maxAge);
+    if (ma != null && xa != null && ma > xa) {
+      setPrefRangeError("年龄下限不能大于年龄上限");
+      setSavingPref(false);
+      return;
     }
-    if (minHeight && maxHeight) {
-      const a = parseInt(minHeight, 10);
-      const b = parseInt(maxHeight, 10);
-      if (a > b) {
-        setPrefRangeError("身高下限不能大于上限。");
-        setSavingPref(false);
-        return;
-      }
+    const mh = preferenceIntOrNull(minHeight);
+    const xh = preferenceIntOrNull(maxHeight);
+    if (mh != null && xh != null && mh > xh) {
+      setPrefRangeError("身高下限不能大于身高上限");
+      setSavingPref(false);
+      return;
+    }
+
+    const boundErr = validatePreferenceAgeHeightInputs({
+      minAge,
+      maxAge,
+      minHeight,
+      maxHeight,
+    });
+    if (boundErr) {
+      setPrefRangeError(boundErr);
+      setSavingPref(false);
+      return;
     }
 
     try {
@@ -384,10 +434,9 @@ export default function AccountPage() {
         occupationPreferences,
         relationshipGoalPreferences,
       });
-      setOkHint("偏好已保存");
-      window.setTimeout(() => setOkHint(""), 3000);
+      setOkHint("匹配偏好已保存。");
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
       setSavingPref(false);
     }

@@ -13,19 +13,22 @@ import {
   ACCOUNT_MIN_AGE,
   ACCOUNT_MIN_HEIGHT_CM,
 } from "@peima/shared/constants";
+import { TransformPreferenceBoundedInt } from "./preference-bound-int.transform";
 
 export class CreateOrUpdatePreferenceDto {
+  @TransformPreferenceBoundedInt()
   @IsOptional()
   @IsInt()
   @Min(ACCOUNT_MIN_AGE)
   @Max(ACCOUNT_MAX_AGE)
-  minAge?: number;
+  minAge?: number | null;
 
+  @TransformPreferenceBoundedInt()
   @IsOptional()
   @IsInt()
   @Min(ACCOUNT_MIN_AGE)
   @Max(ACCOUNT_MAX_AGE)
-  maxAge?: number;
+  maxAge?: number | null;
 
   @IsOptional()
   @IsArray()
@@ -33,17 +36,19 @@ export class CreateOrUpdatePreferenceDto {
   @ArrayMaxSize(50)
   preferredCities?: string[];
 
+  @TransformPreferenceBoundedInt()
   @IsOptional()
   @IsInt()
   @Min(ACCOUNT_MIN_HEIGHT_CM)
   @Max(ACCOUNT_MAX_HEIGHT_CM)
-  minHeight?: number;
+  minHeight?: number | null;
 
+  @TransformPreferenceBoundedInt()
   @IsOptional()
   @IsInt()
   @Min(ACCOUNT_MIN_HEIGHT_CM)
   @Max(ACCOUNT_MAX_HEIGHT_CM)
-  maxHeight?: number;
+  maxHeight?: number | null;
 
   @IsOptional()
   @IsArray()

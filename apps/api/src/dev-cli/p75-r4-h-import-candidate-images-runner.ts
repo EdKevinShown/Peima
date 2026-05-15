@@ -4,6 +4,7 @@
  * Usage (after nest build):
  *   From repo root:
  *     pnpm --filter @peima/api run p75:r4-import-candidate-images -- --folder=dev-assets/test-user-images --dryRun=true
+ *     pnpm --filter @peima/api run p75:r4-import-candidate-images -- --dryRun=false --debugBlockedRows=true
  *   From apps/api with plain node:
  *     Prefer --folder=<absolute path to .../dev-assets/test-user-images>, or ../../dev-assets/... (cwd-relative).
  */
@@ -53,6 +54,7 @@ async function main(): Promise<void> {
       runDetection: cli.runDetection,
       runVision: cli.runVision,
       excludeUserId: cli.excludeUserId,
+      debugBlockedRows: cli.debugBlockedRows === true,
     });
     console.log(JSON.stringify(report, null, 2));
   } finally {
