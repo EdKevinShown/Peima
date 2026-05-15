@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { OnboardingService } from "../src/modules/onboarding/onboarding.service";
@@ -278,7 +279,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
       },
       userImage: { findMany: jest.fn() },
       userPreference: {
-        findUnique: jest.fn().mockResolvedValue({ userId: "u1" }),
+        findUnique: jest.fn().mockResolvedValue({ userId: "u1", styleTags: [] }),
         update: updatePref,
         create: jest.fn(),
       },
@@ -291,6 +292,75 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
         data: expect.objectContaining({
           onboardingPhotoAestheticCompletedAt: expect.any(Date),
         }),
+      }),
+    );
+  });
+
+  it("savePhotoPreferences rejects photo focus tags (not styleTags)", async () => {
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: "u1" }),
+        update: jest.fn(),
+      },
+      userImage: { findMany: jest.fn() },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+    const svc = await createService(prisma);
+    await expect(svc.savePhotoPreferences("u1", ["笑容"])).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("savePhotoPreferences rejects whitelist tags outside onboarding pool", async () => {
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: "u1" }),
+        update: jest.fn(),
+      },
+      userImage: { findMany: jest.fn() },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+    const svc = await createService(prisma);
+    await expect(svc.savePhotoPreferences("u1", ["都市精致"])).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("savePhotoPreferences merges account-only styleTags with onboarding pool selection", async () => {
+    const updateUser = jest.fn().mockResolvedValue({});
+    const updatePref = jest.fn().mockResolvedValue({
+      styleTags: ["都市精致", "甜美可爱"],
+    });
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ id: "u1" }),
+        update: updateUser,
+      },
+      userImage: { findMany: jest.fn() },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue({
+          userId: "u1",
+          styleTags: ["都市精致", "清爽自然"],
+        }),
+        update: updatePref,
+        create: jest.fn(),
+      },
+    };
+    const svc = await createService(prisma);
+    const res = await svc.savePhotoPreferences("u1", ["甜美可爱"]);
+    expect(res.styleTags).toEqual(["都市精致", "甜美可爱"]);
+    expect(updatePref).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "u1" },
+        data: { styleTags: ["都市精致", "甜美可爱"] },
       }),
     );
   });

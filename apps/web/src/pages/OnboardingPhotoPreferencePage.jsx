@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  ONBOARDING_PHOTO_PREFERENCE_UI_GROUPS,
+  ONBOARDING_PHOTO_STYLE_TAG_POOL_SET,
+} from "@peima/shared/constants";
 import LoadingState from "../components/common/LoadingState";
 import {
   getOnboardingPhotoPreferencesMe,
@@ -10,23 +14,8 @@ import {
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
 
-const TAG_GROUPS = [
-  {
-    title: "整体气质",
-    tags: ["清爽自然", "甜美可爱", "酷感个性", "成熟稳重", "文艺温柔", "运动阳光"],
-  },
-  {
-    title: "照片感觉",
-    tags: ["生活感", "精致感", "松弛感", "氛围感", "简约干净", "有个性"],
-  },
-  {
-    title: "优先关注",
-    tags: ["笑容", "穿搭", "气质", "五官", "身材比例", "整体感觉"],
-  },
-];
-
-const ALL_TAGS = TAG_GROUPS.flatMap((g) => g.tags);
-const MAX_TAGS = 8;
+const MAX_STYLE_TAGS = 8;
+const MAX_FOCUS_TAGS = 8;
 
 const groupBox = {
   marginBottom: "1.35rem",
@@ -51,17 +40,31 @@ export default function OnboardingPhotoPreferencePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [selected, setSelected] = useState(() => new Set());
+  const [selectedStyle, setSelectedStyle] = useState(() => new Set());
+  const [selectedFocus, setSelectedFocus] = useState(() => new Set());
 
   const previewQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
 
-  const toggle = useCallback((tag) => {
-    setSelected((prev) => {
+  const toggleStyleTag = useCallback((tag) => {
+    setSelectedStyle((prev) => {
       const next = new Set(prev);
       if (next.has(tag)) {
         next.delete(tag);
       } else {
-        if (next.size >= MAX_TAGS) return prev;
+        if (next.size >= MAX_STYLE_TAGS) return prev;
+        next.add(tag);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleFocusTag = useCallback((tag) => {
+    setSelectedFocus((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) {
+        next.delete(tag);
+      } else {
+        if (next.size >= MAX_FOCUS_TAGS) return prev;
         next.add(tag);
       }
       return next;
@@ -86,10 +89,13 @@ export default function OnboardingPhotoPreferencePage() {
         return;
       }
       const me = await getOnboardingPhotoPreferencesMe();
-      const initial = new Set(
-        (me.styleTags || []).filter((t) => ALL_TAGS.includes(t)),
+      const initialStyle = new Set(
+        (me.styleTags || []).filter((t) =>
+          ONBOARDING_PHOTO_STYLE_TAG_POOL_SET.has(t),
+        ),
       );
-      setSelected(initial);
+      setSelectedStyle(initialStyle);
+      setSelectedFocus(new Set());
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -103,9 +109,9 @@ export default function OnboardingPhotoPreferencePage() {
 
   const onSubmit = useCallback(async () => {
     if (!userId) return;
-    const tags = [...selected];
+    const tags = [...selectedStyle];
     if (tags.length < 1) {
-      setError(new Error("请至少选择 1 项"));
+      setError(new Error("请在「整体气质」或「照片感觉」中至少选择 1 项"));
       return;
     }
     setSubmitting(true);
@@ -126,7 +132,7 @@ export default function OnboardingPhotoPreferencePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [userId, selected, navigate]);
+  }, [userId, selectedStyle, navigate]);
 
   return (
     <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
@@ -137,7 +143,11 @@ export default function OnboardingPhotoPreferencePage() {
         告诉我们你更容易被什么类型吸引。这个选择只用于第一印象预览池，不代表最终匹配结果。
       </p>
       <p style={{ marginBottom: "1rem", fontSize: "0.88rem", color: "#64748b" }}>
-        至少选 1 项，最多 {MAX_TAGS} 项。可多组搭配选择。
+        「整体气质」与「照片感觉」与账户页「照片风格偏好」为同一组标签，会一并保存；至少选 1 项，这两组合计最多{" "}
+        {MAX_STYLE_TAGS} 项。
+      </p>
+      <p style={{ marginBottom: "1rem", fontSize: "0.88rem", color: "#64748b" }}>
+        「优先关注」为照片浏览时的关注维度（如笑容、穿搭），当前仅在本页记录体验，不会写入账户风格标签或匹配偏好。
       </p>
       <p style={{ marginBottom: "1.25rem", fontSize: "0.88rem" }}>
         <Link to="/">首页</Link>
@@ -155,7 +165,7 @@ export default function OnboardingPhotoPreferencePage() {
       )}
       {!loading && userId && (
         <>
-          {TAG_GROUPS.map((group) => (
+          {ONBOARDING_PHOTO_PREFERENCE_UI_GROUPS.map((group) => (
             <section key={group.title} style={groupBox}>
               <div style={groupTitle}>{group.title}</div>
               <div
@@ -166,12 +176,18 @@ export default function OnboardingPhotoPreferencePage() {
                 }}
               >
                 {group.tags.map((tag) => {
-                  const on = selected.has(tag);
+                  const on = group.submitsToStyleTags
+                    ? selectedStyle.has(tag)
+                    : selectedFocus.has(tag);
                   return (
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => toggle(tag)}
+                      onClick={() =>
+                        group.submitsToStyleTags
+                          ? toggleStyleTag(tag)
+                          : toggleFocusTag(tag)
+                      }
                       style={{
                         padding: "0.45rem 0.75rem",
                         borderRadius: 999,
@@ -192,7 +208,7 @@ export default function OnboardingPhotoPreferencePage() {
           <button
             type="button"
             onClick={onSubmit}
-            disabled={submitting || selected.size < 1}
+            disabled={submitting || selectedStyle.size < 1}
             style={{
               padding: "0.65rem 1.25rem",
               fontSize: "1rem",
@@ -201,8 +217,8 @@ export default function OnboardingPhotoPreferencePage() {
               borderRadius: 8,
               background: "#1e293b",
               color: "#fff",
-              cursor: submitting || selected.size < 1 ? "not-allowed" : "pointer",
-              opacity: submitting || selected.size < 1 ? 0.65 : 1,
+              cursor: submitting || selectedStyle.size < 1 ? "not-allowed" : "pointer",
+              opacity: submitting || selectedStyle.size < 1 ? 0.65 : 1,
             }}
           >
             {submitting ? "保存中…" : "保存并生成预览池"}
