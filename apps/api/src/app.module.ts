@@ -31,6 +31,7 @@ import { PostPoolDeepScreenModule } from "./modules/post-pool-deep-screen/post-p
 import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v1.module";
 import { AiPairwiseDecisionModule } from "./modules/ai-pairwise-decision/ai-pairwise-decision.module";
 import { OnboardingModule } from "./modules/onboarding/onboarding.module";
+import { AdminPhotoReviewModule } from "./modules/admin-photo-review/admin-photo-review.module";
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { OnboardingModule } from "./modules/onboarding/onboarding.module";
     AiSimulationV1Module,
     AiPairwiseDecisionModule,
     OnboardingModule,
+    AdminPhotoReviewModule,
   ],
   controllers: [],
   providers: [],

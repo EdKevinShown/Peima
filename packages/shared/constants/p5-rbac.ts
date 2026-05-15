@@ -21,6 +21,8 @@ export const Permission = {
   MANAGE_PERMISSIONS: "manage_permissions",
   VIEW_AUDIT_LOG: "view_audit_log",
   EXPORT_DATA: "export_data",
+  /** P7.4-r1d-c2: onboarding photo review (admin / operator). */
+  MANAGE_PHOTO_REVIEW: "manage_photo_review",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -32,6 +34,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.VIEW_ALL_SUGGESTIONS,
     Permission.MANAGE_ALL_SUGGESTIONS,
     Permission.EXPORT_SUGGESTIONS,
+    Permission.MANAGE_PHOTO_REVIEW,
   ],
   [UserRole.DATA_ANALYST]: [
     Permission.VIEW_OWN_SUGGESTIONS,
@@ -48,6 +51,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.MANAGE_PERMISSIONS,
     Permission.VIEW_AUDIT_LOG,
     Permission.EXPORT_DATA,
+    Permission.MANAGE_PHOTO_REVIEW,
   ],
 };
 
