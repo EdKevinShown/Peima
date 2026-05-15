@@ -3,10 +3,13 @@
  */
 
 import { Module } from "@nestjs/common";
+import { PrismaModule } from "../../../common/prisma/prisma.module";
 import { OnboardingVisionService } from "./onboarding-vision.service";
+import { VisualRankingShadowService } from "./visual-ranking-shadow.service";
 
 @Module({
-  providers: [OnboardingVisionService],
-  exports: [OnboardingVisionService],
+  imports: [PrismaModule],
+  providers: [OnboardingVisionService, VisualRankingShadowService],
+  exports: [OnboardingVisionService, VisualRankingShadowService],
 })
 export class OnboardingVisionModule {}

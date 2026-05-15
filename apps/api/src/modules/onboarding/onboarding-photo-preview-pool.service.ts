@@ -15,6 +15,7 @@ import {
   type ViewerPreferenceLike,
 } from "@peima/shared/matching/preference-score";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
 
 const ONBOARDING_POOL_STATUS = {
   ACTIVE: "active",
@@ -170,7 +171,10 @@ export type OnboardingPhotoPreviewPoolBundleDto = {
 
 @Injectable()
 export class OnboardingPhotoPreviewPoolService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly visualRankingShadow: VisualRankingShadowService,
+  ) {}
 
   private async collectGatedCandidates(
     viewerId: string,
@@ -356,6 +360,35 @@ export class OnboardingPhotoPreviewPoolService {
         items: { orderBy: { rankInPool: "asc" } },
       },
     });
+
+    void this.visualRankingShadow
+      .computeShadow({
+        viewerUserId,
+        poolId: created.id,
+        baselineItems: created.items.map((it) => ({
+          rankInPool: it.rankInPool,
+          tier: it.tier,
+          displayMode: it.displayMode,
+          candidateUserId: it.candidateUserId,
+          score: it.score,
+        })),
+        gatedCandidates: gAll.map((row) => ({
+          id: row.id,
+          createdAt: row.createdAt,
+          firstImageStyleTags: row.firstImageStyleTags,
+          age: row.age,
+          city: row.city,
+          height: row.height,
+          education: row.education,
+          occupation: row.occupation,
+          relationshipGoal: row.relationshipGoal,
+        })),
+        viewerStyleTags: prefRow?.styleTags ?? [],
+        viewerPref,
+      })
+      .catch(() => {
+        /* shadow must not fail pool generate */
+      });
 
     return this.toViewerBundle(created);
   }

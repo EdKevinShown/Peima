@@ -2,6 +2,7 @@ import { Test } from "@nestjs/testing";
 import { BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { OnboardingPhotoPreviewPoolService } from "../src/modules/onboarding/onboarding-photo-preview-pool.service";
+import { VisualRankingShadowService } from "../src/modules/onboarding/vision/visual-ranking-shadow.service";
 
 function candidateRow(
   id: string,
@@ -110,6 +111,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: VisualRankingShadowService,
+          useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false, reason: "shadow_disabled" }) },
+        },
       ],
     }).compile();
     const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
@@ -149,6 +154,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: VisualRankingShadowService,
+          useValue: { computeShadow: jest.fn() },
+        },
       ],
     }).compile();
     const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
@@ -188,6 +197,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: VisualRankingShadowService,
+          useValue: { computeShadow: jest.fn() },
+        },
       ],
     }).compile();
     const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
