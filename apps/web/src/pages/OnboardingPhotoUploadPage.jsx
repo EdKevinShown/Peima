@@ -14,6 +14,8 @@ import {
   mapOnboardingPhotoUploadError,
   canProceedToPhotoPreference,
   mapDetectionReasonCodesToMessage,
+  extractDetectionWarnings,
+  mapDetectionWarningToMessage,
 } from "../utils/onboardingPhotoValidation";
 
 export default function OnboardingPhotoUploadPage() {
@@ -126,7 +128,13 @@ export default function OnboardingPhotoUploadPage() {
         );
         return;
       }
-      navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`);
+      const warnings = extractDetectionWarnings(row.detectionScoreJson);
+      const warnMsg = warnings
+        .map(mapDetectionWarningToMessage)
+        .find((m) => m);
+      navigate(`/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`, {
+        state: warnMsg ? { photoWarning: warnMsg } : undefined,
+      });
     } catch (e) {
       setError(new Error(mapOnboardingPhotoUploadError(e)));
     } finally {

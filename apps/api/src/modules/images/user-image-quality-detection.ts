@@ -1,9 +1,9 @@
 /**
- * P7.4-r1a: extreme photo quality checks (no face / no AI).
- * Pure evaluation + sharp-based metrics from buffer.
+ * P7.4-r1a + P7.4-r1b: quality + face presence detection (pure functions).
  */
 
-export const USER_IMAGE_DETECTION_RULES_VERSION = "p7.4-r1a-v1" as const;
+export const USER_IMAGE_DETECTION_RULES_VERSION_R1A = "p7.4-r1a-v1" as const;
+export const USER_IMAGE_DETECTION_RULES_VERSION_R1B = "p7.4-r1b-v1" as const;
 
 export type UserImageDetectionStatus =
   | "pending"
@@ -14,74 +14,190 @@ export type UserImageDetectionStatus =
 export type UserImageDetectionReasonCode =
   | "UNREADABLE_IMAGE"
   | "TOO_DARK"
-  | "TOO_BLUR";
+  | "TOO_BLUR"
+  | "FACE_NOT_FOUND";
 
-/** Conservative: only reject obviously unusable images (see detectionScoreJson for tuning). */
-export const EXTREME_MIN_MEAN_LUMA = 22;
-/** Near-zero Laplacian variance ≈ extreme blur or blank frame. */
-export const EXTREME_MAX_LAPLACIAN_VARIANCE = 8;
-
-export type UserImageQualityScores = {
-  width: number;
-  height: number;
+export type UserImageQualityMetrics = {
   meanLuma: number;
   laplacianVariance: number;
+  width: number;
+  height: number;
   sampleWidth: number;
   sampleHeight: number;
 };
 
-export type UserImageQualityDetectionResult = {
+export type UserImageFaceScoreFace = {
+  score: number;
+  box: { x: number; y: number; width: number; height: number };
+};
+
+export type UserImageDetectionScoreJson = {
+  quality?: {
+    meanLuma: number;
+    laplacianVariance: number;
+    width?: number;
+    height?: number;
+  };
+  face?: {
+    faceCount: number;
+    faces: UserImageFaceScoreFace[];
+  };
+  warnings?: string[];
+  pipeline: string[];
+  faceDetectionEnabled?: boolean;
+};
+
+export type UserImageDetectionResult = {
   status: UserImageDetectionStatus;
   reasonCodes: UserImageDetectionReasonCode[];
-  scores: UserImageQualityScores | null;
+  scoreJson: UserImageDetectionScoreJson | null;
   rulesVersion: string;
 };
 
-export function evaluateExtremeQualityFromScores(
-  scores: UserImageQualityScores,
-): UserImageQualityDetectionResult {
-  const reasonCodes: UserImageDetectionReasonCode[] = [];
-  if (scores.meanLuma < EXTREME_MIN_MEAN_LUMA) {
-    reasonCodes.push("TOO_DARK");
-  }
-  if (scores.laplacianVariance < EXTREME_MAX_LAPLACIAN_VARIANCE) {
-    reasonCodes.push("TOO_BLUR");
-  }
-  if (reasonCodes.length > 0) {
-    return {
-      status: "failed",
-      reasonCodes,
-      scores,
-      rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION,
-    };
-  }
+/** Conservative: only reject obviously unusable images. */
+export const EXTREME_MIN_MEAN_LUMA = 22;
+export const EXTREME_MAX_LAPLACIAN_VARIANCE = 8;
+
+export function qualityMetricsToJson(
+  metrics: UserImageQualityMetrics,
+): UserImageDetectionScoreJson["quality"] {
   return {
-    status: "passed",
-    reasonCodes: [],
-    scores,
-    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION,
+    meanLuma: metrics.meanLuma,
+    laplacianVariance: metrics.laplacianVariance,
+    width: metrics.width,
+    height: metrics.height,
   };
 }
 
-export function unreadableDetectionResult(): UserImageQualityDetectionResult {
+export function evaluateExtremeQualityFromMetrics(
+  metrics: UserImageQualityMetrics,
+): {
+  reasonCodes: UserImageDetectionReasonCode[];
+  failed: boolean;
+} {
+  const reasonCodes: UserImageDetectionReasonCode[] = [];
+  if (metrics.meanLuma < EXTREME_MIN_MEAN_LUMA) {
+    reasonCodes.push("TOO_DARK");
+  }
+  if (metrics.laplacianVariance < EXTREME_MAX_LAPLACIAN_VARIANCE) {
+    reasonCodes.push("TOO_BLUR");
+  }
+  return { reasonCodes, failed: reasonCodes.length > 0 };
+}
+
+export function unreadableDetectionResult(): UserImageDetectionResult {
   return {
     status: "failed",
     reasonCodes: ["UNREADABLE_IMAGE"],
-    scores: null,
-    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION,
+    scoreJson: null,
+    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1A,
   };
 }
 
-export function skippedDetectionResult(): UserImageQualityDetectionResult {
+export function skippedDetectionResult(
+  scoreJson: UserImageDetectionScoreJson | null,
+): UserImageDetectionResult {
   return {
     status: "skipped",
     reasonCodes: [],
-    scores: null,
-    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION,
+    scoreJson,
+    rulesVersion: scoreJson?.faceDetectionEnabled === false
+      ? USER_IMAGE_DETECTION_RULES_VERSION_R1A
+      : USER_IMAGE_DETECTION_RULES_VERSION_R1B,
   };
 }
 
-/** 3x3 Laplacian variance on grayscale sample (higher = sharper). */
+export function qualityFailedResult(
+  metrics: UserImageQualityMetrics,
+  reasonCodes: UserImageDetectionReasonCode[],
+): UserImageDetectionResult {
+  return {
+    status: "failed",
+    reasonCodes,
+    scoreJson: {
+      quality: qualityMetricsToJson(metrics),
+      pipeline: ["quality"],
+      faceDetectionEnabled: false,
+    },
+    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1A,
+  };
+}
+
+export function mergeQualityAndFaceDetection(params: {
+  metrics: UserImageQualityMetrics;
+  faceCount: number;
+  faces: UserImageFaceScoreFace[];
+  faceDetectionEnabled: boolean;
+}): UserImageDetectionResult {
+  const { metrics, faceCount, faces, faceDetectionEnabled } = params;
+  const quality = qualityMetricsToJson(metrics);
+  const pipeline: string[] = ["quality"];
+  const warnings: string[] = [];
+
+  if (!faceDetectionEnabled) {
+    return {
+      status: "passed",
+      reasonCodes: [],
+      scoreJson: {
+        quality,
+        pipeline,
+        faceDetectionEnabled: false,
+      },
+      rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1A,
+    };
+  }
+
+  pipeline.push("face");
+
+  if (faceCount === 0) {
+    return {
+      status: "failed",
+      reasonCodes: ["FACE_NOT_FOUND"],
+      scoreJson: {
+        quality,
+        face: { faceCount: 0, faces: [] },
+        warnings,
+        pipeline,
+        faceDetectionEnabled: true,
+      },
+      rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1B,
+    };
+  }
+
+  if (faceCount > 1) {
+    warnings.push("MULTIPLE_FACES");
+  }
+
+  return {
+    status: "passed",
+    reasonCodes: [],
+    scoreJson: {
+      quality,
+      face: { faceCount, faces },
+      warnings,
+      pipeline,
+      faceDetectionEnabled: true,
+    },
+    rulesVersion: USER_IMAGE_DETECTION_RULES_VERSION_R1B,
+  };
+}
+
+/** @deprecated use evaluateExtremeQualityFromMetrics — kept for unit tests */
+export function evaluateExtremeQualityFromScores(
+  scores: UserImageQualityMetrics,
+): UserImageDetectionResult {
+  const { reasonCodes, failed } = evaluateExtremeQualityFromMetrics(scores);
+  if (failed) {
+    return qualityFailedResult(scores, reasonCodes);
+  }
+  return mergeQualityAndFaceDetection({
+    metrics: scores,
+    faceCount: 0,
+    faces: [],
+    faceDetectionEnabled: false,
+  });
+}
+
 export function laplacianVariance(
   gray: Uint8Array,
   width: number,

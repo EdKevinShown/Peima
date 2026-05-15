@@ -102,7 +102,33 @@ export function mapDetectionReasonCodesToMessage(reasonCodes) {
   if (codes.includes("TOO_BLUR")) {
     return "照片不够清晰，请对焦后重新拍摄或换一张更清晰的照片。";
   }
+  if (codes.includes("FACE_NOT_FOUND")) {
+    return "未检测到清晰人脸，请上传一张正脸、光线充足的本人照片。";
+  }
   return "这张照片暂时不适合使用，请换一张更清晰的本人照片。";
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} scoreJson
+ * @returns {string[]}
+ */
+export function extractDetectionWarnings(scoreJson) {
+  if (!scoreJson || typeof scoreJson !== "object") return [];
+  const warnings = scoreJson.warnings;
+  return Array.isArray(warnings)
+    ? warnings.filter((w) => typeof w === "string")
+    : [];
+}
+
+/**
+ * @param {string} code
+ * @returns {string | null}
+ */
+export function mapDetectionWarningToMessage(code) {
+  if (code === "MULTIPLE_FACES") {
+    return "检测到多张人脸，建议使用仅包含你本人的照片，以获得更准确的预览。";
+  }
+  return null;
 }
 
 /**

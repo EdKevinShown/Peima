@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import {
   getOnboardingPhotoPreferencesMe,
@@ -45,8 +45,13 @@ const groupTitle = {
 
 export default function OnboardingPhotoPreferencePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const photoWarning =
+    typeof location.state?.photoWarning === "string"
+      ? location.state.photoWarning
+      : null;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -151,6 +156,23 @@ export default function OnboardingPhotoPreferencePage() {
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
+        </p>
+      )}
+      {photoWarning && (
+        <p
+          role="status"
+          style={{
+            color: "#92400e",
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: 10,
+            padding: "0.75rem 0.9rem",
+            fontSize: "0.9rem",
+            lineHeight: 1.55,
+            marginBottom: "1rem",
+          }}
+        >
+          {photoWarning}
         </p>
       )}
 

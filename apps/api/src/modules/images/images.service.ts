@@ -13,7 +13,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
 import type { MemoryUploadedFile } from "./memory-uploaded-file";
 import { UserImageDetectionService } from "./user-image-detection.service";
-import type { UserImageQualityDetectionResult } from "./user-image-quality-detection";
+import type { UserImageDetectionResult } from "./user-image-quality-detection";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -44,14 +44,14 @@ export class ImagesService {
     }
   }
 
-  private detectionToCreateFields(detection: UserImageQualityDetectionResult) {
+  private detectionToCreateFields(detection: UserImageDetectionResult) {
     return {
       detectionStatus: detection.status,
       detectionReasonCodes: detection.reasonCodes,
       detectionScoreJson:
-        detection.scores === null
+        detection.scoreJson === null
           ? Prisma.JsonNull
-          : (detection.scores as Prisma.InputJsonValue),
+          : (detection.scoreJson as Prisma.InputJsonValue),
       detectionRulesVersion: detection.rulesVersion,
       detectedAt: new Date(),
     };
