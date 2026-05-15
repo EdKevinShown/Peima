@@ -2,7 +2,10 @@
  * DEV-ONLY · P7.5-r4-h — Import `dev-assets/test-user-images` into demo User/UserImage rows.
  *
  * Usage (after nest build):
- *   pnpm --filter @peima/api run p75:r4-import-candidate-images -- --folder=dev-assets/test-user-images --dryRun=true
+ *   From repo root:
+ *     pnpm --filter @peima/api run p75:r4-import-candidate-images -- --folder=dev-assets/test-user-images --dryRun=true
+ *   From apps/api with plain node:
+ *     Prefer --folder=<absolute path to .../dev-assets/test-user-images>, or ../../dev-assets/... (cwd-relative).
  */
 
 import "reflect-metadata";

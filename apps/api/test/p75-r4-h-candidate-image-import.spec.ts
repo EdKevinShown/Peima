@@ -11,7 +11,12 @@ import {
   isSupportedImageBasename,
   listEligibleImageFiles,
   parseCandidateMappingJson,
+  parseMappingItemGender,
 } from "../src/modules/dev/p75-r4-h-candidate-image-import.plan";
+import {
+  isCandidateImportFolderRelativeToCwd,
+  resolveCandidateImportFolderInput,
+} from "../src/modules/dev/repo-root";
 
 describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
   it("parseCandidateMappingJson reads mapping items", () => {
@@ -45,13 +50,52 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
     await fs.rm(dir, { recursive: true });
   });
 
+  it("parseMappingItemGender only accepts male/female", () => {
+    expect(parseMappingItemGender("male")).toBe("male");
+    expect(parseMappingItemGender("Female")).toBe("female");
+    expect(parseMappingItemGender("unknown")).toBe("invalid");
+    expect(parseMappingItemGender("alien")).toBe("invalid");
+    expect(parseMappingItemGender(undefined)).toBe("invalid");
+  });
+
+  it("buildImportPlan reads mapping gender on items", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-g"));
+    await fs.writeFile(path.join(dir, "g.jpg"), new Uint8Array([1]));
+    const mapping = parseCandidateMappingJson(
+      JSON.stringify({
+        items: [
+          {
+            file: "g.jpg",
+            userId: "u1",
+            gender: "female",
+          },
+        ],
+      }),
+    )!;
+    const plan = buildImportPlan({
+      folderAbs: dir,
+      mapping,
+      tagPrefix: "demo",
+      limit: 10,
+    });
+    expect(plan).toHaveLength(1);
+    expect(plan[0]!.genderNormalized).toBe("female");
+    await fs.rm(dir, { recursive: true });
+  });
+
   it("buildImportPlan prefers mapping bindings then discovers unlisted files", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-mp-"));
     await fs.writeFile(path.join(dir, "m1.jpg"), new Uint8Array([1]));
     await fs.writeFile(path.join(dir, "extra.png"), new Uint8Array([1]));
     const mapping = parseCandidateMappingJson(
       JSON.stringify({
-        items: [{ file: "m1.jpg", userId: "mapped-u1" }],
+        items: [
+          {
+            file: "m1.jpg",
+            userId: "mapped-u1",
+            gender: "male",
+          },
+        ],
       }),
     )!;
     const plan = buildImportPlan({
@@ -65,8 +109,65 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
     expect(m1?.mappingUserId).toBe("mapped-u1");
     const ex = plan.find((p) => p.sourceBasename === "extra.png");
     expect(ex?.targetUserId).toBe("new");
+    expect(ex?.genderNormalized).toBe("invalid");
 
     await fs.rm(dir, { recursive: true });
+  });
+
+  it("buildImportPlan marks mapping item without gender as invalid", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-nog-"));
+    await fs.writeFile(path.join(dir, "ng.jpg"), new Uint8Array([1]));
+    const mapping = parseCandidateMappingJson(
+      JSON.stringify({
+        items: [{ file: "ng.jpg", userId: "mapped-u99" }],
+      }),
+    )!;
+    const plan = buildImportPlan({
+      folderAbs: dir,
+      mapping,
+      tagPrefix: "demo",
+      limit: 10,
+    });
+    expect(plan).toHaveLength(1);
+    expect(plan[0]!.genderNormalized).toBe("invalid");
+    await fs.rm(dir, { recursive: true });
+  });
+
+  it("resolveCandidateImportFolderInput: dev-assets path is monorepo-root relative (cwd=apps/api)", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-mr-"));
+    const api = path.join(root, "apps", "api");
+    await fs.mkdir(api, { recursive: true });
+    await fs.writeFile(path.join(root, "pnpm-workspace.yaml"), "packages: []\n");
+    const assetDir = path.join(root, "dev-assets", "test-user-images");
+    await fs.mkdir(assetDir, { recursive: true });
+
+    const fromRepoStyle = resolveCandidateImportFolderInput(
+      "dev-assets/test-user-images",
+      api,
+    );
+    expect(fromRepoStyle).toBe(path.normalize(assetDir));
+
+    const fromParentSegments = resolveCandidateImportFolderInput(
+      "../../dev-assets/test-user-images",
+      api,
+    );
+    expect(fromParentSegments).toBe(path.normalize(assetDir));
+
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("resolveCandidateImportFolderInput normalizes absolute folders", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-abs-"));
+    const assetDir = path.join(root, "dev-assets", "test-user-images");
+    await fs.mkdir(assetDir, { recursive: true });
+    expect(resolveCandidateImportFolderInput(assetDir)).toBe(path.normalize(assetDir));
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
+  it("isCandidateImportFolderRelativeToCwd flags cwd-anchored CLI paths", () => {
+    expect(isCandidateImportFolderRelativeToCwd("dev-assets/x")).toBe(false);
+    expect(isCandidateImportFolderRelativeToCwd("../../dev-assets/x")).toBe(true);
+    expect(isCandidateImportFolderRelativeToCwd(".\\sub")).toBe(true);
   });
 
   it("CLI defaults and bool parsing", () => {
@@ -146,7 +247,12 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
       expect(report.summary.createdUserImages).toBe(0);
       expect(report.summary.createdUsers).toBe(0);
       expect(report.summary.eligibleImages).toBe(1);
-      expect(report.summary.wouldCreateUserImages).toBe(1);
+      expect(report.summary.wouldCreateUsers).toBe(0);
+      expect(report.summary.wouldCreateUserImages).toBe(0);
+      expect(report.summary.maleCandidates).toBe(0);
+      expect(report.summary.femaleCandidates).toBe(0);
+      expect(report.summary.invalidGenderCandidates).toBe(1);
+      expect(report.summary.skippedInvalidGender).toBe(1);
     } finally {
       if (prevUpload === undefined) {
         delete process.env.UPLOAD_DIR;
@@ -180,6 +286,7 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
             nickname: "n",
           }),
           create: jest.fn(),
+          update: jest.fn().mockResolvedValue({}),
         },
         userProfile: { upsert: jest.fn().mockResolvedValue({}) },
       };
@@ -209,7 +316,7 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
         JSON.stringify({
           version: 1,
           publicBaseUrl: "http://127.0.0.1:3000",
-          items: [{ file: "only.jpg", userId: "u-mapped" }],
+          items: [{ file: "only.jpg", userId: "u-mapped", gender: "female" }],
         }),
         "utf8",
       );
@@ -227,6 +334,10 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
 
       expect(report.summary.createdUserImages).toBe(1);
       expect(report.summary.detectionPassed).toBe(1);
+      expect(report.summary.femaleCandidates).toBe(1);
+      expect(report.summary.maleCandidates).toBe(0);
+      expect(report.summary.invalidGenderCandidates).toBe(0);
+      expect(report.summary.skippedInvalidGender).toBe(0);
       expect(prisma.userImage.create).toHaveBeenCalled();
       const row = created[0] as { imageUrl: string; detectionScoreJson: unknown };
       expect(row.imageUrl).toContain("/uploads/user-images/");
@@ -234,6 +345,66 @@ describe("P7.5-r4-h candidate image import (plan + CLI)", () => {
       expect(row.detectionScoreJson).toBeDefined();
       expect(detection.detectFromBuffer).toHaveBeenCalled();
       expect(JSON.stringify(report).includes("reviewNote")).toBe(false);
+    } finally {
+      if (prevUpload === undefined) {
+        delete process.env.UPLOAD_DIR;
+      } else {
+        process.env.UPLOAD_DIR = prevUpload;
+      }
+      await fs.rm(uploadTmp, { recursive: true, force: true });
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("write skips invalid gender rows without creating user or UserImage", async () => {
+    const uploadTmp = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-upl-bad-"));
+    const prevUpload = process.env.UPLOAD_DIR;
+    process.env.UPLOAD_DIR = uploadTmp;
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "r4h-badg-"));
+    try {
+      const prisma = {
+        userImage: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn(),
+        },
+        user: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn(),
+          update: jest.fn(),
+        },
+        userProfile: { upsert: jest.fn() },
+      };
+      const detection = { detectFromBuffer: jest.fn() };
+      const vision = {
+        applyToDetectionScoreJson: jest.fn((x: unknown) => x),
+      };
+      const svc = new CandidateImageDevImportService(
+        prisma as never,
+        detection as never,
+        vision as never,
+      );
+      await fs.writeFile(path.join(dir, "bad.jpg"), new Uint8Array([2]));
+      await fs.writeFile(
+        path.join(dir, "mapping.json"),
+        JSON.stringify({
+          items: [{ file: "bad.jpg", userId: "u-bad-map", gender: "alien" }],
+        }),
+      );
+      const report = await svc.run({
+        folderRelOrAbs: dir,
+        limit: 5,
+        dryRun: false,
+        createMissingUsers: true,
+        copyToUploads: true,
+        tagPrefix: "demo",
+        runDetection: true,
+        runVision: false,
+      });
+      expect(report.summary.invalidGenderCandidates).toBe(1);
+      expect(report.summary.skippedInvalidGender).toBe(1);
+      expect(report.summary.createdUserImages).toBe(0);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(prisma.userImage.create).not.toHaveBeenCalled();
     } finally {
       if (prevUpload === undefined) {
         delete process.env.UPLOAD_DIR;

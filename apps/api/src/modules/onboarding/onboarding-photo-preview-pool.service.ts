@@ -16,6 +16,11 @@ import {
 } from "@peima/shared/matching/preference-score";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
+import {
+  candidatePassesOppositeBinaryGate,
+  isStrictBinaryPreviewGender,
+  normalizeUserGenderForPreview,
+} from "./onboarding-preview-gender";
 
 const ONBOARDING_POOL_STATUS = {
   ACTIVE: "active",
@@ -38,6 +43,8 @@ type GatedRow = {
   occupation: string;
   relationshipGoal: string;
   firstImageStyleTags: string[];
+  /** Raw `User.gender` for audit / parity; filtering uses normalization. */
+  gender: string;
 };
 
 function toPreferenceGatePref(row: UserPreference | null): PreferenceGatePref | null {
@@ -69,7 +76,17 @@ function toViewerPreferenceLike(row: UserPreference | null): ViewerPreferenceLik
   };
 }
 
-function toPreferenceGateCandidate(row: GatedRow): PreferenceGateCandidate {
+function toPreferenceGateCandidate(
+  row: Pick<
+    GatedRow,
+    | "age"
+    | "city"
+    | "height"
+    | "education"
+    | "occupation"
+    | "relationshipGoal"
+  >,
+): PreferenceGateCandidate {
   return {
     age: row.age,
     city: row.city,
@@ -80,7 +97,17 @@ function toPreferenceGateCandidate(row: GatedRow): PreferenceGateCandidate {
   };
 }
 
-function toCandidateLike(row: GatedRow) {
+function toCandidateLike(
+  row: Pick<
+    GatedRow,
+    | "age"
+    | "city"
+    | "height"
+    | "education"
+    | "occupation"
+    | "relationshipGoal"
+  >,
+) {
   return {
     age: row.age,
     city: row.city,
@@ -290,6 +317,7 @@ export class OnboardingPhotoPreviewPoolService {
   private async collectGatedCandidates(
     viewerId: string,
     gatePref: PreferenceGatePref | null,
+    viewerBinary: "male" | "female",
   ): Promise<GatedRow[]> {
     const baseWhere = {
       id: { not: viewerId },
@@ -315,6 +343,7 @@ export class OnboardingPhotoPreviewPoolService {
           education: true,
           occupation: true,
           relationshipGoal: true,
+          gender: true,
           images: {
             orderBy: { createdAt: "asc" },
             take: 1,
@@ -334,18 +363,19 @@ export class OnboardingPhotoPreviewPoolService {
           !passesPreferenceHardGate(
             gatePref,
             toPreferenceGateCandidate({
-              id: row.id,
-              createdAt: row.createdAt,
               age: row.age,
               city: row.city,
               height: row.height,
               education: row.education,
               occupation: row.occupation,
               relationshipGoal: row.relationshipGoal,
-              firstImageStyleTags: row.images[0]?.styleTags ?? [],
             }),
           )
         ) {
+          continue;
+        }
+
+        if (!candidatePassesOppositeBinaryGate(viewerBinary, row.gender)) {
           continue;
         }
 
@@ -360,6 +390,7 @@ export class OnboardingPhotoPreviewPoolService {
           occupation: row.occupation,
           relationshipGoal: row.relationshipGoal,
           firstImageStyleTags: first?.styleTags ?? [],
+          gender: row.gender ?? "",
         });
       }
 
@@ -385,6 +416,7 @@ export class OnboardingPhotoPreviewPoolService {
       where: { id: viewerUserId },
       select: {
         onboardingPhotoAestheticCompletedAt: true,
+        gender: true,
       },
     });
     if (!user) {
@@ -403,13 +435,24 @@ export class OnboardingPhotoPreviewPoolService {
       throw new BadRequestException("请先上传至少一张照片，再生成预览池。");
     }
 
+    const viewerGenderNorm = normalizeUserGenderForPreview(user.gender);
+    if (!isStrictBinaryPreviewGender(viewerGenderNorm)) {
+      throw new BadRequestException(
+        "请先完善性别信息后再生成预览池。",
+      );
+    }
+
     const prefRow = await this.prisma.userPreference.findUnique({
       where: { userId: viewerUserId },
     });
     const gatePref = toPreferenceGatePref(prefRow);
     const viewerPref = toViewerPreferenceLike(prefRow);
 
-    const gRaw = await this.collectGatedCandidates(viewerUserId, gatePref);
+    const gRaw = await this.collectGatedCandidates(
+      viewerUserId,
+      gatePref,
+      viewerGenderNorm,
+    );
     const gAll = gRaw.filter((c) =>
       isEligiblePreviewCandidate(c.id, viewerUserId),
     );

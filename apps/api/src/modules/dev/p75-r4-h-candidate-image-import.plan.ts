@@ -22,8 +22,18 @@ export type CandidateMappingJsonV1 = {
     userId?: string;
     styleTags?: string[];
     nickname?: string;
+    /** Demo: `male` | `female` only; omit / invalid → import skips row (no inference). */
+    gender?: string;
   }>;
 };
+
+export type PlannedImportGender = "male" | "female" | "invalid";
+
+export function isPlannedImportGenderValid(
+  g: PlannedImportGender,
+): g is "male" | "female" {
+  return g === "male" || g === "female";
+}
 
 export type PlannedImportRow = {
   sourceBasename: string;
@@ -32,7 +42,16 @@ export type PlannedImportRow = {
   mappingUserId?: string;
   styleTags: string[];
   nicknameHint?: string;
+  genderNormalized: PlannedImportGender;
 };
+
+export function parseMappingItemGender(raw: unknown): PlannedImportGender {
+  if (typeof raw !== "string") return "invalid";
+  const s = raw.trim().toLowerCase();
+  if (s === "male") return "male";
+  if (s === "female") return "female";
+  return "invalid";
+}
 
 export function isSupportedImageBasename(basename: string): boolean {
   if (basename.startsWith(".")) return false;
@@ -93,6 +112,7 @@ export function buildImportPlan(opts: {
         mappingUserId: it.userId,
         styleTags,
         nicknameHint: typeof it.nickname === "string" ? it.nickname : undefined,
+        genderNormalized: parseMappingItemGender(it.gender),
       });
     }
   }
@@ -107,6 +127,7 @@ export function buildImportPlan(opts: {
       targetUserId: "new",
       styleTags: defaultStyle,
       nicknameHint: `${opts.tagPrefix}-${bn}`,
+      genderNormalized: "invalid",
     });
   }
 

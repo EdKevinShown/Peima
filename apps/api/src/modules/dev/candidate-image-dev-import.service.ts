@@ -21,13 +21,15 @@ import { UserImageVisionSidecarService } from "../images/user-image-vision-sidec
 import {
   R4_H_SCHEMA_VERSION,
   buildImportPlan,
+  isPlannedImportGenderValid,
   listEligibleImageFiles,
   parseCandidateMappingJson,
   r4hDedupMarkerInStoredName,
   slugForImportFilename,
   type PlannedImportRow,
 } from "./p75-r4-h-candidate-image-import.plan";
-import { resolveMonorepoRoot } from "./repo-root";
+import { resolveCandidateImportFolderInput } from "./repo-root";
+import { genderStorageFromBinary } from "../onboarding/onboarding-preview-gender";
 
 export type R4HCandidateImageImportInput = {
   folderRelOrAbs: string;
@@ -53,6 +55,10 @@ export type R4HCandidateImageImportSummary = {
   detectionFailed: number;
   skippedExisting: number;
   failed: number;
+  maleCandidates: number;
+  femaleCandidates: number;
+  invalidGenderCandidates: number;
+  skippedInvalidGender: number;
 };
 
 export type R4HCandidateImageImportReport = {
@@ -72,12 +78,11 @@ export type R4HCandidateImageImportReport = {
 };
 
 const DEMO_FIELDS = {
-  gender: "",
   age: 28 as number | null,
   city: "上海",
   height: 170 as number | null,
   education: "本科",
-  occupation: "工程师",
+  occupation: "制造业 / 工程 / 技术",
   relationshipGoal: "认真恋爱",
   bio: "",
 } as const;
@@ -126,11 +131,7 @@ export class CandidateImageDevImportService {
   }
 
   resolveFolderPath(folderRelOrAbs: string): string {
-    if (path.isAbsolute(folderRelOrAbs)) {
-      return path.normalize(folderRelOrAbs);
-    }
-    const root = resolveMonorepoRoot();
-    return path.normalize(path.join(root, folderRelOrAbs));
+    return resolveCandidateImportFolderInput(folderRelOrAbs, process.cwd());
   }
 
   private detectionScoreJsonForPersist(
@@ -180,6 +181,23 @@ export class CandidateImageDevImportService {
     });
   }
 
+  /** Merge demo fields from mapping import without clobbering when values are unknown / empty. */
+  private async mergeDemoCandidateUserFields(
+    userId: string,
+    row: PlannedImportRow & { genderNormalized: "male" | "female" },
+  ): Promise<void> {
+    const data: { gender?: string; nickname?: string } = {
+      gender: genderStorageFromBinary(row.genderNormalized),
+    };
+    if (row.nicknameHint?.trim()) {
+      data.nickname = row.nicknameHint.trim().slice(0, 40);
+    }
+    if (Object.keys(data).length > 0) {
+      await this.prisma.user.update({ where: { id: userId }, data });
+    }
+    await this.ensureUserProfile(userId);
+  }
+
   private peekMappedUserExistence(mappingUserId: string): Promise<boolean> {
     return this.prisma.user
       .findUnique({ where: { id: mappingUserId } })
@@ -191,6 +209,12 @@ export class CandidateImageDevImportService {
     opts: R4HCandidateImageImportInput,
     summary: R4HCandidateImageImportSummary,
   ): Promise<boolean> {
+    if (!isPlannedImportGenderValid(row.genderNormalized)) {
+      throw new InternalServerErrorException(
+        "r4-h import: createMappedUserOnce called with invalid gender",
+      );
+    }
+    const gn = row.genderNormalized;
     const id = row.mappingUserId!;
     const nick =
       row.nicknameHint?.trim() ||
@@ -204,9 +228,13 @@ export class CandidateImageDevImportService {
         phone: demoPhoneForUserId(id),
         nickname: nick,
         ...DEMO_FIELDS,
+        gender: genderStorageFromBinary(gn),
       },
     });
-    await this.ensureUserProfile(id);
+    await this.mergeDemoCandidateUserFields(id, {
+      ...row,
+      genderNormalized: gn,
+    });
     summary.createdUsers += 1;
     return true;
   }
@@ -216,6 +244,12 @@ export class CandidateImageDevImportService {
     opts: R4HCandidateImageImportInput,
     summary: R4HCandidateImageImportSummary,
   ): Promise<string> {
+    if (!isPlannedImportGenderValid(row.genderNormalized)) {
+      throw new InternalServerErrorException(
+        "r4-h import: createAnonymousUserOnce called with invalid gender",
+      );
+    }
+    const gn = row.genderNormalized;
     const nick =
       row.nicknameHint?.trim() ||
       `${opts.tagPrefix}-${slugForImportFilename(row.sourceBasename)}`.slice(
@@ -227,9 +261,13 @@ export class CandidateImageDevImportService {
         phone: `demo-r4h-auto-${randomUUID().replace(/-/g, "").slice(0, 24)}`,
         nickname: nick.slice(0, 40),
         ...DEMO_FIELDS,
+        gender: genderStorageFromBinary(gn),
       },
     });
-    await this.ensureUserProfile(created.id);
+    await this.mergeDemoCandidateUserFields(created.id, {
+      ...row,
+      genderNormalized: gn,
+    });
     summary.createdUsers += 1;
     return created.id;
   }
@@ -292,6 +330,10 @@ export class CandidateImageDevImportService {
       detectionFailed: 0,
       skippedExisting: 0,
       failed: 0,
+      maleCandidates: 0,
+      femaleCandidates: 0,
+      invalidGenderCandidates: 0,
+      skippedInvalidGender: 0,
     };
 
     if (opts.dryRun) {
@@ -301,6 +343,13 @@ export class CandidateImageDevImportService {
           dryFailed += 1;
           continue;
         }
+
+        if (!isPlannedImportGenderValid(row.genderNormalized)) {
+          summary.invalidGenderCandidates += 1;
+          summary.skippedInvalidGender += 1;
+          continue;
+        }
+
         const slug = slugForImportFilename(row.sourceBasename);
         const dedupMarker = r4hDedupMarkerInStoredName(slug);
 
@@ -337,6 +386,8 @@ export class CandidateImageDevImportService {
         }
 
         wouldImages += 1;
+        if (row.genderNormalized === "male") summary.maleCandidates += 1;
+        else summary.femaleCandidates += 1;
       }
 
       summary.wouldCreateUsers =
@@ -372,6 +423,12 @@ export class CandidateImageDevImportService {
         const ext = extForStoredName(row.sourceBasename);
         if (!ext) {
           summary.failed += 1;
+          continue;
+        }
+
+        if (!isPlannedImportGenderValid(row.genderNormalized)) {
+          summary.invalidGenderCandidates += 1;
+          summary.skippedInvalidGender += 1;
           continue;
         }
 
@@ -427,6 +484,11 @@ export class CandidateImageDevImportService {
           continue;
         }
 
+        await this.mergeDemoCandidateUserFields(
+          userIdResolved,
+          row as PlannedImportRow & { genderNormalized: "male" | "female" },
+        );
+
         const buf = await readFile(row.absolutePath);
 
         let detection: UserImageDetectionResult;
@@ -457,6 +519,8 @@ export class CandidateImageDevImportService {
         });
 
         summary.createdUserImages += 1;
+        if (row.genderNormalized === "male") summary.maleCandidates += 1;
+        else summary.femaleCandidates += 1;
         if (detection.status === "passed") summary.detectionPassed += 1;
         else if (detection.status === "skipped") summary.detectionSkipped += 1;
         else if (detection.status === "failed") summary.detectionFailed += 1;

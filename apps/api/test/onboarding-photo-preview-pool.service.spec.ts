@@ -12,6 +12,8 @@ function candidateRow(
   id: string,
   iso: string,
   styleTags: string[],
+  /** Default opposite to a male viewer preview path. */
+  gender = "female",
 ) {
   return {
     id,
@@ -22,6 +24,7 @@ function candidateRow(
     education: "本科",
     occupation: "工程师",
     relationshipGoal: "认真恋爱",
+    gender,
     images: [{ styleTags }],
   };
 }
@@ -38,6 +41,7 @@ function toGated(row: ReturnType<typeof candidateRow>) {
     occupation: row.occupation,
     relationshipGoal: row.relationshipGoal,
     firstImageStyleTags: im?.styleTags ?? [],
+    gender: row.gender ?? "",
   };
 }
 
@@ -69,6 +73,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           onboardingPhotoAestheticCompletedAt: new Date(),
+          gender: "male",
         }),
         findMany: jest.fn(),
       },
@@ -214,6 +219,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           onboardingPhotoAestheticCompletedAt: new Date(),
+          gender: "male",
         }),
         findMany: jest.fn().mockResolvedValueOnce(six).mockResolvedValue([]),
       },
@@ -337,6 +343,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           onboardingPhotoAestheticCompletedAt: new Date(),
+          gender: "male",
         }),
         findMany: jest.fn().mockResolvedValueOnce(polluted).mockResolvedValue([]),
       },
@@ -408,6 +415,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       user: {
         findUnique: jest.fn().mockResolvedValue({
           onboardingPhotoAestheticCompletedAt: new Date(),
+          gender: "male",
         }),
         findMany: jest
           .fn()
@@ -532,6 +540,373 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
     expect(bundle.items[0]?.imageUrl).toBe(otherUrl);
     expect(bundle.items[1]?.imageUrl == null || bundle.items[1]?.imageUrl === null).toBe(true);
     expect(bundle.items.every((it) => it.imageUrl !== viewerUrl)).toBe(true);
+  });
+
+  describe("P7.5-r4-i gender filter (MVP)", () => {
+    const prefDto = {
+      userId: "viewer-1",
+      minAge: null,
+      maxAge: null,
+      preferredCities: [],
+      minHeight: null,
+      maxHeight: null,
+      educationPreferences: [],
+      occupationPreferences: [],
+      relationshipGoalPreferences: [],
+      styleTags: ["清爽自然", "生活感"],
+    };
+
+    function femalesSix() {
+      return [
+        candidateRow("fa", "2020-01-01", ["清爽自然"], "female"),
+        candidateRow("fb", "2020-02-01", ["生活感"], "女"),
+        candidateRow("fc", "2020-03-01", ["生活感"], "f"),
+        candidateRow("fd", "2020-04-01", ["成熟稳重"], "female"),
+        candidateRow("fe", "2020-05-01", ["运动阳光"], "female"),
+        candidateRow("ff", "2019-01-01", ["有个性"], "female"),
+      ];
+    }
+
+    function malesSix() {
+      return [
+        candidateRow("ma", "2020-01-01", ["清爽自然"], "male"),
+        candidateRow("mb", "2020-02-01", ["生活感"], "男"),
+        candidateRow("mc", "2020-03-01", ["生活感"], "m"),
+        candidateRow("md", "2020-04-01", ["成熟稳重"], "male"),
+        candidateRow("me", "2020-05-01", ["运动阳光"], "male"),
+        candidateRow("mf", "2019-01-01", ["有个性"], "male"),
+      ];
+    }
+
+    it("male viewer: pool + shadow use only opposite-gender candidates", async () => {
+      const batch = femalesSix();
+      const createOnboardingPool = jest.fn().mockImplementation(async (args: {
+        data: { items: { create: { candidateUserId: string }[] } };
+      }) => ({
+        id: "pool-g",
+        userId: "viewer-1",
+        status: "active",
+        sourceVersion: "onboarding-photo-preview-v1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: (args.data.items.create as { candidateUserId: string }[]).map((c, i) => ({
+          id: `item-${i}`,
+          candidateUserId: c.candidateUserId,
+          tier: "aesthetic_fit",
+          displayMode: "clear",
+          rankInPool: i + 1,
+          score: 0.5,
+          reasonTags: [],
+        })),
+      }));
+      const prisma = {
+        previewPool: { updateMany: jest.fn() },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "male",
+          }),
+          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+        },
+        userImage: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue(
+            batch.map((r) => ({
+              userId: r.id,
+              imageUrl: `https://x/${r.id}.jpg`,
+              createdAt: r.createdAt,
+            })),
+          ),
+        },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: jest.fn(),
+          create: createOnboardingPool,
+        },
+      };
+      const computeShadow = jest.fn().mockResolvedValue({ computed: false, reason: "shadow_disabled" });
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: VisualRankingShadowService, useValue: { computeShadow } },
+        ],
+      }).compile();
+      await mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1");
+
+      const createArg = createOnboardingPool.mock.calls[0][0] as {
+        data: { items: { create: { candidateUserId: string; tier: string }[] } };
+      };
+      const creates = createArg.data.items.create;
+      expect(new Set(creates.map((c) => c.candidateUserId)).size).toBe(6);
+      expect(creates.every((c) => c.candidateUserId.startsWith("f"))).toBe(true);
+
+      const gated = computeShadow.mock.calls[0][0].gatedCandidates as { id: string }[];
+      expect(gated.every((g) => g.id.startsWith("f"))).toBe(true);
+    });
+
+    it("female viewer: pool uses only male candidates", async () => {
+      const batch = malesSix();
+      const createOnboardingPool = jest.fn().mockImplementation(async (args: {
+        data: { items: { create: { candidateUserId: string }[] } };
+      }) => ({
+        id: "pool-g2",
+        userId: "viewer-1",
+        status: "active",
+        sourceVersion: "onboarding-photo-preview-v1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: (args.data.items.create as { candidateUserId: string }[]).map((c, i) => ({
+          id: `i-${i}`,
+          candidateUserId: c.candidateUserId,
+          tier: "aesthetic_fit",
+          displayMode: "clear",
+          rankInPool: i + 1,
+          score: 0.5,
+          reasonTags: [],
+        })),
+      }));
+      const prisma = {
+        previewPool: { updateMany: jest.fn() },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "女",
+          }),
+          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+        },
+        userImage: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: jest.fn(),
+          create: createOnboardingPool,
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          {
+            provide: VisualRankingShadowService,
+            useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+          },
+        ],
+      }).compile();
+      await mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1");
+
+      const creates = (
+        createOnboardingPool.mock.calls[0][0] as {
+          data: { items: { create: { candidateUserId: string }[] } };
+        }
+      ).data.items.create;
+      expect(creates.every((c) => c.candidateUserId.startsWith("m"))).toBe(true);
+    });
+
+    it("male viewer throws when gated universe has fewer than 6 opposite-gender candidates", async () => {
+      const batch = femalesSix().slice(0, 4);
+      const createOnboardingPool = jest.fn();
+      const prisma = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "male",
+          }),
+          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+        },
+        userImage: { count: jest.fn().mockResolvedValue(1), findMany: jest.fn() },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: jest.fn(),
+          create: createOnboardingPool,
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          {
+            provide: VisualRankingShadowService,
+            useValue: { computeShadow: jest.fn() },
+          },
+        ],
+      }).compile();
+      await expect(
+        mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1"),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(createOnboardingPool).not.toHaveBeenCalled();
+    });
+
+    it("viewer gender missing / invalid throws before archiving pool or computing shadow", async () => {
+      const batch = [
+        ...(["fa", "fb", "fc", "fd", "fe", "ff"] as const).map((id, i) =>
+          candidateRow(id, `202${i}-01-01`, ["清爽自然"], "female"),
+        ),
+      ];
+      const onboardingArchive = jest.fn().mockResolvedValue({ count: 0 });
+      const createOnboardingPool = jest.fn();
+      const computeShadow = jest.fn();
+      const prisma = {
+        previewPool: { updateMany: jest.fn() },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "",
+          }),
+          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+        },
+        userImage: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn(),
+        },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: onboardingArchive,
+          create: createOnboardingPool,
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: VisualRankingShadowService, useValue: { computeShadow } },
+        ],
+      }).compile();
+      await expect(
+        mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1"),
+      ).rejects.toThrow("请先完善性别信息后再生成预览池。");
+      expect(onboardingArchive).not.toHaveBeenCalled();
+      expect(createOnboardingPool).not.toHaveBeenCalled();
+      expect(computeShadow).not.toHaveBeenCalled();
+    });
+
+    it("male viewer: unknown / same-gender candidates never enter pool or shadow gatedCandidates", async () => {
+      const batch = [
+        ...femalesSix(),
+        candidateRow("xm", "2017-01-01", ["清爽自然"], "male"),
+        candidateRow("xu", "2017-02-01", ["生活感"], "unknown"),
+        candidateRow("xe", "2017-03-01", ["生活感"], ""),
+      ];
+      const createOnboardingPool = jest.fn().mockImplementation(async (args: {
+        data: { items: { create: { candidateUserId: string }[] } };
+      }) => ({
+        id: "pool-mix",
+        userId: "viewer-1",
+        status: "active",
+        sourceVersion: "onboarding-photo-preview-v1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: (args.data.items.create as { candidateUserId: string }[]).map((c, i) => ({
+          id: `i-${i}`,
+          candidateUserId: c.candidateUserId,
+          tier: "aesthetic_fit",
+          displayMode: "clear",
+          rankInPool: i + 1,
+          score: 0.5,
+          reasonTags: [],
+        })),
+      }));
+      const computeShadow = jest.fn().mockResolvedValue({ computed: false });
+      const prisma = {
+        previewPool: { updateMany: jest.fn() },
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            onboardingPhotoAestheticCompletedAt: new Date(),
+            gender: "male",
+          }),
+          findMany: jest.fn().mockResolvedValueOnce(batch).mockResolvedValue([]),
+        },
+        userImage: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        userPreference: { findUnique: jest.fn().mockResolvedValue(prefDto) },
+        onboardingPhotoPreviewPool: {
+          updateMany: jest.fn(),
+          create: createOnboardingPool,
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          {
+            provide: VisualRankingShadowService,
+            useValue: { computeShadow },
+          },
+        ],
+      }).compile();
+      await mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1");
+
+      const creates = (
+        createOnboardingPool.mock.calls[0][0] as {
+          data: { items: { create: { candidateUserId: string }[] } };
+        }
+      ).data.items.create as { candidateUserId: string }[];
+      const ids = new Set(creates.map((c) => c.candidateUserId));
+      expect(ids.has("xm")).toBe(false);
+      expect(ids.has("xu")).toBe(false);
+      expect(ids.has("xe")).toBe(false);
+      expect([...ids].every((id) => id.startsWith("f"))).toBe(true);
+
+      const gated = computeShadow.mock.calls[0][0].gatedCandidates as { id: string }[];
+      expect(gated.every((g) => g.id.startsWith("f"))).toBe(true);
+      expect(gated.some((g) => g.id === "xm" || g.id === "xu" || g.id === "xe")).toBe(false);
+    });
+
+    it("toViewerBundle imageUrl resolves from UserImage.userId matching candidateUserId only", async () => {
+      const prisma = {
+        onboardingPhotoPreviewPool: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: "p-url",
+            userId: "v1",
+            status: "active",
+            sourceVersion: "onboarding-photo-preview-v1",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            items: [
+              {
+                id: "i1",
+                candidateUserId: "cx",
+                tier: "aesthetic_fit",
+                displayMode: "clear",
+                rankInPool: 1,
+                score: 1,
+                reasonTags: [],
+              },
+            ],
+          }),
+        },
+        userImage: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              userId: "cx",
+              imageUrl: "https://cdn/candidate.jpg",
+              createdAt: new Date(),
+            },
+            {
+              userId: "v1",
+              imageUrl: "https://cdn/viewer.jpg",
+              createdAt: new Date(),
+            },
+          ]),
+        },
+      };
+      const mod = await Test.createTestingModule({
+        providers: [
+          OnboardingPhotoPreviewPoolService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: VisualRankingShadowService, useValue: { computeShadow: jest.fn() } },
+        ],
+      }).compile();
+      const bundle = await mod.get(OnboardingPhotoPreviewPoolService).findLatestActiveForViewer(
+        "v1",
+      );
+      expect(bundle.items[0]?.imageUrl).toBe("https://cdn/candidate.jpg");
+      expect(bundle.items.every((it) => it.imageUrl !== "https://cdn/viewer.jpg")).toBe(true);
+    });
   });
 
   describe("self-exclusion pure helpers", () => {
