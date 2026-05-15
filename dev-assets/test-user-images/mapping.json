@@ -4,27 +4,45 @@
   "items": [
     {
       "file": "test-user-images1.jpg",
-      "userId": "cmoc1gnil00006z64l9w2oa5t"
+      "userId": "cmoc1gnil00006z64l9w2oa5t",
+      "nickname": "Demo Female 01",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images2.jpg",
-      "userId": "cmoc1gnjc000x6z64esun9iur"
+      "userId": "cmoc1gnjc000x6z64esun9iur",
+      "nickname": "Demo Male 01",
+      "gender": "male",
+      "styleTags": ["运动阳光", "简约干净"]
     },
     {
       "file": "test-user-images3.jpg",
-      "userId": "cmoc1gnjo001u6z64ghwpseih"
+      "userId": "cmoc1gnjo001u6z64ghwpseih",
+      "nickname": "Demo Female 02",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images4.jpg",
-      "userId": "cmoc1gnk1002r6z64iapqf5n9"
+      "userId": "cmoc1gnk1002r6z64iapqf5n9",
+      "nickname": "Demo Male 02",
+      "gender": "male",
+      "styleTags": ["运动阳光", "简约干净"]
     },
     {
       "file": "test-user-images5.jpg",
-      "userId": "cmoc1gnkd003o6z64zobqegdc"
+      "userId": "cmoc1gnkd003o6z64zobqegdc",
+      "nickname": "Demo Female 03",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images6.jpg",
-      "userId": "cmoc1gnkq004l6z64jdq89d4a"
+      "userId": "cmoc1gnkq004l6z64jdq89d4a",
+      "nickname": "Demo Male 03",
+      "gender": "male",
+      "styleTags": ["运动阳光", "简约干净"]
     }
   ]
 }
