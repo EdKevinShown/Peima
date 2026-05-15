@@ -4,8 +4,18 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma } from "@peima/database";
+import { AuditService } from "../../common/audit/audit.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { PHOTO_REVIEW_ACTION_SOURCE_STATUSES } from "./admin-photo-review.constants";
+import {
+  buildPhotoReviewAuditNewValues,
+  buildPhotoReviewAuditOldValues,
+  PHOTO_REVIEW_AUDIT_BEFORE_SELECT,
+  PHOTO_REVIEW_AUDIT_ACTION,
+  PHOTO_REVIEW_AUDIT_ENTITY_TYPE,
+  type PhotoReviewAuditAction,
+  type PhotoReviewAuditBeforeRow,
+} from "./admin-photo-review-audit";
 import {
   buildApproveWrite,
   buildNeedsReuploadWrite,
@@ -89,7 +99,10 @@ function toListItem(row: UserImageRow): AdminPhotoReviewListItemDto {
 
 @Injectable()
 export class AdminPhotoReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async listItems(
     query: ListPhotoReviewItemsQueryDto,
@@ -176,6 +189,7 @@ export class AdminPhotoReviewService {
       imageId,
       actorUserId,
       buildApproveWrite(dto),
+      { action: PHOTO_REVIEW_AUDIT_ACTION.APPROVE },
     );
   }
 
@@ -188,6 +202,10 @@ export class AdminPhotoReviewService {
       imageId,
       actorUserId,
       buildRejectWrite(dto),
+      {
+        action: PHOTO_REVIEW_AUDIT_ACTION.REJECT,
+        requestReasonCodes: dto.reasonCodes,
+      },
     );
   }
 
@@ -200,6 +218,10 @@ export class AdminPhotoReviewService {
       imageId,
       actorUserId,
       buildNeedsReuploadWrite(dto),
+      {
+        action: PHOTO_REVIEW_AUDIT_ACTION.NEEDS_REUPLOAD,
+        requestReasonCodes: dto.reasonCodes,
+      },
     );
   }
 
@@ -231,10 +253,14 @@ export class AdminPhotoReviewService {
     imageId: string,
     actorUserId: string,
     write: ReviewWritePayload,
+    auditCtx: {
+      action: PhotoReviewAuditAction;
+      requestReasonCodes?: string[];
+    },
   ): Promise<AdminPhotoReviewDetailDto> {
     const existing = await this.prisma.userImage.findUnique({
       where: { id: imageId },
-      select: { id: true, updatedAt: true, reviewStatus: true },
+      select: PHOTO_REVIEW_AUDIT_BEFORE_SELECT,
     });
     if (!existing) {
       throw new NotFoundException(`Photo review item ${imageId} not found`);
@@ -268,6 +294,26 @@ export class AdminPhotoReviewService {
         `Photo review item ${imageId} could not be updated (status=${current.reviewStatus}); retry or refresh`,
       );
     }
+
+    const before = existing as PhotoReviewAuditBeforeRow;
+    await this.auditService.recordAction(
+      actorUserId,
+      auditCtx.action,
+      PHOTO_REVIEW_AUDIT_ENTITY_TYPE,
+      {
+        entityId: imageId,
+        oldValues: buildPhotoReviewAuditOldValues(before),
+        newValues: buildPhotoReviewAuditNewValues(
+          before,
+          write,
+          reviewedAt,
+          actorUserId,
+          auditCtx.requestReasonCodes,
+        ),
+        changeReason: auditCtx.action,
+        status: "SUCCESS",
+      },
+    );
 
     return this.getItemDetail(imageId);
   }
