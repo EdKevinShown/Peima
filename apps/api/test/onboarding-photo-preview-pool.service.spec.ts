@@ -484,24 +484,38 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         }),
       },
       userImage: {
-        findMany: jest.fn().mockImplementation((q: { where: { userId: { in: string[] } } }) => {
-          const ids = q.where.userId.in;
-          const out: { userId: string; imageUrl: string; createdAt: Date }[] = [];
-          if (ids.includes("other-u")) {
-            out.push({
+        findMany: jest.fn().mockImplementation((q: unknown) => {
+          const qw = (
+            typeof q === "object" &&
+            q !== null &&
+            "where" in q &&
+            (
+              q as {
+                where?: { AND?: Array<{ userId?: unknown }> };
+              }
+            ).where
+              ? (q as {
+                  where: { AND?: Array<{ userId?: unknown }> };
+                }).where
+              : null
+          );
+          const clauses = qw?.AND ?? [];
+          const notVx = clauses.some(
+            (c) =>
+              c.userId !== undefined &&
+              typeof c.userId === "object" &&
+              c.userId !== null &&
+              "not" in c.userId &&
+              (c.userId as { not: string }).not === "vx",
+          );
+          expect(notVx).toBe(true);
+          return Promise.resolve([
+            {
               userId: "other-u",
               imageUrl: otherUrl,
               createdAt: new Date("2020-01-01"),
-            });
-          }
-          if (ids.includes("vx")) {
-            out.push({
-              userId: "vx",
-              imageUrl: viewerUrl,
-              createdAt: new Date("2020-01-02"),
-            });
-          }
-          return Promise.resolve(out);
+            },
+          ]);
         }),
       },
     };

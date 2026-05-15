@@ -24,7 +24,9 @@
     "p74:r1b-face-runtime-check": "node scripts/p74-r1b-face-runtime-check.mjs",
     "p75:r4-shadow-audit": "node dist/dev-cli/p75-r4-visual-ranking-shadow-audit-runner.js",
     "p75:r4-e-shadow-sample": "node dist/dev-cli/p75-r4-e-shadow-sample-harness-runner.js",
-    "p75:r4-backfill-vision": "node dist/dev-cli/p75-r4-f-backfill-onboarding-vision-runner.js"
+    "p75:r4-backfill-vision": "node dist/dev-cli/p75-r4-f-backfill-onboarding-vision-runner.js",
+    "p75:r4-import-candidate-images": "node dist/dev-cli/p75-r4-h-import-candidate-images-runner.js",
+    "p75:r4-candidate-vision-audit": "node dist/dev-cli/p75-r4-g-candidate-vision-coverage-audit-runner.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

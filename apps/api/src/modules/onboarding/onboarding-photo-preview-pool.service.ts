@@ -419,11 +419,21 @@ export class OnboardingPhotoPreviewPoolService {
       );
     }
 
-    const { slotDefs } = buildSixNonSelfPreviewSlots(
+    const { slotDefs: rawSlotDefs } = buildSixNonSelfPreviewSlots(
       viewerUserId,
       gAll,
       viewerPref,
     );
+
+    const slotDefs = rawSlotDefs.filter((s) =>
+      isEligiblePreviewCandidate(s.candidateId, viewerUserId),
+    );
+    if (
+      slotDefs.length !== 6 ||
+      slotDefs.some((s) => s.candidateId === viewerUserId)
+    ) {
+      throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+    }
 
     await this.archiveActiveOnboardingPoolsOnly(viewerUserId);
 
@@ -433,18 +443,26 @@ export class OnboardingPhotoPreviewPoolService {
         status: ONBOARDING_POOL_STATUS.ACTIVE,
         sourceVersion: ONBOARDING_PHOTO_PREVIEW_SOURCE_VERSION,
         items: {
-          create: slotDefs.map((s) => ({
-            userId: viewerUserId,
-            candidateUserId: s.candidateId,
-            tier: s.tier,
-            displayMode: s.displayMode,
-            rankInPool: s.rankInPool,
-            score: s.score,
-            reasonTags: [
-              `onboarding-photo-preview-v1`,
-              `tier:${s.tier}`,
-            ],
-          })),
+          create: slotDefs.map((s) => {
+            if (
+              !isEligiblePreviewCandidate(s.candidateId, viewerUserId) ||
+              s.candidateId === viewerUserId
+            ) {
+              throw new BadRequestException("预览池生成出现异常，请稍后重试。");
+            }
+            return {
+              userId: viewerUserId,
+              candidateUserId: s.candidateId,
+              tier: s.tier,
+              displayMode: s.displayMode,
+              rankInPool: s.rankInPool,
+              score: s.score,
+              reasonTags: [
+                `onboarding-photo-preview-v1`,
+                `tier:${s.tier}`,
+              ],
+            };
+          }),
         },
       },
       include: {
@@ -517,7 +535,12 @@ export class OnboardingPhotoPreviewPoolService {
       candidateIds.length === 0
         ? []
         : await this.prisma.userImage.findMany({
-            where: { userId: { in: candidateIds } },
+            where: {
+              AND: [
+                { userId: { in: candidateIds } },
+                { userId: { not: poolViewerId } },
+              ],
+            },
             orderBy: { createdAt: "asc" },
           });
     const images = Array.isArray(rawImages) ? rawImages : [];

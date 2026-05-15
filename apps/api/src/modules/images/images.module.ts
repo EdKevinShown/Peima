@@ -15,6 +15,10 @@ import { UserImageVisionSidecarService } from "./user-image-vision-sidecar.servi
     UserImageDetectionService,
     UserImageVisionSidecarService,
   ],
-  exports: [ImagesService],
+  exports: [
+    ImagesService,
+    UserImageDetectionService,
+    UserImageVisionSidecarService,
+  ],
 })
 export class ImagesModule {}
