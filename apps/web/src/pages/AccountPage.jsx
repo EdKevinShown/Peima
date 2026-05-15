@@ -22,6 +22,13 @@ import {
 const AGES = ageOptionsInclusive();
 const HEIGHTS = heightOptionsCmInclusive();
 
+/** Empty string → null so PATCH-like upsert clears bounds (“不限制”). */
+function preferenceIntOrNull(raw) {
+  if (raw === "" || raw == null) return null;
+  const n = parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Scoped to this page only; avoids global CSS file. */
 const ACCOUNT_PAGE_SCOPED_CSS = `
 .account-page .account-field-label {
@@ -368,10 +375,10 @@ export default function AccountPage() {
 
     try {
       await upsertUserPreferences(userId, {
-        ...(minAge ? { minAge: parseInt(minAge, 10) } : {}),
-        ...(maxAge ? { maxAge: parseInt(maxAge, 10) } : {}),
-        ...(minHeight ? { minHeight: parseInt(minHeight, 10) } : {}),
-        ...(maxHeight ? { maxHeight: parseInt(maxHeight, 10) } : {}),
+        minAge: preferenceIntOrNull(minAge),
+        maxAge: preferenceIntOrNull(maxAge),
+        minHeight: preferenceIntOrNull(minHeight),
+        maxHeight: preferenceIntOrNull(maxHeight),
         preferredCities,
         educationPreferences,
         occupationPreferences,
@@ -574,6 +581,9 @@ export default function AccountPage() {
             <h2 style={{ fontSize: "1.05rem" }}>匹配偏好</h2>
             <p style={{ fontSize: "0.8rem", color: "#666" }}>
               <code>PUT /preferences/:userId</code>；选项与资料字段同一套词表，便于硬门槛过滤。
+            </p>
+            <p style={{ fontSize: "0.78rem", color: "#555", marginTop: "-0.25rem" }}>
+              以下均为<strong>可选</strong>：不选表示<strong>不限制</strong>；可只填年龄或身高的一侧（例如仅下限）。
             </p>
 
             <AccountSelect

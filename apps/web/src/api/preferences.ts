@@ -17,11 +17,11 @@ export type UserPreferenceRecord = {
 };
 
 export type UpsertPreferencePayload = {
-  minAge?: number;
-  maxAge?: number;
+  minAge?: number | null;
+  maxAge?: number | null;
   preferredCities?: string[];
-  minHeight?: number;
-  maxHeight?: number;
+  minHeight?: number | null;
+  maxHeight?: number | null;
   educationPreferences?: string[];
   occupationPreferences?: string[];
   relationshipGoalPreferences?: string[];

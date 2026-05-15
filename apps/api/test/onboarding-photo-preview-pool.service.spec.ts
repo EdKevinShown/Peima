@@ -182,6 +182,91 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
     expect(items.filter((i) => i.tier === "reflow" && i.displayMode === "hidden")).toHaveLength(1);
   });
 
+  it("generate succeeds with fully empty match dimensions (no preference filter)", async () => {
+    const six = [
+      candidateRow("a", "2020-01-01", ["清爽自然"]),
+      candidateRow("b", "2020-02-01", ["清爽自然", "生活感"]),
+      candidateRow("c", "2020-03-01", ["生活感"]),
+      candidateRow("d", "2020-04-01", ["成熟稳重"]),
+      candidateRow("e", "2020-05-01", ["运动阳光"]),
+      candidateRow("f", "2019-01-01", ["有个性"]),
+    ];
+
+    const prisma: Record<string, unknown> = {
+      previewPool: { updateMany: jest.fn() },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          onboardingPhotoAestheticCompletedAt: new Date(),
+          gender: "male",
+        }),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce(six)
+          .mockResolvedValue([]),
+      },
+      userImage: {
+        count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([
+          { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
+        ]),
+      },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue({
+          userId: "viewer-1",
+          minAge: null,
+          maxAge: null,
+          preferredCities: [],
+          minHeight: null,
+          maxHeight: null,
+          educationPreferences: [],
+          occupationPreferences: [],
+          relationshipGoalPreferences: [],
+          styleTags: [],
+        }),
+      },
+      onboardingPhotoPreviewPool: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn().mockImplementation(async (args: { data: { items: { create: unknown[] } } }) => ({
+          id: "pool-empty-pref",
+          userId: "viewer-1",
+          status: "active",
+          sourceVersion: "onboarding-photo-preview-v1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          items: (args.data.items.create as { candidateUserId: string }[]).map(
+            (c, i) => ({
+              id: `item-${i}`,
+              candidateUserId: c.candidateUserId,
+              tier: "aesthetic_fit",
+              displayMode: "clear",
+              rankInPool: i + 1,
+              score: 0.5,
+              reasonTags: [],
+            }),
+          ),
+        })),
+      },
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        OnboardingPhotoPreviewPoolService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: VisualRankingShadowService,
+          useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+        },
+      ],
+    }).compile();
+
+    await expect(
+      moduleRef.get(OnboardingPhotoPreviewPoolService).generate("viewer-1"),
+    ).resolves.toBeDefined();
+    const createArg = (prisma.onboardingPhotoPreviewPool as { create: jest.Mock }).create
+      .mock.calls[0][0] as { data: { items: { create: unknown[] } } };
+    expect((createArg.data.items.create as unknown[]).length).toBe(6);
+  });
+
   it("generate succeeds when computeShadow rejects", async () => {
     const six = [
       candidateRow("a", "2020-01-01", ["清爽自然"]),
