@@ -3,9 +3,13 @@ import {
   buildVisualRankingShadowV1,
 } from "../src/modules/onboarding/vision/visual-ranking-shadow.builder";
 import {
-  canPersistVisualRankingShadowToPool,
-  persistVisualRankingShadowIfSupported,
+  persistVisualRankingShadow,
+  VISUAL_RANKING_SHADOW_TYPE,
 } from "../src/modules/onboarding/vision/visual-ranking-shadow-persist";
+import {
+  VISUAL_RANKING_SHADOW_SOURCE_VERSION,
+  type VisualRankingShadowV1,
+} from "../src/modules/onboarding/vision/visual-ranking-shadow.types";
 import {
   scoreAestheticFitShadow,
   scoreStyleSimilarShadow,
@@ -285,37 +289,136 @@ describe("buildVisualRankingShadowV1", () => {
   });
 });
 
-describe("visual-ranking-shadow persist", () => {
-  it("no metadata field: graceful skip", async () => {
-    expect(canPersistVisualRankingShadowToPool()).toBe(false);
-    const result = await persistVisualRankingShadowIfSupported("pool-1", {
-      schemaVersion: "visual-ranking-shadow-v1",
-      sourceVersion: "p7.5-r3-visual-ranking-shadow-v1",
-      generatedAt: new Date().toISOString(),
-      viewerUserId: "v",
-      poolId: "pool-1",
-      baselineSourceVersion: "onboarding-photo-preview-v1",
-      shadowSourceVersion: "onboarding-photo-preview-v1-vision-shadow",
-      appliedToPool: false,
-      slots: [],
-      summary: {
-        changedSlots: 0,
-        changedTiers: [],
-        candidatesWithVision: 0,
-        candidatesMissingVision: 0,
-        viewerVisionAvailable: false,
-      },
-    });
-    expect(result).toEqual({ persisted: false, reason: "no_metadata_field" });
+function sampleShadowPayload(): VisualRankingShadowV1 {
+  return {
+    schemaVersion: "visual-ranking-shadow-v1",
+    sourceVersion: VISUAL_RANKING_SHADOW_SOURCE_VERSION,
+    generatedAt: new Date().toISOString(),
+    viewerUserId: "viewer-1",
+    poolId: "pool-1",
+    baselineSourceVersion: "onboarding-photo-preview-v1",
+    shadowSourceVersion: "onboarding-photo-preview-v1-vision-shadow",
+    appliedToPool: false,
+    slots: [],
+    summary: {
+      changedSlots: 0,
+      changedTiers: [],
+      candidatesWithVision: 2,
+      candidatesMissingVision: 4,
+      viewerVisionAvailable: true,
+    },
+  };
+}
+
+describe("visual-ranking-shadow persist (P7.5-r4-b)", () => {
+  it("upserts shadow row with correct keys and payload", async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const shadow = sampleShadowPayload();
+    const result = await persistVisualRankingShadow(
+      { onboardingPhotoPreviewPoolShadow: { upsert } } as never,
+      "pool-1",
+      "viewer-1",
+      shadow,
+    );
+    expect(result).toEqual({ persisted: true });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          poolId_shadowType_sourceVersion: {
+            poolId: "pool-1",
+            shadowType: VISUAL_RANKING_SHADOW_TYPE,
+            sourceVersion: VISUAL_RANKING_SHADOW_SOURCE_VERSION,
+          },
+        },
+        create: expect.objectContaining({
+          poolId: "pool-1",
+          userId: "viewer-1",
+          shadowType: VISUAL_RANKING_SHADOW_TYPE,
+          sourceVersion: VISUAL_RANKING_SHADOW_SOURCE_VERSION,
+          payloadJson: shadow,
+        }),
+        update: expect.objectContaining({
+          userId: "viewer-1",
+          payloadJson: shadow,
+        }),
+      }),
+    );
+  });
+
+  it("upsert is idempotent on same poolId + shadowType + sourceVersion", async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const shadow = sampleShadowPayload();
+    const prisma = { onboardingPhotoPreviewPoolShadow: { upsert } } as never;
+    await persistVisualRankingShadow(prisma, "pool-1", "viewer-1", shadow);
+    const updated = {
+      ...shadow,
+      summary: { ...shadow.summary, changedSlots: 2 },
+    };
+    await persistVisualRankingShadow(prisma, "pool-1", "viewer-1", updated);
+    expect(upsert).toHaveBeenCalledTimes(2);
+    expect(upsert.mock.calls[1][0].update.payloadJson).toEqual(updated);
+  });
+
+  it("returns persist_error when upsert throws", async () => {
+    const result = await persistVisualRankingShadow(
+      {
+        onboardingPhotoPreviewPoolShadow: {
+          upsert: jest.fn().mockRejectedValue(new Error("db down")),
+        },
+      } as never,
+      "pool-1",
+      "viewer-1",
+      sampleShadowPayload(),
+    );
+    expect(result.persisted).toBe(false);
+    if (!result.persisted) {
+      expect(result.reason).toBe("persist_error");
+    }
   });
 });
 
 describe("VisualRankingShadowService", () => {
+  const computeInput = {
+    viewerUserId: "viewer-1",
+    poolId: "pool-1",
+    baselineItems: [
+      {
+        rankInPool: 1,
+        tier: "aesthetic_fit",
+        displayMode: "clear",
+        candidateUserId: "a",
+        score: 0.5,
+      },
+    ],
+    gatedCandidates: [
+      {
+        id: "a",
+        createdAt: new Date("2020-01-01"),
+        firstImageStyleTags: ["清爽自然"],
+        age: 28,
+        city: "上海",
+        height: 170,
+        education: "本科",
+        occupation: "工程师",
+        relationshipGoal: "认真恋爱",
+      },
+    ],
+    viewerStyleTags: ["清爽自然"],
+    viewerPref: fullViewerPref,
+  };
+
   it("returns shadow_disabled when SHADOW_ENABLED=false", async () => {
+    const upsert = jest.fn();
     const moduleRef = await Test.createTestingModule({
       providers: [
         VisualRankingShadowService,
-        { provide: PrismaService, useValue: { userImage: { findMany: jest.fn() } } },
+        {
+          provide: PrismaService,
+          useValue: {
+            userImage: { findMany: jest.fn() },
+            onboardingPhotoPreviewPoolShadow: { upsert },
+          },
+        },
       ],
     }).compile();
     const svc = moduleRef.get(VisualRankingShadowService);
@@ -331,5 +434,124 @@ describe("VisualRankingShadowService", () => {
       { ...baseEnv, shadowEnabled: false },
     );
     expect(result).toEqual({ computed: false, reason: "shadow_disabled" });
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("computeShadow persists shadow when enabled", async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const findMany = jest.fn().mockResolvedValue([
+      {
+        id: "img-v",
+        userId: "viewer-1",
+        createdAt: new Date("2021-01-01"),
+        detectionStatus: "passed",
+        reviewStatus: "not_required",
+        detectionScoreJson: {
+          vision: {
+            schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
+            sourceVersion: "p7.5-r2-rules",
+            photoVisualTaxonomyVersion: "p7.5-v1",
+            provider: "rules",
+            generatedAt: new Date().toISOString(),
+            visionStatus: "ok",
+            fallbackUsed: false,
+            photoVisualTags: ["清爽自然"],
+            confidence: 0.8,
+          },
+        },
+      },
+      {
+        id: "img-a",
+        userId: "a",
+        createdAt: new Date("2020-01-01"),
+        detectionStatus: "passed",
+        reviewStatus: "not_required",
+        detectionScoreJson: {
+          vision: {
+            schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
+            sourceVersion: "p7.5-r2-rules",
+            photoVisualTaxonomyVersion: "p7.5-v1",
+            provider: "rules",
+            generatedAt: new Date().toISOString(),
+            visionStatus: "ok",
+            fallbackUsed: false,
+            photoVisualTags: ["清爽自然", "生活感"],
+            confidence: 0.9,
+          },
+        },
+      },
+    ]);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        VisualRankingShadowService,
+        {
+          provide: PrismaService,
+          useValue: {
+            userImage: { findMany },
+            onboardingPhotoPreviewPoolShadow: { upsert },
+          },
+        },
+      ],
+    }).compile();
+    const svc = moduleRef.get(VisualRankingShadowService);
+    const result = await svc.computeShadow(computeInput, baseEnv);
+    expect(result.computed).toBe(true);
+    if (result.computed) {
+      expect(result.persist).toEqual({ persisted: true });
+      expect(result.shadow.schemaVersion).toBe("visual-ranking-shadow-v1");
+      expect(result.shadow.appliedToPool).toBe(false);
+      expect(upsert).toHaveBeenCalled();
+    }
+  });
+
+  it("APPLY_TO_POOL=true: persisted shadow has applyToPoolIgnored", async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const findMany = jest.fn().mockResolvedValue([]);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        VisualRankingShadowService,
+        {
+          provide: PrismaService,
+          useValue: {
+            userImage: { findMany },
+            onboardingPhotoPreviewPoolShadow: { upsert },
+          },
+        },
+      ],
+    }).compile();
+    const svc = moduleRef.get(VisualRankingShadowService);
+    const result = await svc.computeShadow(computeInput, {
+      ...baseEnv,
+      applyToPool: true,
+    });
+    expect(result.computed).toBe(true);
+    if (result.computed) {
+      expect(result.shadow.appliedToPool).toBe(false);
+      expect(result.shadow.summary.applyToPoolIgnored).toBe(true);
+    }
+  });
+
+  it("persist failure does not throw from computeShadow", async () => {
+    const upsert = jest.fn().mockRejectedValue(new Error("db"));
+    const findMany = jest.fn().mockResolvedValue([]);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        VisualRankingShadowService,
+        {
+          provide: PrismaService,
+          useValue: {
+            userImage: { findMany },
+            onboardingPhotoPreviewPoolShadow: { upsert },
+          },
+        },
+      ],
+    }).compile();
+    const svc = moduleRef.get(VisualRankingShadowService);
+    await expect(
+      svc.computeShadow(computeInput, baseEnv),
+    ).resolves.toMatchObject({
+      computed: true,
+      persist: { persisted: false, reason: "persist_error" },
+    });
   });
 });

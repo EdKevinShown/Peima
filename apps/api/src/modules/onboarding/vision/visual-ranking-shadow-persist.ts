@@ -1,27 +1,57 @@
 /**
- * P7.5-r3: pool metadata persistence guard (no migration in r3).
+ * P7.5-r4-b: persist VisualRankingShadowV1 to OnboardingPhotoPreviewPoolShadow.
  */
 
+import { Prisma } from "@peima/database";
+import type { PrismaService } from "../../../common/prisma/prisma.service";
 import type { VisualRankingShadowV1 } from "./visual-ranking-shadow.types";
+
+export const VISUAL_RANKING_SHADOW_TYPE = "visual_ranking_shadow" as const;
 
 export type VisualRankingShadowPersistResult =
   | { persisted: true }
-  | { persisted: false; reason: "shadow_disabled" | "no_metadata_field" };
+  | {
+      persisted: false;
+      reason: "persist_error";
+      message?: string;
+    };
 
-/**
- * `OnboardingPhotoPreviewPool` has no `metadataJson` column in Prisma schema (P7.5-r3).
- * Returns graceful skip until a JSON metadata field exists.
- */
-export function canPersistVisualRankingShadowToPool(): boolean {
-  return false;
-}
+export type VisualRankingShadowPersistClient = Pick<
+  PrismaService,
+  "onboardingPhotoPreviewPoolShadow"
+>;
 
-export async function persistVisualRankingShadowIfSupported(
-  _poolId: string,
-  _shadow: VisualRankingShadowV1,
+export async function persistVisualRankingShadow(
+  prisma: VisualRankingShadowPersistClient,
+  poolId: string,
+  viewerUserId: string,
+  shadow: VisualRankingShadowV1,
 ): Promise<VisualRankingShadowPersistResult> {
-  if (!canPersistVisualRankingShadowToPool()) {
-    return { persisted: false, reason: "no_metadata_field" };
+  try {
+    await prisma.onboardingPhotoPreviewPoolShadow.upsert({
+      where: {
+        poolId_shadowType_sourceVersion: {
+          poolId,
+          shadowType: VISUAL_RANKING_SHADOW_TYPE,
+          sourceVersion: shadow.sourceVersion,
+        },
+      },
+      create: {
+        poolId,
+        userId: viewerUserId,
+        shadowType: VISUAL_RANKING_SHADOW_TYPE,
+        sourceVersion: shadow.sourceVersion,
+        payloadJson: shadow as unknown as Prisma.InputJsonValue,
+      },
+      update: {
+        userId: viewerUserId,
+        payloadJson: shadow as unknown as Prisma.InputJsonValue,
+        updatedAt: new Date(),
+      },
+    });
+    return { persisted: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { persisted: false, reason: "persist_error", message };
   }
-  return { persisted: true };
 }

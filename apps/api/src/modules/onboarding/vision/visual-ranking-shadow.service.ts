@@ -20,7 +20,7 @@ import {
   type UserImageVisionSourceRow,
 } from "./visual-ranking-shadow-vision-input";
 import {
-  persistVisualRankingShadowIfSupported,
+  persistVisualRankingShadow,
   type VisualRankingShadowPersistResult,
 } from "./visual-ranking-shadow-persist";
 import type { VisualRankingShadowV1 } from "./visual-ranking-shadow.types";
@@ -72,7 +72,7 @@ export class VisualRankingShadowService {
 
     if (env.applyToPool) {
       this.logger.warn(
-        "PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=true ignored in P7.5-r3; shadow is readonly",
+        "PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=true ignored in P7.5-r4-b; shadow is readonly",
       );
     }
 
@@ -116,10 +116,17 @@ export class VisualRankingShadowService {
       env,
     });
 
-    const persist = await persistVisualRankingShadowIfSupported(
+    const persist = await persistVisualRankingShadow(
+      this.prisma,
       input.poolId,
+      input.viewerUserId,
       shadow,
     );
+    if (!persist.persisted) {
+      this.logger.warn(
+        `visual ranking shadow persist failed poolId=${input.poolId} reason=${persist.reason}${persist.message ? ` message=${persist.message}` : ""}`,
+      );
+    }
 
     return { computed: true, shadow, persist };
   }

@@ -65,6 +65,8 @@ model User {
   onboardingPhotoPreviewPools OnboardingPhotoPreviewPool[]
   onboardingPhotoPreviewPoolItemsAsViewer OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemViewer")
   onboardingPhotoPreviewPoolItemsAsCandidate OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemCandidate")
+  /// P7.5-r4: readonly visual ranking shadow rows (hypothetical 3+2+1; never applied to items in r4).
+  onboardingPhotoPreviewPoolShadows OnboardingPhotoPreviewPoolShadow[]
 
   @@map("users")
 }
@@ -78,11 +80,33 @@ model OnboardingPhotoPreviewPool {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user  User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items OnboardingPhotoPreviewPoolItem[]
+  user    User                              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items   OnboardingPhotoPreviewPoolItem[]
+  shadows OnboardingPhotoPreviewPoolShadow[]
 
   @@index([userId, status, createdAt(sort: Desc)])
   @@map("onboarding_photo_preview_pools")
+}
+
+/// P7.5-r4: readonly shadow payload for onboarding photo preview pool (audit / ops; not viewer-facing).
+model OnboardingPhotoPreviewPoolShadow {
+  id            String   @id @default(cuid())
+  poolId        String
+  userId        String
+  shadowType    String
+  sourceVersion String
+  payloadJson   Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pool OnboardingPhotoPreviewPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, shadowType, sourceVersion])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([shadowType, createdAt(sort: Desc)])
+  @@index([poolId])
+  @@map("onboarding_photo_preview_pool_shadows")
 }
 
 model OnboardingPhotoPreviewPoolItem {

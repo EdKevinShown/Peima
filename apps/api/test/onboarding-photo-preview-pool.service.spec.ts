@@ -107,24 +107,25 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       };
     });
 
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        OnboardingPhotoPreviewPoolService,
-        { provide: PrismaService, useValue: prisma },
-        {
-          provide: VisualRankingShadowService,
-          useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false, reason: "shadow_disabled" }) },
-        },
-      ],
-    }).compile();
-    const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
-
     (prisma.userImage as { findMany: jest.Mock }).findMany = jest.fn().mockResolvedValue([
       { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
     ]);
 
-    await svc.generate("viewer-1");
+    const computeShadow = jest
+      .fn()
+      .mockResolvedValue({ computed: false, reason: "shadow_disabled" });
+    const moduleRefWithShadow = await Test.createTestingModule({
+      providers: [
+        OnboardingPhotoPreviewPoolService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: VisualRankingShadowService, useValue: { computeShadow } },
+      ],
+    }).compile();
+    const svcWithShadow = moduleRefWithShadow.get(OnboardingPhotoPreviewPoolService);
 
+    await svcWithShadow.generate("viewer-1");
+
+    expect(computeShadow).toHaveBeenCalled();
     expect(previewPoolUpdateMany).not.toHaveBeenCalled();
     expect(onboardingArchive).toHaveBeenCalled();
     const createArg = createPool.mock.calls[0][0] as {
@@ -139,6 +140,78 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
     expect(items.filter((i) => i.tier === "aesthetic_fit" && i.displayMode === "clear")).toHaveLength(3);
     expect(items.filter((i) => i.tier === "style_similar" && i.displayMode === "blurred")).toHaveLength(2);
     expect(items.filter((i) => i.tier === "reflow" && i.displayMode === "hidden")).toHaveLength(1);
+  });
+
+  it("generate succeeds when computeShadow rejects", async () => {
+    const six = [
+      candidateRow("a", "2020-01-01", ["清爽自然"]),
+      candidateRow("b", "2020-02-01", ["生活感"]),
+      candidateRow("c", "2020-03-01", ["生活感"]),
+      candidateRow("d", "2020-04-01", ["成熟稳重"]),
+      candidateRow("e", "2020-05-01", ["运动阳光"]),
+      candidateRow("f", "2019-01-01", ["有个性"]),
+    ];
+    const createPool = jest.fn().mockImplementation(async (args: { data: { items: { create: unknown[] } } }) => ({
+      id: "pool-2",
+      userId: "viewer-1",
+      status: "active",
+      sourceVersion: "onboarding-photo-preview-v1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      items: (args.data.items.create as { rankInPool: number; tier: string; displayMode: string }[]).map(
+        (c, i) => ({
+          id: `item-${i}`,
+          candidateUserId: `cand-${i}`,
+          tier: c.tier,
+          displayMode: c.displayMode,
+          rankInPool: c.rankInPool,
+          score: 0.5,
+          reasonTags: [],
+        }),
+      ),
+    }));
+    const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          onboardingPhotoAestheticCompletedAt: new Date(),
+        }),
+        findMany: jest.fn().mockResolvedValueOnce(six).mockResolvedValue([]),
+      },
+      userImage: {
+        count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([
+          { userId: "a", imageUrl: "https://x/a.jpg", createdAt: new Date("2020-01-01") },
+        ]),
+      },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue({
+          styleTags: ["清爽自然"],
+          preferredCities: [],
+          educationPreferences: [],
+          occupationPreferences: [],
+          relationshipGoalPreferences: [],
+        }),
+      },
+      onboardingPhotoPreviewPool: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: createPool,
+      },
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        OnboardingPhotoPreviewPoolService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: VisualRankingShadowService,
+          useValue: {
+            computeShadow: jest.fn().mockRejectedValue(new Error("shadow failed")),
+          },
+        },
+      ],
+    }).compile();
+    const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
+    await expect(svc.generate("viewer-1")).resolves.toBeDefined();
+    expect(createPool).toHaveBeenCalled();
   });
 
   it("acknowledge rejects without 6-item active pool", async () => {
@@ -206,5 +279,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
     const svc = moduleRef.get(OnboardingPhotoPreviewPoolService);
     const bundle = await svc.findLatestActiveForViewer("v1");
     expect(bundle.items[0].imageUrl).toBeUndefined();
+    expect(bundle).not.toHaveProperty("visualRankingShadow");
+    expect(bundle.pool).not.toHaveProperty("visualRankingShadow");
   });
 });
