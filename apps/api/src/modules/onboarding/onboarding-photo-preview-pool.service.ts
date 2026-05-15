@@ -651,6 +651,19 @@ export class OnboardingPhotoPreviewPoolService {
         })),
         viewerStyleTags: prefRow?.styleTags ?? [],
         viewerPref,
+        applyDryRunContext: {
+          viewerGenderRaw: user.gender,
+          poolGuardRows: [...created.items]
+            .sort((a, b) => a.rankInPool - b.rankInPool)
+            .map((it) => {
+              const g = gById.get(it.candidateUserId);
+              return {
+                candidateUserId: it.candidateUserId,
+                candidateGenderRaw: g?.gender ?? null,
+                firstImageUrl: g?.firstImageUrl ?? null,
+              };
+            }),
+        },
       }),
     ).catch(() => {
       /* shadow must not fail pool generate */

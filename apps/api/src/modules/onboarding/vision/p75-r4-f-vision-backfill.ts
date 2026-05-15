@@ -162,7 +162,6 @@ export function visionEnvForBackfill(
     ...base,
     enabled: true,
     provider,
-    applyToPool: false,
   };
 }
 

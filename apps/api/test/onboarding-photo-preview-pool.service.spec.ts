@@ -205,7 +205,13 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       viewerUserId: string;
       baselineItems: Array<{ candidateUserId: string }>;
       gatedCandidates: Array<{ id: string }>;
+      applyDryRunContext?: {
+        viewerGenderRaw: string | null;
+        poolGuardRows: unknown[];
+      };
     };
+    expect(shadowPayload.applyDryRunContext?.poolGuardRows).toHaveLength(6);
+    expect(shadowPayload.applyDryRunContext?.viewerGenderRaw).toBe("male");
     expect(
       shadowPayload.baselineItems.every((it) => it.candidateUserId !== "viewer-1"),
     ).toBe(true);

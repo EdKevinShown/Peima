@@ -42,6 +42,8 @@ export type BuildVisualRankingShadowInput = {
   candidates: ShadowCandidateInput[];
   viewerPref: ViewerPreferenceLike;
   env: OnboardingVisionEnv;
+  /** When true, user set APPLY_TO_POOL gate on but engine still ignores real items (r4–r5-b). */
+  applyToPoolIgnoredHint?: boolean;
   generatedAt?: string;
 };
 
@@ -68,6 +70,7 @@ export function buildVisualRankingShadowV1(
     candidates,
     viewerPref,
     env,
+    applyToPoolIgnoredHint = false,
   } = input;
 
   const baselineByRank = new Map(
@@ -188,7 +191,7 @@ export function buildVisualRankingShadowV1(
       candidatesWithVision,
       candidatesMissingVision,
       viewerVisionAvailable,
-      ...(env.applyToPool ? { applyToPoolIgnored: true } : {}),
+      ...(applyToPoolIgnoredHint ? { applyToPoolIgnored: true } : {}),
     },
   };
 }

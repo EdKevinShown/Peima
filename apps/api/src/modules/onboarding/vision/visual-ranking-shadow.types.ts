@@ -38,6 +38,15 @@ export type VisualRankingShadowSlotV1 = {
   reasonTags: string[];
 };
 
+/** P7.5-r5-b: dry-run apply eligibility persisted on shadow rows; never implies real apply. */
+export type VisualRankingShadowApplyDryRunV1 = {
+  evaluated: true;
+  eligible: boolean;
+  reason: string;
+  applySourceVersion: string;
+  appliedToPool: false;
+};
+
 export type VisualRankingShadowSummaryV1 = {
   changedSlots: number;
   changedTiers: VisualRankingShadowTier[];
@@ -45,6 +54,7 @@ export type VisualRankingShadowSummaryV1 = {
   candidatesMissingVision: number;
   viewerVisionAvailable: boolean;
   applyToPoolIgnored?: boolean;
+  applyDryRun?: VisualRankingShadowApplyDryRunV1;
 };
 
 export type VisualRankingShadowV1 = {

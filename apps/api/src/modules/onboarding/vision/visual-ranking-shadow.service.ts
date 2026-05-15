@@ -6,6 +6,11 @@ import { Injectable, Logger } from "@nestjs/common";
 import type { ViewerPreferenceLike } from "@peima/shared/matching/preference-score";
 import { PrismaService } from "../../../common/prisma/prisma.service";
 import {
+  evaluateOnboardingVisionApplyEligibility,
+  eligibilityOutcomeToApplyDryRunSummary,
+} from "./onboarding-vision-apply-eligibility";
+import { readOnboardingVisionApplyEnv } from "./onboarding-vision-apply-env";
+import {
   readOnboardingVisionEnv,
   type OnboardingVisionEnv,
 } from "./onboarding-vision-env";
@@ -24,6 +29,7 @@ import {
   type VisualRankingShadowPersistResult,
 } from "./visual-ranking-shadow-persist";
 import type { VisualRankingShadowV1 } from "./visual-ranking-shadow.types";
+import type { OnboardingVisionApplyPoolGuardRow } from "./onboarding-vision-apply-eligibility";
 
 export type VisualRankingShadowComputeInput = {
   viewerUserId: string;
@@ -42,6 +48,14 @@ export type VisualRankingShadowComputeInput = {
   }>;
   viewerStyleTags: string[];
   viewerPref: ViewerPreferenceLike;
+  /**
+   * When set, P7.5-r5-b persists `summary.applyDryRun` using r4-o2-aligned baseline guards.
+   * Omitted in tests / callers that do not need dry-run metadata.
+   */
+  applyDryRunContext?: {
+    viewerGenderRaw: string | null;
+    poolGuardRows: OnboardingVisionApplyPoolGuardRow[];
+  };
 };
 
 export type VisualRankingShadowComputeResult =
@@ -65,14 +79,15 @@ export class VisualRankingShadowService {
   async computeShadow(
     input: VisualRankingShadowComputeInput,
     env: OnboardingVisionEnv = this.readEnv(),
+    applyEnv = readOnboardingVisionApplyEnv(),
   ): Promise<VisualRankingShadowComputeResult> {
     if (!env.shadowEnabled) {
       return { computed: false, reason: "shadow_disabled" };
     }
 
-    if (env.applyToPool) {
+    if (applyEnv.applyToPoolEnabled) {
       this.logger.warn(
-        "PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=true ignored in P7.5-r4-b; shadow is readonly",
+        "PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=1: real pool items unchanged (P7.5-r5-b dry-run only); see shadow.summary.applyDryRun",
       );
     }
 
@@ -114,13 +129,19 @@ export class VisualRankingShadowService {
       candidates: shadowCandidates,
       viewerPref: input.viewerPref,
       env,
+      applyToPoolIgnoredHint: applyEnv.applyToPoolEnabled,
     });
+
+    const shadowWithDryRun = attachApplyDryRunMetadata(
+      { shadow, applyEnv, input },
+      (msg) => this.logger.warn(msg),
+    );
 
     const persist = await persistVisualRankingShadow(
       this.prisma,
       input.poolId,
       input.viewerUserId,
-      shadow,
+      shadowWithDryRun,
     );
     if (!persist.persisted) {
       this.logger.warn(
@@ -128,6 +149,52 @@ export class VisualRankingShadowService {
       );
     }
 
-    return { computed: true, shadow, persist };
+    return { computed: true, shadow: shadowWithDryRun, persist };
+  }
+}
+
+function attachApplyDryRunMetadata(
+  params: {
+    shadow: VisualRankingShadowV1;
+    applyEnv: ReturnType<typeof readOnboardingVisionApplyEnv>;
+    input: VisualRankingShadowComputeInput;
+  },
+  logWarn?: (msg: string) => void,
+): VisualRankingShadowV1 {
+  const { shadow, applyEnv, input } = params;
+  const ctx = input.applyDryRunContext;
+  try {
+    const outcome = evaluateOnboardingVisionApplyEligibility({
+      env: applyEnv,
+      viewerUserId: input.viewerUserId,
+      visualRankingShadow: shadow,
+      poolGuardRows: ctx?.poolGuardRows ?? [],
+      viewerGenderRaw: ctx?.viewerGenderRaw ?? null,
+    });
+    return {
+      ...shadow,
+      summary: {
+        ...shadow.summary,
+        applyDryRun: eligibilityOutcomeToApplyDryRunSummary(outcome),
+      },
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logWarn?.(
+      `applyDryRun evaluation failed poolId=${input.poolId}: ${msg}`,
+    );
+    return {
+      ...shadow,
+      summary: {
+        ...shadow.summary,
+        applyDryRun: {
+          evaluated: true,
+          eligible: false,
+          reason: "shadow_invalid",
+          applySourceVersion: applyEnv.applySourceVersion,
+          appliedToPool: false,
+        },
+      },
+    };
   }
 }

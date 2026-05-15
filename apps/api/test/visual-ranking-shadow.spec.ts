@@ -21,6 +21,7 @@ import {
 } from "../src/modules/onboarding/vision/visual-ranking-shadow-vision-input";
 import { VisualRankingShadowService } from "../src/modules/onboarding/vision/visual-ranking-shadow.service";
 import { readOnboardingVisionEnv } from "../src/modules/onboarding/vision/onboarding-vision-env";
+import { readOnboardingVisionApplyEnv } from "../src/modules/onboarding/vision/onboarding-vision-apply-env";
 import { ONBOARDING_VISION_SCHEMA_VERSION } from "../src/modules/onboarding/vision/onboarding-vision.types";
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "../src/common/prisma/prisma.service";
@@ -28,7 +29,6 @@ import { PrismaService } from "../src/common/prisma/prisma.service";
 const baseEnv = {
   ...readOnboardingVisionEnv({} as NodeJS.ProcessEnv),
   shadowEnabled: true,
-  applyToPool: false,
 };
 
 const fullViewerPref = {
@@ -264,7 +264,7 @@ describe("buildVisualRankingShadowV1", () => {
     expect(shadow.summary.candidatesMissingVision).toBe(3);
   });
 
-  it("APPLY_TO_POOL=true sets applyToPoolIgnored; still appliedToPool false", () => {
+  it("applyToPoolIgnoredHint sets applyToPoolIgnored; still appliedToPool false", () => {
     const candidates = buildShadowCandidatesFromGatedRows(gatedRows, new Map());
     const shadow = buildVisualRankingShadowV1({
       viewerUserId: "viewer",
@@ -282,7 +282,8 @@ describe("buildVisualRankingShadowV1", () => {
       viewerVisionAvailable: false,
       candidates,
       viewerPref: { ...fullViewerPref, styleTags: ["清爽自然"] },
-      env: { ...baseEnv, applyToPool: true },
+      env: baseEnv,
+      applyToPoolIgnoredHint: true,
     });
     expect(shadow.appliedToPool).toBe(false);
     expect(shadow.summary.applyToPoolIgnored).toBe(true);
@@ -500,11 +501,13 @@ describe("VisualRankingShadowService", () => {
       expect(result.persist).toEqual({ persisted: true });
       expect(result.shadow.schemaVersion).toBe("visual-ranking-shadow-v1");
       expect(result.shadow.appliedToPool).toBe(false);
+      expect(result.shadow.summary.applyDryRun?.evaluated).toBe(true);
+      expect(result.shadow.summary.applyDryRun?.reason).toBe("env_disabled");
       expect(upsert).toHaveBeenCalled();
     }
   });
 
-  it("APPLY_TO_POOL=true: persisted shadow has applyToPoolIgnored", async () => {
+  it("PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=1: persisted shadow has applyToPoolIgnored and applyDryRun", async () => {
     const upsert = jest.fn().mockResolvedValue({});
     const findMany = jest.fn().mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
@@ -520,14 +523,19 @@ describe("VisualRankingShadowService", () => {
       ],
     }).compile();
     const svc = moduleRef.get(VisualRankingShadowService);
-    const result = await svc.computeShadow(computeInput, {
-      ...baseEnv,
-      applyToPool: true,
-    });
+    const applyOn = readOnboardingVisionApplyEnv({
+      PEIMA_ONBOARDING_VISION_APPLY_TO_POOL: "1",
+    } as NodeJS.ProcessEnv);
+    const result = await svc.computeShadow(computeInput, baseEnv, applyOn);
     expect(result.computed).toBe(true);
     if (result.computed) {
       expect(result.shadow.appliedToPool).toBe(false);
       expect(result.shadow.summary.applyToPoolIgnored).toBe(true);
+      expect(result.shadow.summary.applyDryRun?.evaluated).toBe(true);
+      expect(result.shadow.summary.applyDryRun?.eligible).toBe(false);
+      expect(result.shadow.summary.applyDryRun?.reason).toBe(
+        "candidate_count_not_six",
+      );
     }
   });
 

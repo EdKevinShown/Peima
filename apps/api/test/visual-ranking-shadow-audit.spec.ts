@@ -101,6 +101,27 @@ describe("parseVisualRankingShadowPayloadSafe", () => {
     expect(p?.reasonTagsFlattened).toContain("清爽自然");
   });
 
+  it("parses valid payload with summary.applyDryRun (P7.5-r5-b)", () => {
+    const base = mkPayload({
+      slots: mkSix([]),
+      summary: { changedSlots: 0 },
+    });
+    const pl = {
+      ...base,
+      summary: {
+        ...base.summary,
+        applyDryRun: {
+          evaluated: true,
+          eligible: false,
+          reason: "env_disabled",
+          applySourceVersion: "onboarding-photo-preview-v2-vision",
+          appliedToPool: false,
+        },
+      },
+    };
+    expect(parseVisualRankingShadowPayloadSafe(pl as unknown as object)).not.toBeNull();
+  });
+
   it("rejects appliedToPool true", () => {
     const bad = { ...mkPayload({ slots: mkSix([]), summary: { changedSlots: 0 } }), appliedToPool: true };
     expect(parseVisualRankingShadowPayloadSafe(bad)).toBeNull();

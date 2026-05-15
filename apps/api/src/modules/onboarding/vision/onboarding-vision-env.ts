@@ -14,7 +14,6 @@ export type OnboardingVisionEnv = {
   cacheTtlMs: number;
   maxTags: number;
   shadowEnabled: boolean;
-  applyToPool: boolean;
 };
 
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -70,7 +69,6 @@ export function readOnboardingVisionEnv(
       DEFAULT_MAX_TAGS,
     ),
     shadowEnabled: parseBool(env.PEIMA_ONBOARDING_VISION_SHADOW_ENABLED, true),
-    applyToPool: parseBool(env.PEIMA_ONBOARDING_VISION_APPLY_TO_POOL, false),
   };
 }
 

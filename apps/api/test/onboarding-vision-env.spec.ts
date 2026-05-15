@@ -19,7 +19,6 @@ describe("readOnboardingVisionEnv", () => {
     expect(env.cacheTtlMs).toBe(86400000);
     expect(env.maxTags).toBe(6);
     expect(env.shadowEnabled).toBe(true);
-    expect(env.applyToPool).toBe(false);
   });
 
   it("parses enabled and stub provider", () => {
@@ -27,13 +26,11 @@ describe("readOnboardingVisionEnv", () => {
       PEIMA_ONBOARDING_VISION_ENABLED: "1",
       PEIMA_ONBOARDING_VISION_PROVIDER: "stub",
       PEIMA_ONBOARDING_VISION_MAX_TAGS: "4",
-      PEIMA_ONBOARDING_VISION_APPLY_TO_POOL: "true",
     };
     const env = readOnboardingVisionEnv();
     expect(env.enabled).toBe(true);
     expect(env.provider).toBe("stub");
     expect(env.maxTags).toBe(4);
-    expect(env.applyToPool).toBe(true);
   });
 
   it("invalid provider string falls back to rules", () => {
