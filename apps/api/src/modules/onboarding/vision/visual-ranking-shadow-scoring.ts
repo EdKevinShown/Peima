@@ -13,6 +13,8 @@ import type { VisualRankingShadowSlotReason } from "./visual-ranking-shadow.type
 export type ShadowCandidateInput = {
   userId: string;
   createdAt: Date;
+  /** r4-o2-aligned key from first onboarding image (`previewPoolRowDisplaySourceKey`). */
+  displaySourceKey: string;
   styleTags: string[];
   vision: UsableCandidateVision | null;
   preferenceFields: {
@@ -121,9 +123,21 @@ export function scoreReflowShadow(
   };
 }
 
+/** P7.5-r5-c2a: same dedupe gates as baseline pool + active audit. */
+export function isShadowCandidateAvailableForPick(
+  candidate: ShadowCandidateInput,
+  excludeUserIds: Set<string>,
+  excludeSourceKeys: Set<string>,
+): boolean {
+  if (excludeUserIds.has(candidate.userId)) return false;
+  if (excludeSourceKeys.has(candidate.displaySourceKey)) return false;
+  return true;
+}
+
 export function pickTopByScore(
   pool: ShadowCandidateInput[],
-  exclude: Set<string>,
+  excludeUserIds: Set<string>,
+  excludeSourceKeys: Set<string>,
   scoreFn: (c: ShadowCandidateInput) => {
     score: number;
     reason: VisualRankingShadowSlotReason;
@@ -136,28 +150,53 @@ export function pickTopByScore(
   reason: VisualRankingShadowSlotReason;
   reasonTags: string[];
 }> {
-  const available = pool.filter((c) => !exclude.has(c.userId));
-  const scored = available.map((c) => {
-    const r = scoreFn(c);
-    return { candidate: c, ...r };
-  });
-  scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.candidate.createdAt.getTime() - b.candidate.createdAt.getTime();
-  });
-  return scored.slice(0, take);
+  const picked: Array<{
+    candidate: ShadowCandidateInput;
+    score: number;
+    reason: VisualRankingShadowSlotReason;
+    reasonTags: string[];
+  }> = [];
+  const usedIds = new Set(excludeUserIds);
+  const usedKeys = new Set(excludeSourceKeys);
+
+  while (picked.length < take) {
+    const available = pool.filter((c) =>
+      isShadowCandidateAvailableForPick(c, usedIds, usedKeys),
+    );
+    if (available.length === 0) break;
+
+    const scored = available.map((c) => {
+      const r = scoreFn(c);
+      return { candidate: c, ...r };
+    });
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.candidate.createdAt.getTime() - b.candidate.createdAt.getTime();
+    });
+
+    const next = scored[0];
+    if (!next) break;
+    picked.push(next);
+    usedIds.add(next.candidate.userId);
+    usedKeys.add(next.candidate.displaySourceKey);
+  }
+
+  return picked;
 }
 
 export function pickReflowShadow(
   pool: ShadowCandidateInput[],
-  exclude: Set<string>,
+  excludeUserIds: Set<string>,
+  excludeSourceKeys: Set<string>,
 ): {
   candidate: ShadowCandidateInput;
   score: number;
   reason: VisualRankingShadowSlotReason;
   reasonTags: string[];
 } | null {
-  const available = pool.filter((c) => !exclude.has(c.userId));
+  const available = pool.filter((c) =>
+    isShadowCandidateAvailableForPick(c, excludeUserIds, excludeSourceKeys),
+  );
   if (available.length === 0) return null;
   const scored = available.map((c) => {
     const r = scoreReflowShadow(c);

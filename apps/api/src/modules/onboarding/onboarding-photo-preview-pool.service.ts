@@ -632,6 +632,7 @@ export class OnboardingPhotoPreviewPoolService {
         id: row.id,
         createdAt: row.createdAt,
         firstImageStyleTags: row.firstImageStyleTags,
+        firstImageUrl: row.firstImageUrl,
         age: row.age,
         city: row.city,
         height: row.height,

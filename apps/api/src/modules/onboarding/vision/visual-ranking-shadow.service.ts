@@ -45,6 +45,7 @@ export type VisualRankingShadowComputeInput = {
     id: string;
     createdAt: Date;
     firstImageStyleTags: string[];
+    firstImageUrl?: string | null;
     age: number | null;
     city: string;
     height: number | null;

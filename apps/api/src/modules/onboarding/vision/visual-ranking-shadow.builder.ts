@@ -2,6 +2,7 @@
  * P7.5-r3: build VisualRankingShadowV1 from baseline pool + candidate vision inputs.
  */
 
+import { previewPoolRowDisplaySourceKey } from "../onboarding-photo-preview-display-image-key";
 import type { OnboardingVisionEnv } from "./onboarding-vision-env";
 import type { UsableCandidateVision } from "./visual-ranking-shadow-vision-input";
 import {
@@ -77,7 +78,8 @@ export function buildVisualRankingShadowV1(
     baselineItems.map((it) => [it.rankInPool, it]),
   );
 
-  const used = new Set<string>();
+  const usedUserIds = new Set<string>();
+  const usedSourceKeys = new Set<string>();
   const shadowPicks: Array<{
     rankInPool: number;
     tier: VisualRankingShadowTier;
@@ -90,13 +92,15 @@ export function buildVisualRankingShadowV1(
 
   const aesthetic = pickTopByScore(
     candidates,
-    used,
+    usedUserIds,
+    usedSourceKeys,
     (c) => scoreAestheticFitShadow(viewerStyleTags, c, viewerPref),
     3,
   );
   for (let i = 0; i < aesthetic.length; i++) {
     const pick = aesthetic[i]!;
-    used.add(pick.candidate.userId);
+    usedUserIds.add(pick.candidate.userId);
+    usedSourceKeys.add(pick.candidate.displaySourceKey);
     shadowPicks.push({
       rankInPool: i + 1,
       tier: "aesthetic_fit",
@@ -110,7 +114,8 @@ export function buildVisualRankingShadowV1(
 
   const styleSimilar = pickTopByScore(
     candidates,
-    used,
+    usedUserIds,
+    usedSourceKeys,
     (c) =>
       scoreStyleSimilarShadow(
         viewerPhotoVisualTags,
@@ -122,7 +127,8 @@ export function buildVisualRankingShadowV1(
   );
   for (let i = 0; i < styleSimilar.length; i++) {
     const pick = styleSimilar[i]!;
-    used.add(pick.candidate.userId);
+    usedUserIds.add(pick.candidate.userId);
+    usedSourceKeys.add(pick.candidate.displaySourceKey);
     shadowPicks.push({
       rankInPool: 4 + i,
       tier: "style_similar",
@@ -134,9 +140,10 @@ export function buildVisualRankingShadowV1(
     });
   }
 
-  const reflow = pickReflowShadow(candidates, used);
+  const reflow = pickReflowShadow(candidates, usedUserIds, usedSourceKeys);
   if (reflow) {
-    used.add(reflow.candidate.userId);
+    usedUserIds.add(reflow.candidate.userId);
+    usedSourceKeys.add(reflow.candidate.displaySourceKey);
     shadowPicks.push({
       rankInPool: 6,
       tier: "reflow",
@@ -201,6 +208,7 @@ export function buildShadowCandidatesFromGatedRows(
     id: string;
     createdAt: Date;
     firstImageStyleTags: string[];
+    firstImageUrl?: string | null;
     age: number | null;
     city: string;
     height: number | null;
@@ -213,6 +221,10 @@ export function buildShadowCandidatesFromGatedRows(
   return rows.map((row) => ({
     userId: row.id,
     createdAt: row.createdAt,
+    displaySourceKey: previewPoolRowDisplaySourceKey({
+      id: row.id,
+      firstImageUrl: row.firstImageUrl ?? null,
+    }),
     styleTags: row.firstImageStyleTags,
     vision: visionByUserId.get(row.id) ?? null,
     preferenceFields: {

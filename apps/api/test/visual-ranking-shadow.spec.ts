@@ -62,10 +62,12 @@ function candidate(
   iso: string,
   styleTags: string[],
   visionTags?: string[],
+  displaySourceKey = `candidate:${id}`,
 ) {
   return {
     userId: id,
     createdAt: new Date(iso),
+    displaySourceKey,
     styleTags,
     vision: visionTags
       ? { photoVisualTags: visionTags, confidence: 0.8 }
