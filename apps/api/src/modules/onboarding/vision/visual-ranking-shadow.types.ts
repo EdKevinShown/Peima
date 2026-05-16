@@ -47,6 +47,14 @@ export type VisualRankingShadowApplyDryRunV1 = {
   appliedToPool: false;
 };
 
+/** P7.5-r5-c1: real apply outcome (distinct from dry-run `applyDryRun.appliedToPool`). */
+export type VisualRankingShadowApplyResultV1 = {
+  evaluated: true;
+  applied: boolean;
+  reason: string;
+  sourceVersion: string;
+};
+
 export type VisualRankingShadowSummaryV1 = {
   changedSlots: number;
   changedTiers: VisualRankingShadowTier[];
@@ -55,6 +63,7 @@ export type VisualRankingShadowSummaryV1 = {
   viewerVisionAvailable: boolean;
   applyToPoolIgnored?: boolean;
   applyDryRun?: VisualRankingShadowApplyDryRunV1;
+  applyResult?: VisualRankingShadowApplyResultV1;
 };
 
 export type VisualRankingShadowV1 = {

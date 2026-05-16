@@ -43,6 +43,8 @@ export type ActivePoolAuditReport = {
   viewer_gender_normalized: string;
   viewer_binary_for_gate: "male" | "female" | null;
   pool_status: string | null;
+  /** P7.5-r5-c1: distinguishes v1 baseline vs v2 vision apply pools. */
+  pool_source_version: string | null;
   pool_item_count: number;
   items: ActivePoolAuditItemRow[];
   notes: string[];
@@ -68,7 +70,7 @@ function mappingMatchFromSlug(
 export function buildActivePoolAuditReport(input: {
   viewerUserId: string;
   viewerGenderRaw: string | null;
-  pool: { id: string; status: string } | null;
+  pool: { id: string; status: string; sourceVersion?: string } | null;
   items: Array<{
     rankInPool: number;
     tier: string;
@@ -146,6 +148,7 @@ export function buildActivePoolAuditReport(input: {
     viewer_gender_normalized: vNorm,
     viewer_binary_for_gate: vBin,
     pool_status: input.pool?.status ?? null,
+    pool_source_version: input.pool?.sourceVersion ?? null,
     pool_item_count: input.items.length,
     items,
     notes,

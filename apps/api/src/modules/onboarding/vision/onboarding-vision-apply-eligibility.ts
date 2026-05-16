@@ -42,6 +42,8 @@ export type OnboardingVisionApplyPoolGuardRow = {
   candidateUserId: string;
   candidateGenderRaw: string | null;
   firstImageUrl: string | null;
+  /** First onboarding image review status (asc `createdAt`); used by r5-c1 writer blocked-review guard. */
+  firstImageReviewStatus?: string | null;
 };
 
 export type EvaluateOnboardingVisionApplyEligibilityInput = {

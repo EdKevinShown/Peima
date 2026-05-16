@@ -9,6 +9,21 @@ import {
 import { VisualRankingShadowService } from "../src/modules/onboarding/vision/visual-ranking-shadow.service";
 import { previewPoolRowDisplaySourceKey } from "../src/modules/onboarding/onboarding-photo-preview-display-image-key";
 
+/** P7.5-r5-c1: generate() calls `buildForGenerate` before pool create. */
+function shadowServiceMock(overrides?: {
+  computeShadow?: jest.Mock;
+  buildForGenerate?: jest.Mock;
+}) {
+  const disabled = { computed: false as const, reason: "shadow_disabled" as const };
+  return {
+    buildForGenerate:
+      overrides?.buildForGenerate ??
+      jest.fn().mockResolvedValue(disabled),
+    computeShadow:
+      overrides?.computeShadow ?? jest.fn().mockResolvedValue(disabled),
+  };
+}
+
 function candidateRow(
   id: string,
   iso: string,
@@ -27,12 +42,16 @@ function candidateRow(
     occupation: "工程师",
     relationshipGoal: "认真恋爱",
     gender,
-    images: [{ styleTags, imageUrl: firstImageUrl }],
+    images: [{ styleTags, imageUrl: firstImageUrl, reviewStatus: "approved" }],
   };
 }
 
 function toGated(row: ReturnType<typeof candidateRow>) {
-  const im = row.images[0] as { styleTags: string[]; imageUrl?: string | null };
+  const im = row.images[0] as {
+    styleTags: string[];
+    imageUrl?: string | null;
+    reviewStatus?: string;
+  };
   return {
     id: row.id,
     createdAt: row.createdAt,
@@ -44,6 +63,7 @@ function toGated(row: ReturnType<typeof candidateRow>) {
     relationshipGoal: row.relationshipGoal,
     firstImageStyleTags: im?.styleTags ?? [],
     firstImageUrl: im?.imageUrl ?? null,
+    firstImageReviewStatus: im?.reviewStatus ?? "approved",
     gender: row.gender ?? "",
   };
 }
@@ -186,6 +206,9 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         cid === "a" ? { imageUrl: "https://x/a.jpg" } : null,
       );
 
+    const buildForGenerate = jest
+      .fn()
+      .mockResolvedValue({ computed: false, reason: "shadow_disabled" });
     const computeShadow = jest
       .fn()
       .mockResolvedValue({ computed: false, reason: "shadow_disabled" });
@@ -193,15 +216,18 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
-        { provide: VisualRankingShadowService, useValue: { computeShadow } },
+        {
+          provide: VisualRankingShadowService,
+          useValue: shadowServiceMock({ buildForGenerate, computeShadow }),
+        },
       ],
     }).compile();
     const svcWithShadow = moduleRefWithShadow.get(OnboardingPhotoPreviewPoolService);
 
     await svcWithShadow.generate("viewer-1");
 
-    expect(computeShadow).toHaveBeenCalled();
-    const shadowPayload = computeShadow.mock.calls[0]?.[0] as {
+    expect(buildForGenerate).toHaveBeenCalled();
+    const shadowPayload = buildForGenerate.mock.calls[0]?.[0] as {
       viewerUserId: string;
       baselineItems: Array<{ candidateUserId: string }>;
       gatedCandidates: Array<{ id: string }>;
@@ -317,7 +343,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: VisualRankingShadowService,
-          useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+          useValue: shadowServiceMock(),
         },
       ],
     }).compile();
@@ -401,9 +427,10 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: VisualRankingShadowService,
-          useValue: {
+          useValue: shadowServiceMock({
+            buildForGenerate: jest.fn().mockResolvedValue({ computed: false, reason: "shadow_disabled" }),
             computeShadow: jest.fn().mockRejectedValue(new Error("shadow failed")),
-          },
+          }),
         },
       ],
     }).compile();
@@ -427,7 +454,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: VisualRankingShadowService,
-          useValue: { computeShadow: jest.fn() },
+          useValue: shadowServiceMock(),
         },
       ],
     }).compile();
@@ -470,7 +497,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: VisualRankingShadowService,
-          useValue: { computeShadow: jest.fn() },
+          useValue: shadowServiceMock(),
         },
       ],
     }).compile();
@@ -549,11 +576,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         { provide: PrismaService, useValue: prisma },
         {
           provide: VisualRankingShadowService,
-          useValue: {
-            computeShadow: jest
-              .fn()
-              .mockResolvedValue({ computed: false, reason: "shadow_disabled" }),
-          },
+          useValue: shadowServiceMock(),
         },
       ],
     }).compile();
@@ -602,7 +625,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
-        { provide: VisualRankingShadowService, useValue: { computeShadow: jest.fn() } },
+        { provide: VisualRankingShadowService, useValue: shadowServiceMock() },
       ],
     }).compile();
     await expect(
@@ -657,7 +680,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       providers: [
         OnboardingPhotoPreviewPoolService,
         { provide: PrismaService, useValue: prisma },
-        { provide: VisualRankingShadowService, useValue: { computeShadow: jest.fn() } },
+        { provide: VisualRankingShadowService, useValue: shadowServiceMock() },
       ],
     }).compile();
     const bundle = await mod.get(OnboardingPhotoPreviewPoolService).findLatestActiveForViewer(
@@ -744,12 +767,20 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           create: createOnboardingPool,
         },
       };
-      const computeShadow = jest.fn().mockResolvedValue({ computed: false, reason: "shadow_disabled" });
+      const buildForGenerate = jest
+        .fn()
+        .mockResolvedValue({ computed: false, reason: "shadow_disabled" });
+      const computeShadow = jest
+        .fn()
+        .mockResolvedValue({ computed: false, reason: "shadow_disabled" });
       const mod = await Test.createTestingModule({
         providers: [
           OnboardingPhotoPreviewPoolService,
           { provide: PrismaService, useValue: prisma },
-          { provide: VisualRankingShadowService, useValue: { computeShadow } },
+          {
+            provide: VisualRankingShadowService,
+            useValue: shadowServiceMock({ buildForGenerate, computeShadow }),
+          },
         ],
       }).compile();
       await mod.get(OnboardingPhotoPreviewPoolService).generate("viewer-1");
@@ -761,7 +792,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       expect(new Set(creates.map((c) => c.candidateUserId)).size).toBe(6);
       expect(creates.every((c) => c.candidateUserId.startsWith("f"))).toBe(true);
 
-      const gated = computeShadow.mock.calls[0][0].gatedCandidates as { id: string }[];
+      const gated = buildForGenerate.mock.calls[0][0].gatedCandidates as { id: string }[];
       expect(gated.every((g) => g.id.startsWith("f"))).toBe(true);
     });
 
@@ -811,7 +842,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           { provide: PrismaService, useValue: prisma },
           {
             provide: VisualRankingShadowService,
-            useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+            useValue: shadowServiceMock(),
           },
         ],
       }).compile();
@@ -849,7 +880,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           { provide: PrismaService, useValue: prisma },
           {
             provide: VisualRankingShadowService,
-            useValue: { computeShadow: jest.fn() },
+            useValue: shadowServiceMock(),
           },
         ],
       }).compile();
@@ -886,7 +917,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         providers: [
           OnboardingPhotoPreviewPoolService,
           { provide: PrismaService, useValue: prisma },
-          { provide: VisualRankingShadowService, useValue: { computeShadow } },
+          { provide: VisualRankingShadowService, useValue: shadowServiceMock({ computeShadow }) },
         ],
       }).compile();
       await expect(
@@ -923,6 +954,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           reasonTags: [],
         })),
       }));
+      const buildForGenerate = jest.fn().mockResolvedValue({ computed: false });
       const computeShadow = jest.fn().mockResolvedValue({ computed: false });
       const prisma = {
         previewPool: { updateMany: jest.fn() },
@@ -949,7 +981,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           { provide: PrismaService, useValue: prisma },
           {
             provide: VisualRankingShadowService,
-            useValue: { computeShadow },
+            useValue: shadowServiceMock({ buildForGenerate, computeShadow }),
           },
         ],
       }).compile();
@@ -966,7 +998,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
       expect(ids.has("xe")).toBe(false);
       expect([...ids].every((id) => id.startsWith("f"))).toBe(true);
 
-      const gated = computeShadow.mock.calls[0][0].gatedCandidates as { id: string }[];
+      const gated = buildForGenerate.mock.calls[0][0].gatedCandidates as { id: string }[];
       expect(gated.every((g) => g.id.startsWith("f"))).toBe(true);
       expect(gated.some((g) => g.id === "xm" || g.id === "xu" || g.id === "xe")).toBe(false);
     });
@@ -1055,7 +1087,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
           { provide: PrismaService, useValue: prisma },
           {
             provide: VisualRankingShadowService,
-            useValue: { computeShadow: jest.fn().mockResolvedValue({ computed: false }) },
+            useValue: shadowServiceMock(),
           },
         ],
       }).compile();
@@ -1109,7 +1141,7 @@ describe("OnboardingPhotoPreviewPoolService (P7.2)", () => {
         providers: [
           OnboardingPhotoPreviewPoolService,
           { provide: PrismaService, useValue: prisma },
-          { provide: VisualRankingShadowService, useValue: { computeShadow: jest.fn() } },
+          { provide: VisualRankingShadowService, useValue: shadowServiceMock() },
         ],
       }).compile();
       const bundle = await mod.get(OnboardingPhotoPreviewPoolService).findLatestActiveForViewer(

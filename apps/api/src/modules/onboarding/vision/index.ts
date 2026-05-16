@@ -4,6 +4,7 @@ export * from "./onboarding-vision-env";
 export * from "./onboarding-vision-apply-env";
 export * from "./onboarding-vision-apply-percent-hash";
 export * from "./onboarding-vision-apply-eligibility";
+export * from "./onboarding-vision-apply-writer-decision";
 export * from "./onboarding-vision-detection-parse";
 export * from "./onboarding-vision-profile.builder";
 export * from "./onboarding-vision-rules-provider";

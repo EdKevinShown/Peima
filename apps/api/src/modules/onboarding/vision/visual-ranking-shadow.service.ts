@@ -1,5 +1,6 @@
 /**
  * P7.5-r3: compute visual ranking shadow after pool generate (readonly).
+ * P7.5-r5-c1: build shadow before pool items when APPLY allowlist writer may run.
  */
 
 import { Injectable, Logger } from "@nestjs/common";
@@ -8,8 +9,13 @@ import { PrismaService } from "../../../common/prisma/prisma.service";
 import {
   evaluateOnboardingVisionApplyEligibility,
   eligibilityOutcomeToApplyDryRunSummary,
+  type OnboardingVisionApplyEligibilityOutcome,
 } from "./onboarding-vision-apply-eligibility";
 import { readOnboardingVisionApplyEnv } from "./onboarding-vision-apply-env";
+import {
+  buildApplyResultSummary,
+  type OnboardingVisionApplyWriterDecision,
+} from "./onboarding-vision-apply-writer-decision";
 import {
   readOnboardingVisionEnv,
   type OnboardingVisionEnv,
@@ -50,12 +56,14 @@ export type VisualRankingShadowComputeInput = {
   viewerPref: ViewerPreferenceLike;
   /**
    * When set, P7.5-r5-b persists `summary.applyDryRun` using r4-o2-aligned baseline guards.
-   * Omitted in tests / callers that do not need dry-run metadata.
    */
   applyDryRunContext?: {
     viewerGenderRaw: string | null;
     poolGuardRows: OnboardingVisionApplyPoolGuardRow[];
   };
+  /** P7.5-r5-c1: writer decision from pool generate (sets `summary.applyResult`). */
+  writerDecision?: OnboardingVisionApplyWriterDecision;
+  eligibility?: OnboardingVisionApplyEligibilityOutcome;
 };
 
 export type VisualRankingShadowComputeResult =
@@ -76,21 +84,64 @@ export class VisualRankingShadowService {
     return readOnboardingVisionEnv();
   }
 
+  /**
+   * Build shadow in memory (no persist). Used before pool item create in r5-c1.
+   */
+  async buildForGenerate(
+    input: VisualRankingShadowComputeInput,
+    env: OnboardingVisionEnv = this.readEnv(),
+    applyEnv = readOnboardingVisionApplyEnv(),
+  ): Promise<
+    | { computed: false; reason: "shadow_disabled" }
+    | { computed: true; shadow: VisualRankingShadowV1 }
+  > {
+    if (!env.shadowEnabled) {
+      return { computed: false, reason: "shadow_disabled" };
+    }
+
+    const shadow = await this.buildShadowPayload(input, env, applyEnv);
+    return { computed: true, shadow };
+  }
+
   async computeShadow(
     input: VisualRankingShadowComputeInput,
     env: OnboardingVisionEnv = this.readEnv(),
     applyEnv = readOnboardingVisionApplyEnv(),
   ): Promise<VisualRankingShadowComputeResult> {
-    if (!env.shadowEnabled) {
-      return { computed: false, reason: "shadow_disabled" };
+    const built = await this.buildForGenerate(input, env, applyEnv);
+    if (!built.computed) {
+      return built;
     }
 
-    if (applyEnv.applyToPoolEnabled) {
+    const shadowWithMeta = attachApplyMetadata(
+      {
+        shadow: built.shadow,
+        applyEnv,
+        input,
+      },
+      (msg) => this.logger.warn(msg),
+    );
+
+    const persist = await persistVisualRankingShadow(
+      this.prisma,
+      input.poolId,
+      input.viewerUserId,
+      shadowWithMeta,
+    );
+    if (!persist.persisted) {
       this.logger.warn(
-        "PEIMA_ONBOARDING_VISION_APPLY_TO_POOL=1: real pool items unchanged (P7.5-r5-b dry-run only); see shadow.summary.applyDryRun",
+        `visual ranking shadow persist failed poolId=${input.poolId} reason=${persist.reason}${persist.message ? ` message=${persist.message}` : ""}`,
       );
     }
 
+    return { computed: true, shadow: shadowWithMeta, persist };
+  }
+
+  private async buildShadowPayload(
+    input: VisualRankingShadowComputeInput,
+    env: OnboardingVisionEnv,
+    applyEnv: ReturnType<typeof readOnboardingVisionApplyEnv>,
+  ): Promise<VisualRankingShadowV1> {
     const candidateIds = input.gatedCandidates.map((c) => c.id);
     const candidateImages = await this.prisma.userImage.findMany({
       where: { userId: { in: [...candidateIds, input.viewerUserId] } },
@@ -106,7 +157,9 @@ export class VisualRankingShadowService {
     });
 
     const visionByUserId = firstUsableVisionByUserId(
-      candidateImages.filter((img) => img.userId !== input.viewerUserId) as UserImageVisionSourceRow[],
+      candidateImages.filter(
+        (img) => img.userId !== input.viewerUserId,
+      ) as UserImageVisionSourceRow[],
     );
 
     const viewerImages = candidateImages.filter(
@@ -119,7 +172,7 @@ export class VisualRankingShadowService {
       visionByUserId,
     );
 
-    const shadow = buildVisualRankingShadowV1({
+    return buildVisualRankingShadowV1({
       viewerUserId: input.viewerUserId,
       poolId: input.poolId,
       baselineItems: input.baselineItems,
@@ -131,29 +184,10 @@ export class VisualRankingShadowService {
       env,
       applyToPoolIgnoredHint: applyEnv.applyToPoolEnabled,
     });
-
-    const shadowWithDryRun = attachApplyDryRunMetadata(
-      { shadow, applyEnv, input },
-      (msg) => this.logger.warn(msg),
-    );
-
-    const persist = await persistVisualRankingShadow(
-      this.prisma,
-      input.poolId,
-      input.viewerUserId,
-      shadowWithDryRun,
-    );
-    if (!persist.persisted) {
-      this.logger.warn(
-        `visual ranking shadow persist failed poolId=${input.poolId} reason=${persist.reason}${persist.message ? ` message=${persist.message}` : ""}`,
-      );
-    }
-
-    return { computed: true, shadow: shadowWithDryRun, persist };
   }
 }
 
-function attachApplyDryRunMetadata(
+function attachApplyMetadata(
   params: {
     shadow: VisualRankingShadowV1;
     applyEnv: ReturnType<typeof readOnboardingVisionApplyEnv>;
@@ -163,38 +197,52 @@ function attachApplyDryRunMetadata(
 ): VisualRankingShadowV1 {
   const { shadow, applyEnv, input } = params;
   const ctx = input.applyDryRunContext;
-  try {
-    const outcome = evaluateOnboardingVisionApplyEligibility({
-      env: applyEnv,
-      viewerUserId: input.viewerUserId,
-      visualRankingShadow: shadow,
-      poolGuardRows: ctx?.poolGuardRows ?? [],
-      viewerGenderRaw: ctx?.viewerGenderRaw ?? null,
-    });
-    return {
-      ...shadow,
-      summary: {
-        ...shadow.summary,
-        applyDryRun: eligibilityOutcomeToApplyDryRunSummary(outcome),
-      },
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logWarn?.(
-      `applyDryRun evaluation failed poolId=${input.poolId}: ${msg}`,
-    );
-    return {
-      ...shadow,
-      summary: {
-        ...shadow.summary,
-        applyDryRun: {
-          evaluated: true,
-          eligible: false,
-          reason: "shadow_invalid",
-          applySourceVersion: applyEnv.applySourceVersion,
-          appliedToPool: false,
-        },
-      },
-    };
+
+  let applyDryRun = input.eligibility
+    ? eligibilityOutcomeToApplyDryRunSummary(input.eligibility)
+    : undefined;
+
+  if (!applyDryRun) {
+    try {
+      const outcome = evaluateOnboardingVisionApplyEligibility({
+        env: applyEnv,
+        viewerUserId: input.viewerUserId,
+        visualRankingShadow: shadow,
+        poolGuardRows: ctx?.poolGuardRows ?? [],
+        viewerGenderRaw: ctx?.viewerGenderRaw ?? null,
+      });
+      applyDryRun = eligibilityOutcomeToApplyDryRunSummary(outcome);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logWarn?.(
+        `applyDryRun evaluation failed poolId=${input.poolId}: ${msg}`,
+      );
+      applyDryRun = {
+        evaluated: true,
+        eligible: false,
+        reason: "shadow_invalid",
+        applySourceVersion: applyEnv.applySourceVersion,
+        appliedToPool: false,
+      };
+    }
   }
+
+  const writer = input.writerDecision;
+  const applyResult = writer
+    ? buildApplyResultSummary({
+        applied: writer.shouldApply,
+        reason: writer.reason,
+        sourceVersion: writer.applySourceVersion,
+      })
+    : undefined;
+
+  return {
+    ...shadow,
+    poolId: input.poolId,
+    summary: {
+      ...shadow.summary,
+      ...(applyDryRun ? { applyDryRun } : {}),
+      ...(applyResult ? { applyResult } : {}),
+    },
+  };
 }

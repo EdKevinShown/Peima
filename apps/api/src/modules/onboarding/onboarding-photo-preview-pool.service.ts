@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   Injectable,
@@ -15,6 +16,15 @@ import {
   type ViewerPreferenceLike,
 } from "@peima/shared/matching/preference-score";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import {
+  evaluateOnboardingVisionApplyEligibility,
+  type OnboardingVisionApplyPoolGuardRow,
+} from "./vision/onboarding-vision-apply-eligibility";
+import { readOnboardingVisionApplyEnv } from "./vision/onboarding-vision-apply-env";
+import {
+  evaluateOnboardingVisionApplyWriterDecision,
+  shadowSlotsToApplyItemDefs,
+} from "./vision/onboarding-vision-apply-writer-decision";
 import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
 import {
   candidatePassesOppositeBinaryGate,
@@ -46,6 +56,8 @@ type GatedRow = {
   firstImageStyleTags: string[];
   /** First onboarding image URL (`UserImage.createdAt` asc) for r4-o2 source dedupe. */
   firstImageUrl: string | null;
+  /** First image `reviewStatus` (asc `createdAt`) for r5-c1 blocked-review guard. */
+  firstImageReviewStatus: string | null;
   /** Raw `User.gender` for audit / parity; filtering uses normalization. */
   gender: string;
 };
@@ -431,7 +443,7 @@ export class OnboardingPhotoPreviewPoolService {
           images: {
             orderBy: { createdAt: "asc" },
             take: 1,
-            select: { styleTags: true, imageUrl: true },
+            select: { styleTags: true, imageUrl: true, reviewStatus: true },
           },
         },
       });
@@ -475,6 +487,7 @@ export class OnboardingPhotoPreviewPoolService {
           relationshipGoal: row.relationshipGoal,
           firstImageStyleTags: first?.styleTags ?? [],
           firstImageUrl: first?.imageUrl ?? null,
+          firstImageReviewStatus: first?.reviewStatus ?? null,
           gender: row.gender ?? "",
         });
       }
@@ -590,21 +603,121 @@ export class OnboardingPhotoPreviewPoolService {
       }
     }
 
+    const guardRowByCandidateId = new Map<string, OnboardingVisionApplyPoolGuardRow>();
+    for (const row of gAll) {
+      guardRowByCandidateId.set(row.id, {
+        candidateUserId: row.id,
+        candidateGenderRaw: row.gender,
+        firstImageUrl: row.firstImageUrl,
+        firstImageReviewStatus: row.firstImageReviewStatus,
+      });
+    }
+
+    const baselinePoolGuardRows: OnboardingVisionApplyPoolGuardRow[] = slotDefs.map(
+      (s) => {
+        const g = gById.get(s.candidateId);
+        return {
+          candidateUserId: s.candidateId,
+          candidateGenderRaw: g?.gender ?? null,
+          firstImageUrl: g?.firstImageUrl ?? null,
+          firstImageReviewStatus: g?.firstImageReviewStatus ?? null,
+        };
+      },
+    );
+
+    const applyEnv = readOnboardingVisionApplyEnv();
+    const gatedForShadow = gAll
+      .filter((row) => isEligiblePreviewCandidate(row.id, viewerUserId))
+      .map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        firstImageStyleTags: row.firstImageStyleTags,
+        age: row.age,
+        city: row.city,
+        height: row.height,
+        education: row.education,
+        occupation: row.occupation,
+        relationshipGoal: row.relationshipGoal,
+      }));
+
+    const baselineItems = slotDefs.map((s) => ({
+      rankInPool: s.rankInPool,
+      tier: s.tier,
+      displayMode: s.displayMode,
+      candidateUserId: s.candidateId,
+      score: s.score,
+    }));
+
+    const provisionalPoolId = randomUUID();
+    const shadowBuilt = await this.visualRankingShadow
+      .buildForGenerate({
+        viewerUserId,
+        poolId: provisionalPoolId,
+        baselineItems,
+        gatedCandidates: gatedForShadow,
+        viewerStyleTags: prefRow?.styleTags ?? [],
+        viewerPref,
+        applyDryRunContext: {
+          viewerGenderRaw: user.gender,
+          poolGuardRows: baselinePoolGuardRows,
+        },
+      })
+      .catch(() => ({ computed: false as const, reason: "shadow_disabled" as const }));
+
+    const visualShadow =
+      shadowBuilt.computed === true ? shadowBuilt.shadow : null;
+
+    const eligibility = evaluateOnboardingVisionApplyEligibility({
+      env: applyEnv,
+      viewerUserId,
+      visualRankingShadow: visualShadow,
+      poolGuardRows: baselinePoolGuardRows,
+      viewerGenderRaw: user.gender,
+    });
+
+    const writerDecision = evaluateOnboardingVisionApplyWriterDecision({
+      env: applyEnv,
+      viewerUserId,
+      viewerGenderRaw: user.gender,
+      eligibility,
+      visualRankingShadow: visualShadow,
+      guardRowByCandidateId,
+    });
+
+    const itemDefs = writerDecision.shouldApply && visualShadow
+      ? shadowSlotsToApplyItemDefs(visualShadow)
+      : slotDefs.map((s) => ({
+          rankInPool: s.rankInPool,
+          tier: s.tier,
+          displayMode: s.displayMode,
+          candidateId: s.candidateId,
+          score: s.score,
+        }));
+
+    const poolSourceVersion = writerDecision.shouldApply
+      ? writerDecision.applySourceVersion
+      : ONBOARDING_PHOTO_PREVIEW_SOURCE_VERSION;
+
+    const v1ReasonTag = ONBOARDING_PHOTO_PREVIEW_SOURCE_VERSION;
+
     await this.archiveActiveOnboardingPoolsOnly(viewerUserId);
 
     const created = await this.prisma.onboardingPhotoPreviewPool.create({
       data: {
         userId: viewerUserId,
         status: ONBOARDING_POOL_STATUS.ACTIVE,
-        sourceVersion: ONBOARDING_PHOTO_PREVIEW_SOURCE_VERSION,
+        sourceVersion: poolSourceVersion,
         items: {
-          create: slotDefs.map((s) => {
+          create: itemDefs.map((s) => {
             if (
               !isEligiblePreviewCandidate(s.candidateId, viewerUserId) ||
               s.candidateId === viewerUserId
             ) {
               throw new BadRequestException("预览池生成出现异常，请稍后重试。");
             }
+            const reasonTags = writerDecision.shouldApply
+              ? [poolSourceVersion, `tier:${s.tier}`, "vision:apply"]
+              : [v1ReasonTag, `tier:${s.tier}`];
             return {
               userId: viewerUserId,
               candidateUserId: s.candidateId,
@@ -612,10 +725,7 @@ export class OnboardingPhotoPreviewPoolService {
               displayMode: s.displayMode,
               rankInPool: s.rankInPool,
               score: s.score,
-              reasonTags: [
-                `onboarding-photo-preview-v1`,
-                `tier:${s.tier}`,
-              ],
+              reasonTags,
             };
           }),
         },
@@ -625,49 +735,26 @@ export class OnboardingPhotoPreviewPoolService {
       },
     });
 
-    await Promise.resolve(
-      this.visualRankingShadow.computeShadow({
-        viewerUserId,
-        poolId: created.id,
-        baselineItems: created.items.map((it) => ({
-          rankInPool: it.rankInPool,
-          tier: it.tier,
-          displayMode: it.displayMode,
-          candidateUserId: it.candidateUserId,
-          score: it.score,
-        })),
-        gatedCandidates: gAll.filter((row) =>
-          isEligiblePreviewCandidate(row.id, viewerUserId),
-        ).map((row) => ({
-          id: row.id,
-          createdAt: row.createdAt,
-          firstImageStyleTags: row.firstImageStyleTags,
-          age: row.age,
-          city: row.city,
-          height: row.height,
-          education: row.education,
-          occupation: row.occupation,
-          relationshipGoal: row.relationshipGoal,
-        })),
-        viewerStyleTags: prefRow?.styleTags ?? [],
-        viewerPref,
-        applyDryRunContext: {
-          viewerGenderRaw: user.gender,
-          poolGuardRows: [...created.items]
-            .sort((a, b) => a.rankInPool - b.rankInPool)
-            .map((it) => {
-              const g = gById.get(it.candidateUserId);
-              return {
-                candidateUserId: it.candidateUserId,
-                candidateGenderRaw: g?.gender ?? null,
-                firstImageUrl: g?.firstImageUrl ?? null,
-              };
-            }),
-        },
-      }),
-    ).catch(() => {
-      /* shadow must not fail pool generate */
-    });
+    if (shadowBuilt.computed) {
+      await Promise.resolve(
+        this.visualRankingShadow.computeShadow({
+          viewerUserId,
+          poolId: created.id,
+          baselineItems,
+          gatedCandidates: gatedForShadow,
+          viewerStyleTags: prefRow?.styleTags ?? [],
+          viewerPref,
+          applyDryRunContext: {
+            viewerGenderRaw: user.gender,
+            poolGuardRows: baselinePoolGuardRows,
+          },
+          eligibility,
+          writerDecision,
+        }),
+      ).catch(() => {
+        /* shadow must not fail pool generate */
+      });
+    }
 
     return this.toViewerBundle(created);
   }

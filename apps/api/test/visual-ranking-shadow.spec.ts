@@ -539,6 +539,51 @@ describe("VisualRankingShadowService", () => {
     }
   });
 
+  it("P7.5-r5-c1: writerDecision sets summary.applyResult without changing applyDryRun.appliedToPool", async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const findMany = jest.fn().mockResolvedValue([]);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        VisualRankingShadowService,
+        {
+          provide: PrismaService,
+          useValue: {
+            userImage: { findMany },
+            onboardingPhotoPreviewPoolShadow: { upsert },
+          },
+        },
+      ],
+    }).compile();
+    const svc = moduleRef.get(VisualRankingShadowService);
+    const result = await svc.computeShadow(
+      {
+        ...computeInput,
+        writerDecision: {
+          shouldApply: true,
+          reason: "ok",
+          applySourceVersion: "onboarding-photo-preview-v2-vision",
+        },
+        eligibility: {
+          eligible: true,
+          decision: "eligible_dry_run",
+          reason: "ok",
+          applySourceVersion: "onboarding-photo-preview-v2-vision",
+          appliedToPool: false,
+        },
+      },
+      baseEnv,
+    );
+    expect(result.computed).toBe(true);
+    if (result.computed) {
+      expect(result.shadow.appliedToPool).toBe(false);
+      expect(result.shadow.summary.applyDryRun?.appliedToPool).toBe(false);
+      expect(result.shadow.summary.applyResult?.applied).toBe(true);
+      expect(result.shadow.summary.applyResult?.reason).toBe("ok");
+      expect(result.shadow.summary.applyDryRun?.appliedToPool).toBe(false);
+      expect(result.shadow.appliedToPool).toBe(false);
+    }
+  });
+
   it("persist failure does not throw from computeShadow", async () => {
     const upsert = jest.fn().mockRejectedValue(new Error("db"));
     const findMany = jest.fn().mockResolvedValue([]);

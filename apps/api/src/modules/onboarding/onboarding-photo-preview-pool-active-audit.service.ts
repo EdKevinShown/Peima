@@ -75,7 +75,7 @@ export class OnboardingPhotoPreviewPoolActiveAuditService {
     return buildActivePoolAuditReport({
       viewerUserId,
       viewerGenderRaw: viewer.gender,
-      pool: { id: pool.id, status: pool.status },
+      pool: { id: pool.id, status: pool.status, sourceVersion: pool.sourceVersion },
       items,
       mappingItems,
     });

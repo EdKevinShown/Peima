@@ -19,7 +19,7 @@ export type UserImageVisionSourceRow = {
   reviewStatus: string;
 };
 
-const BLOCKING_REVIEW_FOR_VISION = new Set([
+export const BLOCKING_REVIEW_FOR_VISION = new Set([
   "rejected",
   "needs_reupload",
   "appealed",
