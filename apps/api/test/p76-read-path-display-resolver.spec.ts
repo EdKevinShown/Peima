@@ -65,7 +65,9 @@ function enabledEnv(over: Partial<ReturnType<typeof readEnv>> = {}) {
     sourceVersion: P76_ALLOWLIST_DEFAULT_POOL_SOURCE_VERSION,
     requirePmSignoff: true,
     requireOpsSignoff: true,
+    safeFallbackEnabled: true,
     fallbackLegacy: true,
+    deprecatedAliasUsed: false,
     strictViolationBlock: true,
     ...over,
   };
@@ -108,6 +110,7 @@ describe("p76-read-path-env", () => {
     const env = readEnv();
     expect(env.enabled).toBe(false);
     expect(env.viewerAllowlist).toEqual([]);
+    expect(env.safeFallbackEnabled).toBe(true);
     expect(env.fallbackLegacy).toBe(true);
     expect(env.strictViolationBlock).toBe(true);
   });

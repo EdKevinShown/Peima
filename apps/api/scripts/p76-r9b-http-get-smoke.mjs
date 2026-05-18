@@ -63,7 +63,8 @@ function setReadPathEnv() {
   process.env.PEIMA_P76_READ_PATH_SOURCE_VERSION = "p7.6-r7j3-staging-cohort-v1";
   process.env.PEIMA_P76_READ_PATH_REQUIRE_PM_SIGNOFF = "1";
   process.env.PEIMA_P76_READ_PATH_REQUIRE_OPS_SIGNOFF = "1";
-  process.env.PEIMA_P76_READ_PATH_FALLBACK_LEGACY = "1";
+  process.env.PEIMA_P76_READ_PATH_SAFE_FALLBACK = "1";
+  // Deprecated alias still supported: PEIMA_P76_READ_PATH_FALLBACK_LEGACY
   process.env.PEIMA_P76_READ_PATH_STRICT_VIOLATION_BLOCK = "1";
   process.env.PEIMA_P76_PRODUCTION_PERCENT_ENABLED = "0";
   process.env.PEIMA_P76_PRODUCTION_PERCENT = "0";
