@@ -53,7 +53,7 @@ async function parseP76RehearsalAdminError(res) {
   if (res.status === 403) {
     throw new Error(
       detail?.trim() ||
-        "无权限访问（需要 VIEW_P76_ALLOWLIST_APPLY_META，运营 / 数据分析 / 管理员）。",
+        "无权限访问：你需要 VIEW_P76_CANONICAL_REHEARSAL 权限才能查看 canonical rehearsal 只读记录。",
     );
   }
   if (res.status === 404) {

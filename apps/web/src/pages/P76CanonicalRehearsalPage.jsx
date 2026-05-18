@@ -497,7 +497,8 @@ export default function P76CanonicalRehearsalPage() {
           color: "#92400e",
         }}
       >
-        <strong>内部 / Admin</strong> — 只读审阅；权限 VIEW_P76_ALLOWLIST_APPLY_META。
+        <strong>内部 / Admin</strong> — 只读审阅；权限 VIEW_P76_CANONICAL_REHEARSAL。
+        你需要 VIEW_P76_CANONICAL_REHEARSAL 权限才能查看 canonical rehearsal 只读记录。
         无 Apply / Promote / worker 操作。
         {" "}
         <Link to="/admin/p76/allowlist-apply-meta" style={{ color: "#b45309" }}>
