@@ -16,7 +16,7 @@ export class P76CanonicalRehearsalAdminController {
   ) {}
 
   @Get()
-  @RequirePermission(Permission.VIEW_P76_ALLOWLIST_APPLY_META)
+  @RequirePermission(Permission.VIEW_P76_CANONICAL_REHEARSAL)
   list(@Query() query: ListP76CanonicalRehearsalAdminQueryDto) {
     return this.p76CanonicalRehearsalAdminService.listP76CanonicalRehearsalAdmin(
       toP76RehearsalAdminListQuery(query),
@@ -24,7 +24,7 @@ export class P76CanonicalRehearsalAdminController {
   }
 
   @Get("aggregate")
-  @RequirePermission(Permission.VIEW_P76_ALLOWLIST_APPLY_META)
+  @RequirePermission(Permission.VIEW_P76_CANONICAL_REHEARSAL)
   aggregate(@Query() query: ListP76CanonicalRehearsalAdminQueryDto) {
     return this.p76CanonicalRehearsalAdminService.getP76CanonicalRehearsalAdminAggregate(
       toP76RehearsalAdminListQuery(query),
@@ -32,7 +32,7 @@ export class P76CanonicalRehearsalAdminController {
   }
 
   @Get(":id")
-  @RequirePermission(Permission.VIEW_P76_ALLOWLIST_APPLY_META)
+  @RequirePermission(Permission.VIEW_P76_CANONICAL_REHEARSAL)
   detail(@Param("id") id: string) {
     return this.p76CanonicalRehearsalAdminService.getP76CanonicalRehearsalAdminById(
       id,

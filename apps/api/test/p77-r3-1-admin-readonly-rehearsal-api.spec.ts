@@ -1,7 +1,12 @@
 /**
- * P7.7-r3.1 — canonical rehearsal admin read API (service unit tests).
+ * P7.7-r3.1 / r3.4 — canonical rehearsal admin read API (service + RBAC unit tests).
  */
 import { NotFoundException } from "@nestjs/common";
+import {
+  Permission,
+  UserRole,
+  hasPermission,
+} from "@peima/shared/constants";
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import {
@@ -53,6 +58,41 @@ function baseRow(
     ...overrides,
   };
 }
+
+describe("P7.7-r3.4 canonical rehearsal RBAC", () => {
+  it("grants VIEW_P76_CANONICAL_REHEARSAL to admin/operator/analyst roles", () => {
+    expect(
+      hasPermission([UserRole.ADMIN], Permission.VIEW_P76_CANONICAL_REHEARSAL),
+    ).toBe(true);
+    expect(
+      hasPermission([UserRole.OPERATOR], Permission.VIEW_P76_CANONICAL_REHEARSAL),
+    ).toBe(true);
+    expect(
+      hasPermission(
+        [UserRole.DATA_ANALYST],
+        Permission.VIEW_P76_CANONICAL_REHEARSAL,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not grant VIEW_P76_CANONICAL_REHEARSAL to regular users", () => {
+    expect(
+      hasPermission(
+        [UserRole.REGULAR_USER],
+        Permission.VIEW_P76_CANONICAL_REHEARSAL,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps VIEW_P76_ALLOWLIST_APPLY_META separate from canonical rehearsal", () => {
+    expect(Permission.VIEW_P76_CANONICAL_REHEARSAL).toBe(
+      "view_p76_canonical_rehearsal",
+    );
+    expect(Permission.VIEW_P76_ALLOWLIST_APPLY_META).toBe(
+      "view_p76_allowlist_apply_meta",
+    );
+  });
+});
 
 describe("p76 canonical rehearsal admin derive", () => {
   it("derive marks shadow_only / not_applied", () => {

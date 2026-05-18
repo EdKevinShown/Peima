@@ -25,6 +25,8 @@ export const Permission = {
   MANAGE_PHOTO_REVIEW: "manage_photo_review",
   /** P7.6-r8g1: read-only P7.6 allowlist apply sidecar (admin review). */
   VIEW_P76_ALLOWLIST_APPLY_META: "view_p76_allowlist_apply_meta",
+  /** P7.7-r3.4: read-only canonical writer rehearsal rows (shadow review). */
+  VIEW_P76_CANONICAL_REHEARSAL: "view_p76_canonical_rehearsal",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -38,6 +40,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.EXPORT_SUGGESTIONS,
     Permission.MANAGE_PHOTO_REVIEW,
     Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
   ],
   [UserRole.DATA_ANALYST]: [
     Permission.VIEW_OWN_SUGGESTIONS,
@@ -45,6 +48,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.VIEW_ALL_SUGGESTIONS,
     Permission.EXPORT_DATA,
     Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
   ],
   [UserRole.ADMIN]: [
     Permission.VIEW_OWN_SUGGESTIONS,
@@ -57,6 +61,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.EXPORT_DATA,
     Permission.MANAGE_PHOTO_REVIEW,
     Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
   ],
 };
 
