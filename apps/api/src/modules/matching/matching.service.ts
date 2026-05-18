@@ -31,6 +31,13 @@ import {
   parseScoreBreakdownFromReasonSummary,
   type ViewerSafeScoreBreakdown,
 } from "./matching-score-breakdown";
+import { readP76ResultStateContractEnv } from "./p76-result-state-env";
+import {
+  attachResultStateToViewerPayload,
+  deriveNoRowResultState,
+  type MatchResultNoRowContractPayload,
+  type MatchResultResultStateFields,
+} from "./matching-result-state";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
@@ -50,6 +57,19 @@ export type MatchResultViewerPayload = MatchResult &
     /** M6.0-J4: V2 shadow from `matchInsights.scoreShadowV2` when valid. */
     relationshipProfileScoreV2: ViewerSafeRelationshipProfileScoreV2;
   };
+
+/** P7.10-r4a: optional when `PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED=1`. */
+export type { MatchResultResultStateFields, MatchResultNoRowContractPayload };
+
+export type GetMatchResultResponse =
+  | MatchResultViewerPayload
+  | MatchResultNoRowContractPayload;
+
+export function isMatchResultViewerPayload(
+  payload: GetMatchResultResponse,
+): payload is MatchResultViewerPayload {
+  return "candidateUserId" in payload && typeof payload.candidateUserId === "string";
+}
 
 @Injectable()
 export class MatchingService {
@@ -122,16 +142,33 @@ export class MatchingService {
     return { status: "not_queued" };
   }
 
-  async getLatestResultForUser(userId: string): Promise<MatchResultViewerPayload> {
+  async getLatestResultForUser(userId: string): Promise<GetMatchResultResponse> {
     await this.ensureUserExists(userId);
+
+    const resultStateContract = readP76ResultStateContractEnv();
 
     const result = await this.prisma.matchResult.findFirst({
       where: { userId },
       orderBy: { createdAt: "desc" },
     });
     if (!result) {
-      throw new NotFoundException(`No match result for user ${userId}`);
+      if (!resultStateContract.enabled) {
+        throw new NotFoundException(`No match result for user ${userId}`);
+      }
+      const { status } = await this.getStatusForUser(userId);
+      return deriveNoRowResultState(status);
     }
+
+    const payload = await this.buildMatchResultViewerPayload(result);
+    if (!resultStateContract.enabled) {
+      return payload;
+    }
+    return attachResultStateToViewerPayload(payload);
+  }
+
+  private async buildMatchResultViewerPayload(
+    result: MatchResult,
+  ): Promise<MatchResultViewerPayload> {
     let display: MatchResultDisplayFields;
     let displayResolverErrored = false;
     try {
@@ -154,7 +191,10 @@ export class MatchingService {
         hasUser: async (id: string) =>
           !!(await this.prisma.user.findUnique({ where: { id }, select: { id: true } })),
         hasUserProfile: async (id: string) =>
-          !!(await this.prisma.userProfile.findUnique({ where: { userId: id }, select: { userId: true } })),
+          !!(await this.prisma.userProfile.findUnique({
+            where: { userId: id },
+            select: { userId: true },
+          })),
       },
     );
     const resolvedScoreProjection = applyResolvedScoreProjection({
@@ -162,9 +202,13 @@ export class MatchingService {
       matchInsights: result.matchInsights,
       baselineFinalScore: result.finalScore,
     });
-    const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(result, display, {
-      shadowEnabled: readM5FinalDecisionShadowEnabled(),
-    });
+    const multiSourceFinalDecision = buildMultiSourceFinalDecisionReadonlyM51M0(
+      result,
+      display,
+      {
+        shadowEnabled: readM5FinalDecisionShadowEnabled(),
+      },
+    );
     const scoreBreakdown = parseScoreBreakdownFromReasonSummary(result.reasonSummary);
     const relationshipProfileScore = resolveRelationshipProfileScoreShadow(
       result.matchInsights,

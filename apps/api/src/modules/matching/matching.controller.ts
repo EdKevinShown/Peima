@@ -14,7 +14,10 @@ import { FinalizeWithPairwiseDto } from "./dto/finalize-with-pairwise.dto";
 import { MatchingDecisionComparisonService } from "./matching-decision-comparison.service";
 import { MatchingFinalizePairwiseService } from "./matching-finalize-pairwise.service";
 import { MatchingRrmRankingProposalService } from "./matching-rrm-ranking-proposal.service";
-import type { MatchResultViewerPayload, MatchStatusPayload } from "./matching.service";
+import type {
+  GetMatchResultResponse,
+  MatchStatusPayload,
+} from "./matching.service";
 import { MatchingService } from "./matching.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
@@ -60,7 +63,7 @@ export class MatchingController {
   getResult(
     @Param("userId") userId: string,
     @Req() req: JwtReq,
-  ): Promise<MatchResultViewerPayload> {
+  ): Promise<GetMatchResultResponse> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId || userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");
