@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "p7.7-r3.3a-admin-rehearsal-ui-manual-smoke-v1",
+  "generatedAt": "2026-05-18T20:45:00.000Z",
+  "auditRunId": "p77-r3-3a-admin-ui-manual-smoke-001",
+  "insertedCount": 5,
+  "duplicateCount": 0,
+  "appliedToMatchResultTrueCount": 0,
+  "insertVerificationPass": true,
+  "apiListPass": true,
+  "apiListHttpStatus": 200,
+  "apiListItemCount": 5,
+  "uiPageOpened": true,
+  "uiPageUrl": "http://localhost:5173/admin/p76/canonical-rehearsal",
+  "bannerVisible": true,
+  "bannerText": "SHADOW REHEARSAL ONLY — NOT APPLIED TO MATCHRESULT",
+  "summaryCardsVisible": true,
+  "summaryCards": {
+    "totalVisible": 5,
+    "eligibleCount": 4,
+    "blockedCount": 1,
+    "wouldChangeCandidateCount": 4,
+    "appliedToMatchResultViolationCount": 0
+  },
+  "rowsVisible": true,
+  "visibleRowCount": 5,
+  "filtersTested": true,
+  "filtersTestedNotes": "auditRunId=p77-r3-3a-admin-ui-manual-smoke-001 Query retained 5 rows",
+  "detailDrawerVisible": true,
+  "detailSafetyFlagsVisible": {
+    "isShadowOnly": true,
+    "notAppliedToMatchResult": true,
+    "readByGetPath": false,
+    "readByWorker": false,
+    "violationStatus": "ok"
+  },
+  "exportTested": true,
+  "exportTestedNotes": "Export visible JSON button clicked; client-side download triggered (no server write)",
+  "noWriteControlsVisible": true,
+  "noWriteControlsNotes": "No Apply/Promote/Update/Delete/worker/PreviewPool action buttons; only text references to Allowlist Apply Meta link and read-only disclaimer",
+  "cleanupDeletedCount": 5,
+  "finalRowsForAuditRunId": 0,
+  "safety": {
+    "noMatchResultMutation": true,
+    "noMatchInsightsMutation": true,
+    "noWorkerIntegration": true,
+    "noGetIntegration": true,
+    "rehearsalTableOnlyWrites": true
+  },
+  "notes": [
+    "Browser smoke via Cursor IDE browser MCP on Vite :5173 with API :3000.",
+    "Admin login via seeded admin user phone (not recorded in artifact).",
+    "pnpm --filter @peima/api run build failed once with Prisma EPERM (file lock); used existing dist.",
+    "Web build PASS."
+  ]
+}
