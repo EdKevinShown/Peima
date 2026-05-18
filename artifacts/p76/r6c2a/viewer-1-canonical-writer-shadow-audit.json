@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "p76_canonical_writer_shadow_audit",
+  "sourceVersion": "p7.10-r6a-canonical-writer-shadow-audit-v1",
+  "generatedAt": "2026-05-18T19:30:02.662Z",
+  "mode": "dev_audit",
+  "dryRun": true,
+  "appliedToMatchResultCount": 0,
+  "totalRows": 1,
+  "eligibleCount": 1,
+  "blockedCount": 0,
+  "wouldChangeCandidateCount": 1,
+  "reasonCounts": {
+    "ok": 1
+  },
+  "scoreDeltaBandCounts": {
+    "none": 1
+  },
+  "rows": [
+    {
+      "matchResultId": "cmpbd5hgr00046z5kwqlkwt43",
+      "viewerUserId": "cmfemn00100016z64seed0001",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:30:02.662Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmfemn00100016z64seed0001",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": "cmr4hf000716z64demo00f04a",
+          "score": 0.75,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "allowlist_sidecar_selected_candidate_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": true,
+          "scoreDelta": 0,
+          "scoreDeltaBand": "none"
+        },
+        "provenance": {
+          "inputSource": "p76_allowlist_sidecar",
+          "allowlistApplyMetaId": "cmpb7v59200006zpw54nwuzco",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": true,
+          "reason": "ok"
+        }
+      }
+    }
+  ]
+}
