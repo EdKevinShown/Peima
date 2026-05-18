@@ -1,3 +1,7 @@
+/**
+ * P7.10-r5a (frozen_legacy_bridge): legacy PreviewPool writer/reader.
+ * Worker batch-match still consumes active PreviewPool rows until later cutover gates PASS.
+ */
 import {
   BadRequestException,
   Injectable,

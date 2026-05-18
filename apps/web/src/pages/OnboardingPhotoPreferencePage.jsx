@@ -139,6 +139,20 @@ export default function OnboardingPhotoPreferencePage() {
       <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem", color: "#0f172a" }}>
         审美偏好
       </h1>
+      <p
+        style={{
+          marginBottom: "1rem",
+          padding: "0.55rem 0.75rem",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+          background: "#f8fafc",
+          color: "#64748b",
+          fontSize: "0.82rem",
+          lineHeight: 1.5,
+        }}
+      >
+        保存后将生成第一印象预览池（legacy 路径，P7.10-r5a 已冻结增长；P7.6 将接管正式匹配）。
+      </p>
       <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1rem" }}>
         告诉我们你更容易被什么类型吸引。这个选择只用于第一印象预览池，不代表最终匹配结果。
       </p>

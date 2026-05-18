@@ -9,6 +9,7 @@ import {
 } from "../api/onboarding";
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
+import LegacyPhotoPreviewFreezeBanner from "../components/legacy/LegacyPhotoPreviewFreezeBanner.jsx";
 
 function formatReasonLine(tags) {
   if (!tags || !tags.length) return "符合你的审美偏好";
@@ -228,6 +229,7 @@ export default function OnboardingPhotoPreviewPage() {
 
   return (
     <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
+      <LegacyPhotoPreviewFreezeBanner variant="onboarding" />
       <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem", color: "#0f172a" }}>
         你的第一印象预览池
       </h1>
@@ -302,15 +304,17 @@ export default function OnboardingPhotoPreviewPage() {
             <button
               type="button"
               onClick={() => void onGenerateOrRegenerate()}
-              disabled={regenerating}
+              disabled
+              title="P7.10-r5a: photo preview pool regeneration is frozen"
               style={{
                 ...btnBase,
-                background: "#334155",
+                background: "#94a3b8",
                 color: "#fff",
-                opacity: regenerating ? 0.7 : 1,
+                cursor: "not-allowed",
+                opacity: 0.85,
               }}
             >
-              {regenerating ? "生成中…" : "重新生成预览池"}
+              重新生成预览池（已冻结）
             </button>
             <button
               type="button"

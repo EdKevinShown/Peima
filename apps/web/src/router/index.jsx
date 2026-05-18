@@ -141,8 +141,8 @@ function HomePage() {
                 审美偏好
               </Link>
               {" · "}
-              <Link to={`/onboarding/photo-preview${q}`} style={navLink}>
-                第一印象预览池
+              <Link to={`/onboarding/photo-preview${q}`} style={{ ...navLink, color: "#64748b" }}>
+                第一印象预览池（legacy · 冻结）
               </Link>
             </p>
             <div style={{ fontWeight: 600, color: "#334155", margin: "0.75rem 0 0.35rem" }}>问卷与匹配</div>
@@ -184,7 +184,9 @@ function HomePage() {
             {" · "}
             <Link to={`/onboarding/photo-preference${q}`}>审美偏好</Link>
             {" · "}
-            <Link to={`/onboarding/photo-preview${q}`}>第一印象预览池</Link>
+            <Link to={`/onboarding/photo-preview${q}`} style={{ color: "#94a3b8" }}>
+              第一印象预览池（legacy · 冻结）
+            </Link>
             {" · "}
             <Link to="/my-activity">我的反馈与动态</Link>
           </li>
@@ -194,7 +196,7 @@ function HomePage() {
             <Link to="/questionnaire-profile">问卷画像</Link>
             {" · "}
             <Link to="/preview-pool" style={{ color: "#94a3b8" }}>
-              正式匹配候选池（旧 /preview-pool）
+              Legacy PreviewPool（/preview-pool · 已冻结）
             </Link>
           </li>
           <li>

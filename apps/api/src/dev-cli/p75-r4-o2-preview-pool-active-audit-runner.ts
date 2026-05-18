@@ -3,8 +3,13 @@
  *
  * From repo root (after nest build):
  *   pnpm --filter @peima/api run p75:r4-o2-preview-pool-active-audit -- --viewerUserId=u1
+ *
+ * P7.10-r5a: [P7.10-r5a] Legacy PreviewPool path is frozen; do not use for new matching production runs.
  */
 import "reflect-metadata";
+
+const P710_R5A_LEGACY_PREVIEW_POOL_FROZEN_WARN =
+  "[P7.10-r5a] Legacy PreviewPool path is frozen; do not use for new matching production runs.";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
@@ -30,6 +35,7 @@ function defaultMappingPath(): string {
 
 async function main(): Promise<void> {
   loadDotenvFromCommonLocations();
+  console.warn(P710_R5A_LEGACY_PREVIEW_POOL_FROZEN_WARN);
 
   const cli = parseP75R4O2PreviewPoolActiveAuditCliArgs(process.argv.slice(2));
   if (!cli.viewerUserId) {

@@ -1,3 +1,7 @@
+/**
+ * P7.10-r5a (frozen_legacy_bridge): onboarding OnboardingPhotoPreviewPool 3+2+1 path.
+ * API behavior unchanged; UI/scripts mark frozen — not for new production matching growth.
+ */
 import { randomUUID } from "node:crypto";
 import {
   BadRequestException,

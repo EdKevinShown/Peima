@@ -133,8 +133,12 @@ export default function UserImagesPage() {
       <p style={{ marginBottom: "1rem" }}>
         <Link to="/">首页</Link>
         {" · "}
-        <Link to={`/preview-pool?userId=${encodeURIComponent(userId || "")}`}>
-          预览池
+        <Link
+          to={`/preview-pool?userId=${encodeURIComponent(userId || "")}`}
+          style={{ color: "#94a3b8" }}
+          title="P7.10-r5a: legacy PreviewPool frozen — historical read only"
+        >
+          Legacy 预览池（已冻结）
         </Link>
       </p>
 

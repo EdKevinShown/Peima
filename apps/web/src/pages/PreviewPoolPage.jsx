@@ -9,6 +9,10 @@ import {
   minimalPayloadFromOrchestrationEnvelope,
   storeFinalMatchConsumptionHintForJob,
 } from "../utils/finalMatchConsumptionHintStorage";
+import LegacyPhotoPreviewFreezeBanner from "../components/legacy/LegacyPhotoPreviewFreezeBanner.jsx";
+
+/** P7.10-r5a: legacy PreviewPool generate frozen; read/orchestration unchanged. */
+const LEGACY_PREVIEW_POOL_GENERATE_FROZEN = true;
 
 function sortedItems(items) {
   return [...items].sort((a, b) => a.rankInPool - b.rankInPool);
@@ -91,6 +95,12 @@ export default function PreviewPoolPage() {
   }, []);
 
   const onGenerate = useCallback(async () => {
+    if (LEGACY_PREVIEW_POOL_GENERATE_FROZEN) {
+      console.warn(
+        "[P7.10-r5a] Legacy PreviewPool path is frozen; do not use for new matching production runs.",
+      );
+      return;
+    }
     if (!userId) return;
     setGenerating(true);
     setGenerateHint(null);
@@ -153,7 +163,8 @@ export default function PreviewPoolPage() {
 
   return (
     <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem" }}>预览池（6 人）</h1>
+      <LegacyPhotoPreviewFreezeBanner variant="preview_pool" />
+      <h1 style={{ fontSize: "1.25rem" }}>预览池（6 人 · legacy PreviewPool）</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
         userId: <code>{userId || "（未设置）"}</code>
       </p>
@@ -343,9 +354,20 @@ export default function PreviewPoolPage() {
         <button
           type="button"
           onClick={onGenerate}
-          disabled={loading || generating || !userId}
+          disabled={
+            LEGACY_PREVIEW_POOL_GENERATE_FROZEN || loading || generating || !userId
+          }
+          title={
+            LEGACY_PREVIEW_POOL_GENERATE_FROZEN
+              ? "P7.10-r5a: legacy PreviewPool generate is frozen"
+              : undefined
+          }
         >
-          {generating ? "生成中…" : "生成预览池"}
+          {LEGACY_PREVIEW_POOL_GENERATE_FROZEN
+            ? "生成预览池（已冻结）"
+            : generating
+              ? "生成中…"
+              : "生成预览池"}
         </button>
         <button type="button" onClick={load} disabled={loading || generating || !userId}>
           刷新

@@ -54,6 +54,7 @@ export class OnboardingController {
     return this.onboardingService.getPhotoPreferencesMe(userId);
   }
 
+  /** P7.10-r5a: frozen_legacy_bridge — endpoint retained; prefer P7.6 flow for new matching. */
   @Post("photo-preview-pool/generate")
   generatePhotoPreviewPool(@Req() req: JwtReq) {
     const userId = req.user?.userId;

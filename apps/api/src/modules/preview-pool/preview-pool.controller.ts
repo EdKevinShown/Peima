@@ -20,6 +20,10 @@ type JwtReq = {
   user?: { userId: string };
 };
 
+/**
+ * P7.10-r5a (frozen_legacy_bridge): legacy formal PreviewPool HTTP API.
+ * Behavior unchanged — no disable; prefer P7.6 matching / canonical writer path for new work.
+ */
 @Controller("preview-pool")
 @UseGuards(JwtAuthGuard)
 export class PreviewPoolController {
