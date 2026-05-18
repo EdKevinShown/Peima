@@ -193,6 +193,8 @@ async function querySidecarRows(prisma) {
   });
 }
 
+// P7.10-r4b: opt-in resultState contract assertions are in p76-r9b-http-get-smoke.mjs.
+// Set P76_SMOKE_EXPECT_RESULT_STATE_CONTRACT=1 (in-process Nest also sets PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED=1).
 async function runGetSmoke(httpServer, jwt, prisma) {
   const viewers = [...ALLOWLIST_ACTIVE, ROLLED_BACK, NON_ALLOWLIST];
   const results = [];

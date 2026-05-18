@@ -32,6 +32,57 @@ const SIDECAR_EXPECTED = {
   cmr4hf000916z64demo00f05a: "cmr4hf000716z64demo00f04a",
 };
 
+const RESULT_STATE_CONTRACT_VERSION = "p7.10-r4a-result-state-contract-v1";
+const VALID_RESULT_STATES = new Set([
+  "ready",
+  "safe_fallback",
+  "matching_pending",
+  "no_result",
+]);
+const MATCHING_PENDING_QUEUE_STATUSES = new Set(["waiting", "processing", "ready"]);
+
+function expectResultStateContract() {
+  return process.env.P76_SMOKE_EXPECT_RESULT_STATE_CONTRACT === "1";
+}
+
+function setResultStateContractEnv() {
+  process.env.PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED = "1";
+}
+
+/** @returns {{ ok: boolean, errors: string[] }} */
+function assertResultStateContract(body) {
+  const errors = [];
+  if (body.contractVersion !== RESULT_STATE_CONTRACT_VERSION) {
+    errors.push(
+      `contractVersion expected ${RESULT_STATE_CONTRACT_VERSION}, got ${String(body.contractVersion)}`,
+    );
+  }
+  if (!body.resultState || !VALID_RESULT_STATES.has(body.resultState)) {
+    errors.push(`resultState missing or invalid: ${String(body.resultState)}`);
+  }
+  if (body.resultState === "matching_pending") {
+    const qs = body.queue?.status;
+    if (!qs || !MATCHING_PENDING_QUEUE_STATUSES.has(qs)) {
+      errors.push(
+        `matching_pending requires queue.status in waiting|processing|ready, got ${String(qs)}`,
+      );
+    }
+  }
+  if (body.resultState === "no_result") {
+    if (!body.noResult?.reason) {
+      errors.push("no_result requires noResult.reason");
+    }
+  }
+  if (body.resultState === "ready" || body.resultState === "safe_fallback") {
+    const hasCandidate =
+      body.candidateUserId != null || body.displayCandidateUserId != null;
+    if (!hasCandidate) {
+      errors.push("ready/safe_fallback requires candidateUserId or displayCandidateUserId");
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 function loadDotEnv() {
   try {
     const envText = readFileSync(join(root, ".env"), "utf8");
@@ -94,7 +145,25 @@ async function getLatestMatchResult(prisma, userId) {
   });
 }
 
-async function runCase(httpServer, jwt, prisma, viewerUserId) {
+function evaluateReadPathPass({ res, body, before, after, caseType, expectedDisplay }) {
+  const meta = body.p76ReadPathMeta ?? null;
+  return (
+    res.status === 200 &&
+    before &&
+    after &&
+    after.candidateUserId === before.candidateUserId &&
+    after.finalScore === before.finalScore &&
+    (caseType === "allowlist_active"
+      ? body.displaySourceType === "p76_allowlist_sidecar_readonly" &&
+        body.displayCandidateUserId === expectedDisplay &&
+        meta?.enabled === true &&
+        meta?.fallbackUsed === false
+      : body.displaySourceType !== "p76_allowlist_sidecar_readonly" &&
+        body.displayCandidateUserId === before.candidateUserId)
+  );
+}
+
+async function runCase(httpServer, jwt, prisma, viewerUserId, contractMode) {
   const caseType = classifyCase(viewerUserId);
   const before = await getLatestMatchResult(prisma, viewerUserId);
   const token = signToken(jwt, viewerUserId);
@@ -111,19 +180,49 @@ async function runCase(httpServer, jwt, prisma, viewerUserId) {
       ? SIDECAR_EXPECTED[viewerUserId]
       : before?.candidateUserId;
 
-  const pass =
-    res.status === 200 &&
-    before &&
-    after &&
-    after.candidateUserId === before.candidateUserId &&
-    after.finalScore === before.finalScore &&
-    (caseType === "allowlist_active"
-      ? body.displaySourceType === "p76_allowlist_sidecar_readonly" &&
-        body.displayCandidateUserId === expectedDisplay &&
-        meta?.enabled === true &&
-        meta?.fallbackUsed === false
-      : body.displaySourceType !== "p76_allowlist_sidecar_readonly" &&
-        body.displayCandidateUserId === before.candidateUserId);
+  let pass;
+  let resultStateContractPass = null;
+  let resultStateContractErrors = [];
+  let resultStateContractOnly = false;
+
+  if (contractMode) {
+    if (res.status !== 200) {
+      pass = false;
+      resultStateContractPass = false;
+      resultStateContractErrors = [
+        `contract mode expects HTTP 200, got ${res.status}`,
+      ];
+    } else {
+      const contract = assertResultStateContract(body);
+      resultStateContractPass = contract.ok;
+      resultStateContractErrors = contract.errors;
+      const rs = body.resultState;
+      if (!contract.ok) {
+        pass = false;
+      } else if (rs === "matching_pending" || rs === "no_result") {
+        pass = true;
+        resultStateContractOnly = true;
+      } else {
+        pass = evaluateReadPathPass({
+          res,
+          body,
+          before,
+          after,
+          caseType,
+          expectedDisplay,
+        });
+      }
+    }
+  } else {
+    pass = evaluateReadPathPass({
+      res,
+      body,
+      before,
+      after,
+      caseType,
+      expectedDisplay,
+    });
+  }
 
   return {
     caseType,
@@ -139,6 +238,13 @@ async function runCase(httpServer, jwt, prisma, viewerUserId) {
     p76Enabled: meta?.enabled ?? null,
     candidateUnchanged: after?.candidateUserId === before?.candidateUserId,
     finalScoreUnchanged: after?.finalScore === before?.finalScore,
+    resultState: body.resultState ?? null,
+    contractVersion: body.contractVersion ?? null,
+    queueStatus: body.queue?.status ?? null,
+    noResultReason: body.noResult?.reason ?? null,
+    resultStateContractPass,
+    resultStateContractErrors,
+    resultStateContractOnly,
     passBlock: pass ? "PASS" : "BLOCK",
     error: res.status >= 400 ? body.message ?? JSON.stringify(body) : null,
     matchResultId: before?.id,
@@ -151,6 +257,10 @@ async function main() {
     throw new Error("DATABASE_URL required");
   }
   setReadPathEnv();
+  const contractMode = expectResultStateContract();
+  if (contractMode) {
+    setResultStateContractEnv();
+  }
 
   const jwtMod = await Test.createTestingModule({
     imports: [
@@ -179,7 +289,7 @@ async function main() {
   const viewers = [...ALLOWLIST_ACTIVE, ROLLED_BACK, NON_ALLOWLIST];
   const results = [];
   for (const v of viewers) {
-    results.push(await runCase(httpServer, jwt, prisma, v));
+    results.push(await runCase(httpServer, jwt, prisma, v, contractMode));
   }
 
   const violation = await prisma.$queryRaw`
@@ -198,6 +308,21 @@ async function main() {
     select count(*)::int as rolled_back_count from p76_allowlist_apply_meta where "rolledBack" = true
   `;
 
+  const resultStateCounts = {
+    ready: 0,
+    safe_fallback: 0,
+    matching_pending: 0,
+    no_result: 0,
+    unset: 0,
+  };
+  for (const r of results) {
+    if (r.resultState && VALID_RESULT_STATES.has(r.resultState)) {
+      resultStateCounts[r.resultState] += 1;
+    } else {
+      resultStateCounts.unset += 1;
+    }
+  }
+
   const summary = {
     executedAt: new Date().toISOString(),
     apiBase: "in-process Nest (supertest)",
@@ -206,7 +331,13 @@ async function main() {
       PEIMA_P76_READ_PATH_ENABLED: process.env.PEIMA_P76_READ_PATH_ENABLED,
       PEIMA_P76_READ_PATH_SOURCE_VERSION: process.env.PEIMA_P76_READ_PATH_SOURCE_VERSION,
       PEIMA_P76_PRODUCTION_PERCENT: process.env.PEIMA_P76_PRODUCTION_PERCENT,
+      P76_SMOKE_EXPECT_RESULT_STATE_CONTRACT: contractMode ? "1" : "0",
+      PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED: contractMode
+        ? process.env.PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED
+        : "0",
     },
+    resultStateContractMode: contractMode,
+    resultStateCounts,
     results,
     violationSql: violation[0],
     routeCRows: routeC[0],
