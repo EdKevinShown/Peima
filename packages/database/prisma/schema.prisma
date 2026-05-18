@@ -807,3 +807,61 @@ model P76AllowlistApplyMeta {
   @@index([sourceVersion])
   @@map("p76_allowlist_apply_meta")
 }
+
+/// P7.10-r6e1: canonical writer rehearsal compare sidecar (dev/staging only; not GET/worker).
+model P76CanonicalWriterRehearsalMeta {
+  id String @id @default(cuid())
+
+  viewerUserId  String
+  matchResultId String
+
+  baselineCandidateUserId String?
+  proposedCandidateUserId String?
+
+  baselineFinalScore Float?
+  proposedScore      Float?
+  scoreVersion       String?
+
+  wouldChangeCandidate Boolean @default(false)
+  eligible             Boolean @default(false)
+  guardrailReason      String
+  scoreDeltaBand       String?
+
+  sourceType            String
+  sourceVersion         String
+  pipelineVersion       String
+  readPathSourceVersion String?
+
+  allowlistApplyMetaId String?
+
+  auditRunId    String
+  rehearsalMode String @default("sidecar_rehearsal")
+  environment   String @default("dev")
+
+  appliedToMatchResult Boolean @default(false)
+
+  shadowPayload Json
+  summary       Json?
+
+  generatedAt  DateTime  @default(now())
+  expiresAt    DateTime?
+  supersededAt DateTime?
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchResultId, auditRunId, pipelineVersion])
+  @@index([viewerUserId])
+  @@index([matchResultId])
+  @@index([sourceVersion])
+  @@index([readPathSourceVersion])
+  @@index([auditRunId])
+  @@index([eligible])
+  @@index([guardrailReason])
+  @@index([appliedToMatchResult])
+  @@index([supersededAt])
+  @@index([generatedAt])
+  @@index([environment, generatedAt])
+  @@map("p76_canonical_writer_rehearsal_meta")
+}
