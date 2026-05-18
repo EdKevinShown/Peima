@@ -13,11 +13,24 @@ export const P76_CANONICAL_MATCH_RESULT_SIDECAR_WRITER_SOURCE_VERSION =
 export type P76CanonicalMatchResultSidecarWriterMode =
   | "disabled"
   | "dry_run"
+  | "insert_only"
   | "insert_only_blocked"
   | "insert_only_requested"
   | "kill_switch"
   | "blocked_production"
   | "blocked_environment";
+
+/** Narrow Prisma surface — `p76CanonicalMatchResultMeta.create` only (P7.10-r3f2). */
+export type P76CanonicalMatchResultSidecarWriterPrisma = {
+  p76CanonicalMatchResultMeta: {
+    create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
+  };
+};
+
+export type P76CanonicalMatchResultSidecarWriterDeps = {
+  prisma: P76CanonicalMatchResultSidecarWriterPrisma;
+  writerEnv?: P76CanonicalMatchResultSidecarWriterEnv;
+};
 
 export type P76CanonicalMatchResultSidecarWriterBlockedReason =
   | "disabled"
@@ -114,8 +127,8 @@ export type P76CanonicalMatchResultSidecarWriterResultV1 = {
   mode: P76CanonicalMatchResultSidecarWriterMode;
   attemptedCount: number;
   mappedCount: number;
-  insertedCount: 0;
-  duplicateCount: 0;
+  insertedCount: number;
+  duplicateCount: number;
   blockedCount: number;
   skippedCount: number;
   appliedToMatchResultCount: 0;

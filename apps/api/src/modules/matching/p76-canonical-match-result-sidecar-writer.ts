@@ -1,5 +1,5 @@
 /**
- * P7.10-r3f1 — canonical match result sidecar writer (dry-run only; no Prisma / no DB).
+ * P7.10-r3f1/r3f2 — canonical match result sidecar writer (dry-run + insert-only).
  */
 
 import {
@@ -12,9 +12,12 @@ import {
   P76_CANONICAL_MATCH_RESULT_SIDECAR_WRITER_RESULT_SCHEMA_VERSION,
   P76_CANONICAL_MATCH_RESULT_SIDECAR_WRITER_SOURCE_VERSION,
   P76CanonicalMatchResultSidecarWriterError,
+  type P76CanonicalMatchResultSidecarCreateInputLikeV1,
+  type P76CanonicalMatchResultSidecarWriterDeps,
   type P76CanonicalMatchResultSidecarWriterEnv,
   type P76CanonicalMatchResultSidecarWriterInputV1,
   type P76CanonicalMatchResultSidecarWriterMode,
+  type P76CanonicalMatchResultSidecarWriterPrisma,
   type P76CanonicalMatchResultSidecarWriterResultV1,
   type P76CanonicalMatchResultSidecarWriterRowInputV1,
 } from "./p76-canonical-match-result-sidecar-writer.types";
@@ -36,12 +39,103 @@ export {
 } from "./p76-canonical-match-result-sidecar-writer-row";
 export type {
   P76CanonicalMatchResultSidecarCreateInputLikeV1,
+  P76CanonicalMatchResultSidecarWriterDeps,
   P76CanonicalMatchResultSidecarWriterEnv,
   P76CanonicalMatchResultSidecarWriterInputV1,
+  P76CanonicalMatchResultSidecarWriterPrisma,
   P76CanonicalMatchResultSidecarWriterResultV1,
   P76CanonicalMatchResultSidecarWriterRowInputV1,
   P76CanonicalMatchResultSidecarWriterRowSummaryV1,
 } from "./p76-canonical-match-result-sidecar-writer.types";
+
+export function isP76CanonicalMatchResultSidecarWriterPrismaUniqueViolation(
+  err: unknown,
+): boolean {
+  return (
+    typeof err === "object" &&
+    err != null &&
+    "code" in err &&
+    (err as { code: string }).code === "P2002"
+  );
+}
+
+export function assertP76CanonicalMatchResultSidecarWriterPrismaSurfaceSafe(
+  prisma: P76CanonicalMatchResultSidecarWriterPrisma,
+): void {
+  const unsafe = prisma as {
+    matchResult?: { update?: unknown; create?: unknown; upsert?: unknown; delete?: unknown };
+    p76CanonicalMatchResultMeta?: {
+      update?: unknown;
+      upsert?: unknown;
+      delete?: unknown;
+    };
+  };
+  if (unsafe.matchResult?.update != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: matchResult.update must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.matchResult?.create != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: matchResult.create must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.matchResult?.upsert != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: matchResult.upsert must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.matchResult?.delete != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: matchResult.delete must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.p76CanonicalMatchResultMeta?.update != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: p76CanonicalMatchResultMeta.update must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.p76CanonicalMatchResultMeta?.upsert != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: p76CanonicalMatchResultMeta.upsert must not be available to sidecar writer",
+    );
+  }
+  if (unsafe.p76CanonicalMatchResultMeta?.delete != null) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "unsafe prisma surface: p76CanonicalMatchResultMeta.delete must not be available to sidecar writer",
+    );
+  }
+}
+
+export function assertP76CanonicalMatchResultSidecarCreateInputSafe(
+  data: P76CanonicalMatchResultSidecarCreateInputLikeV1,
+): void {
+  if (data.appliedToMatchResult !== false) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "appliedToMatchResult must be false on sidecar insert",
+    );
+  }
+  if (data.appliedToFinalScore !== false) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "appliedToFinalScore must be false on sidecar insert",
+    );
+  }
+  if (data.appliedToWorkerRanking !== false) {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "appliedToWorkerRanking must be false on sidecar insert",
+    );
+  }
+  if (data.environment !== "dev" && data.environment !== "staging") {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "environment must be dev or staging on sidecar insert",
+    );
+  }
+  if (data.promotionStatus !== "not_promoted") {
+    throw new P76CanonicalMatchResultSidecarWriterError(
+      "promotionStatus must be not_promoted on sidecar insert",
+    );
+  }
+}
 
 function norm(s: string): string {
   return s.trim();
@@ -294,5 +388,108 @@ export function dryRunP76CanonicalMatchResultSidecarWriter(
     reasonCounts: processed.reasonCounts,
     errors: processed.errors,
     rowSummaries: processed.rowSummaries,
+  };
+}
+
+/**
+ * Insert-only canonical match result sidecar writer (P7.10-r3f2).
+ * Calls prisma.p76CanonicalMatchResultMeta.create only when env gates pass.
+ */
+export async function insertOnlyP76CanonicalMatchResultSidecarWriter(
+  input: P76CanonicalMatchResultSidecarWriterInputV1,
+  deps: P76CanonicalMatchResultSidecarWriterDeps,
+): Promise<P76CanonicalMatchResultSidecarWriterResultV1> {
+  const writerEnv =
+    deps.writerEnv ?? readP76CanonicalMatchResultSidecarWriterEnv(process.env);
+
+  validateP76CanonicalMatchResultSidecarWriterInput(input);
+  assertWriterEnvironmentAligned(input, writerEnv);
+  assertP76CanonicalMatchResultSidecarWriterPrismaSurfaceSafe(deps.prisma);
+
+  const mode = resolveP76CanonicalMatchResultSidecarWriterMode(writerEnv);
+
+  if (
+    mode === "disabled" ||
+    mode === "kill_switch" ||
+    mode === "blocked_production" ||
+    mode === "blocked_environment"
+  ) {
+    return emptyResult(input, mode, {
+      attemptedCount: input.rows.length,
+      blockedCount: input.rows.length,
+      errors:
+        writerEnv.blockedReason != null
+          ? [
+              {
+                code: writerEnv.blockedReason,
+                message: `writer blocked: ${writerEnv.blockedReason}`,
+              },
+            ]
+          : [],
+    });
+  }
+
+  if (mode !== "insert_only_requested" || !writerEnv.canInsert) {
+    const blockedMode: P76CanonicalMatchResultSidecarWriterMode =
+      mode === "insert_only_requested" ? "dry_run" : mode;
+    return emptyResult(input, blockedMode, {
+      attemptedCount: input.rows.length,
+      blockedCount: input.rows.length,
+      errors: [
+        {
+          code: writerEnv.blockedReason ?? "insert_not_allowed",
+          message: `insert blocked: ${writerEnv.blockedReason ?? mode}`,
+        },
+      ],
+    });
+  }
+
+  const processed = processDryRunRows(input, writerEnv);
+  let insertedCount = 0;
+  let duplicateCount = 0;
+  let skippedCount = processed.skippedCount;
+  const errors = [...processed.errors];
+  const rowSummaries = [...processed.rowSummaries];
+
+  for (let i = rowSummaries.length - 1; i >= 0; i--) {
+    const summary = rowSummaries[i]!;
+    const data = summary.createInputLike;
+    try {
+      assertP76CanonicalMatchResultSidecarCreateInputSafe(data);
+      await deps.prisma.p76CanonicalMatchResultMeta["create"]({ data });
+      insertedCount += 1;
+    } catch (err) {
+      if (isP76CanonicalMatchResultSidecarWriterPrismaUniqueViolation(err)) {
+        duplicateCount += 1;
+        continue;
+      }
+      skippedCount += 1;
+      rowSummaries.splice(i, 1);
+      errors.push({
+        viewerUserId: data.viewerUserId,
+        code: "insert_error",
+        message: err instanceof Error ? err.message : "insert failed",
+      });
+    }
+  }
+
+  return {
+    schemaVersion: P76_CANONICAL_MATCH_RESULT_SIDECAR_WRITER_RESULT_SCHEMA_VERSION,
+    sourceVersion: P76_CANONICAL_MATCH_RESULT_SIDECAR_WRITER_SOURCE_VERSION,
+    auditRunId: norm(input.auditRunId),
+    environment: input.environment,
+    mode: "insert_only",
+    attemptedCount: input.rows.length,
+    mappedCount: processed.mappedCount,
+    insertedCount,
+    duplicateCount,
+    blockedCount: 0,
+    skippedCount,
+    appliedToMatchResultCount: 0,
+    appliedToFinalScoreCount: 0,
+    appliedToWorkerRankingCount: 0,
+    reasonCounts: processed.reasonCounts,
+    errors,
+    rowSummaries,
   };
 }
