@@ -865,3 +865,62 @@ model P76CanonicalWriterRehearsalMeta {
   @@index([environment, generatedAt])
   @@map("p76_canonical_writer_rehearsal_meta")
 }
+
+/// P7.10-r3e: canonical match result sidecar (promotion source; not GET/worker; no MatchResult FK v1).
+model P76CanonicalMatchResultMeta {
+  id String @id @default(cuid())
+
+  auditRunId  String
+  environment String @default("dev")
+
+  viewerUserId        String
+  matchResultId       String?
+  selectedCandidateId String
+
+  sourceType    String
+  sourceVersion String
+  schemaVersion Int
+  mode          String
+
+  score         Float?
+  reasonSummary String?
+
+  stageSummary     Json?
+  safeFallbackMeta Json?
+  guardrails       Json?
+  dryRunPayload    Json?
+
+  appliedToMatchResult   Boolean @default(false)
+  appliedToFinalScore    Boolean @default(false)
+  appliedToWorkerRanking Boolean @default(false)
+
+  promotionStatus              String  @default("not_promoted")
+  promotionTargetMatchResultId String?
+  rollbackToken                String?
+  previousSnapshotHash         String?
+
+  pmSignoffStatus String @default("not_required")
+  opsSignoffStatus String @default("not_required")
+
+  rolledBack   Boolean   @default(false)
+  supersededAt DateTime?
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([auditRunId, viewerUserId, sourceVersion])
+  @@index([viewerUserId])
+  @@index([selectedCandidateId])
+  @@index([matchResultId])
+  @@index([sourceVersion])
+  @@index([mode])
+  @@index([promotionStatus])
+  @@index([appliedToMatchResult])
+  @@index([rolledBack])
+  @@index([createdAt])
+  @@index([supersededAt])
+  @@index([deletedAt])
+  @@index([environment, createdAt])
+  @@map("p76_canonical_match_result_meta")
+}
