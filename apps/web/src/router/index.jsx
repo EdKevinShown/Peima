@@ -16,6 +16,7 @@ import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPag
 import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
 import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
 import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
+import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import OnboardingPhotoPreviewPage from "../pages/OnboardingPhotoPreviewPage";
@@ -227,6 +228,10 @@ function HomePage() {
             <Link to="/admin/p76/allowlist-apply-meta" style={{ color: "#94a3b8" }}>
               P76 Allowlist Meta
             </Link>
+            {" · "}
+            <Link to="/admin/p76/canonical-rehearsal" style={{ color: "#94a3b8" }}>
+              P76 Canonical Rehearsal
+            </Link>
           </li>
         </ul>
       </details>
@@ -261,6 +266,10 @@ export default function AppRoutes() {
       <Route
         path="/admin/p76/allowlist-apply-meta"
         element={<P76AllowlistApplyMetaPage />}
+      />
+      <Route
+        path="/admin/p76/canonical-rehearsal"
+        element={<P76CanonicalRehearsalPage />}
       />
       <Route element={<MainAppShell />}>
         <Route path="questionnaire" element={<QuestionnairePage />} />
