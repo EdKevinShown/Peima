@@ -3,7 +3,7 @@ import {
   resolveP76ReadPathSafeFallback,
 } from "../src/modules/matching/p76-read-path-env";
 
-describe("p76-read-path-env safe fallback alias (P7.10-r2b)", () => {
+describe("p76-read-path-env safe fallback alias (P7.10-r2b / r2c)", () => {
   const prev = { ...process.env };
 
   afterEach(() => {

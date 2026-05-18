@@ -269,7 +269,7 @@ async function monitoringSnapshot(prisma, smokeResults) {
   const sidecarSuccess = smokeResults.filter(
     (r) => r.caseType === "allowlist_active" && r.passBlock === "PASS",
   ).length;
-  const legacyFallback = smokeResults.filter(
+  const safeFallbackCount = smokeResults.filter(
     (r) =>
       r.caseType !== "allowlist_active" && r.passBlock === "PASS",
   ).length;
@@ -299,7 +299,9 @@ async function monitoringSnapshot(prisma, smokeResults) {
     percentEnabledWithoutSignoff: 0,
     readPathAttemptCount: smokeResults.length,
     sidecarReadSuccessCount: sidecarSuccess,
-    fallbackLegacyCount: legacyFallback,
+    safeFallbackCount,
+    /** @deprecated Use safeFallbackCount — not legacy photo matching fallback. */
+    fallbackLegacyCount: safeFallbackCount,
     exceptionFallbackCount: 0,
     userReportCount: 0,
     p0Triggered: false,

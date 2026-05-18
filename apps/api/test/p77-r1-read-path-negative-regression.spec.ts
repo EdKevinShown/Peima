@@ -71,7 +71,7 @@ function enabledEnv(over: Record<string, unknown> = {}) {
   };
 }
 
-function legacyDisplay() {
+function baselineDisplay() {
   return {
     displayCandidateUserId: LEGACY_CANDIDATE,
     displaySourceType: "match_result_original",
@@ -101,7 +101,7 @@ describe("P7.7-r1 read path negative regression", () => {
     );
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -115,14 +115,14 @@ describe("P7.7-r1 read path negative regression", () => {
     );
     const overlay = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(overlay.fallbackReason).toBe("sidecar_dry_run");
 
     const display = await applyP76ReadPathDisplayOverlay(prisma, {
       viewerUserId: VIEWER,
-      legacyDisplay: legacyDisplay(),
+      baselineDisplay: baselineDisplay(),
     });
     expect(display.displayCandidateUserId).toBe(LEGACY_CANDIDATE);
     expect(display.displaySourceType).toBe("match_result_original");
@@ -150,7 +150,7 @@ describe("P7.7-r1 read path negative regression", () => {
     await expect(
       applyP76ReadPathDisplayOverlay(prisma, {
         viewerUserId: VIEWER,
-        legacyDisplay: legacyDisplay(),
+        baselineDisplay: baselineDisplay(),
       }),
     ).resolves.toMatchObject({
       displayCandidateUserId: LEGACY_CANDIDATE,

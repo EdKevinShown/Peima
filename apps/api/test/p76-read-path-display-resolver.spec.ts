@@ -73,7 +73,8 @@ function enabledEnv(over: Partial<ReturnType<typeof readEnv>> = {}) {
   };
 }
 
-function legacyDisplay() {
+/** Safe baseline display slice (not legacy photo matching). */
+function baselineDisplay() {
   return {
     displayCandidateUserId: LEGACY_CANDIDATE,
     displaySourceType: "match_result_original",
@@ -138,33 +139,33 @@ describe("p76-read-path-display-resolver", () => {
     } as unknown as import("../src/common/prisma/prisma.service").PrismaService;
   }
 
-  it("env disabled → legacy overlay ineligible", async () => {
+  it("env disabled → safe fallback (env_disabled)", async () => {
     const prisma = mockPrisma(baseRow());
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv({ enabled: false }),
     );
     expect(r.eligible).toBe(false);
     expect(r.fallbackReason).toBe("env_disabled");
   });
 
-  it("viewer not allowlisted → legacy", async () => {
+  it("viewer not allowlisted → safe fallback (not_allowlisted)", async () => {
     const prisma = mockPrisma(baseRow());
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv({ viewerAllowlist: ["other-viewer"] }),
     );
     expect(r.eligible).toBe(false);
     expect(r.fallbackReason).toBe("not_allowlisted");
   });
 
-  it("no sidecar row → legacy", async () => {
+  it("no sidecar row → safe fallback (missing_sidecar)", async () => {
     const prisma = mockPrisma(null);
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -175,7 +176,7 @@ describe("p76-read-path-display-resolver", () => {
     const prisma = mockPrisma(baseRow());
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(true);
@@ -184,11 +185,11 @@ describe("p76-read-path-display-resolver", () => {
     expect(r.fallbackReason).toBeNull();
   });
 
-  it("rolledBack=true → legacy", async () => {
+  it("rolledBack=true → safe fallback (rolled_back)", async () => {
     const prisma = mockPrisma(baseRow({ rolledBack: true, applied: false, dryRun: true }));
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -200,11 +201,11 @@ describe("p76-read-path-display-resolver", () => {
     ["appliedToFinalScore", { appliedToFinalScore: true }],
     ["appliedToWorkerRanking", { appliedToWorkerRanking: true }],
     ["appliedToDisplay", { appliedToDisplay: true }],
-  ] as const)("main chain %s → legacy", async (_label, patch) => {
+  ] as const)("main chain %s → safe fallback", async (_label, patch) => {
     const prisma = mockPrisma(baseRow(patch));
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -215,7 +216,7 @@ describe("p76-read-path-display-resolver", () => {
     const prisma = mockPrisma(baseRow({ pmSignoffStatus: "pending" }));
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -226,7 +227,7 @@ describe("p76-read-path-display-resolver", () => {
     const prisma = mockPrisma(baseRow({ opsSignoffStatus: "rejected" }));
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
@@ -237,14 +238,14 @@ describe("p76-read-path-display-resolver", () => {
     const prisma = mockPrisma(baseRow(), false);
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
     expect(r.fallbackReason).toBe("candidate_unavailable");
   });
 
-  it("resolver exception → legacy via applyP76ReadPathDisplayOverlay", async () => {
+  it("resolver exception → safe fallback baseline via applyP76ReadPathDisplayOverlay", async () => {
     process.env.PEIMA_P76_READ_PATH_ENABLED = "1";
     process.env.PEIMA_P76_READ_PATH_VIEWER_IDS = VIEWER;
     const prisma = {
@@ -252,10 +253,10 @@ describe("p76-read-path-display-resolver", () => {
         findUnique: jest.fn().mockRejectedValue(new Error("db down")),
       },
     } as unknown as import("../src/common/prisma/prisma.service").PrismaService;
-    const legacy = legacyDisplay();
+    const baseline = baselineDisplay();
     const r = await applyP76ReadPathDisplayOverlay(prisma, {
       viewerUserId: VIEWER,
-      legacyDisplay: legacy,
+      baselineDisplay: baseline,
     });
     expect(r.displayCandidateUserId).toBe(LEGACY_CANDIDATE);
     expect(r.displaySourceType).toBe("match_result_original");
@@ -280,15 +281,52 @@ describe("p76-read-path-display-resolver", () => {
     expect(v.ok).toBe(false);
   });
 
-  it("non-allowlist row flag → legacy", async () => {
+  it("non-allowlist row flag → safe fallback", async () => {
     const prisma = mockPrisma(baseRow({ allowlistMatched: false }));
     const r = await resolveP76AllowlistSidecarDisplayCandidate(
       prisma,
-      { viewerUserId: VIEWER, legacyDisplay: legacyDisplay() },
+      { viewerUserId: VIEWER, baselineDisplay: baselineDisplay() },
       enabledEnv(),
     );
     expect(r.eligible).toBe(false);
     expect(r.fallbackReason).toBe("non_allowlist_row");
+  });
+
+  it("deprecated legacyDisplay input alias still applies overlay (P7.10-r2c)", async () => {
+    process.env.PEIMA_P76_READ_PATH_ENABLED = "1";
+    process.env.PEIMA_P76_READ_PATH_VIEWER_IDS = VIEWER;
+    const prisma = mockPrisma(baseRow());
+    const baseline = baselineDisplay();
+    const r = await applyP76ReadPathDisplayOverlay(prisma, {
+      viewerUserId: VIEWER,
+      legacyDisplay: baseline,
+    });
+    expect(r.displayCandidateUserId).toBe(CANDIDATE);
+    expect(r.displaySourceType).toBe(P76_READ_PATH_DISPLAY_SOURCE_TYPE);
+  });
+
+  it("fallbackReason values are safe-fallback semantics not photo matching", () => {
+    const env = enabledEnv();
+    expect(
+      deriveP76ReadPathFallbackReason({
+        env: enabledEnv({ enabled: false }),
+        viewerUserId: VIEWER,
+        row: null,
+        violationStatus: null,
+        sidecarStatus: null,
+        candidateFound: null,
+      }),
+    ).toBe("env_disabled");
+    expect(
+      deriveP76ReadPathFallbackReason({
+        env,
+        viewerUserId: VIEWER,
+        row: baseRow({ rolledBack: true }),
+        violationStatus: "ok",
+        sidecarStatus: "rolled_back",
+        candidateFound: true,
+      }),
+    ).toBe("rolled_back");
   });
 });
 

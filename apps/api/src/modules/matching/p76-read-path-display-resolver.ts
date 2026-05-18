@@ -52,17 +52,25 @@ export type P76ReadPathDisplayOverlay = {
   meta: P76ReadPathDisplayMeta;
 };
 
-/** Legacy display slice from `resolveMatchResultDisplay` (before P7.6 overlay). */
-export type P76ReadPathLegacyDisplayInput = {
+/** Baseline display from `resolveMatchResultDisplay` (before P7.6 overlay). Not legacy photo matching. */
+export type P76ReadPathBaselineDisplayInput = {
   displayCandidateUserId: string;
   displaySourceType: string;
   finalMatchDecisionMeta: unknown;
 };
 
+/** @deprecated Use `P76ReadPathBaselineDisplayInput`. */
+export type P76ReadPathLegacyDisplayInput = P76ReadPathBaselineDisplayInput;
+
 export type P76ReadPathResolverInput = {
   viewerUserId: string;
-  legacyDisplay: P76ReadPathLegacyDisplayInput;
+  /** Safe baseline from `resolveMatchResultDisplay` (preferred). */
+  baselineDisplay?: P76ReadPathBaselineDisplayInput;
   sourceVersion?: string;
+  /**
+   * @deprecated Use `baselineDisplay`. Safe baseline from resolver — not legacy photo matching.
+   */
+  legacyDisplay?: P76ReadPathBaselineDisplayInput;
 };
 
 function isSignoffApproved(status: string, required: boolean): boolean {
@@ -266,23 +274,30 @@ export async function resolveP76AllowlistSidecarDisplayCandidate(
   return buildP76ReadPathDisplayOverlay(dbRow, { ...env, sourceVersion });
 }
 
-export type P76ReadPathDisplayOverlayResult = P76ReadPathLegacyDisplayInput & {
+export type P76ReadPathDisplayOverlayResult = P76ReadPathBaselineDisplayInput & {
   p76ReadPathMeta?: P76ReadPathDisplayMeta;
 };
 
 /**
- * Overlay P7.6 sidecar display on legacy resolver output. Never throws; always returns display fields.
+ * Overlay P7.6 sidecar display on baseline resolver output. Never throws; always returns display fields.
  */
 export async function applyP76ReadPathDisplayOverlay(
   prisma: PrismaService,
   input: P76ReadPathResolverInput,
 ): Promise<P76ReadPathDisplayOverlayResult> {
-  const legacy = input.legacyDisplay;
+  const baselineDisplay = input.baselineDisplay ?? input.legacyDisplay;
+  if (!baselineDisplay) {
+    throw new Error("baselineDisplay is required");
+  }
+  const resolvedInput: P76ReadPathResolverInput = {
+    ...input,
+    baselineDisplay,
+  };
   try {
-    const overlay = await resolveP76AllowlistSidecarDisplayCandidate(prisma, input);
+    const overlay = await resolveP76AllowlistSidecarDisplayCandidate(prisma, resolvedInput);
     if (!overlay.eligible || !overlay.displayCandidateUserId) {
       return {
-        ...legacy,
+        ...baselineDisplay,
         p76ReadPathMeta: overlay.meta,
       };
     }
@@ -290,13 +305,13 @@ export async function applyP76ReadPathDisplayOverlay(
     return {
       displayCandidateUserId: overlay.displayCandidateUserId,
       displaySourceType: P76_READ_PATH_DISPLAY_SOURCE_TYPE,
-      finalMatchDecisionMeta: legacy.finalMatchDecisionMeta,
+      finalMatchDecisionMeta: baselineDisplay.finalMatchDecisionMeta,
       p76ReadPathMeta: overlay.meta,
     };
   } catch {
     const env = readP76ReadPathEnv();
     return {
-      ...legacy,
+      ...baselineDisplay,
       p76ReadPathMeta: {
         ...buildIneligibleOverlay(env, "exception").meta,
         fallbackReason: "exception",

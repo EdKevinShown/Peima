@@ -118,7 +118,7 @@ export async function resolveMatchResultDisplay(
   const core = await resolveMatchResultDisplayCore(prisma, matchRow);
   const overlaid = await applyP76ReadPathDisplayOverlay(prisma, {
     viewerUserId: matchRow.userId,
-    legacyDisplay: core,
+    baselineDisplay: core,
   });
   return {
     ...overlaid,
