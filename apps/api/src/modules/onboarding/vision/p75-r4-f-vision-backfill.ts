@@ -235,7 +235,12 @@ export function finalizeVisionBackfillSampleTags(
 
 /** Privacy-safe report (no imageUrl, user ids, reviewNote, raw detectionScoreJson). */
 export function buildVisionBackfillReport(
-  args: VisionBackfillRunInput,
+  args: VisionBackfillRunInput | (VisionBackfillRunOptions & {
+    limit: number;
+    userId?: string;
+    provider: string;
+    dryRun: boolean;
+  }),
   summary: VisionBackfillSummary,
   sampleTags: VisionBackfillTagCount[],
   generatedAt: Date = new Date(),

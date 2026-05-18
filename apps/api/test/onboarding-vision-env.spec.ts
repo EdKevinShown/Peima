@@ -1,4 +1,5 @@
 import {
+  isOnboardingVisionCloudRoutedProvider,
   isOnboardingVisionExternalProviderSupported,
   readOnboardingVisionEnv,
 } from "../src/modules/onboarding/vision/onboarding-vision-env";
@@ -40,11 +41,22 @@ describe("readOnboardingVisionEnv", () => {
     expect(readOnboardingVisionEnv().provider).toBe("rules");
   });
 
-  it("zhipu is not externally supported in r1", () => {
+  it("parses cloud env defaults with dry-run on", () => {
+    process.env = {
+      PEIMA_ONBOARDING_VISION_PROVIDER: "cloud",
+    };
+    const env = readOnboardingVisionEnv();
+    expect(env.provider).toBe("cloud");
+    expect(env.cloudDryRun).toBe(true);
+    expect(env.cloudVendor).toBe("mock");
+  });
+
+  it("zhipu routes to cloud path in r7-b", () => {
     const env = readOnboardingVisionEnv({
       PEIMA_ONBOARDING_VISION_PROVIDER: "zhipu",
     } as NodeJS.ProcessEnv);
     expect(env.provider).toBe("zhipu");
-    expect(isOnboardingVisionExternalProviderSupported(env)).toBe(false);
+    expect(isOnboardingVisionCloudRoutedProvider(env.provider)).toBe(true);
+    expect(isOnboardingVisionExternalProviderSupported(env)).toBe(true);
   });
 });

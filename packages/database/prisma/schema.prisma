@@ -67,6 +67,8 @@ model User {
   onboardingPhotoPreviewPoolItemsAsCandidate OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemCandidate")
   /// P7.5-r4: readonly visual ranking shadow rows (hypothetical 3+2+1; never applied to items in r4).
   onboardingPhotoPreviewPoolShadows OnboardingPhotoPreviewPoolShadow[]
+  /// P7.6-r8b: Route C allowlist apply sidecar (never writes MatchResult / finalScore / worker / display).
+  p76AllowlistApplyMeta P76AllowlistApplyMeta[]
 
   @@map("users")
 }
@@ -757,4 +759,51 @@ model BehaviorSignal {
   @@index([userId, occurredAt])
   @@index([conversationId])
   @@map("behavior_signals")
+}
+
+/// P7.6-r8b: allowlist-only Route C apply sidecar (audit / rollback; not MatchResult / display / worker).
+model P76AllowlistApplyMeta {
+  id                              String    @id @default(cuid())
+  viewerUserId                    String
+  selectedCandidateId             String
+  sourcePipeline                  String    @default("p7.6_route_c")
+  schemaVersion                   String
+  sourceVersion                   String
+  routeCArtifactPath              String?
+  stage1SelectedCandidateIds      Json
+  stage2Top2CandidateIds          Json
+  selectedBy20DOnlyCandidateId    String?
+  selectedByRrmCandidateId        String?
+  finalShadowSelectedCandidateId  String
+  allowlistMatched                Boolean   @default(false)
+  pmSignoffStatus                 String    @default("pending")
+  opsSignoffStatus                String    @default("pending")
+  applied                         Boolean   @default(false)
+  appliedToPool                   Boolean   @default(false)
+  appliedToMatchResult            Boolean   @default(false)
+  appliedToFinalScore             Boolean   @default(false)
+  appliedToDisplay                Boolean   @default(false)
+  appliedToWorkerRanking          Boolean   @default(false)
+  dryRun                          Boolean   @default(true)
+  appliedAt                       DateTime?
+  appliedBy                       String?
+  rolledBack                      Boolean   @default(false)
+  rolledBackAt                    DateTime?
+  rolledBackBy                    String?
+  rollbackReason                  String?
+  rollbackToken                   String?
+  auditNotes                      Json?
+  createdAt                       DateTime  @default(now())
+  updatedAt                       DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerUserId, sourceVersion])
+  @@index([viewerUserId])
+  @@index([selectedCandidateId])
+  @@index([applied])
+  @@index([rolledBack])
+  @@index([createdAt])
+  @@index([sourceVersion])
+  @@map("p76_allowlist_apply_meta")
 }

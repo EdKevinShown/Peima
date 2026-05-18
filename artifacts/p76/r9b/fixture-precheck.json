@@ -1,0 +1,788 @@
+{
+  "sidecar": [
+    {
+      "viewerUserId": "cmfemn00100016z64seed0001",
+      "selectedCandidateId": "cmr4hf000716z64demo00f04a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hf000716z64demo00f04a",
+      "selectedCandidateId": "cmfemn00100016z64seed0001",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hf000916z64demo00f05a",
+      "selectedCandidateId": "cmr4hf000716z64demo00f04a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hm001016z64demo00m05a",
+      "selectedCandidateId": "cmr4hf000916z64demo00f05a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4r7j4050025z64stag0001",
+      "selectedCandidateId": "cmr4r7j4070025z64stag0003",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": false,
+      "dryRun": true,
+      "rolledBack": true,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    }
+  ],
+  "matchResults": [
+    {
+      "userId": "cmfemn00100016z64seed0001",
+      "id": "cmpbd5hgr00046z5kwqlkwt43",
+      "candidateUserId": "cmfemn00100016z64seed0001",
+      "finalScore": 0.75,
+      "createdAt": "2026-05-18T14:01:00.000Z",
+      "updatedAt": "2026-05-18T14:01:00.000Z",
+      "reasonSummary": "p7.6-r9b-http-get-smoke-fixture"
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmp79e1j600026zckr6wcku9i",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.7563391454224787,
+      "createdAt": "2026-05-15T18:36:43.458Z",
+      "updatedAt": "2026-05-15T18:36:43.458Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=0.166667, profileScore=0.756696)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmp6w5lf300026zac9po916b0",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.7313391454224787,
+      "createdAt": "2026-05-15T12:26:14.319Z",
+      "updatedAt": "2026-05-15T12:26:14.319Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=0, profileScore=0.756696)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoy02vrn00026zuocvbywi2d",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-09T07:06:10.644Z",
+      "updatedAt": "2026-05-09T07:06:10.644Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswyfeh00026z8kri1wot8s",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:39:53.082Z",
+      "updatedAt": "2026-05-05T17:39:53.082Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswwd2500026z60c39nafrl",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:38:16.734Z",
+      "updatedAt": "2026-05-05T17:38:16.734Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswrmrp00026zwks47ayayp",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:34:36.038Z",
+      "updatedAt": "2026-05-05T17:34:36.038Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswq5ry00026zdk8o60dqp3",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:33:27.358Z",
+      "updatedAt": "2026-05-05T17:33:27.358Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswdqj500026zywth6op46e",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:23:47.730Z",
+      "updatedAt": "2026-05-05T17:23:47.730Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswbwom00026z640lysbcw5",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:22:22.390Z",
+      "updatedAt": "2026-05-05T17:22:22.390Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoswa2hi00026zis9umf3z99",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:20:56.598Z",
+      "updatedAt": "2026-05-05T17:20:56.598Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosw9v3c00026zf8nwo7o5zq",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:20:47.017Z",
+      "updatedAt": "2026-05-05T17:20:47.017Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosw3zxm00026z9g48lox98r",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:16:13.354Z",
+      "updatedAt": "2026-05-05T17:16:13.354Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosw0nha00026zwwnnxilpho",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T17:13:37.247Z",
+      "updatedAt": "2026-05-05T17:13:37.247Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosilm0000026znwnw6rikca",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T10:58:00.481Z",
+      "updatedAt": "2026-05-05T10:58:00.481Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosiliiz00026zsketh4c2el",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T10:57:55.979Z",
+      "updatedAt": "2026-05-05T10:57:55.979Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmosil2mn00026z30diqjnck5",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-05T10:57:35.376Z",
+      "updatedAt": "2026-05-05T10:57:35.376Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor8exze00026zgw3t3ecn56",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T13:25:07.082Z",
+      "updatedAt": "2026-05-05T10:46:34.479Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor9y7vj00026zus8zw6qj2o",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T14:08:05.984Z",
+      "updatedAt": "2026-05-04T14:08:05.984Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6utq300026zj8u0y5zlym",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:28.827Z",
+      "updatedAt": "2026-05-04T12:41:28.827Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6usgt00026zigvc89bgua",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:27.197Z",
+      "updatedAt": "2026-05-04T12:41:27.197Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6ur7500026z4cmtxck0ba",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:25.553Z",
+      "updatedAt": "2026-05-04T12:41:25.553Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6upyg00026zb87mz1axrr",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:23.945Z",
+      "updatedAt": "2026-05-04T12:41:23.945Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6uonk00026z7ouhfu7myr",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:22.256Z",
+      "updatedAt": "2026-05-04T12:41:22.256Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6undr00026zrkocwgehp2",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:20.608Z",
+      "updatedAt": "2026-05-04T12:41:20.608Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6um3s00026z0gosx9196l",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:18.952Z",
+      "updatedAt": "2026-05-04T12:41:18.952Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6uku000026z7cr0ikul98",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:17.304Z",
+      "updatedAt": "2026-05-04T12:41:17.304Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6ujkg00026z3gefyqpprd",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:15.664Z",
+      "updatedAt": "2026-05-04T12:41:15.664Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6uiam00026zq8se4nizrj",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:14.015Z",
+      "updatedAt": "2026-05-04T12:41:14.015Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6uh1f00026z3grmph1ti2",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:12.387Z",
+      "updatedAt": "2026-05-04T12:41:12.387Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor6ufrn00026zpchoyzpm4t",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:41:10.739Z",
+      "updatedAt": "2026-05-04T12:41:10.739Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmor5ulcb00026znoq1rlz1hj",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T12:13:18.348Z",
+      "updatedAt": "2026-05-04T12:13:18.348Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqz9jfr00026zco3974xuwp",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T09:08:58.407Z",
+      "updatedAt": "2026-05-04T09:08:58.407Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv7tsr00026z58ox81xj8u",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T07:15:40.060Z",
+      "updatedAt": "2026-05-04T07:15:40.060Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv7iww00026zos7siun2bu",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T07:15:25.953Z",
+      "updatedAt": "2026-05-04T07:15:25.953Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv6kr100026z0kdjckezhf",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8808915343915343,
+      "createdAt": "2026-05-04T07:14:41.677Z",
+      "updatedAt": "2026-05-04T07:14:41.677Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.754458)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv62u200026zo8oilds01n",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8808915343915343,
+      "createdAt": "2026-05-04T07:14:18.458Z",
+      "updatedAt": "2026-05-04T07:14:18.458Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.754458)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv3y3l00026zy0plklc46p",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8955687029020363,
+      "createdAt": "2026-05-04T07:12:39.010Z",
+      "updatedAt": "2026-05-04T07:12:39.010Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.827844)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv39k300026z6grzlwh8xh",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8955687029020363,
+      "createdAt": "2026-05-04T07:12:07.203Z",
+      "updatedAt": "2026-05-04T07:12:07.203Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.827844)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqv0duq00026z9om3o5xwyh",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8940934744268078,
+      "createdAt": "2026-05-04T07:09:52.803Z",
+      "updatedAt": "2026-05-04T07:09:52.803Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.820467)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoquztta00026z6g5eevxp4e",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8940934744268078,
+      "createdAt": "2026-05-04T07:09:26.831Z",
+      "updatedAt": "2026-05-04T07:09:26.831Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.820467)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqu84ew00026zkk10sw380q",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8984519400352734,
+      "createdAt": "2026-05-04T06:47:54.200Z",
+      "updatedAt": "2026-05-04T06:47:54.200Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.84226)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrp5uf00026zg0p6gjh0h1",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8984519400352734,
+      "createdAt": "2026-05-04T05:37:10.360Z",
+      "updatedAt": "2026-05-04T05:37:10.360Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.84226)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqroke800026z44dci7kjve",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8984519400352734,
+      "createdAt": "2026-05-04T05:36:42.561Z",
+      "updatedAt": "2026-05-04T05:36:42.561Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.84226)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrn8vg00026zl0h3fzu5mw",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T05:35:40.972Z",
+      "updatedAt": "2026-05-04T05:35:40.972Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrmvz900026zv0xlwkberk",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8933461199294532,
+      "createdAt": "2026-05-04T05:35:24.262Z",
+      "updatedAt": "2026-05-04T05:35:24.262Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.816731)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrm1pm00026ze8swvsmx7d",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8808915343915343,
+      "createdAt": "2026-05-04T05:34:45.034Z",
+      "updatedAt": "2026-05-04T05:34:45.034Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.754458)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrljl900026z744sgs4pvm",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8808915343915343,
+      "createdAt": "2026-05-04T05:34:21.549Z",
+      "updatedAt": "2026-05-04T05:34:21.549Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.754458)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrkd1b00026zb89mo0ed3m",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8955687029020363,
+      "createdAt": "2026-05-04T05:33:26.399Z",
+      "updatedAt": "2026-05-04T05:33:26.399Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.827844)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrjwwx00026zs09oum9si1",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8955687029020363,
+      "createdAt": "2026-05-04T05:33:05.505Z",
+      "updatedAt": "2026-05-04T05:33:05.505Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.827844)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrhakt00026z44aa2nqjwl",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8940934744268078,
+      "createdAt": "2026-05-04T05:31:03.246Z",
+      "updatedAt": "2026-05-04T05:31:03.246Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.820467)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqrgn9100026zvofywqc6wq",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8940934744268078,
+      "createdAt": "2026-05-04T05:30:33.014Z",
+      "updatedAt": "2026-05-04T05:30:33.014Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.820467)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqqftkx00026zi4yx6ed7wj",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8812098765432099,
+      "createdAt": "2026-05-04T05:01:54.946Z",
+      "updatedAt": "2026-05-04T05:01:54.946Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.756049)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqqcwc700026zqonr4kanmi",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8812098765432099,
+      "createdAt": "2026-05-04T04:59:38.551Z",
+      "updatedAt": "2026-05-04T04:59:38.551Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.756049)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqq0bwc00026zgclrme190y",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8886014109347442,
+      "createdAt": "2026-05-04T04:49:52.188Z",
+      "updatedAt": "2026-05-04T04:49:52.188Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.793007)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqpawf900026zx4nbyhqcyl",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8942433862433863,
+      "createdAt": "2026-05-04T04:30:05.734Z",
+      "updatedAt": "2026-05-04T04:30:05.734Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821217)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqoxilp00026zxomo0d9kyy",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8942433862433863,
+      "createdAt": "2026-05-04T04:19:41.293Z",
+      "updatedAt": "2026-05-04T04:19:41.293Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821217)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqo54a900026ze828tkrjhx",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8942433862433863,
+      "createdAt": "2026-05-04T03:57:36.369Z",
+      "updatedAt": "2026-05-04T03:57:36.369Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821217)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqmipid00026z3cpa4puvb8",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8942433862433863,
+      "createdAt": "2026-05-04T03:12:11.174Z",
+      "updatedAt": "2026-05-04T03:12:11.174Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821217)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqmhf9400026zfo6e48kjwk",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8886014109347442,
+      "createdAt": "2026-05-04T03:11:11.224Z",
+      "updatedAt": "2026-05-04T03:11:11.224Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.793007)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqltt3c00026zmojt706tdr",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8942433862433863,
+      "createdAt": "2026-05-04T02:52:49.416Z",
+      "updatedAt": "2026-05-04T02:52:49.416Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821217)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqlafbn00026zp0iaat1ft8",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8943514109347442,
+      "createdAt": "2026-05-04T02:37:45.108Z",
+      "updatedAt": "2026-05-04T02:37:45.108Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.821757)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoql8p1i00026z0ccaolqd75",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8966794532627866,
+      "createdAt": "2026-05-04T02:36:24.390Z",
+      "updatedAt": "2026-05-04T02:36:24.390Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.833397)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoql5w8b00026zpgetvxyfyq",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8879276377217553,
+      "createdAt": "2026-05-04T02:34:13.739Z",
+      "updatedAt": "2026-05-04T02:34:13.739Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.789638)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoql4kya00026zno3u64pbt0",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-04T02:33:12.467Z",
+      "updatedAt": "2026-05-04T02:33:12.467Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoql451p00026zlkurhx9q18",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-04T02:32:51.853Z",
+      "updatedAt": "2026-05-04T02:32:51.853Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoqksyqn00026z14ghqberxj",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-04T02:24:10.463Z",
+      "updatedAt": "2026-05-04T02:24:10.463Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmopcmmr200026zuk87cb392l",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-03T05:47:31.887Z",
+      "updatedAt": "2026-05-03T05:47:31.887Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmopasomd00026zi86wwcirt3",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-03T04:56:15.013Z",
+      "updatedAt": "2026-05-03T04:56:15.013Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmop8wu3600026z7k3f298izc",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8973937389770723,
+      "createdAt": "2026-05-03T04:03:29.491Z",
+      "updatedAt": "2026-05-03T04:28:51.432Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.836969)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmop77lcs00026zvw3hgaew08",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8834651675485009,
+      "createdAt": "2026-05-03T03:15:52.156Z",
+      "updatedAt": "2026-05-03T03:15:52.156Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.767326)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmop6xr0p00026z2w8bcsd5v4",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.8834651675485009,
+      "createdAt": "2026-05-03T03:08:12.938Z",
+      "updatedAt": "2026-05-03T03:08:12.938Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=1, styleScore=1, profileScore=0.767326)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmoc1wqwi00026zcc8ng1eavi",
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.5175951862226372,
+      "createdAt": "2026-04-23T22:26:27.762Z",
+      "updatedAt": "2026-04-23T22:26:27.762Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=0, styleScore=0, profileScore=0.79978)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmo7ryvfd00026zw8felig38i",
+      "candidateUserId": "cmo7myr2200006z8obk1iuj9z",
+      "finalScore": 0.4470588235294118,
+      "createdAt": "2026-04-20T22:37:06.073Z",
+      "updatedAt": "2026-04-20T22:37:06.073Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=0, styleScore=0, profileScore=0.5)."
+    },
+    {
+      "userId": "cmo7ksq8s00006znosryc9k0n",
+      "id": "cmo7np1de00026zw0s5j0xzy5",
+      "candidateUserId": "cmo7myr2200006z8obk1iuj9z",
+      "finalScore": 0.4470588235294118,
+      "createdAt": "2026-04-20T20:37:28.755Z",
+      "updatedAt": "2026-04-20T20:37:28.755Z",
+      "reasonSummary": "Selected by finalScore v1 (previewPoolScore=0.8, preferenceScore=0, styleScore=0, profileScore=0.5)."
+    },
+    {
+      "userId": "cmr4hf000716z64demo00f04a",
+      "id": "cmpbd5hgx00066z5kkqu3idpq",
+      "candidateUserId": "cmr4hf000716z64demo00f04a",
+      "finalScore": 0.75,
+      "createdAt": "2026-05-18T14:01:00.000Z",
+      "updatedAt": "2026-05-18T14:01:00.000Z",
+      "reasonSummary": "p7.6-r9b-http-get-smoke-fixture"
+    },
+    {
+      "userId": "cmr4hf000916z64demo00f05a",
+      "id": "cmpbd5hh200086z5khc8r2414",
+      "candidateUserId": "cmr4hf000916z64demo00f05a",
+      "finalScore": 0.75,
+      "createdAt": "2026-05-18T14:01:00.000Z",
+      "updatedAt": "2026-05-18T14:01:00.000Z",
+      "reasonSummary": "p7.6-r9b-http-get-smoke-fixture"
+    },
+    {
+      "userId": "cmr4hm001016z64demo00m05a",
+      "id": "cmpbd5hgi00026z5ktg63cx1l",
+      "candidateUserId": "cmr4hm001016z64demo00m05a",
+      "finalScore": 0.75,
+      "createdAt": "2026-05-18T14:01:00.000Z",
+      "updatedAt": "2026-05-18T14:01:00.000Z",
+      "reasonSummary": "p7.6-r9b-http-get-smoke-fixture"
+    },
+    {
+      "userId": "cmr4r7j4050025z64stag0001",
+      "id": "cmpbd5hh8000a6z5kkpqauem3",
+      "candidateUserId": "cmr4r7j4050025z64stag0001",
+      "finalScore": 0.75,
+      "createdAt": "2026-05-18T14:01:00.000Z",
+      "updatedAt": "2026-05-18T14:01:00.000Z",
+      "reasonSummary": "p7.6-r9b-http-get-smoke-fixture"
+    }
+  ],
+  "sourceVersion": "p7.6-r7j3-staging-cohort-v1"
+}

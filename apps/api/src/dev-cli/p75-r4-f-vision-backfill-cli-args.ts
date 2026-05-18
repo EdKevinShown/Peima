@@ -2,16 +2,36 @@
  * CLI args for P7.5-r4-f onboarding vision sidecar backfill (dev-only).
  */
 
-export type P75R4FVisionBackfillProvider = "rules" | "stub";
+export type P75R4FVisionBackfillProvider =
+  | "rules"
+  | "stub"
+  | "cloud"
+  | "zhipu";
 
 export type P75R4FVisionBackfillCliArgs = {
   limit: number;
   userId?: string;
+  imageIds: string[];
+  userIds: string[];
   provider: P75R4FVisionBackfillProvider;
   dryRun: boolean;
   onlyMissingVision: boolean;
   includeBlocked: boolean;
 };
+
+function parseCommaIds(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function isCloudVisionBackfillProvider(
+  provider: P75R4FVisionBackfillProvider,
+): boolean {
+  return provider === "cloud" || provider === "zhipu";
+}
 
 function takeValue(argv: string[], i: number): string | undefined {
   const n = argv[i + 1];
@@ -31,7 +51,10 @@ export function parseP75R4FVisionBackfillCliArgs(
   argv: string[],
 ): P75R4FVisionBackfillCliArgs {
   let limit = 100;
+  let limitExplicit = false;
   let userId: string | undefined;
+  let imageIds: string[] = [];
+  let userIds: string[] = [];
   let provider: P75R4FVisionBackfillProvider = "rules";
   let dryRun = true;
   let onlyMissingVision = true;
@@ -41,10 +64,14 @@ export function parseP75R4FVisionBackfillCliArgs(
     const a = argv[i]!;
     if (a.startsWith("--limit=")) {
       limit = Number.parseInt(a.slice("--limit=".length), 10);
+      limitExplicit = true;
     } else if (a === "--limit") {
       const v = takeValue(argv, i);
       if (v) limit = Number.parseInt(v, 10);
-      if (v) i += 1;
+      if (v) {
+        limitExplicit = true;
+        i += 1;
+      }
     } else if (a.startsWith("--userId=")) {
       userId = a.slice("--userId=".length).trim() || undefined;
     } else if (a === "--userId") {
@@ -53,15 +80,28 @@ export function parseP75R4FVisionBackfillCliArgs(
         userId = v.trim() || undefined;
         i += 1;
       }
+    } else if (a.startsWith("--imageIds=")) {
+      imageIds = parseCommaIds(a.slice("--imageIds=".length));
+    } else if (a === "--imageIds") {
+      const v = takeValue(argv, i);
+      if (v) {
+        imageIds = parseCommaIds(v);
+        i += 1;
+      }
+    } else if (a.startsWith("--userIds=")) {
+      userIds = parseCommaIds(a.slice("--userIds=".length));
+    } else if (a === "--userIds") {
+      const v = takeValue(argv, i);
+      if (v) {
+        userIds = parseCommaIds(v);
+        i += 1;
+      }
     } else if (a.startsWith("--provider=")) {
-      const p = a.slice("--provider=".length).trim().toLowerCase();
-      if (p === "stub") provider = "stub";
-      else provider = "rules";
+      provider = parseProviderArg(a.slice("--provider=".length));
     } else if (a === "--provider") {
       const v = takeValue(argv, i);
       if (v) {
-        const p = v.trim().toLowerCase();
-        provider = p === "stub" ? "stub" : "rules";
+        provider = parseProviderArg(v);
         i += 1;
       }
     } else if (a.startsWith("--dryRun=")) {
@@ -104,13 +144,26 @@ export function parseP75R4FVisionBackfillCliArgs(
   }
 
   if (!Number.isFinite(limit) || limit < 1) limit = 100;
+  if (isCloudVisionBackfillProvider(provider) && !limitExplicit) {
+    limit = 50;
+  }
 
   return {
     limit: Math.min(limit, 50_000),
     userId,
+    imageIds,
+    userIds,
     provider,
     dryRun,
     onlyMissingVision,
     includeBlocked,
   };
+}
+
+function parseProviderArg(raw: string): P75R4FVisionBackfillProvider {
+  const p = raw.trim().toLowerCase();
+  if (p === "stub") return "stub";
+  if (p === "cloud") return "cloud";
+  if (p === "zhipu") return "zhipu";
+  return "rules";
 }

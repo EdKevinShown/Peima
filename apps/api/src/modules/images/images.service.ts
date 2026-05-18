@@ -17,6 +17,7 @@ import { toUserImagePublicDto, type UserImagePublicDto } from "./user-image-publ
 import { resolveUserImageReviewStateFromDetection } from "./user-image-review-status";
 import type { UserImageDetectionResult } from "./user-image-quality-detection";
 import { UserImageVisionSidecarService } from "./user-image-vision-sidecar.service";
+import { UserImageCloudVisionAsyncService } from "./user-image-cloud-vision-async.service";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -35,6 +36,7 @@ export class ImagesService {
     private readonly prisma: PrismaService,
     private readonly userImageDetection: UserImageDetectionService,
     private readonly visionSidecar: UserImageVisionSidecarService,
+    private readonly cloudVisionAsync: UserImageCloudVisionAsyncService,
   ) {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
@@ -50,17 +52,24 @@ export class ImagesService {
 
   private detectionScoreJsonForPersist(
     detectionScoreJson: UserImageDetectionResult["scoreJson"],
+    options?: { forUpload?: boolean; userId?: string },
   ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-    const merged = this.visionSidecar.applyToDetectionScoreJson(
-      detectionScoreJson,
-    );
+    const merged = options?.forUpload
+      ? this.visionSidecar.applyToDetectionScoreJsonForUpload(
+          detectionScoreJson,
+          { userId: options.userId ?? "" },
+        )
+      : this.visionSidecar.applyToDetectionScoreJson(detectionScoreJson);
     if (merged === null || merged === undefined) {
       return Prisma.JsonNull;
     }
     return merged as Prisma.InputJsonValue;
   }
 
-  private detectionAndReviewToCreateFields(detection: UserImageDetectionResult) {
+  private detectionAndReviewToCreateFields(
+    detection: UserImageDetectionResult,
+    options?: { forUpload?: boolean; userId?: string },
+  ) {
     const review = resolveUserImageReviewStateFromDetection({
       detectionStatus: detection.status,
       detectionReasonCodes: detection.reasonCodes,
@@ -69,7 +78,10 @@ export class ImagesService {
     return {
       detectionStatus: detection.status,
       detectionReasonCodes: detection.reasonCodes,
-      detectionScoreJson: this.detectionScoreJsonForPersist(detection.scoreJson),
+      detectionScoreJson: this.detectionScoreJsonForPersist(
+        detection.scoreJson,
+        options,
+      ),
       detectionRulesVersion: detection.rulesVersion,
       detectedAt: new Date(),
       reviewStatus: review.reviewStatus,
@@ -157,9 +169,21 @@ export class ImagesService {
       data: {
         user: { connect: { id: userId } },
         imageUrl,
-        ...this.detectionAndReviewToCreateFields(detection),
+        ...this.detectionAndReviewToCreateFields(detection, {
+          forUpload: true,
+          userId,
+        }),
       },
     });
+
+    this.cloudVisionAsync.scheduleAfterUpload({
+      userImageId: row.id,
+      userId,
+      detectionScoreJson: row.detectionScoreJson,
+      imageBuffer: buf,
+      mimeType: file.mimetype,
+    });
+
     return toUserImagePublicDto(row);
   }
 

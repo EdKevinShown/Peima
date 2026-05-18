@@ -1,0 +1,647 @@
+{
+  "schemaVersion": "p7.6-r3b-photovisual-pool-shadow-audit-v1",
+  "generatedAt": "2026-05-17T06:31:17.230Z",
+  "viewerUserId": "cmp70ft7a001e6znksjb2jo03",
+  "sourcePoolType": "onboarding_gated_cohort",
+  "limit": 12,
+  "selectionLimit": 6,
+  "dryRun": true,
+  "scannedCandidates": 12,
+  "eligibleCandidates": 1,
+  "selectedCandidates": 1,
+  "ineligibleReasonDistribution": {
+    "GENDER_GATE": 11,
+    "PREFERENCE_GATE": 1
+  },
+  "selectedCandidateIds": [
+    "cmfemn003000506z64seed0003"
+  ],
+  "shadow": {
+    "schemaVersion": "p7.6-photo-first-mutual-matching-shadow-v1",
+    "sourceVersion": "p7.6-r3-photovisual-first-pool-shadow-v1",
+    "viewerUserId": "cmp70ft7a001e6znksjb2jo03",
+    "poolId": "p76-r3b-audit-cmp70ft7a001e6znksjb2jo03",
+    "sourcePoolType": "onboarding_gated_cohort",
+    "generatedAt": "2026-05-17T06:31:17.230Z",
+    "stage1PhotoVisualPool": {
+      "eligibleCandidatesCount": 1,
+      "ineligibleCandidatesCount": 11,
+      "selectedCandidateIds": [
+        "cmfemn003000506z64seed0003"
+      ],
+      "pairs": [
+        {
+          "candidateUserId": "cmo7ksq8s00006znosryc9k0n",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE",
+            "PREFERENCE_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "鎴峰鎰?,
+            "鏉惧紱鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鍋忔殫"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "鎴峰鑷劧"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "鐢滅編鍙埍",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎姝ｅ父"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "瀹ゅ唴鏃ュ父"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnjc000x6z64esun9iur",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "绮捐嚧鎰?,
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmoc1gnjo001u6z64ghwpseih",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "绮捐嚧鎰?,
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmoc1gnk1002r6z64iapqf5n9",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "绠€绾﹀共鍑€"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鏄庝寒"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "瀹ゅ唴鏃ュ父"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnkd003o6z64zobqegdc",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "绠€绾﹀共鍑€"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鏄庝寒"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "瀹ゅ唴鏃ュ父"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnkq004l6z64jdq89d4a",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "绠€绾﹀共鍑€"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鏄庝寒"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "瀹ゅ唴鏃ュ父"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c67h00006zysf8ziq782",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "鐢熸椿鎰?,
+            "娓呯埥鑷劧"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmp75c936000h6zys1l85c3ui",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "鐢熸椿鎰?,
+            "娓呯埥鑷劧"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "鏂囪壓娓╂煍",
+            "鎴峰鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鏄庝寒"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "鎴峰鑷劧"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c96h000m6zysncxsxpia",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "鐢熸椿鎰?,
+            "娓呯埥鑷劧"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "鎴峰鎰?,
+            "娓呯埥鑷劧",
+            "鏉惧紱鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎鏄庝寒"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "鎴峰鑷劧"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c99e000r6zyskv0kkooj",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "鐢熸椿鎰?,
+            "娓呯埥鑷劧"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "鎴峰鑷劧"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmfemn003000506z64seed0003",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.25,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.29166666666666663,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?,
+            "鏉惧紱鎰?,
+            "閰锋劅涓€?,
+            "鐢滅編鍙埍",
+            "鎴愮啛绋抽噸",
+            "鏂囪壓娓╂煍"
+          ],
+          "usedCandidateStyleTags": [
+            "娓呯埥鑷劧",
+            "鐢熸椿鎰?
+          ],
+          "usedViewerPhotoVisualTags": [
+            "绮捐嚧鎰?,
+            "娓呯埥鑷劧",
+            "绠€绾﹀共鍑€",
+            "楂樼骇鎰?,
+            "鐢熸椿鎰?,
+            "杩愬姩闃冲厜"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "娓呯埥鑷劧",
+            "鏉惧紱鎰?
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "娓呮櫚",
+              "鍏夌嚎姝ｅ父"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "鎴峰鑷劧"
+            ]
+          }
+        }
+      ],
+      "appliedToPool": false
+    },
+    "comparisons": {},
+    "finalShadow": {
+      "stage1SelectedCandidateIds": [
+        "cmfemn003000506z64seed0003"
+      ],
+      "applied": false,
+      "appliedToPool": false,
+      "appliedToFinalScore": false,
+      "appliedToMatchResult": false,
+      "appliedToWorkerRanking": false
+    }
+  },
+  "applied": false
+}

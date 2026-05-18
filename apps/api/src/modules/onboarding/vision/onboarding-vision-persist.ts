@@ -3,16 +3,15 @@
  */
 
 import type { OnboardingVisionEnv } from "./onboarding-vision-env";
-import {
-  isOnboardingVisionExternalProviderSupported,
-} from "./onboarding-vision-env";
+import { isOnboardingVisionCloudRoutedProvider } from "./onboarding-vision-env";
 import {
   createSkippedOnboardingVisionProfile,
   ONBOARDING_VISION_SOURCE_PERSIST_FAILED,
   ONBOARDING_VISION_SOURCE_RULES_R2,
   ONBOARDING_VISION_SOURCE_STUB_R2,
-  ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2,
 } from "./onboarding-vision-profile.builder";
+import { ONBOARDING_VISION_SOURCE_CLOUD_R2 } from "./cloud-vision.facade";
+import { buildVisionProfileFromCloud } from "./onboarding-vision-cloud-provider";
 import { buildVisionProfileFromRules } from "./onboarding-vision-rules-provider";
 import { buildVisionProfileFromStub } from "./onboarding-vision-stub-provider";
 import type { OnboardingVisionProfileV1 } from "./onboarding-vision.types";
@@ -30,20 +29,19 @@ export function buildOnboardingVisionProfileForPersist(
   }
 
   try {
-    if (!isOnboardingVisionExternalProviderSupported(env)) {
-      return createSkippedOnboardingVisionProfile(env, {
-        provider: "zhipu",
-        sourceVersion: ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2,
-        reason: "missing_detection",
-        warnings: ["ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R2"],
-      });
-    }
-
     if (env.provider === "stub") {
       return buildVisionProfileFromStub(
         { detectionScoreJson },
         env,
         { sourceVersion: ONBOARDING_VISION_SOURCE_STUB_R2 },
+      );
+    }
+
+    if (isOnboardingVisionCloudRoutedProvider(env.provider)) {
+      return buildVisionProfileFromCloud(
+        { detectionScoreJson },
+        env,
+        { sourceVersion: ONBOARDING_VISION_SOURCE_CLOUD_R2 },
       );
     }
 

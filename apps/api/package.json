@@ -29,7 +29,15 @@
     "p75:r4-candidate-vision-audit": "node dist/dev-cli/p75-r4-g-candidate-vision-coverage-audit-runner.js",
     "p75:r4-m-preview-pool-funnel": "node dist/dev-cli/p75-r4-m-preview-pool-funnel-runner.js",
     "p75:r4-o2-preview-pool-active-audit": "node dist/dev-cli/p75-r4-o2-preview-pool-active-audit-runner.js",
-    "p75:r5-b2-apply-dry-run-signoff": "node dist/dev-cli/p75-r5-b2-apply-dry-run-signoff-runner.js"
+    "p75:r5-b2-apply-dry-run-signoff": "node dist/dev-cli/p75-r5-b2-apply-dry-run-signoff-runner.js",
+    "p75:r5-c2-apply-writer-signoff": "node dist/dev-cli/p75-r5-c2-apply-writer-signoff-runner.js",
+    "p76:r3b-photovisual-pool-shadow-audit": "node dist/dev-cli/p76-r3b-photovisual-pool-shadow-audit-runner.js",
+    "p76:r7g2-route-c-stage1-adapter-audit": "node dist/dev-cli/p76-r7g2-route-c-stage1-adapter-audit-runner.js",
+    "p76:r8b-allowlist-apply-writer": "node dist/dev-cli/p76-r8b-allowlist-apply-writer-runner.js",
+    "p76:r8c-allowlist-apply-dev-dry-run-audit": "node dist/dev-cli/p76-r8c-allowlist-apply-dev-dry-run-audit-runner.js",
+    "p76:r4b-20d-bidirectional-ranking-shadow-audit": "node dist/dev-cli/p76-r4b-20d-bidirectional-ranking-audit-runner.js",
+    "p76:r5b-rrm-top2-final-selector-shadow-audit": "node dist/dev-cli/p76-r5b-rrm-top2-final-selector-audit-runner.js",
+    "p76:r6-end-to-end-funnel-shadow-audit": "node dist/dev-cli/p76-r6-end-to-end-funnel-shadow-audit-runner.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

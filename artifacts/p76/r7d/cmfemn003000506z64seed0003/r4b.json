@@ -1,0 +1,212 @@
+﻿{
+  "schemaVersion": "p7.6-r4b-20d-bidirectional-ranking-audit-v1",
+  "generatedAt": "2026-05-17T07:03:19.181Z",
+  "viewerUserId": "cmfemn003000506z64seed0003",
+  "sourcePoolType": "onboarding_gated_cohort",
+  "candidateUserIds": [
+    "cmp70ft7a001e6znksjb2jo03",
+    "cmfemn002000306z64seed0002",
+    "cmr4hm001016z64demo00m05a",
+    "cmfemn00100016z64seed0001",
+    "cmr4hf000716z64demo00f04a",
+    "cmr4hf000916z64demo00f05a"
+  ],
+  "topN": 6,
+  "dryRun": true,
+  "scannedCandidates": 6,
+  "rankedCandidates": 6,
+  "top2CandidateIds": [
+    "cmr4hf000716z64demo00f04a",
+    "cmr4hf000916z64demo00f05a"
+  ],
+  "selectedBy20DOnlyCandidateId": "cmr4hf000716z64demo00f04a",
+  "fallbackReasonDistribution": {},
+  "shadow": {
+    "schemaVersion": "p7.6-20d-bidirectional-ranking-shadow-v1",
+    "sourceVersion": "p7.6-r4a-20d-bidirectional-ranking-shadow-v1",
+    "viewerUserId": "cmfemn003000506z64seed0003",
+    "sourcePoolType": "onboarding_gated_cohort",
+    "generatedAt": "2026-05-17T07:03:19.181Z",
+    "stage1": {
+      "sourceVersion": "p7.6-r3-photovisual-first-pool-shadow-v1",
+      "selectedCandidateIds": [
+        "cmp70ft7a001e6znksjb2jo03",
+        "cmfemn002000306z64seed0002",
+        "cmr4hm001016z64demo00m05a",
+        "cmfemn00100016z64seed0001",
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a"
+      ]
+    },
+    "stage2TwentyD": {
+      "rankedCandidates": [
+        {
+          "candidateUserId": "cmr4hf000716z64demo00f04a",
+          "rank": 1,
+          "AtoB20DFit": 0.7876,
+          "BtoA20DFit": 0.7876,
+          "mutual20DFit": 0.7876,
+          "imbalancePenalty": 0,
+          "breakdown": {
+            "AtoBProfile": 0.969,
+            "AtoBPreference": 0.6666666666666666,
+            "BtoAProfile": 0.969,
+            "BtoAPreference": 0.6666666666666666
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmr4hf000916z64demo00f05a",
+          "rank": 2,
+          "AtoB20DFit": 0.7827999999999999,
+          "BtoA20DFit": 0.7827999999999999,
+          "mutual20DFit": 0.7828,
+          "imbalancePenalty": 0,
+          "breakdown": {
+            "AtoBProfile": 0.9569999999999999,
+            "AtoBPreference": 0.6666666666666666,
+            "BtoAProfile": 0.9569999999999999,
+            "BtoAPreference": 0.6666666666666666
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmfemn002000306z64seed0002",
+          "rank": 3,
+          "AtoB20DFit": 0.7811999999999999,
+          "BtoA20DFit": 0.7811999999999999,
+          "mutual20DFit": 0.7811999999999999,
+          "imbalancePenalty": 0,
+          "breakdown": {
+            "AtoBProfile": 0.953,
+            "AtoBPreference": 0.6666666666666666,
+            "BtoAProfile": 0.953,
+            "BtoAPreference": 0.6666666666666666
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmfemn00100016z64seed0001",
+          "rank": 4,
+          "AtoB20DFit": 0.7809999999999999,
+          "BtoA20DFit": 0.7809999999999999,
+          "mutual20DFit": 0.7809999999999999,
+          "imbalancePenalty": 0,
+          "breakdown": {
+            "AtoBProfile": 0.9525,
+            "AtoBPreference": 0.6666666666666666,
+            "BtoAProfile": 0.9525,
+            "BtoAPreference": 0.6666666666666666
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmr4hm001016z64demo00m05a",
+          "rank": 5,
+          "AtoB20DFit": 0.7518,
+          "BtoA20DFit": 0.7518,
+          "mutual20DFit": 0.7518,
+          "imbalancePenalty": 0,
+          "breakdown": {
+            "AtoBProfile": 0.8795,
+            "AtoBPreference": 0.6666666666666666,
+            "BtoAProfile": 0.8795,
+            "BtoAPreference": 0.6666666666666666
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmp70ft7a001e6znksjb2jo03",
+          "rank": 6,
+          "AtoB20DFit": 0.5636,
+          "BtoA20DFit": 0.9636,
+          "mutual20DFit": 0.7112165531691984,
+          "imbalancePenalty": 0.4,
+          "breakdown": {
+            "AtoBProfile": 0.909,
+            "AtoBPreference": 0.3333333333333333,
+            "BtoAProfile": 0.909,
+            "BtoAPreference": 1
+          },
+          "reasons": [
+            "mutual_20d_strong",
+            "profile_pref_fit_a_to_b",
+            "profile_pref_fit_b_to_a",
+            "asymmetric_candidate_led"
+          ],
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        }
+      ],
+      "topNCandidateIds": [
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a",
+        "cmfemn002000306z64seed0002",
+        "cmfemn00100016z64seed0001",
+        "cmr4hm001016z64demo00m05a",
+        "cmp70ft7a001e6znksjb2jo03"
+      ],
+      "top2CandidateIds": [
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a"
+      ],
+      "selectedBy20DOnlyCandidateId": "cmr4hf000716z64demo00f04a",
+      "appliedToFinalScore": false
+    },
+    "comparisons": {},
+    "finalShadow": {
+      "stage2Top2CandidateIds": [
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a"
+      ],
+      "applied": false,
+      "appliedToPool": false,
+      "appliedToFinalScore": false,
+      "appliedToMatchResult": false,
+      "appliedToWorkerRanking": false
+    }
+  },
+  "applied": false
+}

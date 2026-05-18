@@ -4,6 +4,10 @@
 
 import { PHOTO_VISUAL_TAXONOMY_VERSION } from "./onboarding-vision-taxonomy";
 import { normalizePhotoVisualTags } from "./onboarding-vision-taxonomy";
+import {
+  normalizeQualityTags,
+  normalizeSceneTags,
+} from "./onboarding-vision-quality-scene-taxonomy";
 import type { OnboardingVisionEnv } from "./onboarding-vision-env";
 import type {
   OnboardingVisionProfileV1,
@@ -27,7 +31,12 @@ export type ProfileAssemblyParams = {
   sourceVersion: string;
   visionStatus: OnboardingVisionStatus;
   fallbackUsed: boolean;
+  fallbackReason?: string;
   photoVisualTags: string[];
+  qualityTags?: string[];
+  sceneTags?: string[];
+  qualityTaxonomyVersion?: OnboardingVisionProfileV1["qualityTaxonomyVersion"];
+  sceneTaxonomyVersion?: OnboardingVisionProfileV1["sceneTaxonomyVersion"];
   styleSignals?: string[];
   qualitySignals?: OnboardingVisionProfileV1["qualitySignals"];
   faceSignals?: OnboardingVisionProfileV1["faceSignals"];
@@ -35,6 +44,7 @@ export type ProfileAssemblyParams = {
   warnings?: string[];
   model?: string | null;
   generatedAt?: string;
+  rawProviderMeta?: OnboardingVisionProfileV1["rawProviderMeta"];
 };
 
 export function clampConfidence(n: number): number {
@@ -59,16 +69,25 @@ export function assembleOnboardingVisionProfile(
     generatedAt: params.generatedAt ?? new Date().toISOString(),
     visionStatus: params.visionStatus,
     fallbackUsed: params.fallbackUsed,
+    fallbackReason: params.fallbackReason,
     photoVisualTags: normalizePhotoVisualTags(
       params.photoVisualTags,
       env.maxTags,
     ),
+    qualityTags: params.qualityTags?.length
+      ? normalizeQualityTags(params.qualityTags, env.maxTags)
+      : undefined,
+    sceneTags: params.sceneTags?.length
+      ? normalizeSceneTags(params.sceneTags, env.maxTags)
+      : undefined,
+    qualityTaxonomyVersion: params.qualityTaxonomyVersion,
+    sceneTaxonomyVersion: params.sceneTaxonomyVersion,
     styleSignals: params.styleSignals?.length ? params.styleSignals : undefined,
     qualitySignals: params.qualitySignals,
     faceSignals: params.faceSignals,
     confidence: clampConfidence(params.confidence),
     warnings,
-    rawProviderMeta: undefined,
+    rawProviderMeta: params.rawProviderMeta,
   };
 }
 

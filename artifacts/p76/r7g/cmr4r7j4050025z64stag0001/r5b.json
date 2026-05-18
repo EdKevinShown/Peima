@@ -1,0 +1,95 @@
+﻿{
+  "schemaVersion": "p7.6-r5b-rrm-top2-final-selector-audit-v1",
+  "generatedAt": "2026-05-17T21:13:47.658Z",
+  "viewerUserId": "cmr4r7j4050025z64stag0001",
+  "sourcePoolType": "onboarding_gated_cohort",
+  "top2CandidateIds": [
+    "cmr4r7j4070025z64stag0003",
+    "cmr4r7j4060025z64stag0002"
+  ],
+  "selectedBy20DOnlyCandidateId": "cmr4r7j4070025z64stag0003",
+  "dryRun": true,
+  "evaluatedCandidates": 2,
+  "selectedByRrmCandidateId": "cmr4r7j4070025z64stag0003",
+  "wouldChange20DWinner": false,
+  "fallbackReasonDistribution": {},
+  "shadow": {
+    "schemaVersion": "p7.6-rrm-top2-final-selector-shadow-v1",
+    "sourceVersion": "p7.6-r5a-rrm-top2-final-selector-shadow-v1",
+    "viewerUserId": "cmr4r7j4050025z64stag0001",
+    "sourcePoolType": "onboarding_gated_cohort",
+    "generatedAt": "2026-05-17T21:13:47.658Z",
+    "stage1": {
+      "sourceVersion": "p7.6-r3-photovisual-first-pool-shadow-v1",
+      "selectedCandidateIds": []
+    },
+    "stage2TwentyD": {
+      "sourceVersion": "p7.6-r4a-20d-bidirectional-ranking-shadow-v1",
+      "top2CandidateIds": [
+        "cmr4r7j4070025z64stag0003",
+        "cmr4r7j4060025z64stag0002"
+      ],
+      "selectedBy20DOnlyCandidateId": "cmr4r7j4070025z64stag0003"
+    },
+    "stage3Rrm": {
+      "evaluatedCandidateIds": [
+        "cmr4r7j4070025z64stag0003",
+        "cmr4r7j4060025z64stag0002"
+      ],
+      "rankedCandidates": [
+        {
+          "candidateUserId": "cmr4r7j4070025z64stag0003",
+          "rank": 1,
+          "AtoBRrmFit": 0.924,
+          "BtoARrmFit": 0.924,
+          "mutualRrmFit": 0.924,
+          "rhythmRiskFlags": [],
+          "pressureRiskFlags": [],
+          "boundaryRiskFlags": [],
+          "repairPotentialSignals": [
+            "repair_potential_ok"
+          ],
+          "repairPotentialScore": 0.2,
+          "riskFlagCount": 0,
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        },
+        {
+          "candidateUserId": "cmr4r7j4060025z64stag0002",
+          "rank": 2,
+          "AtoBRrmFit": 0.8480000000000001,
+          "BtoARrmFit": 0.8480000000000001,
+          "mutualRrmFit": 0.8480000000000001,
+          "rhythmRiskFlags": [],
+          "pressureRiskFlags": [],
+          "boundaryRiskFlags": [],
+          "repairPotentialSignals": [
+            "repair_potential_ok"
+          ],
+          "repairPotentialScore": 0.2,
+          "riskFlagCount": 0,
+          "missingSignals": [],
+          "fallbackReason": null,
+          "eligible": true,
+          "ineligibleReasons": []
+        }
+      ],
+      "selectedByRrmCandidateId": "cmr4r7j4070025z64stag0003",
+      "wouldChange20DWinner": false,
+      "reasonSummary": "stage3_rrm_selected_matches_20d_winner",
+      "appliedToMatchResult": false
+    },
+    "comparisons": {},
+    "finalShadow": {
+      "stage3SelectedCandidateId": "cmr4r7j4070025z64stag0003",
+      "applied": false,
+      "appliedToPool": false,
+      "appliedToFinalScore": false,
+      "appliedToMatchResult": false,
+      "appliedToWorkerRanking": false
+    }
+  },
+  "applied": false
+}

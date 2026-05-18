@@ -14,6 +14,7 @@ import { OnboardingService } from "../src/modules/onboarding/onboarding.service"
 import { ImagesService } from "../src/modules/images/images.service";
 import { UserImageDetectionService } from "../src/modules/images/user-image-detection.service";
 import { UserImageVisionSidecarService } from "../src/modules/images/user-image-vision-sidecar.service";
+import { UserImageCloudVisionAsyncService } from "../src/modules/images/user-image-cloud-vision-async.service";
 
 describe("user-image-review-status (P7.4-r1d-b)", () => {
   describe("resolveUserImageReviewStateFromDetection", () => {
@@ -199,7 +200,12 @@ describe("ImagesService review on create (P7.4-r1d-b)", () => {
           provide: UserImageVisionSidecarService,
           useValue: {
             applyToDetectionScoreJson: (json: unknown) => json,
+            applyToDetectionScoreJsonForUpload: (json: unknown) => json,
           },
+        },
+        {
+          provide: UserImageCloudVisionAsyncService,
+          useValue: { scheduleAfterUpload: jest.fn() },
         },
       ],
     }).compile();

@@ -157,7 +157,7 @@ describe("OnboardingVisionService.buildVisionProfile", () => {
     );
   });
 
-  it("zhipu provider returns unsupported skipped profile without network", () => {
+  it("zhipu provider routes to cloud dry-run mock without network", () => {
     const svc = new OnboardingVisionService();
     const p = svc.buildVisionProfile(
       { detectionScoreJson: detectionJson({}) },
@@ -165,12 +165,15 @@ describe("OnboardingVisionService.buildVisionProfile", () => {
         ...readOnboardingVisionEnv(),
         enabled: true,
         provider: "zhipu",
+        cloudMockScenario: "normal",
+        cloudDryRun: true,
       },
     );
-    expect(p.visionStatus).toBe("skipped");
+    expect(p.visionStatus).toBe("ok");
     expect(p.provider).toBe("zhipu");
-    expect(p.warnings).toEqual(
-      expect.arrayContaining(["ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R1"]),
+    expect(p.photoVisualTags.length).toBeGreaterThan(0);
+    expect(p.warnings ?? []).not.toContain(
+      "ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R1",
     );
   });
 });

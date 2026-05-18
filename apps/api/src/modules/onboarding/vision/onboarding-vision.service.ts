@@ -5,9 +5,10 @@
 import { Injectable } from "@nestjs/common";
 import type { OnboardingVisionEnv } from "./onboarding-vision-env";
 import {
-  isOnboardingVisionExternalProviderSupported,
+  isOnboardingVisionCloudRoutedProvider,
   readOnboardingVisionEnv,
 } from "./onboarding-vision-env";
+import { buildVisionProfileFromCloud } from "./onboarding-vision-cloud-provider";
 import { buildVisionProfileFromRules } from "./onboarding-vision-rules-provider";
 import { buildVisionProfileFromStub } from "./onboarding-vision-stub-provider";
 import { createSkippedOnboardingVisionProfile } from "./onboarding-vision-profile.builder";
@@ -37,10 +38,23 @@ export class OnboardingVisionService {
     return buildVisionProfileFromStub(input, env ?? this.readEnv());
   }
 
+  buildVisionProfileFromCloud(
+    input: OnboardingVisionBuildInput,
+    env?: OnboardingVisionEnv,
+  ): OnboardingVisionProfileV1 {
+    return buildVisionProfileFromCloud(
+      {
+        detectionScoreJson: input.detectionScoreJson,
+        viewerStyleTags: input.viewerStyleTags,
+      },
+      env ?? this.readEnv(),
+    );
+  }
+
   /**
    * Explicit invoke only (r1: not called from upload / preview pool).
    * When disabled → skipped profile with fallbackUsed.
-   * When provider=zhipu → skipped (no external call in r1).
+   * provider=cloud|zhipu → mock/dry-run facade (r7-b, no HTTP).
    */
   buildVisionProfile(
     input: OnboardingVisionBuildInput,
@@ -55,16 +69,18 @@ export class OnboardingVisionService {
       });
     }
 
-    if (!isOnboardingVisionExternalProviderSupported(cfg)) {
-      return createSkippedOnboardingVisionProfile(cfg, {
-        reason: "unsupported_provider",
-        provider: "zhipu",
-        warnings: ["ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R1"],
-      });
-    }
-
     if (cfg.provider === "stub") {
       return buildVisionProfileFromStub(input, cfg);
+    }
+
+    if (isOnboardingVisionCloudRoutedProvider(cfg.provider)) {
+      return buildVisionProfileFromCloud(
+        {
+          detectionScoreJson: input.detectionScoreJson,
+          viewerStyleTags: input.viewerStyleTags,
+        },
+        cfg,
+      );
     }
 
     return buildVisionProfileFromRules(input, cfg);

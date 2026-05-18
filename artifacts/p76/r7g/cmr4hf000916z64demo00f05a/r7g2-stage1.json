@@ -1,0 +1,90 @@
+﻿{
+  "schemaVersion": "p7.6-r7g2-route-c-stage1-adapter-v1",
+  "generatedAt": "2026-05-17T21:13:44.983Z",
+  "viewerUserId": "cmr4hf000916z64demo00f05a",
+  "sourcePoolType": "route_c_clean_pool",
+  "sourcePoolId": "staging-p76-r7j4-pool-cmr4hf00916",
+  "poolSourceVersion": "p7.6-r7j3-staging-cohort-v1",
+  "selectionLimit": 6,
+  "dryRun": true,
+  "scannedCandidates": 6,
+  "eligibleCandidates": 6,
+  "selectedCandidateIds": [
+    "cmfemn00100016z64seed0001",
+    "cmr4hf000716z64demo00f04a",
+    "cmr4hm001016z64demo00m05a",
+    "cmr4r7j4050025z64stag0001",
+    "cmr4r7j4060025z64stag0002",
+    "cmr4r7j4070025z64stag0003"
+  ],
+  "ineligibleReasonDistribution": {},
+  "pairs": [
+    {
+      "candidateUserId": "cmfemn00100016z64seed0001",
+      "rankInPool": 1,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 2,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 21,
+      "hasPreference": true
+    },
+    {
+      "candidateUserId": "cmr4hf000716z64demo00f04a",
+      "rankInPool": 2,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 2,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 21,
+      "hasPreference": true
+    },
+    {
+      "candidateUserId": "cmr4hm001016z64demo00m05a",
+      "rankInPool": 3,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 3,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 21,
+      "hasPreference": true
+    },
+    {
+      "candidateUserId": "cmr4r7j4050025z64stag0001",
+      "rankInPool": 4,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 3,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 6,
+      "hasPreference": true
+    },
+    {
+      "candidateUserId": "cmr4r7j4060025z64stag0002",
+      "rankInPool": 5,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 2,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 6,
+      "hasPreference": true
+    },
+    {
+      "candidateUserId": "cmr4r7j4070025z64stag0003",
+      "rankInPool": 6,
+      "eligible": true,
+      "ineligibleReasons": [],
+      "hasVision": true,
+      "photoVisualTagsCount": 3,
+      "hasTwentyDProfile": true,
+      "nonNull20DCount": 6,
+      "hasPreference": true
+    }
+  ],
+  "applied": false
+}

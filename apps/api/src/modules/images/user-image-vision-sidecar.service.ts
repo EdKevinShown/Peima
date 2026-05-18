@@ -4,6 +4,7 @@
 
 import { Injectable } from "@nestjs/common";
 import { applyVisionSidecarToDetectionScoreJson } from "../onboarding/vision/onboarding-vision-sidecar";
+import { applyVisionSidecarForUpload } from "../onboarding/vision/onboarding-vision-upload-persist";
 import { OnboardingVisionService } from "../onboarding/vision/onboarding-vision.service";
 
 @Injectable()
@@ -14,6 +15,18 @@ export class UserImageVisionSidecarService {
     return applyVisionSidecarToDetectionScoreJson(
       detectionScoreJson,
       this.onboardingVision.readEnv(),
+    );
+  }
+
+  /** P7.5-r7-c2: sync rules/stub/mock on upload; defer live cloud to async job. */
+  applyToDetectionScoreJsonForUpload(
+    detectionScoreJson: unknown,
+    context: { userId: string },
+  ): unknown {
+    return applyVisionSidecarForUpload(
+      detectionScoreJson,
+      this.onboardingVision.readEnv(),
+      { userId: context.userId },
     );
   }
 }

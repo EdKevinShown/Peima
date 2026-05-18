@@ -1,0 +1,33 @@
+{
+  "executedAt": "2026-05-18T16:27:57.506Z",
+  "executionEnvironment": "local-docker-peima-postgres (production cutover rehearsal)",
+  "step0Grafana": "PASS",
+  "step0Drill": "pass",
+  "migration": "PASS",
+  "smokePass": 6,
+  "smokeBlock": 0,
+  "violation": {
+    "violation_count": 0,
+    "applied_count": 4,
+    "rolled_back_count": 1
+  },
+  "monitoring": {
+    "watchDurationMinutes": 2,
+    "watchNote": "Local rehearsal: 2-min snapshot; production ops watch 30-60 min per runbook",
+    "finalScoreChangedCount": 0,
+    "matchResultChangedCount": 0,
+    "workerChangedCount": 0,
+    "nonAllowlistSidecarDisplay": 0,
+    "rolledBackSidecarDisplay": 0,
+    "violationRowDisplay": 0,
+    "percentEnabledWithoutSignoff": 0,
+    "readPathAttemptCount": 6,
+    "sidecarReadSuccessCount": 4,
+    "fallbackLegacyCount": 2,
+    "exceptionFallbackCount": 0,
+    "userReportCount": 0,
+    "p0Triggered": false
+  },
+  "rollbackNeeded": false,
+  "finalDecision": "PASS_PRODUCTION_ALLOWLIST_LIVE"
+}

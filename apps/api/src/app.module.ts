@@ -32,6 +32,7 @@ import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v
 import { AiPairwiseDecisionModule } from "./modules/ai-pairwise-decision/ai-pairwise-decision.module";
 import { OnboardingModule } from "./modules/onboarding/onboarding.module";
 import { AdminPhotoReviewModule } from "./modules/admin-photo-review/admin-photo-review.module";
+import { P76AdminAllowlistApplyMetaModule } from "./modules/matching/p76-admin-allowlist-apply-meta.module";
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { AdminPhotoReviewModule } from "./modules/admin-photo-review/admin-photo
     AiPairwiseDecisionModule,
     OnboardingModule,
     AdminPhotoReviewModule,
+    P76AdminAllowlistApplyMetaModule,
   ],
   controllers: [],
   providers: [],

@@ -8,6 +8,8 @@ import { readM5RrmTop2DisplayEnv } from "./m5-rrm-top2-display-env";
 import { readPairwiseFinalizeEnv } from "./pairwise-finalize-env";
 import { parseMatchResultRrmTop2DisplayMetaV1Loose } from "./rrm-top2-display-meta.parser";
 import { validateRrmTop2DisplayEligibility } from "./rrm-top2-display-eligibility";
+import { applyP76ReadPathDisplayOverlay } from "./p76-read-path-display-resolver";
+import type { P76ReadPathDisplayMeta } from "./p76-read-path-display-resolver";
 
 /** GET /matching/result viewer-safe slice + readout fusion alignment. */
 export type ViewerSafeFinalMatchDecisionMeta = {
@@ -33,7 +35,9 @@ export type MatchResultDisplaySourceType =
   /** M5.3: RRM Top2 bounded display (requires `PEIMA_M5_RRM_TOP2_ENABLED` + frozen sidecar + eligibility). */
   | "rrm_top2_bounded_selector"
   /** M6.0-r6: RRM V2 Top2 selector readonly display from `matchInsights` (flag + parse + DB checks only). */
-  | "rrm_top2_v2_selector_readonly";
+  | "rrm_top2_v2_selector_readonly"
+  /** P7.6-r8h1: allowlist sidecar read path overlay only (`PEIMA_P76_READ_PATH_ENABLED`). */
+  | "p76_allowlist_sidecar_readonly";
 
 /**
  * GET display slice. When `displaySourceType === "rrm_top2_bounded_selector"`, `finalMatchDecisionMeta`
@@ -43,6 +47,8 @@ export type MatchResultDisplayFields = {
   displayCandidateUserId: string;
   displaySourceType: MatchResultDisplaySourceType;
   finalMatchDecisionMeta: ViewerSafeFinalMatchDecisionMeta | null;
+  /** P7.6-r8h1: debug/audit slice when read path env is evaluated (no sidecar internals). */
+  p76ReadPathMeta?: P76ReadPathDisplayMeta;
 };
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -106,6 +112,24 @@ function mapDisplaySourceTypeFromMeta(
  * (batch static Top1 与侧车一致)；否则宁可 fallback，不猜 poolId。
  */
 export async function resolveMatchResultDisplay(
+  prisma: PrismaService,
+  matchRow: MatchResult,
+): Promise<MatchResultDisplayFields> {
+  const core = await resolveMatchResultDisplayCore(prisma, matchRow);
+  const overlaid = await applyP76ReadPathDisplayOverlay(prisma, {
+    viewerUserId: matchRow.userId,
+    legacyDisplay: core,
+  });
+  return {
+    ...overlaid,
+    displaySourceType: overlaid.displaySourceType as MatchResultDisplaySourceType,
+    finalMatchDecisionMeta:
+      (overlaid.finalMatchDecisionMeta as ViewerSafeFinalMatchDecisionMeta | null) ??
+      null,
+  };
+}
+
+async function resolveMatchResultDisplayCore(
   prisma: PrismaService,
   matchRow: MatchResult,
 ): Promise<MatchResultDisplayFields> {

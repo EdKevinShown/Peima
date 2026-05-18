@@ -1,9 +1,9 @@
 import { readOnboardingVisionEnv } from "../src/modules/onboarding/vision/onboarding-vision-env";
+import { ONBOARDING_VISION_SOURCE_CLOUD_R2 } from "../src/modules/onboarding/vision/cloud-vision.facade";
 import {
   ONBOARDING_VISION_SOURCE_PERSIST_FAILED,
   ONBOARDING_VISION_SOURCE_RULES_R2,
   ONBOARDING_VISION_SOURCE_STUB_R2,
-  ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2,
 } from "../src/modules/onboarding/vision/onboarding-vision-profile.builder";
 import { buildOnboardingVisionProfileForPersist } from "../src/modules/onboarding/vision/onboarding-vision-persist";
 import * as onboardingVisionRulesProvider from "../src/modules/onboarding/vision/onboarding-vision-rules-provider";
@@ -20,6 +20,7 @@ import { PrismaService } from "../src/common/prisma/prisma.service";
 import { ImagesService } from "../src/modules/images/images.service";
 import { UserImageDetectionService } from "../src/modules/images/user-image-detection.service";
 import { UserImageVisionSidecarService } from "../src/modules/images/user-image-vision-sidecar.service";
+import { UserImageCloudVisionAsyncService } from "../src/modules/images/user-image-cloud-vision-async.service";
 import { OnboardingVisionService } from "../src/modules/onboarding/vision/onboarding-vision.service";
 
 const sampleDetection = {
@@ -122,18 +123,16 @@ describe("buildOnboardingVisionProfileForPersist", () => {
     spy.mockRestore();
   });
 
-  it("zhipu returns skipped profile without external call", () => {
+  it("zhipu routes to cloud dry-run mock without external HTTP", () => {
     const p = buildOnboardingVisionProfileForPersist(
       sampleDetection,
-      envEnabled({ provider: "zhipu" }),
+      envEnabled({ provider: "zhipu", cloudMockScenario: "normal" }),
     )!;
-    expect(p.sourceVersion).toBe(ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2);
-    expect(p.visionStatus).toBe("skipped");
-    expect(p.warnings).toContain(
+    expect(p.sourceVersion).toBe(ONBOARDING_VISION_SOURCE_CLOUD_R2);
+    expect(p.visionStatus).toBe("ok");
+    expect(p.provider).toBe("zhipu");
+    expect(p.warnings ?? []).not.toContain(
       "ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R2",
-    );
-    expect(p.warnings).not.toContain(
-      "ONBOARDING_VISION_PROVIDER_UNSUPPORTED_IN_R1",
     );
   });
 });
@@ -205,6 +204,7 @@ describe("ImagesService vision sidecar on createFromUpload", () => {
       providers: [
         ImagesService,
         UserImageVisionSidecarService,
+        UserImageCloudVisionAsyncService,
         OnboardingVisionService,
         { provide: PrismaService, useValue: prisma },
         {
@@ -261,9 +261,9 @@ describe("ImagesService vision sidecar on createFromUpload", () => {
     );
   });
 
-  it("enabled zhipu persists skipped vision without changing review", async () => {
+  it("enabled zhipu persists cloud dry-run vision without changing review", async () => {
     const { svc, create } = await compileImagesService(
-      envEnabled({ provider: "zhipu" }),
+      envEnabled({ provider: "zhipu", cloudMockScenario: "normal" }),
     );
     await svc.createFromUpload(
       "u1",
@@ -272,8 +272,9 @@ describe("ImagesService vision sidecar on createFromUpload", () => {
     );
     const data = create.mock.calls[0][0].data;
     expect(data.detectionScoreJson.vision.sourceVersion).toBe(
-      ONBOARDING_VISION_SOURCE_ZHIPU_SKIPPED_R2,
+      ONBOARDING_VISION_SOURCE_CLOUD_R2,
     );
+    expect(data.detectionScoreJson.vision.visionStatus).toBe("ok");
     expect(data.reviewStatus).toBe("not_required");
   });
 });

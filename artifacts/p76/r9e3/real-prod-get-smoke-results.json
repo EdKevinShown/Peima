@@ -1,0 +1,26 @@
+{
+  "status": "pending",
+  "environment": "real-production",
+  "executedAt": null,
+  "prodApiBaseUrl": null,
+  "evidenceIntegrity": {
+    "prodGetSmokeExecuted": false,
+    "localHarnessResultsAvailable": true,
+    "localHarnessMustNotSubstituteForProd": true
+  },
+  "summary": {
+    "totalCases": 0,
+    "passCount": 0,
+    "blockCount": 0,
+    "http5xxCount": null,
+    "exceptionCount": null
+  },
+  "localRehearsalBaseline": {
+    "source": "artifacts/p76/r9d/production-get-smoke-results.json",
+    "environment": "local-docker-peima-postgres",
+    "executedAt": "2026-05-18T16:27:57.506Z",
+    "passCount": 6,
+    "note": "NOT valid as prod evidence for r9e3 PASS"
+  },
+  "results": []
+}
