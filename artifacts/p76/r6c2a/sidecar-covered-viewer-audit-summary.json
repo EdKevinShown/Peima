@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "p76_r6c2a_sidecar_covered_viewer_audit_summary",
+  "sourceVersion": "p7.10-r6c2a-allowlist-only-targeted-audit-v1",
+  "generatedAt": "2026-05-18T19:30:04.090Z",
+  "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+  "targetedViewerCount": 5,
+  "sidecarCohortRolledBackRows": 1,
+  "sidecarCohortAppliedToMatchResultRows": 0,
+  "totalRows": 5,
+  "eligibleCount": 4,
+  "blockedCount": 1,
+  "missingSidecarCount": 0,
+  "rolledBackCount": 1,
+  "rowsWithSidecar": 5,
+  "sidecarCoverageRate": 1,
+  "missingSidecarRate": 0,
+  "eligibleRate": 0.8,
+  "wouldChangeCandidateCount": 4,
+  "wouldChangeCandidateRate": 0.8,
+  "appliedToMatchResultCount": 0,
+  "reasonCounts": {
+    "ok": 4,
+    "rolled_back": 1
+  },
+  "scoreDeltaBandCounts": {
+    "none": 4,
+    "unknown": 1
+  },
+  "comparisonToR6c1Recent50": {
+    "r6c1SidecarCoverageRate": 0.1,
+    "r6c2aSidecarCoverageRate": 1,
+    "r6c1MissingSidecarRate": 0.9,
+    "r6c2aMissingSidecarRate": 0
+  },
+  "perViewerRedacted": [
+    {
+      "viewerLabel": "viewer_1",
+      "rows": 1,
+      "eligible": 1,
+      "missing_sidecar": 0,
+      "rolled_back": 0,
+      "wouldChangeCandidate": 1,
+      "appliedToMatchResultCount": 0
+    },
+    {
+      "viewerLabel": "viewer_2",
+      "rows": 1,
+      "eligible": 1,
+      "missing_sidecar": 0,
+      "rolled_back": 0,
+      "wouldChangeCandidate": 1,
+      "appliedToMatchResultCount": 0
+    },
+    {
+      "viewerLabel": "viewer_3",
+      "rows": 1,
+      "eligible": 1,
+      "missing_sidecar": 0,
+      "rolled_back": 0,
+      "wouldChangeCandidate": 1,
+      "appliedToMatchResultCount": 0
+    },
+    {
+      "viewerLabel": "viewer_4",
+      "rows": 1,
+      "eligible": 1,
+      "missing_sidecar": 0,
+      "rolled_back": 0,
+      "wouldChangeCandidate": 1,
+      "appliedToMatchResultCount": 0
+    },
+    {
+      "viewerLabel": "viewer_5",
+      "rows": 1,
+      "eligible": 0,
+      "missing_sidecar": 0,
+      "rolled_back": 1,
+      "wouldChangeCandidate": 0,
+      "appliedToMatchResultCount": 0
+    }
+  ],
+  "interpretation": "sidecarCoverageRate >= 0.80 on allowlist-covered cohort; r6c1 low coverage is sample alignment not builder failure",
+  "recommendation": "P7.10-r6d docs-only schema design; implementation/migration still blocked"
+}
