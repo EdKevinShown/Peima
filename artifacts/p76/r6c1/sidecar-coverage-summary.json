@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "p76_r6c1_sidecar_coverage_summary",
+  "sourceVersion": "p7.10-r6c1-sidecar-coverage-v1",
+  "generatedAt": "2026-05-18T19:20:15.290Z",
+  "artifactPath": "artifacts/p76/r6c1/canonical-writer-shadow-audit.json",
+  "readPathSourceVersion": "p7.6-r7j3-staging-cohort-v1",
+  "auditLimit": 50,
+  "totalRows": 50,
+  "eligibleCount": 4,
+  "blockedCount": 46,
+  "missingSidecarCount": 45,
+  "rowsWithSidecar": 5,
+  "sidecarCoverageRate": 0.1,
+  "missingSidecarRate": 0.9,
+  "eligibleRate": 0.08,
+  "wouldChangeCandidateCount": 4,
+  "wouldChangeCandidateRate": 0.08,
+  "appliedToMatchResultCount": 0,
+  "reasonCounts": {
+    "ok": 4,
+    "rolled_back": 1,
+    "missing_sidecar": 45
+  },
+  "scoreDeltaBandCounts": {
+    "none": 4,
+    "unknown": 46
+  },
+  "dbReadOnlyCounts": {
+    "matchResultCount": 80,
+    "sidecarRowsForCohort": 5,
+    "sidecarRolledBackForCohort": 1,
+    "sidecarViolationAppliedToMatchResult": 0,
+    "recentMatchResultSampleSize": 50,
+    "distinctRecentViewers": 6,
+    "sidecarRowsIntersectRecentViewers": 5
+  },
+  "recommendation": "missingSidecarRate > 0.5 — defer Option B sidecar rehearsal write; recommend P7.10-r6c2 coverage remediation plan before P7.10-r6d"
+}
