@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-05-18T23:41:50.004Z",
+  "sourceType": "p76_canonical_match_result_sidecar_writer_smoke",
+  "sourceVersion": "p7.10-r3f3-canonical-sidecar-writer-smoke-v1",
+  "auditRunId": "r3f3-local-insert-smoke-001",
+  "environment": "dev",
+  "mode": "insert_only",
+  "attemptedCount": 3,
+  "insertedCount": 2,
+  "duplicateCount": 2,
+  "skippedCount": 1,
+  "blockedCount": 0,
+  "verify": {
+    "rowCount": 2,
+    "appliedToMatchResultTrueCount": 0,
+    "appliedToFinalScoreTrueCount": 0,
+    "appliedToWorkerRankingTrueCount": 0,
+    "promotionStatusNotPromotedCount": 2
+  },
+  "cleanup": {
+    "requested": true,
+    "deletedCount": 2,
+    "finalRowsForAuditRunId": 0
+  },
+  "safety": {
+    "matchResultTouched": false,
+    "workerTouched": false,
+    "getTouched": false
+  },
+  "duplicateProbe": {
+    "duplicateCount": 2,
+    "rowCountAfter": 2,
+    "rowCountUnchanged": true
+  },
+  "pass": true
+}
