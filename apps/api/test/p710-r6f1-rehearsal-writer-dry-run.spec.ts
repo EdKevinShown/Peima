@@ -256,7 +256,7 @@ describe("p76 canonical writer rehearsal writer dry-run (P7.10-r6f1)", () => {
     expect(result.dryRunRowSummaries).toHaveLength(0);
   });
 
-  it("insert_only env throws not implemented in r6f1", () => {
+  it("insert_only env requires insertOnly API (dryRun does not write)", () => {
     const env = readP76RehearsalSidecarWriterEnv({
       PEIMA_P76_REHEARSAL_SIDECAR_WRITER_ENABLED: "1",
       PEIMA_P76_REHEARSAL_SIDECAR_WRITER_DRY_RUN: "0",
@@ -266,7 +266,7 @@ describe("p76 canonical writer rehearsal writer dry-run (P7.10-r6f1)", () => {
     });
     expect(() =>
       dryRunP76CanonicalWriterRehearsalWriter(baseInput(), env),
-    ).toThrow(/not implemented in P7.10-r6f1/);
+    ).toThrow(/insertOnlyP76CanonicalWriterRehearsalWriter/);
   });
 
   it("skips invalid row but continues batch", () => {

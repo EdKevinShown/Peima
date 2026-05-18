@@ -95,6 +95,20 @@ export type P76CanonicalWriterRehearsalWriterResultV1 = {
 export type P76CanonicalWriterRehearsalMetaCreateInput =
   Prisma.P76CanonicalWriterRehearsalMetaUncheckedCreateInput;
 
+/** Narrow Prisma surface: rehearsal create only (no MatchResult mutation). */
+export type P76CanonicalWriterRehearsalWriterPrisma = {
+  p76CanonicalWriterRehearsalMeta: {
+    create: (args: {
+      data: P76CanonicalWriterRehearsalMetaCreateInput;
+    }) => Promise<{ id: string }>;
+  };
+};
+
+export type P76CanonicalWriterRehearsalWriterDeps = {
+  prisma: P76CanonicalWriterRehearsalWriterPrisma;
+  writerEnv?: P76RehearsalSidecarWriterEnv;
+};
+
 export class P76CanonicalWriterRehearsalWriterError extends Error {
   constructor(message: string) {
     super(message);
