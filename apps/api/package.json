@@ -38,7 +38,8 @@
     "p76:r4b-20d-bidirectional-ranking-shadow-audit": "node dist/dev-cli/p76-r4b-20d-bidirectional-ranking-audit-runner.js",
     "p76:r5b-rrm-top2-final-selector-shadow-audit": "node dist/dev-cli/p76-r5b-rrm-top2-final-selector-audit-runner.js",
     "p76:r6-end-to-end-funnel-shadow-audit": "node dist/dev-cli/p76-r6-end-to-end-funnel-shadow-audit-runner.js",
-    "p710:r6a:canonical-writer-shadow-audit": "node dist/dev-cli/p710-r6a-canonical-writer-shadow-audit-runner.js"
+    "p710:r6a:canonical-writer-shadow-audit": "node dist/dev-cli/p710-r6a-canonical-writer-shadow-audit-runner.js",
+    "p77:r2:local-smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p77-r2-local-smoke-automation.ps1"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

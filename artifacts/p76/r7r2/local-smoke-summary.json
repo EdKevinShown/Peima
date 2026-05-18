@@ -1,0 +1,62 @@
+﻿{
+    "schemaVersion":  1,
+    "sourceType":  "p77_r2_local_smoke_automation",
+    "sourceVersion":  "p7.7-r2-local-smoke-automation-v1",
+    "startedAt":  "2026-05-18T19:09:16.6901573Z",
+    "finishedAt":  "2026-05-18T19:09:36.3276736Z",
+    "status":  "P7_7_R2_LOCAL_SMOKE_AUTOMATION_PASS",
+    "overallPass":  true,
+    "repoRoot":  "C:\\Users\\34713\\Desktop\\peima",
+    "dotenvPath":  "C:\\Users\\34713\\Desktop\\peima\\.env",
+    "auditOutput":  "C:\\Users\\34713\\Desktop\\peima\\artifacts\\p76\\r7r2\\canonical-writer-shadow-audit.json",
+    "steps":  [
+                  {
+                      "name":  "api_build",
+                      "status":  "PASS",
+                      "exitCode":  0,
+                      "detail":  ""
+                  },
+                  {
+                      "name":  "jest_regression",
+                      "status":  "PASS",
+                      "exitCode":  0,
+                      "detail":  ""
+                  },
+                  {
+                      "name":  "r9b_http_smoke_contract",
+                      "status":  "PASS",
+                      "exitCode":  0,
+                      "detail":  ""
+                  },
+                  {
+                      "name":  "r6a_shadow_audit",
+                      "status":  "PASS",
+                      "exitCode":  0,
+                      "detail":  ""
+                  },
+                  {
+                      "name":  "artifact_safety_check",
+                      "status":  "PASS",
+                      "exitCode":  0,
+                      "detail":  ""
+                  }
+              ],
+    "auditMetrics":  {
+                         "ok":  true,
+                         "totalRows":  20,
+                         "eligibleCount":  4,
+                         "blockedCount":  16,
+                         "wouldChangeCandidateCount":  4,
+                         "appliedToMatchResultCount":  0,
+                         "reasonCounts":  {
+                                              "rolled_back":  1,
+                                              "ok":  4,
+                                              "missing_sidecar":  15
+                                          },
+                         "scoreDeltaBandCounts":  {
+                                                      "unknown":  16,
+                                                      "none":  4
+                                                  },
+                         "generatedAt":  "2026-05-18T19:09:36.139Z"
+                     }
+}
