@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-05-19T14:00:00.000Z",
+  "task": "P7.6-r9e3f2",
+  "environment": "production-like-staging",
+  "accessCheck": {
+    "grafanaAlertingReachable": false,
+    "reason": "blocked_by_missing_grafana_access"
+  },
+  "p0Rules": {
+    "P0-01_finalScoreChangedCount": { "exists": null, "testExecuted": false },
+    "P0-02_matchResultCandidateChangedCount": { "exists": null, "testExecuted": false },
+    "P0-03_workerMutationUnexpectedCount": { "exists": null, "testExecuted": false },
+    "P0-04_nonAllowlistSidecarDisplayCount": { "exists": null, "testExecuted": false },
+    "P0-05_rolledBackSidecarDisplayCount": { "exists": null, "testExecuted": false },
+    "P0-06_violationSidecarDisplayCount": { "exists": null, "testExecuted": false },
+    "P0-07_percentEnabledWithoutSignoffCount": { "exists": null, "testExecuted": false },
+    "P0-08_readPathEnabledAfterRollbackCount": { "exists": null, "testExecuted": false }
+  },
+  "p1Rules": {
+    "P1-01_exceptionFallbackSpike": { "exists": null, "testExecuted": false },
+    "P1-02_fallbackLegacyAbnormal": { "exists": null, "testExecuted": false },
+    "P1-03_sidecarReadSuccessDrop": { "exists": null, "testExecuted": false },
+    "P1-04_userReportThreshold": { "exists": null, "testExecuted": false },
+    "P1-05_monitoringDataGap": { "exists": null, "testExecuted": false }
+  },
+  "testAlert": {
+    "executed": false,
+    "explicitlyMarkedTest": null,
+    "alertRuleId": null,
+    "firedAtUtc": null,
+    "routeRedacted": "PagerDuty peima-p76-read-path → Slack #peima-incident (spec only)",
+    "notificationId": null,
+    "acknowledged": null,
+    "productionIncidentTriggered": false
+  },
+  "conclusion": {
+    "status": "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS",
+    "alternateIfImportOnly": "P7_6_R9E3F2_GRAFANA_IMPORT_PASS_TEST_ALERT_PENDING"
+  }
+}
