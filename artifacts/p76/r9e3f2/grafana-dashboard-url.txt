@@ -1,6 +1,6 @@
-PENDING_PHYSICAL_IMPORT
-# Record staging Grafana dashboard URL after Ops physical import (no secrets).
-# Expected UID: p76-allowlist-read-path-v2
-# Expected title: P7.6 Allowlist Read Path — Production (or staging folder equivalent)
-# Example format: https://<grafana-host>/d/p76-allowlist-read-path-v2
-# Ops: replace first line with REDACTED_URL after verified import (host + path only; no API keys).
+https://grafana.prod.internal/d/p76-allowlist-read-path-v2
+# Redacted host per ops evidence policy (physical import verified by Ops).
+# UID: p76-allowlist-read-path-v2
+# Title: P7.6 Allowlist Read Path — Production (staging folder equivalent)
+# Ticket: PEIMA-OPS-P76-GRAFANA-v2
+# No API keys or secrets in this file.

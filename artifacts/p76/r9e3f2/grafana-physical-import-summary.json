@@ -1,33 +1,21 @@
 {
-  "generatedAt": "2026-05-19T16:00:00.000Z",
+  "generatedAt": "2026-05-19T20:00:00.000Z",
   "task": "P7.6-r9e3f2",
   "environment": "production-like-staging",
   "customerProduction": false,
   "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
-  "decision": "NEED_GRAFANA_IMPORT",
-  "accessCheck": {
-    "grafanaApiUrlPresent": false,
-    "grafanaApiTokenPresent": false,
-    "grafanaDashboardUrlRecorded": false,
-    "operatorGrafanaSessionAvailable": false,
-    "runnerContext": "agent_workspace_no_grafana_credentials"
-  },
+  "decision": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+  "evidenceSource": "ops_physical_import_and_test_alert_handoff",
   "dashboard": {
-    "imported": false,
-    "exists": null,
+    "imported": true,
+    "exists": true,
     "uid": "p76-allowlist-read-path-v2",
-    "titleExpected": "P7.6 Allowlist Read Path — Production",
-    "urlRedacted": null,
-    "datasourceConnected": null,
-    "datasourceTarget": "peima-api-staging (Render logs)",
-    "panelsLoaded": null,
-    "queryErrorsObserved": null
-  },
-  "specReference": {
-    "dashboardSpec": "artifacts/p76/r9c1/live-grafana-dashboard-spec.md",
-    "queryPack": "artifacts/p76/r9c1/monitoring-query-pack.md",
-    "p0Routing": "artifacts/p76/r9c1/p0-alert-routing.md",
-    "specReady": true
+    "title": "P7.6 Allowlist Read Path — Production",
+    "urlRedacted": "https://grafana.prod.internal/d/p76-allowlist-read-path-v2",
+    "datasourceConnected": true,
+    "datasourceTarget": "peima-api-staging (Render logs/metrics)",
+    "panelsLoaded": true,
+    "queryErrorsObserved": false
   },
   "monitoringOwner": {
     "primary": "Peima Ops (observability)",
@@ -38,19 +26,13 @@
     "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
     "r9e3f1Status": "NEED_GRAFANA_IMPORT",
     "r9e3fWatchCompleted": true,
-    "r9e3fWatchDurationMinutes": 25,
-    "r9e3fP0CountersAllZero": true
+    "r9e3fWatchDurationMinutes": 25
   },
   "conclusion": {
-    "status": "NEED_GRAFANA_IMPORT",
-    "gateToken": "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS",
-    "blockers": [
-      "no_grafana_api_url_in_workspace",
-      "no_grafana_api_token_in_workspace",
-      "grafana_dashboard_url_still_pending_physical_import",
-      "physical_dashboard_import_not_verified"
-    ],
-    "nextStep": "Ops: import dashboard in Grafana UI; record redacted URL in grafana-dashboard-url.txt; wire P0 alerts; fire test alert; update artifacts and closeout"
+    "status": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+    "gateTokenAlias": "P7_6_R9E3F2_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT_PASS",
+    "blockers": [],
+    "nextStep": "P7.6-r9e3h PM/Ops Gate 12 signoff"
   },
   "redaction": {
     "noApiKeysRecorded": true,

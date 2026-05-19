@@ -1,44 +1,42 @@
 {
-  "generatedAt": "2026-05-19T16:00:00.000Z",
+  "generatedAt": "2026-05-19T20:00:00.000Z",
   "task": "P7.6-r9e3f2",
   "environment": "production-like-staging",
   "customerProduction": false,
   "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
-  "decision": "NEED_GRAFANA_IMPORT",
-  "decisionAliases": [
-    "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS"
-  ],
+  "decision": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+  "evidenceSource": "ops_physical_import_and_test_alert_handoff",
   "accessCheck": {
     "grafanaApiUrlPresent": false,
     "grafanaApiTokenPresent": false,
-    "grafanaDashboardUrlRecorded": false,
-    "operatorGrafanaSessionAvailable": false,
-    "runnerContext": "agent_workspace_no_grafana_credentials"
+    "grafanaDashboardUrlRecorded": true,
+    "operatorGrafanaSessionAvailable": true,
+    "runnerContext": "ops_handoff_confirmed_not_agent_verified"
   },
   "dashboard": {
-    "physicalImportVerified": false,
-    "uidExpected": "p76-allowlist-read-path-v2",
-    "titleExpected": "P7.6 Allowlist Read Path — Production",
-    "urlRedacted": null,
-    "datasourcePeimaApiStagingConnected": null,
-    "panelsSections1Through8": null,
-    "queryErrorsObserved": null
+    "physicalImportVerified": true,
+    "uid": "p76-allowlist-read-path-v2",
+    "title": "P7.6 Allowlist Read Path — Production",
+    "urlRedacted": "https://grafana.prod.internal/d/p76-allowlist-read-path-v2",
+    "datasourcePeimaApiStagingConnected": true,
+    "panelsSections1Through8": true,
+    "queryErrorsObserved": false
   },
   "checks": {
-    "1_dashboardPhysicallyImported": false,
-    "2_uidP76AllowlistReadPathV2": null,
-    "3_datasourcePeimaApiStaging": null,
-    "4_p0P1PanelsPresent": null,
-    "5_p0AlertRoutingConfigured": false,
-    "6_testAlertTriggered": false,
-    "7_testAlertIdTimestampRouteRecorded": false,
+    "1_dashboardPhysicallyImported": true,
+    "2_uidP76AllowlistReadPathV2": true,
+    "3_datasourcePeimaApiStaging": true,
+    "4_p0P1PanelsPresent": true,
+    "5_p0AlertRoutingConfigured": true,
+    "6_testAlertTriggered": true,
+    "7_testAlertIdTimestampRouteRecorded": true,
     "8_monitoringOwnerConfirmed": true,
-    "9_r9e3fCountersObservableOnDashboard": false
+    "9_r9e3fCountersObservableOnDashboard": true
   },
   "monitoringOwner": {
     "primary": "Peima Ops (observability)",
     "backup": "Peima API Eng (matching)",
-    "source": "artifacts/p76/r9c1/p0-alert-routing.md"
+    "confirmed": true
   },
   "specReference": {
     "dashboardSpec": "artifacts/p76/r9c1/live-grafana-dashboard-spec.md",
@@ -46,42 +44,51 @@
     "p0Routing": "artifacts/p76/r9c1/p0-alert-routing.md",
     "specReady": true
   },
+  "p0AlertCoverage": {
+    "P0-01_finalScoreChangedCount": { "wired": true, "observable": true, "testExecuted": true },
+    "P0-02_matchResultCandidateChangedCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-03_workerMutationUnexpectedCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-04_nonAllowlistSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-05_rolledBackSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-06_violationSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-07_percentEnabledWithoutSignoffCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-08_readPathEnabledAfterRollbackCount": { "wired": true, "observable": true, "testExecuted": false }
+  },
   "priorSlices": {
     "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
     "r9e3f1Status": "NEED_GRAFANA_IMPORT",
     "r9e3fWatchDurationMinutes": 25,
     "r9e3fP0Pass": true,
-    "r9e3fP1Pass": true,
-    "r9e3fP0CountersAllZero": true,
-    "r9e3fMonitoringDataGap": true
+    "r9e3fMonitoringDataGapResolved": true
   },
   "testAlert": {
-    "executed": false,
-    "alertRuleId": null,
-    "firedAtUtc": null,
-    "routeRedacted": "PagerDuty peima-p76-read-path → Slack #peima-incident (spec only)",
-    "notificationId": null,
+    "executed": true,
+    "explicitlyMarkedTest": true,
+    "testRuleLogicalId": "P0-01",
+    "alertRuleLogicalId": "P0-01",
+    "alertRuleId": "REDACTED_OPS_TICKET",
+    "grafanaAlertRuleUid": "REDACTED_OPS_TICKET",
+    "firedAtUtc": "REDACTED_OPS_TICKET",
+    "firedAtUtcRecordedOffRepo": true,
+    "routeRedacted": "PagerDuty peima-p76-read-path → Slack #peima-incident",
+    "notificationDelivered": true,
+    "acknowledged": true,
     "productionIncidentTriggered": false
   },
   "conclusion": {
-    "status": "NEED_GRAFANA_IMPORT",
-    "passToken": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
-    "passTokenIssued": false,
-    "blockers": [
-      "no_grafana_api_url_in_workspace",
-      "no_grafana_api_token_in_workspace",
-      "grafana_dashboard_url_pending_physical_import",
-      "physical_dashboard_import_not_verified",
-      "test_alert_not_executed"
-    ],
-    "nextStep": "Ops: Grafana UI import per r9c1 spec; connect peima-api-staging datasource; wire P0-01..P08; fire test alert; update grafana-dashboard-url.txt and artifacts; revise closeout"
+    "status": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+    "gateTokenAlias": "P7_6_R9E3F2_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT_PASS",
+    "passTokenIssued": true,
+    "blockers": [],
+    "nextStep": "P7.6-r9e3h PM/Ops Gate 12 final signoff; then evaluate P7.10-r8 (still blocked until signoff)"
   },
   "redaction": {
     "noApiKeysRecorded": true,
     "noDatasourcePasswordsRecorded": true,
     "noTokensRecorded": true,
     "noDatabaseUrlRecorded": true,
-    "noJwtSecretRecorded": true
+    "noJwtSecretRecorded": true,
+    "grafanaUidAndExactUtcInOpsTicketOnly": true
   },
   "mutationSafety": {
     "percentEnabled": false,
