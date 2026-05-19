@@ -10,7 +10,7 @@ import {
 } from "@peima/shared/matching/preference-hard-gate";
 import type { UserPreference } from "@peima/database";
 import { isUserImagePassingForOnboarding } from "../onboarding-photo-passing";
-import { isEligiblePreviewCandidate } from "../onboarding-photo-preview-pool.service";
+import { isEligiblePreviewCandidate } from "../onboarding-preview-candidate-eligibility";
 import {
   candidatePassesOppositeBinaryGate,
   isStrictBinaryPreviewGender,

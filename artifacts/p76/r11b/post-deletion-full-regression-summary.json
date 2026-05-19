@@ -1,0 +1,138 @@
+{
+  "status": "PASS_R11B_POST_DELETION_FULL_REGRESSION",
+  "generatedAt": "2026-05-19T23:59:00.000Z",
+  "task": "P7.10-r11b",
+  "environment": "local-dev-only",
+  "precondition": "P7.10-r11 PASS_R11_CATEGORY_A_LEGACY_PHOTO_MATCHING_DELETION",
+  "requiredRegression": {
+    "allPass": true,
+    "matrix": [
+      {
+        "area": "API safe fallback (r10)",
+        "command": "pnpm --filter @peima/api test -- p710-r10-safe-fallback-final",
+        "result": "PASS",
+        "tests": 12,
+        "notes": "no_row + writer shutdown → matching_pending / no_result; no PreviewPool fallback write"
+      },
+      {
+        "area": "API matching display",
+        "command": "pnpm --filter @peima/api test -- matching-result-display",
+        "result": "PASS",
+        "tests": 45,
+        "notes": "resolveMatchResultDisplay + GET /matching/result contract"
+      },
+      {
+        "area": "API r8f hidden admin Apply/Rollback API",
+        "command": "pnpm --filter @peima/api test -- p710-r8f",
+        "result": "PASS",
+        "tests": 34,
+        "notes": "no token plaintext exposure in responses"
+      },
+      {
+        "area": "API r8e canonical rollback token",
+        "command": "pnpm --filter @peima/api test -- p710-r8e",
+        "result": "PASS",
+        "tests": 33,
+        "notes": "token-gated rollback service"
+      },
+      {
+        "area": "API r8d canonical apply hard-disabled",
+        "command": "pnpm --filter @peima/api test -- p710-r8d",
+        "result": "PASS",
+        "tests": 20,
+        "notes": "apply service default blocked"
+      },
+      {
+        "area": "API build",
+        "command": "pnpm --filter @peima/api run build",
+        "result": "PASS",
+        "notes": "nest build after r11 deletions"
+      },
+      {
+        "area": "Worker r9 old writer shutdown",
+        "command": "pnpm --filter @peima/worker test -- p710-r9-old-photo-matching-writer-shutdown",
+        "result": "PASS",
+        "tests": 7,
+        "notes": "default shutdown on; dev rollback path isolated"
+      },
+      {
+        "area": "Worker build",
+        "command": "pnpm --filter @peima/worker run build",
+        "result": "PASS",
+        "notes": "tsc after batch-match.processor r9 gate"
+      },
+      {
+        "area": "Web build",
+        "command": "pnpm --filter @peima/web run build",
+        "result": "PASS",
+        "notes": "vite production build; FinalMatchPage compiles without deleted pool pages"
+      },
+      {
+        "area": "Onboarding nextStep (r11 behavior)",
+        "command": "pnpm --filter @peima/api test -- onboarding.service.spec.ts",
+        "result": "PASS",
+        "tests": 16,
+        "notes": "aesthetic done + preview not ack → questionnaire (not photo_preview); spec updated in r11b"
+      }
+    ]
+  },
+  "optionalFullSuite": {
+    "api": {
+      "command": "pnpm --filter @peima/api test",
+      "result": "PARTIAL_FAIL_UNRELATED",
+      "suitesPassed": 180,
+      "suitesFailed": 2,
+      "suitesSkipped": 1,
+      "testsPassed": 1831,
+      "testsFailed": 3,
+      "unrelatedFailures": [
+        {
+          "suite": "test/rrm-sim.evaluator.spec.ts",
+          "reason": "RRM sim entrypoint allowlist drift (rrm-sim-d-pre-calibration-shadow.ts, tools/*.ts reference evaluateRrmSimFromSimulationV2); not Category A / preview-pool"
+        },
+        {
+          "suite": "test/matching-finalize-with-pairwise.spec.ts",
+          "reason": "Nest DI: MatchingRrmRankingProposalService missing in test module; pre-existing integration harness gap, not r11 deletion"
+        }
+      ]
+    },
+    "worker": {
+      "command": "pnpm --filter @peima/worker test",
+      "result": "PASS",
+      "suitesPassed": 8,
+      "testsPassed": 95
+    }
+  },
+  "protectedCore": {
+    "matchResultPreserved": true,
+    "getMatchingResultPreserved": true,
+    "resolveMatchResultDisplayPreserved": true,
+    "finalMatchPageMainDisplayPreserved": true,
+    "r10SafeFallbackPreserved": true,
+    "canonicalApplyRollbackPreserved": true,
+    "photoUploadReviewCloudVisionPreserved": true,
+    "previewPoolReadOnlyGetLatestPreserved": true
+  },
+  "deletionReferenceProof": {
+    "previewPoolPageRemovedNoImport": true,
+    "onboardingPhotoPreviewPageRemovedNoImport": true,
+    "postPreviewPoolGenerateRemoved": true,
+    "onboardingPhotoPreviewPoolServiceRemovedNoProvider": true,
+    "legacyRoutesRedirectToQuestionnaire": ["/preview-pool", "/onboarding/photo-preview"]
+  },
+  "securityScan": {
+    "command": "git diff | Select-String -Pattern \"postgresql://|JWT_SECRET=|Bearer ey|DATABASE_URL=|api_key|apiKey|tokenPlaintext|rollbackTokenPlaintext\"",
+    "newSecretsAdded": false,
+    "hitsOnlyOnDeletedLines": true,
+    "notes": "Matches only removed visual-signal-enhance-stub.ts api_key redaction / LLM client lines (minus prefix in diff)"
+  },
+  "r11bCodeFix": {
+    "file": "apps/api/test/onboarding.service.spec.ts",
+    "change": "expect nextStep questionnaire when aesthetic done but preview not ack (intentional r11 onboarding skip)"
+  },
+  "humanSignoff": {
+    "r8iPmOpsEng": "pending",
+    "notFaked": true
+  },
+  "nextStep": "P7.10-r11c — staging smoke + final closeout"
+}

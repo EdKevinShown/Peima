@@ -9,7 +9,6 @@ import {
   getOnboardingPhotoPreferencesMe,
   getOnboardingPhotoStatus,
   postOnboardingPhotoPreferences,
-  postOnboardingPhotoPreviewPoolGenerate,
 } from "../api/onboarding";
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -118,15 +117,12 @@ export default function OnboardingPhotoPreferencePage() {
     setError(null);
     try {
       await postOnboardingPhotoPreferences(tags);
-      await postOnboardingPhotoPreviewPoolGenerate();
-      navigate(`/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`);
+      navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setError(
         new Error(
-          raw.includes("候选") || raw.includes("预览池")
-            ? raw
-            : `保存或生成预览池时出现问题，请稍后重试。${raw ? `（${raw}）` : ""}`,
+          `保存审美偏好时出现问题，请稍后重试。${raw ? `（${raw}）` : ""}`,
         ),
       );
     } finally {
@@ -168,7 +164,7 @@ export default function OnboardingPhotoPreferencePage() {
         {" · "}
         <Link to={`/onboarding/photo-upload${previewQs}`}>返回照片设置</Link>
         {" · "}
-        <Link to={`/onboarding/photo-preview${previewQs}`}>查看第一印象预览池</Link>
+        <Link to={`/questionnaire${previewQs}`}>继续填写问卷</Link>
       </p>
 
       {loading && <LoadingState label="加载中…" />}

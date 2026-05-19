@@ -54,7 +54,7 @@ export default function QuestionnairePage() {
         }
         if (st.nextStep === "photo_preview") {
           navigate(
-            `/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`,
+            `/questionnaire?userId=${encodeURIComponent(userId)}`,
             { replace: true },
           );
           return;

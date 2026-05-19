@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { enqueueMatching, getMatchingResult } from "../api/matching";
-import { generatePreviewPool } from "../api/previewPool";
 import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import { getInteractionSimulationLite } from "../api/interaction-simulation-lite";
 import { getMatchReadoutFusion } from "../api/match-readout-fusion";
@@ -831,13 +830,6 @@ export default function FinalMatchPage() {
       }
       setRematchPreparingPool(true);
       try {
-        try {
-          await generatePreviewPool(userId);
-        } catch (genErr) {
-          console.warn("[rematch] generatePreviewPool failed", genErr);
-          setRematchError(REMATCH_USER_FACING_FAILURE);
-          return;
-        }
         try {
           await enqueueMatching(userId);
           goWaiting();

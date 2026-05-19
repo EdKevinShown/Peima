@@ -1,0 +1,85 @@
+{
+  "status": "PASS_R8G_LOCAL_APPLY_ROLLBACK_SMOKE",
+  "generatedAt": "2026-05-19T19:21:36.841Z",
+  "startedAt": "2026-05-19T19:21:36.580Z",
+  "task": "P7.10-r8g",
+  "environment": "local-dev-only",
+  "databaseUrlRedacted": "postgresql://localhost:5432/peima",
+  "gitStatusShort": "M apps/api/src/modules/matching/p76-canonical-sidecar-admin.module.ts\n M docs/P7/P7.10-r7c-admin-apply-canonical-promotion-api-design.md\n M docs/P7/P7.10-r7j-rollback-snapshot-preview-readonly-api-closeout.md\n M docs/P7/P7.10-r8a-canonical-apply-rollback-controlled-implementation-preflight-closeout.md\n M docs/P7/P7.10-r8c-rollback-snapshot-persistence-implementation-closeout.md\n M docs/P7/P7.10-r8c1-local-migration-and-snapshot-persistence-smoke-closeout.md\n M docs/P7/P7.6-bidirectional-mutual-matching-system-plan.md\n M packages/shared/constants/p5-rbac.ts\n?? apps/api/src/modules/matching/dto/p76-canonical-admin-mutation-body.dto.ts\n?? apps/api/src/modules/matching/p76-canonical-admin-mutation-env.ts\n?? apps/api/src/modules/matching/p76-canonical-admin-mutation.controller.ts\n?? apps/api/src/modules/matching/p76-canonical-admin-mutation.mapper.ts\n?? apps/api/src/modules/matching/p76-canonical-admin-mutation.service.ts\n?? apps/api/src/modules/matching/p76-canonical-admin-mutation.types.ts\n?? apps/api/src/modules/matching/p76-canonical-apply-env.ts\n?? apps/api/src/modules/matching/p76-canonical-apply.service.ts\n?? apps/api/src/modules/matching/p76-canonical-apply.types.ts\n?? apps/api/src/modules/matching/p76-canonical-rollback-env.ts\n?? apps/api/src/modules/matching/p76-canonical-rollback-token.ts\n?? apps/api/src/modules/matching/p76-canonical-rollback.service.ts\n?? apps/api/src/modules/matching/p76-canonical-rollback.types.ts\n?? apps/api/test/p710-r8d-canonical-apply-service.spec.ts\n?? apps/api/test/p710-r8e-canonical-rollback-service.spec.ts\n?? apps/api/test/p710-r8f-hidden-admin-apply-rollback-api.spec.ts\n?? docs/P7/P7.10-r8d-canonical-apply-service-hard-disabled-closeout.md\n?? docs/P7/P7.10-r8e-canonical-rollback-service-token-gated-closeout.md\n?? docs/P7/P7.10-r8f-hidden-admin-apply-rollback-api-wiring-closeout.md",
+  "auditRunId": "r8g-local-smoke-1779218496476",
+  "createdFixture": true,
+  "apply": {
+    "mode": "applied",
+    "applied": true,
+    "blockedReasons": [],
+    "matchResultChanged": true,
+    "sidecarPromoted": true,
+    "snapshotApplied": true,
+    "appliedToWorkerRanking": false,
+    "pass": true
+  },
+  "rollback": {
+    "mode": "rolled_back",
+    "rolledBack": true,
+    "blockedReasons": [],
+    "matchResultRestored": true,
+    "sidecarRolledBack": true,
+    "snapshotRollbackCompleted": true,
+    "tokenVerified": true,
+    "tokenPlaintextExposed": false,
+    "tokenHashPresent": true,
+    "pass": true
+  },
+  "dbStates": {
+    "beforeApply": {
+      "candidateUserId": "synthetic-cand-a",
+      "finalScore": 0.7
+    },
+    "afterApply": {
+      "candidateUserId": "changed",
+      "finalScore": 0.8
+    },
+    "afterRollback": {
+      "candidateUserId": "restored",
+      "finalScore": 0.7
+    }
+  },
+  "safety": {
+    "workerTriggered": false,
+    "hookJobsForMatchResult": 0,
+    "percentMutated": false,
+    "legacyRemoved": false,
+    "productionTouched": false,
+    "pass": true
+  },
+  "cleanup": {
+    "finalRowsForAuditRunId": 0,
+    "remaining": {
+      "snapshot": 0,
+      "sidecar": 0,
+      "matchResultByMarker": 0
+    },
+    "countsRestored": true,
+    "pass": true
+  },
+  "baseline": {
+    "before": {
+      "matchResultCount": 80,
+      "sidecarCount": 0,
+      "snapshotCount": 0,
+      "hookJobCount": 3,
+      "appliedToWorkerRankingCount": 0,
+      "productionPercent": "0",
+      "productionPercentEnabled": "0"
+    },
+    "after": {
+      "matchResultCount": 80,
+      "sidecarCount": 0,
+      "snapshotCount": 0,
+      "hookJobCount": 3,
+      "appliedToWorkerRankingCount": 0,
+      "productionPercent": "0",
+      "productionPercentEnabled": "0"
+    }
+  }
+}

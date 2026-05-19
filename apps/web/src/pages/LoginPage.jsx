@@ -59,7 +59,7 @@ export default function LoginPage() {
       } else if (status.nextStep === "photo_preference") {
         navigate(`/onboarding/photo-preference?userId=${uid}`, { replace: true });
       } else if (status.nextStep === "photo_preview") {
-        navigate(`/onboarding/photo-preview?userId=${uid}`, { replace: true });
+        navigate(`/questionnaire?userId=${uid}`, { replace: true });
       } else {
         navigate(`/questionnaire?userId=${uid}`, { replace: true });
       }

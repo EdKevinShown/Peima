@@ -238,7 +238,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect("reviewNote" in res).toBe(false);
   });
 
-  it("nextStep photo_preview when aesthetic done but preview not ack", async () => {
+  it("nextStep questionnaire when aesthetic done but preview not ack (P7.10-r11: legacy photo preview pool removed)", async () => {
     const prisma = {
       ...userPrisma({
         onboardingPhotoAestheticCompletedAt: new Date(),
@@ -250,7 +250,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     };
     const svc = await createService(prisma);
     const res = await svc.getPhotoStatus("u1");
-    expect(res.nextStep).toBe("photo_preview");
+    expect(res.nextStep).toBe("questionnaire");
     expect(res.hasPhotoPreference).toBe(true);
   });
 

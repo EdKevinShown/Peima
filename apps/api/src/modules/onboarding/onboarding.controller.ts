@@ -9,7 +9,6 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PostOnboardingPhotoPreferencesDto } from "./dto/post-onboarding-photo-preferences.dto";
-import { OnboardingPhotoPreviewPoolService } from "./onboarding-photo-preview-pool.service";
 import { OnboardingService } from "./onboarding.service";
 
 type JwtReq = {
@@ -19,10 +18,7 @@ type JwtReq = {
 @Controller("onboarding")
 @UseGuards(JwtAuthGuard)
 export class OnboardingController {
-  constructor(
-    private readonly onboardingService: OnboardingService,
-    private readonly onboardingPhotoPreviewPoolService: OnboardingPhotoPreviewPoolService,
-  ) {}
+  constructor(private readonly onboardingService: OnboardingService) {}
 
   @Get("photo/status")
   getPhotoStatus(@Req() req: JwtReq) {
@@ -52,33 +48,5 @@ export class OnboardingController {
       throw new UnauthorizedException("not authenticated");
     }
     return this.onboardingService.getPhotoPreferencesMe(userId);
-  }
-
-  /** P7.10-r5a: frozen_legacy_bridge — endpoint retained; prefer P7.6 flow for new matching. */
-  @Post("photo-preview-pool/generate")
-  generatePhotoPreviewPool(@Req() req: JwtReq) {
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException("not authenticated");
-    }
-    return this.onboardingPhotoPreviewPoolService.generate(userId);
-  }
-
-  @Get("photo-preview-pool/me/latest")
-  getLatestPhotoPreviewPool(@Req() req: JwtReq) {
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException("not authenticated");
-    }
-    return this.onboardingPhotoPreviewPoolService.findLatestActiveForViewer(userId);
-  }
-
-  @Post("photo-preview-pool/acknowledge")
-  acknowledgePhotoPreviewPool(@Req() req: JwtReq) {
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new UnauthorizedException("not authenticated");
-    }
-    return this.onboardingPhotoPreviewPoolService.acknowledge(userId);
   }
 }

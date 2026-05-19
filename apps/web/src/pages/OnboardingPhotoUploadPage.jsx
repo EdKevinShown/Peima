@@ -107,7 +107,7 @@ export default function OnboardingPhotoUploadPage() {
         return;
       }
       if (status.nextStep === "photo_preview") {
-        navigate(`/onboarding/photo-preview${q}`);
+        navigate(`/questionnaire${q}`);
         return;
       }
       if (status.nextStep === "questionnaire") {
@@ -386,7 +386,7 @@ export default function OnboardingPhotoUploadPage() {
               继续选择审美偏好
             </button>
             <Link
-              to={`/onboarding/photo-preview${previewQs}`}
+              to={`/questionnaire${previewQs}`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",

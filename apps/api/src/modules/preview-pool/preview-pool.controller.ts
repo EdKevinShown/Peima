@@ -1,17 +1,14 @@
 import {
-  Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
-  Post,
   Req,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import { GeneratePreviewPoolDto } from "./dto/generate-preview-pool.dto";
 import type { PreviewPoolBundle } from "./preview-pool.service";
 import { PreviewPoolService } from "./preview-pool.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -21,25 +18,13 @@ type JwtReq = {
 };
 
 /**
- * P7.10-r5a (frozen_legacy_bridge): legacy formal PreviewPool HTTP API.
- * Behavior unchanged — no disable; prefer P7.6 matching / canonical writer path for new work.
+ * P7.10-r11 — legacy PreviewPool HTTP API (read-only).
+ * POST /generate removed; formal MatchResult writer path removed in r9/r11.
  */
 @Controller("preview-pool")
 @UseGuards(JwtAuthGuard)
 export class PreviewPoolController {
   constructor(private readonly previewPoolService: PreviewPoolService) {}
-
-  @Post("generate")
-  generate(
-    @Body() dto: GeneratePreviewPoolDto,
-    @Req() req: JwtReq,
-  ): Promise<PreviewPoolBundle> {
-    const tokenUserId = req.user?.userId;
-    if (!tokenUserId || dto.userId !== tokenUserId) {
-      throw new UnauthorizedException("userId mismatch");
-    }
-    return this.previewPoolService.generate(dto);
-  }
 
   @Get("user/:userId/latest")
   findLatest(

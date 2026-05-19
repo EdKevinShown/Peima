@@ -38,6 +38,7 @@ import {
   type MatchResultNoRowContractPayload,
   type MatchResultResultStateFields,
 } from "./matching-result-state";
+import { enrichNoRowResultForLegacyWriterShutdown } from "./p710-r10-safe-fallback-final-policy";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
@@ -156,7 +157,16 @@ export class MatchingService {
         throw new NotFoundException(`No match result for user ${userId}`);
       }
       const { status } = await this.getStatusForUser(userId);
-      return deriveNoRowResultState(status);
+      const latestQueue = await this.prisma.batchMatchQueue.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: { status: true },
+      });
+      const base = deriveNoRowResultState(status);
+      return enrichNoRowResultForLegacyWriterShutdown(base, {
+        queueStatus: status,
+        latestQueueRowStatus: latestQueue?.status ?? null,
+      });
     }
 
     const payload = await this.buildMatchResultViewerPayload(result);

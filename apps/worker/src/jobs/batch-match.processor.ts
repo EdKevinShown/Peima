@@ -14,6 +14,12 @@ import {
   type ViewerPreferenceLike,
 } from "./matching-score.js";
 import { buildWorkerMatchInsightsForBestMatch } from "./batch-match-match-insights.js";
+import {
+  OLD_PHOTO_MATCHING_WRITER_SHUTDOWN_REASON,
+  type MatchResultCreateClient,
+  readOldPhotoMatchingWriterGate,
+  writeLegacyPhotoMatchResultIfAllowed,
+} from "./old-photo-matching-writer-shutdown-env.js";
 
 const BATCH_STATUS = {
   RUNNING: "running",
@@ -39,6 +45,7 @@ const REASON = {
   CANDIDATE_CONTEXT_MISSING: "CANDIDATE_CONTEXT_MISSING",
   CANDIDATE_PROFILE_MISSING: "CANDIDATE_PROFILE_MISSING",
   VIEWER_PROFILE_MISSING: "VIEWER_PROFILE_MISSING",
+  OLD_PHOTO_MATCHING_WRITER_SHUTDOWN: OLD_PHOTO_MATCHING_WRITER_SHUTDOWN_REASON,
   UNEXPECTED_ERROR: "UNEXPECTED_ERROR",
 } as const;
 
@@ -145,6 +152,7 @@ async function loadCandidateContextMaps(
 
 export async function runBatchMatch(): Promise<void> {
   const prisma = new PrismaClient();
+  const legacyWriterGate = readOldPhotoMatchingWriterGate();
 
   const batch = await prisma.matchBatch.create({
     data: {
@@ -171,6 +179,8 @@ export async function runBatchMatch(): Promise<void> {
       event: "batch_start",
       batchId: batch.id,
       totalQueues: waiting.length,
+      legacyWriterMode: legacyWriterGate.mode,
+      legacyWriterReason: legacyWriterGate.reason,
     });
 
     let successCount = 0;
@@ -188,6 +198,24 @@ export async function runBatchMatch(): Promise<void> {
         queueId: q.id,
         viewerUserId: q.userId,
       });
+
+      if (!legacyWriterGate.canWriteMatchResult) {
+        await prisma.batchMatchQueue.update({
+          where: { id: q.id },
+          data: { status: QUEUE_STATUS.FAILED },
+        });
+        failedCount++;
+        logBatchLine({
+          event: "queue_done",
+          batchId: batch.id,
+          queueId: q.id,
+          viewerUserId: q.userId,
+          outcome: "blocked",
+          reasonCode: legacyWriterGate.reason,
+          legacyWriterMode: legacyWriterGate.mode,
+        });
+        continue;
+      }
 
       const pool = await prisma.previewPool.findFirst({
         where: { userId: q.userId, status: PREVIEW_POOL_ACTIVE },
@@ -343,17 +371,37 @@ export async function runBatchMatch(): Promise<void> {
         finalScore: best.components.finalScore,
       });
 
-      await prisma.matchResult.create({
-        data: {
+      const writeResult = await writeLegacyPhotoMatchResultIfAllowed(
+        prisma as unknown as MatchResultCreateClient,
+        {
           userId: q.userId,
           candidateUserId: best.item.candidateUserId,
           batchId: batch.id,
           finalScore: best.components.finalScore,
           reasonSummary: formatReasonSummaryV1(best.components),
-          matchInsights,
+          matchInsights: matchInsights as import("@peima/database").Prisma.InputJsonValue,
           status: RESULT_STATUS_READY,
         },
-      });
+        legacyWriterGate,
+      );
+
+      if (!writeResult.written) {
+        await prisma.batchMatchQueue.update({
+          where: { id: q.id },
+          data: { status: QUEUE_STATUS.FAILED },
+        });
+        failedCount++;
+        logBatchLine({
+          event: "queue_done",
+          batchId: batch.id,
+          queueId: q.id,
+          viewerUserId: q.userId,
+          outcome: "blocked",
+          reasonCode: writeResult.reason,
+          legacyWriterMode: writeResult.mode,
+        });
+        continue;
+      }
 
       await prisma.batchMatchQueue.update({
         where: { id: q.id },
