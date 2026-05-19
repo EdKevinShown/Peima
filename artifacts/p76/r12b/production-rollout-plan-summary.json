@@ -1,0 +1,96 @@
+{
+  "status": "DONE_R12B_PRODUCTION_ROLLOUT_PLAN_RUNBOOK",
+  "task": "P7.10-r12b",
+  "generatedAt": "2026-05-20T00:00:00.000Z",
+  "nature": "plan_and_runbook_only",
+  "execution": {
+    "blocked": true,
+    "blockedUntil": "PASS_R12A_PRODUCTION_READINESS_HUMAN_SIGNOFF",
+    "productionDeployExecuted": false,
+    "productionSmokeExecuted": false,
+    "percentRolloutExecuted": false,
+    "canonicalApplyExecuted": false,
+    "canonicalRollbackExecuted": false,
+    "hiddenMutationApiEnabled": false
+  },
+  "prerequisites": {
+    "r11cComplete": true,
+    "r12aTechnicalEvidence": true,
+    "r12aHumanSignoff": "pending",
+    "r12aStatus": "READY_R12A_PRODUCTION_READINESS_PENDING_HUMAN_SIGNOFF"
+  },
+  "rolloutScope": {
+    "inScope": [
+      "production_env_gate_verification_plan",
+      "deploy_api_worker_web_with_safety_gates_off",
+      "post_deploy_readonly_verification_plan",
+      "monitoring_and_incident_runbook",
+      "emergency_disable_reference"
+    ],
+    "outOfScopeUntilSeparateApproval": [
+      "percent_rollout",
+      "canonical_apply_execution",
+      "canonical_rollback_execution",
+      "hidden_admin_mutation_api_enable",
+      "old_photo_matching_writer_reenable",
+      "category_a_legacy_restoration"
+    ]
+  },
+  "productionDefaultGates": {
+    "PEIMA_P710_R9_OLD_PHOTO_MATCHING_WRITER_SHUTDOWN_ENABLED": "1",
+    "PEIMA_P710_R9_OLD_PHOTO_MATCHING_WRITER_ENABLED": "0",
+    "PEIMA_P710_R8_HIDDEN_ADMIN_MUTATION_API_ENABLED": "0",
+    "PEIMA_P710_R8_APPLY_EXECUTION_ENABLED": "0",
+    "PEIMA_P710_R8_ROLLBACK_EXECUTION_ENABLED": "0",
+    "PEIMA_P76_PRODUCTION_PERCENT": "0",
+    "PEIMA_P76_PRODUCTION_PERCENT_ENABLED": "0"
+  },
+  "plannedPhases": [
+    {
+      "id": "P0",
+      "name": "preflight_and_owner_confirmation",
+      "executionBlockedUntilR12aPass": true
+    },
+    {
+      "id": "P1",
+      "name": "production_deploy_gates_off",
+      "executionBlockedUntilR12aPass": true
+    },
+    {
+      "id": "P2",
+      "name": "post_deploy_readonly_verification",
+      "executionBlockedUntilR12aPass": true
+    },
+    {
+      "id": "P3",
+      "name": "monitoring_watch_window",
+      "executionBlockedUntilR12aPass": true
+    }
+  ],
+  "owners": {
+    "pm": "TBD — assign at r12c kickoff",
+    "ops": "TBD — assign at r12c kickoff",
+    "eng": "TBD — assign at r12c kickoff",
+    "oncall": "TBD — assign at r12c kickoff"
+  },
+  "humanSignoff": {
+    "r12aPm": "pending",
+    "r12aOps": "pending",
+    "r12aEng": "pending",
+    "notFaked": true
+  },
+  "nextMilestone": {
+    "id": "P7.10-r12c",
+    "name": "production_rollout_execution",
+    "blockedUntil": [
+      "PASS_R12A_PRODUCTION_READINESS_HUMAN_SIGNOFF",
+      "r12c_execution_approval"
+    ]
+  },
+  "redactionPolicy": {
+    "noDatabaseUrl": true,
+    "noJwt": true,
+    "noRollbackToken": true,
+    "noViewerUserIds": true
+  }
+}
