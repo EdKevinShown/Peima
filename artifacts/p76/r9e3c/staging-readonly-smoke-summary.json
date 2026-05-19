@@ -1,152 +1,132 @@
 {
-  "generatedAt": "2026-05-19T00:20:39.320Z",
+  "generatedAt": "2026-05-19T01:25:52.496Z",
   "task": "P7.6-r9e3c",
+  "environment": "staging",
   "environmentType": "production-like-staging",
   "customerProduction": false,
   "priorBootstrap": {
-    "task": "P7.6-r9e4a",
-    "status": "STAGING_BOOTSTRAP_PASS",
-    "artifact": "artifacts/p76/r9e4a/staging-bootstrap-summary.json"
+    "task": "P7.6-r9e5",
+    "status": "STAGING_BOOTSTRAP_PASS_FOR_INFRA",
+    "closeout": "docs/P7/P7.6-r9e5-staging-environment-bootstrap-execution-closeout.md"
   },
   "apiBaseHostRedacted": "peima-api-staging.onrender.com",
-  "webHostRedacted": "peima-web-staging.vercel.app",
-  "readonlyDbHostRedacted": null,
-  "accessSummary": {
-    "environmentType": "production-like-staging",
-    "apiBaseHost": "peima-api-staging.onrender.com",
-    "webHost": "peima-web-staging.vercel.app",
-    "apiLocalhostBlocked": false,
-    "peimaStagingApiBaseUrlEnvPresent": false,
-    "peimaStagingWebUrlEnvPresent": false,
-    "peimaReadonlyDatabaseUrlEnvPresent": false,
-    "peimaAdminServiceTokenEnvPresent": false,
-    "peimaR9e3cViewerCasesJsonEnvPresent": false,
-    "envStagingFilePresent": true,
-    "envStagingDatabaseUrlHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com",
-    "envStagingDatabaseUrlIsLocalhost": false,
-    "envStagingJwtSecretPresent": true,
-    "envStagingCanonicalSidecarAdminFlagPresent": false,
-    "adminTokenPresent": false,
-    "viewerCohortPresent": false,
-    "adminSidecarFeatureFlagKnownOnRender": "unknown-not-audited-this-round",
-    "grafanaAccessPresent": false,
-    "monitoringWatchExecuted": false,
-    "uiManualSmokeDeferred": true,
-    "notes": [
-      "PEIMA_STAGING_API_BASE_URL unset; used known staging API URL from r9e4a bootstrap.",
-      "PEIMA_READONLY_DATABASE_URL unset; readonly SQL skipped per policy (DATABASE_URL exists in .env.staging but not used).",
-      "PEIMA_ADMIN_SERVICE_TOKEN unset; matching/result and admin sidecar GET smokes requiring Bearer skipped.",
-      "PEIMA_R9E3C_VIEWER_CASES_JSON unset; viewer cohort GET matrix skipped.",
-      "Vercel deep links (/login, /admin/p76/canonical-sidecar) return platform 404 NOT_FOUND; root / loads SPA (SPA rewrite gap)."
-    ]
+  "readonlyDbHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+  "redactionPolicy": {
+    "noTokensRecorded": true,
+    "noFullDatabaseUrlRecorded": true,
+    "noViewerUserIdsRecorded": true,
+    "countsAndStatusOnly": true
   },
-  "httpSmokeSummary": {
-    "baseUrlHostRedacted": "peima-api-staging.onrender.com",
-    "totalCases": 8,
-    "passCount": 2,
-    "skippedCount": 5,
+  "accessSummary": {
+    "peimaReadonlyDatabaseUrlPresent": true,
+    "peimaAdminServiceTokenPresent": true,
+    "peimaStagingApiBaseUrlPresent": false,
+    "credentialedRunnerExecuted": true,
+    "executionContext": "operator_powershell_session"
+  },
+  "readonlyDbSummary": {
+    "executed": true,
+    "connectionPass": true,
+    "tableExists": {
+      "p76_allowlist_apply_meta": true,
+      "p76_canonical_match_result_meta": true
+    },
+    "rowCounts": {
+      "p76_allowlist_apply_meta": 0,
+      "p76_canonical_match_result_meta": 0
+    },
+    "prismaMigrationsCount": 32,
+    "emptyRowsExpectedFreshStaging": true,
+    "violations": {
+      "allowlist_appliedToMatchResult": 0,
+      "allowlist_appliedToFinalScore": 0,
+      "allowlist_appliedToWorkerRanking": 0,
+      "allowlist_appliedToDisplay": 0,
+      "allowlist_combinedViolation": 0,
+      "canonical_appliedToMatchResult": 0,
+      "canonical_appliedToFinalScore": 0,
+      "canonical_appliedToWorkerRanking": 0,
+      "canonical_combinedViolation": 0
+    },
+    "errorRedacted": null
+  },
+  "adminApiSmokeSummary": {
+    "executed": true,
+    "requiredEndpointsNo401403404": true,
+    "passCount": 3,
     "failedCount": 0,
-    "deferredFromPriorBootstrapCount": 1,
     "cases": [
       {
-        "caseLabel": "health-/health",
-        "endpointType": "health",
-        "path": "/health",
-        "statusCode": 404,
-        "outcome": "skipped",
-        "notes": "No dedicated health route; not treated as failure"
+        "caseLabel": "admin_p76_allowlist-apply-meta",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/allowlist-apply-meta",
+        "statusCode": 200,
+        "outcome": "pass",
+        "emptyExpectedFreshStaging": true,
+        "bodySummary": {
+          "rowCount": 0,
+          "totalSidecarRows": 0,
+          "schemaVersion": "p7.6-r8g1-admin-allowlist-apply-meta-list-v1"
+        },
+        "errorRedacted": null
       },
       {
-        "caseLabel": "health-/api/health",
-        "endpointType": "health",
-        "path": "/api/health",
-        "statusCode": 404,
-        "outcome": "skipped",
-        "notes": "No dedicated health route; not treated as failure"
+        "caseLabel": "admin_p76_canonical-rehearsal",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/canonical-rehearsal",
+        "statusCode": 200,
+        "outcome": "pass",
+        "emptyExpectedFreshStaging": true,
+        "bodySummary": {
+          "featureEnabled": true,
+          "itemCount": 0,
+          "totalVisible": 0,
+          "appliedToMatchResultViolationCount": 0,
+          "schemaVersion": "p7.7-r3-admin-canonical-rehearsal-list-v1"
+        },
+        "errorRedacted": null
       },
       {
-        "caseLabel": "root-404-expected",
-        "endpointType": "root",
-        "path": "/",
-        "statusCode": 404,
-        "outcome": "pass"
-      },
-      {
-        "caseLabel": "auth-me-no-token-401-expected",
-        "endpointType": "auth",
-        "path": "/auth/me",
-        "statusCode": 401,
-        "outcome": "pass"
-      },
-      {
-        "caseLabel": "auth-me-with-token",
-        "endpointType": "auth",
-        "path": "/auth/me",
-        "statusCode": null,
-        "outcome": "skipped",
-        "notes": "PEIMA_ADMIN_SERVICE_TOKEN missing"
-      },
-      {
-        "caseLabel": "matching-result-viewer-cohort",
-        "endpointType": "matching_result",
-        "path": "/matching/result/:viewerUserId",
-        "statusCode": null,
-        "outcome": "skipped",
-        "notes": "No viewer cohort JSON and no service token"
-      },
-      {
-        "caseLabel": "admin-canonical-sidecar-list",
-        "endpointType": "admin_canonical_sidecar_list",
-        "path": "/admin/p76/canonical-sidecar",
-        "statusCode": 404,
-        "outcome": "skipped",
-        "notes": "No Bearer token; likely PEIMA_P76_CANONICAL_SIDECAR_ADMIN_ENABLED=0 on Render"
-      },
-      {
-        "caseLabel": "admin-canonical-sidecar-aggregate",
-        "endpointType": "admin_canonical_sidecar_aggregate",
-        "path": "/admin/p76/canonical-sidecar/aggregate",
-        "statusCode": 404,
-        "outcome": "skipped",
-        "notes": "No Bearer token; feature gate / auth not available this round"
+        "caseLabel": "admin_p76_canonical-rehearsal_aggregate",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/canonical-rehearsal/aggregate",
+        "statusCode": 200,
+        "outcome": "pass",
+        "bodySummary": {
+          "featureEnabled": true,
+          "totalVisible": 0,
+          "schemaVersion": "p7.7-r3-admin-canonical-rehearsal-aggregate-v1"
+        },
+        "errorRedacted": null
       }
     ],
-    "matchingResultCohort": {
-      "executed": false,
-      "reason": "viewer_cohort_and_token_missing"
-    },
-    "adminSidecarDetailById": {
-      "executed": false,
-      "reason": "list_not_reachable_without_token_and_flag"
+    "operatorManualObserved": {
+      "executed": true,
+      "notes": "Manual GET in operator session; not part of automated runner matrix; no tokens recorded.",
+      "cases": [
+        {
+          "caseLabel": "admin_p76_canonical-sidecar",
+          "path": "/admin/p76/canonical-sidecar",
+          "statusCode": 200,
+          "outcome": "pass",
+          "emptyExpectedFreshStaging": true,
+          "bodySummary": {
+            "featureEnabled": true,
+            "totalVisible": 0
+          }
+        },
+        {
+          "caseLabel": "admin_p76_canonical-sidecar_aggregate",
+          "path": "/admin/p76/canonical-sidecar/aggregate",
+          "statusCode": 200,
+          "outcome": "pass",
+          "bodySummary": {
+            "featureEnabled": true,
+            "totalVisible": 0
+          }
+        }
+      ]
     }
-  },
-  "sqlSummary": {
-    "executed": false,
-    "reason": "PEIMA_READONLY_DATABASE_URL_missing",
-    "readonlyDbHostRedacted": null,
-    "counts": null,
-    "violationCounts": null,
-    "tableExistsChecks": null,
-    "notes": "Per policy only PEIMA_READONLY_DATABASE_URL may be used; .env.staging DATABASE_URL host is non-localhost Supabase pooler but was not queried."
-  },
-  "uiSmokeSummary": {
-    "webHostRedacted": "peima-web-staging.vercel.app",
-    "webRootOpened": true,
-    "webRootHttpStatus": 200,
-    "webCallsRenderApiThisRound": false,
-    "webCallsRenderApiPriorBootstrap": true,
-    "vercelDeepLinkSpaRoutesReturn404": true,
-    "deepLinkPathsObserved404": [
-      "/login",
-      "/admin/p76/canonical-sidecar"
-    ],
-    "adminCanonicalSidecarRouteClientNavVerified": false,
-    "safetyBannerVisible": null,
-    "emptyStateObserved": null,
-    "tableOrAggregateVisible": null,
-    "writeControlsAbsent": null,
-    "uiManualSmokeDeferred": true,
-    "deferredReason": "Vercel returns platform 404 for non-root SPA paths; admin sidecar page and safety banner not reachable without authenticated client session navigation or SPA rewrite fix."
   },
   "mutationSafety": {
     "postPatchDeleteExecuted": false,
@@ -157,34 +137,25 @@
     "workerTriggered": false,
     "matchResultWriteExecuted": false,
     "matchInsightsWriteExecuted": false,
+    "finalScoreMutationExecuted": false,
     "percentChanged": false,
     "previewPoolDisabled": false,
     "legacyRemovalExecuted": false,
-    "productionDeployExecuted": false
+    "productionDeployExecuted": false,
+    "fixtureSeedExecuted": false,
+    "readPathEnabled": false,
+    "canonicalPromotionExecuted": false
   },
   "conclusion": {
-    "status": "P7_6_R9E3C_STAGING_READONLY_EVIDENCE_PARTIAL_DB_PENDING",
-    "summary": "Staging API reachable with expected root 404 and auth 401; health routes absent (skipped). Readonly SQL, viewer cohort matching GET, admin sidecar GET with auth, and full UI admin smoke not completed due to missing PEIMA_READONLY_DATABASE_URL, PEIMA_ADMIN_SERVICE_TOKEN, viewer cohort, and Vercel SPA deep-link 404.",
-    "r9e3Complete": false,
-    "pendingPmOpsReview": false,
-    "blockers": [
-      "PEIMA_READONLY_DATABASE_URL missing",
-      "PEIMA_ADMIN_SERVICE_TOKEN missing",
-      "PEIMA_R9E3C_VIEWER_CASES_JSON missing",
-      "Vercel SPA rewrite for client routes (deep link 404)",
-      "Optional: PEIMA_P76_CANONICAL_SIDECAR_ADMIN_ENABLED on Render + admin RBAC user"
-    ],
-    "nextStep": "Supply readonly DB URL, admin service token, redacted viewer cohort JSON; fix Vercel SPA rewrites; rerun P7.6-r9e3c before P7.6-r9e3d PM/Ops signoff."
+    "status": "PASS_STAGING_READONLY_SMOKE",
+    "summary": "Readonly DB connection and SELECT checks pass; violation counts 0; required Admin GET endpoints 200 with no 401/403/404; empty rows expected on fresh staging.",
+    "blockers": [],
+    "nextStep": "P7.6-r9e3d PM/Ops review; then r9e5 §7: fixture seed, P7.6 GET matrix, rollback drill, Grafana/monitoring, 30–60 min watch"
   },
   "gateImpact": {
-    "gate12RealProdReverify": "NEED_MORE_PROD_REVERIFY",
-    "stagingEvidenceCollected": "partial",
-    "r9e3StatusAfterThisRound": "NEED_MORE_PROD_REVERIFY",
-    "r9e3StagingEvidenceNote": "Partial staging-prod-like read-only smoke archived; not sufficient for r9e3 complete or PASS_REAL_PROD_OPS_EXECUTION.",
-    "canonicalProductionWrite": "BLOCKED",
-    "percentRollout": "BLOCKED",
-    "previewPoolDisable": "BLOCKED",
-    "legacyRemoval": "BLOCKED",
-    "adminApply": "BLOCKED"
+    "r9e3Status": "NEED_MORE_PROD_REVERIFY",
+    "stagingReadonlySmoke": "pass",
+    "r9e3Complete": false,
+    "note": "r9e3c slice PASS does not close Gate 12; remaining r9e3/r9e5 items pending PM/Ops and ops evidence"
   }
 }
