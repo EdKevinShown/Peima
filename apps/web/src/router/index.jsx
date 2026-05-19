@@ -17,6 +17,7 @@ import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
 import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
 import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
 import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
+import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import OnboardingPhotoPreviewPage from "../pages/OnboardingPhotoPreviewPage";
@@ -232,6 +233,10 @@ function HomePage() {
             <Link to="/admin/p76/canonical-rehearsal" style={{ color: "#94a3b8" }}>
               P76 Canonical Rehearsal
             </Link>
+            {" · "}
+            <Link to="/admin/p76/canonical-sidecar" style={{ color: "#94a3b8" }}>
+              P76 Canonical Sidecar
+            </Link>
           </li>
         </ul>
       </details>
@@ -270,6 +275,10 @@ export default function AppRoutes() {
       <Route
         path="/admin/p76/canonical-rehearsal"
         element={<P76CanonicalRehearsalPage />}
+      />
+      <Route
+        path="/admin/p76/canonical-sidecar"
+        element={<P76CanonicalSidecarPage />}
       />
       <Route element={<MainAppShell />}>
         <Route path="questionnaire" element={<QuestionnairePage />} />
