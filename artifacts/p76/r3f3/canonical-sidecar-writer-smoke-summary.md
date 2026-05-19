@@ -1,7 +1,7 @@
 # P7.10-r3f3 Canonical Match Result Sidecar Writer Local Insert Smoke
 
-- **generatedAt:** 2026-05-18T23:41:50.004Z
-- **auditRunId:** r3f3-local-insert-smoke-001
+- **generatedAt:** 2026-05-19T00:09:02.932Z
+- **auditRunId:** p77-r4-4-admin-sidecar-ui-smoke-001
 - **environment:** dev
 - **mode:** insert_only
 - **pass:** true
@@ -24,9 +24,9 @@
 
 ## Cleanup
 
-- requested: true
-- deletedCount: 2
-- finalRowsForAuditRunId: 0
+- requested: false
+- deletedCount: 0
+- finalRowsForAuditRunId: 2
 
 ## Safety
 
