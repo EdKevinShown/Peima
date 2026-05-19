@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-05-19T00:20:39.320Z",
+  "task": "P7.6-r9e3c",
+  "environment": "production-like-staging",
+  "executed": false,
+  "reason": "PEIMA_READONLY_DATABASE_URL not set in process env or required Ops handoff vars",
+  "readonlyDbHostRedacted": null,
+  "counts": null,
+  "violationCounts": {
+    "appliedToMatchResultViolationCount": null,
+    "appliedToFinalScoreViolationCount": null,
+    "appliedToWorkerRankingCount": null,
+    "appliedToMatchResultAllowlistCount": null
+  },
+  "tableExists": {
+    "p76_allowlist_apply_meta": null,
+    "p76_canonical_match_result_meta": null,
+    "p76_canonical_writer_rehearsal_meta": null
+  },
+  "notes": [
+    "r9e4a bootstrap reported both P76 meta tables exist on Supabase; not re-verified via SQL this round.",
+    ".env.staging contains DATABASE_URL with non-localhost Supabase pooler host; not used (readonly env var policy)."
+  ]
+}
