@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-05-19T00:15:49.804Z",
+  "task": "P7.6-r9e4a",
+  "status": "STAGING_BOOTSTRAP_PASS",
+  "environmentType": "production-like-staging",
+  "supabase": {
+    "projectName": "Peima",
+    "region": "Oceania / Sydney",
+    "migrateDeploy": "pass",
+    "p76AllowlistApplyMetaExists": true,
+    "p76CanonicalMatchResultMetaExists": true
+  },
+  "render": {
+    "serviceName": "peima-api-staging",
+    "apiBaseUrlHost": "peima-api-staging.onrender.com",
+    "nestStarted": true,
+    "listeningPort": 3000,
+    "root404Expected": true,
+    "authMeWithoutToken401Expected": true
+  },
+  "vercel": {
+    "projectName": "peima-web-staging",
+    "webHost": "peima-web-staging.vercel.app",
+    "rootDirectory": "apps/web",
+    "viteApiBaseUrlHost": "peima-api-staging.onrender.com",
+    "webOpened": true,
+    "webCallsRenderApi": true,
+    "register201": true,
+    "me200": true,
+    "onboardingPhotoStatus200": true,
+    "reachedOnboardingPhotoUpload": true
+  },
+  "mutationSafety": {
+    "canonicalWriteExecuted": false,
+    "adminApplyExecuted": false,
+    "percentChanged": false,
+    "previewPoolDisabled": false,
+    "legacyRemovalExecuted": false
+  },
+  "nextStep": "P7.6-r9e3c staging-prod-like read-only reverify"
+}
