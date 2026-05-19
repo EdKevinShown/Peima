@@ -142,3 +142,19 @@ export async function getP76CanonicalSidecarDetail(id) {
   }
   return p76CanonicalSidecarAdminJson(res);
 }
+
+/**
+ * P7.10-r7i — read-only apply preview (GET only; no MatchResult write).
+ * @param {string} id
+ */
+export async function getP76CanonicalSidecarApplyPreview(id) {
+  let res;
+  try {
+    res = await fetch(`${baseUrl}/admin/p76/canonical-sidecar/${id}/apply-preview`, {
+      headers: authHeaders(),
+    });
+  } catch {
+    throw new Error("网络异常，请稍后重试。");
+  }
+  return p76CanonicalSidecarAdminJson(res);
+}

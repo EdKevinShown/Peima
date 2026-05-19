@@ -911,6 +911,14 @@ export default function P76CanonicalSidecarPage() {
                       >
                         Detail
                       </button>
+                      {" "}
+                      <Link
+                        to={`/admin/p76/canonical-sidecar/${r.id}/apply-review`}
+                        style={{ fontSize: "0.68rem", color: "#2563eb" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Apply review
+                      </Link>
                     </td>
                   </tr>
                 );
@@ -989,15 +997,23 @@ export default function P76CanonicalSidecarPage() {
               }}
             >
               <h2 style={{ margin: 0, fontSize: "1rem" }}>Detail</h2>
-              <div style={{ display: "flex", gap: "0.35rem" }}>
+              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
                 {detailId ? (
-                  <button
-                    type="button"
-                    style={btnSecondary}
-                    onClick={() => void copyText(detailId)}
-                  >
-                    Copy id
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      style={btnSecondary}
+                      onClick={() => void copyText(detailId)}
+                    >
+                      Copy id
+                    </button>
+                    <Link
+                      to={`/admin/p76/canonical-sidecar/${detailId}/apply-review`}
+                      style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}
+                    >
+                      Open apply review
+                    </Link>
+                  </>
                 ) : null}
                 <button type="button" style={btnSecondary} onClick={closeDetail}>
                   Close

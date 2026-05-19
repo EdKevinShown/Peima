@@ -18,6 +18,7 @@ import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
 import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
 import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
 import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
+import P76CanonicalSidecarApplyReviewPage from "../pages/P76CanonicalSidecarApplyReviewPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import OnboardingPhotoPreviewPage from "../pages/OnboardingPhotoPreviewPage";
@@ -279,6 +280,10 @@ export default function AppRoutes() {
       <Route
         path="/admin/p76/canonical-sidecar"
         element={<P76CanonicalSidecarPage />}
+      />
+      <Route
+        path="/admin/p76/canonical-sidecar/:id/apply-review"
+        element={<P76CanonicalSidecarApplyReviewPage />}
       />
       <Route element={<MainAppShell />}>
         <Route path="questionnaire" element={<QuestionnairePage />} />
