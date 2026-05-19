@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   getP76CanonicalSidecarApplyPreview,
   getP76CanonicalSidecarDetail,
+  getP76CanonicalSidecarRollbackSnapshotPreview,
 } from "../api/p76CanonicalSidecarAdmin";
 import LoadingState from "../components/common/LoadingState";
 import {
@@ -17,9 +18,12 @@ import {
   getBlockedReasonLabel,
   getCanApplySummaryLabel,
   getNoWriteSafetyLabel,
+  getRollbackSnapshotDryRunBadge,
   getRollbackTokenDisplay,
   getSafetyFlagRows,
+  getSnapshotReadyLabel,
   isNoWriteSafetyVerified,
+  isRollbackSnapshotApiUnavailable,
   proposedChangeLabel,
 } from "../utils/p76CanonicalApplyReviewLabels.mjs";
 
@@ -273,19 +277,23 @@ export default function P76CanonicalSidecarApplyReviewPage() {
   const { id } = useParams();
   const [detail, setDetail] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
   const [previewError, setPreviewError] = useState("");
+  const [snapshotError, setSnapshotError] = useState("");
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setDetailError("");
     setPreviewError("");
+    setSnapshotError("");
     try {
-      const [detailResult, previewResult] = await Promise.allSettled([
+      const [detailResult, previewResult, snapshotResult] = await Promise.allSettled([
         getP76CanonicalSidecarDetail(id),
         getP76CanonicalSidecarApplyPreview(id),
+        getP76CanonicalSidecarRollbackSnapshotPreview(id),
       ]);
 
       if (detailResult.status === "fulfilled") {
@@ -309,6 +317,17 @@ export default function P76CanonicalSidecarApplyReviewPage() {
             : String(previewResult.reason),
         );
       }
+
+      if (snapshotResult.status === "fulfilled") {
+        setSnapshot(snapshotResult.value);
+      } else {
+        setSnapshot(null);
+        setSnapshotError(
+          snapshotResult.reason instanceof Error
+            ? snapshotResult.reason.message
+            : String(snapshotResult.reason),
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -329,7 +348,14 @@ export default function P76CanonicalSidecarApplyReviewPage() {
   const currentMr = preview?.currentMatchResult;
   const rollback = preview?.rollbackPreview;
   const safety = preview?.safety;
+  const snapshotRollback = snapshot?.rollback;
+  const snapshotSafety = snapshot?.safety;
+  const snapshotBlocked = Array.isArray(snapshot?.blockedReasons)
+    ? snapshot.blockedReasons
+    : [];
+  const snapshotUnavailable = isRollbackSnapshotApiUnavailable(snapshotError);
   const noWriteOk = isNoWriteSafetyVerified(safety);
+  const snapshotNoWriteOk = isNoWriteSafetyVerified(snapshotSafety);
 
   const apiDisabled =
     isApiDisabledError(detailError) || isApiDisabledError(previewError);
@@ -592,34 +618,110 @@ export default function P76CanonicalSidecarApplyReviewPage() {
             )}
           </Section>
 
-          <Section title="F. Rollback preview">
-            {rollback ? (
+          <Section title="F. Rollback snapshot preview (dry-run)">
+            <HeaderRow>
+              <StatusChip label={getRollbackSnapshotDryRunBadge()} tone="muted" />
+              {snapshot ? (
+                <StatusChip
+                  label={getSnapshotReadyLabel(snapshot.snapshotReady === true)}
+                  tone={snapshot.snapshotReady === true ? "ok" : "blocked"}
+                />
+              ) : null}
+            </HeaderRow>
+            {snapshotError ? (
+              <p
+                style={{
+                  margin: "0 0 0.5rem",
+                  fontSize: "0.78rem",
+                  color: snapshotUnavailable ? "#64748b" : "#b45309",
+                }}
+              >
+                {snapshotUnavailable
+                  ? "Rollback snapshot preview unavailable — apply preview above remains authoritative."
+                  : snapshotError}
+              </p>
+            ) : null}
+            {snapshot ? (
               <>
+                {snapshotBlocked.length > 0 ? (
+                  <ul
+                    style={{
+                      margin: "0 0 0.5rem",
+                      paddingLeft: "1.1rem",
+                      fontSize: "0.75rem",
+                      color: "#b45309",
+                    }}
+                  >
+                    {snapshotBlocked.map((r) => (
+                      <li key={r}>{getBlockedReasonLabel(r)}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 <DetailGrid
                   items={[
+                    ["mode", snapshot.mode ?? "dry_run"],
+                    ["sourceVersion", snapshot.sourceVersion ?? "—"],
                     [
-                      "snapshotAvailable",
-                      rollback.snapshotAvailable ? "yes" : "no",
+                      "before.candidateUserId",
+                      snapshot.before?.candidateUserId ?? "—",
                     ],
                     [
-                      "rollbackTokenRequired",
-                      rollback.rollbackTokenRequired ? "yes" : "no",
+                      "before.finalScore",
+                      snapshot.before?.finalScore != null
+                        ? String(snapshot.before.finalScore)
+                        : "—",
+                    ],
+                    [
+                      "proposedAfter.candidateUserId",
+                      snapshot.proposedAfter?.candidateUserId ?? "—",
+                    ],
+                    [
+                      "proposedAfter.finalScore",
+                      snapshot.proposedAfter?.finalScore != null
+                        ? String(snapshot.proposedAfter.finalScore)
+                        : "—",
                     ],
                     [
                       "rollbackTokenPreview",
-                      getRollbackTokenDisplay(rollback.rollbackTokenPreview),
+                      getRollbackTokenDisplay(snapshotRollback?.rollbackTokenPreview),
                     ],
-                    ["rollbackExpiresAt", "—"],
-                    ["rollbackScope", "—"],
+                    [
+                      "rollbackExpiresAt",
+                      formatDt(snapshotRollback?.rollbackExpiresAt),
+                    ],
+                    [
+                      "rollbackScope",
+                      snapshotRollback?.rollbackScope ?? "—",
+                    ],
                   ]}
                 />
-                <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#64748b" }}>
-                  Rollback snapshot preview pending — dry-run snapshot GET not wired in r7i.
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#64748b" }}>
+                  Snapshot safety:{" "}
+                  {snapshotNoWriteOk ? "no-write verified" : "check flags"}
                 </p>
+                <DetailGrid
+                  items={getSafetyFlagRows(snapshotSafety).map(({ key, value, ok }) => [
+                    `snapshot.${key}`,
+                    <span key={key} style={{ color: ok ? "#15803d" : "#b91c1c" }}>
+                      {value === false ? "false ✓" : String(value)}
+                    </span>,
+                  ])}
+                />
               </>
-            ) : (
-              <p style={{ margin: 0, fontSize: "0.78rem" }}>—</p>
-            )}
+            ) : !snapshotError && rollback ? (
+              <DetailGrid
+                items={[
+                  [
+                    "rollbackTokenPreview (apply-preview)",
+                    getRollbackTokenDisplay(rollback.rollbackTokenPreview),
+                  ],
+                ]}
+              />
+            ) : !snapshotError ? (
+              <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>
+                Rollback snapshot preview pending.
+              </p>
+            ) : null}
           </Section>
 
           <Section title="G. No-write safety">

@@ -158,3 +158,20 @@ export async function getP76CanonicalSidecarApplyPreview(id) {
   }
   return p76CanonicalSidecarAdminJson(res);
 }
+
+/**
+ * P7.10-r7j — read-only rollback snapshot dry-run preview (GET only).
+ * @param {string} id
+ */
+export async function getP76CanonicalSidecarRollbackSnapshotPreview(id) {
+  let res;
+  try {
+    res = await fetch(
+      `${baseUrl}/admin/p76/canonical-sidecar/${id}/rollback-snapshot-preview`,
+      { headers: authHeaders() },
+    );
+  } catch {
+    throw new Error("网络异常，请稍后重试。");
+  }
+  return p76CanonicalSidecarAdminJson(res);
+}

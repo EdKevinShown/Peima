@@ -45,6 +45,12 @@ const BLOCKED_REASON_LABELS = {
   percent_rollout_active: "Percent rollout active",
   worker_deploy_active: "Worker deploy active",
   production_write_blocked: "Production write blocked",
+  missing_current_match_result: "MatchResult missing (snapshot)",
+  preview_not_ready: "Apply preview not ready",
+};
+
+const SNAPSHOT_BLOCKED_REASON_LABELS = {
+  ...BLOCKED_REASON_LABELS,
 };
 
 const SAFETY_KEYS = [
@@ -61,7 +67,42 @@ const SAFETY_KEYS = [
  */
 export function getBlockedReasonLabel(reason) {
   if (reason == null || reason === "") return "—";
-  return BLOCKED_REASON_LABELS[reason] ?? String(reason);
+  return SNAPSHOT_BLOCKED_REASON_LABELS[reason] ?? String(reason);
+}
+
+/**
+ * @param {boolean | undefined} snapshotReady
+ */
+export function getSnapshotReadyLabel(snapshotReady) {
+  if (snapshotReady === true) return "Snapshot ready (dry-run)";
+  if (snapshotReady === false) return "Snapshot blocked (dry-run)";
+  return "Snapshot unavailable";
+}
+
+/**
+ * Dry-run badge for rollback snapshot preview (r7j).
+ */
+export function getRollbackSnapshotDryRunBadge() {
+  return "Dry-run snapshot";
+}
+
+/**
+ * @param {string | null | undefined} message
+ */
+export function isRollbackSnapshotApiUnavailable(message) {
+  const m = (message || "").toLowerCase();
+  if (!m) return false;
+  return (
+    m.includes("401") ||
+    m.includes("403") ||
+    m.includes("404") ||
+    m.includes("无权限") ||
+    m.includes("登录已失效") ||
+    m.includes("功能未启用") ||
+    m.includes("记录不存在") ||
+    m.includes("unavailable") ||
+    m.includes("网络异常")
+  );
 }
 
 /**

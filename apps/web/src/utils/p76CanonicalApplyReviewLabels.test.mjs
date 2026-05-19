@@ -11,8 +11,11 @@ import {
   getBlockedReasonLabel,
   getCanApplySummaryLabel,
   getNoWriteSafetyLabel,
+  getRollbackSnapshotDryRunBadge,
   getRollbackTokenDisplay,
+  getSnapshotReadyLabel,
   isAllowedActionLabel,
+  isRollbackSnapshotApiUnavailable,
   isForbiddenActionLabel,
   isForbiddenUiCopy,
   isNoWriteSafetyVerified,
@@ -56,6 +59,23 @@ test("rollback token always redacted", () => {
   assert.equal(getRollbackTokenDisplay(null), "redacted");
 });
 
+test("rollback snapshot ready shows dry-run badge", () => {
+  assert.equal(getRollbackSnapshotDryRunBadge(), "Dry-run snapshot");
+  assert.equal(getSnapshotReadyLabel(true), "Snapshot ready (dry-run)");
+  assert.equal(getSnapshotReadyLabel(false), "Snapshot blocked (dry-run)");
+});
+
+test("snapshot blockedReasons labels", () => {
+  assert.equal(getBlockedReasonLabel("missing_current_match_result"), "MatchResult missing (snapshot)");
+  assert.equal(getBlockedReasonLabel("preview_not_ready"), "Apply preview not ready");
+});
+
+test("rollback snapshot API unavailable detection", () => {
+  assert.equal(isRollbackSnapshotApiUnavailable("无权限访问"), true);
+  assert.equal(isRollbackSnapshotApiUnavailable("登录已失效"), true);
+  assert.equal(isRollbackSnapshotApiUnavailable(""), false);
+});
+
 test("gate blocker labels", () => {
   assert.equal(getBlockedReasonLabel("gate12_not_final"), "Blocked by Gate 12");
   assert.equal(getBlockedReasonLabel("grafana_blocked"), "Grafana pending");
@@ -86,5 +106,7 @@ test("apply review page does not render Apply / Rollback / Promote buttons", () 
   assert.doesNotMatch(source, /\bPOST\b.*apply/i);
   assert.doesNotMatch(source, /method:\s*["']POST["']/i);
   assert.match(source, /getP76CanonicalSidecarApplyPreview/);
+  assert.match(source, /getP76CanonicalSidecarRollbackSnapshotPreview/);
   assert.match(source, /Preview only/i);
+  assert.match(source, /getRollbackSnapshotDryRunBadge/);
 });
