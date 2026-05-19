@@ -1,0 +1,4 @@
+PENDING_PHYSICAL_IMPORT
+# Record staging Grafana dashboard URL after Ops import (no secrets).
+# Expected UID: p76-allowlist-read-path-v2
+# Example format: https://<grafana-host>/d/p76-allowlist-read-path-v2
