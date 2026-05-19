@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-05-19T14:00:00.000Z",
+  "generatedAt": "2026-05-19T16:00:00.000Z",
   "task": "P7.6-r9e3f2",
   "environment": "production-like-staging",
   "customerProduction": false,
   "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
+  "decision": "NEED_GRAFANA_IMPORT",
   "accessCheck": {
     "grafanaApiUrlPresent": false,
     "grafanaApiTokenPresent": false,
@@ -18,6 +19,7 @@
     "titleExpected": "P7.6 Allowlist Read Path — Production",
     "urlRedacted": null,
     "datasourceConnected": null,
+    "datasourceTarget": "peima-api-staging (Render logs)",
     "panelsLoaded": null,
     "queryErrorsObserved": null
   },
@@ -27,24 +29,34 @@
     "p0Routing": "artifacts/p76/r9c1/p0-alert-routing.md",
     "specReady": true
   },
+  "monitoringOwner": {
+    "primary": "Peima Ops (observability)",
+    "backup": "Peima API Eng (matching)",
+    "confirmed": true
+  },
   "priorSlice": {
+    "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
     "r9e3f1Status": "NEED_GRAFANA_IMPORT",
     "r9e3fWatchCompleted": true,
-    "r9e3fWatchDurationMinutes": 25
+    "r9e3fWatchDurationMinutes": 25,
+    "r9e3fP0CountersAllZero": true
   },
   "conclusion": {
-    "status": "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS",
+    "status": "NEED_GRAFANA_IMPORT",
+    "gateToken": "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS",
     "blockers": [
       "no_grafana_api_url_in_workspace",
       "no_grafana_api_token_in_workspace",
-      "grafana_dashboard_url_still_pending_physical_import"
+      "grafana_dashboard_url_still_pending_physical_import",
+      "physical_dashboard_import_not_verified"
     ],
-    "nextStep": "Ops: import dashboard in Grafana UI; record redacted URL; wire alerts; rerun r9e3f2 with credentialed session or paste evidence into artifacts"
+    "nextStep": "Ops: import dashboard in Grafana UI; record redacted URL in grafana-dashboard-url.txt; wire P0 alerts; fire test alert; update artifacts and closeout"
   },
   "redaction": {
     "noApiKeysRecorded": true,
     "noDatasourcePasswordsRecorded": true,
-    "noTokensRecorded": true
+    "noTokensRecorded": true,
+    "noDatabaseUrlRecorded": true
   },
   "mutationSafety": {
     "percentEnabled": false,
@@ -52,6 +64,7 @@
     "matchResultWrite": false,
     "workerMutation": false,
     "adminApplyExecuted": false,
+    "canonicalPromotion": false,
     "productionRollout": false
   }
 }

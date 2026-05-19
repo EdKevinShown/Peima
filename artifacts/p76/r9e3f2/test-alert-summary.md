@@ -1,32 +1,12 @@
 # P7.6-r9e3f2 — Test Alert Summary
 
-- **status:** `P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS`
-- **test alert executed:** **no**
+- **decision:** `NEED_GRAFANA_IMPORT` (import blocked — test alert not attempted)
+- **test alert fired:** **no**
+- **alert rule ID:** pending
+- **fired at (UTC):** pending
+- **route:** PagerDuty `peima-p76-read-path` → `#peima-incident` (spec only — not verified)
+- **production incident:** **no**
+- **detail:** [p0-test-alert-result.md](./p0-test-alert-result.md)
+- **machine-readable:** [test-alert-summary.json](./test-alert-summary.json)
 
-## P0 rules (expected — not wired in this run)
-
-| ruleId | Counter | Wired | Test |
-|--------|---------|-------|------|
-| P0-01 | finalScoreChangedCount | — | — |
-| P0-02 | matchResultCandidateChangedCount | — | — |
-| P0-03 | workerMutationUnexpectedCount | — | — |
-| P0-04 | nonAllowlistSidecarDisplayCount | — | — |
-| P0-05 | rolledBackSidecarDisplayCount | — | — |
-| P0-06 | violationSidecarDisplayCount | — | — |
-| P0-07 | percentEnabledWithoutSignoffCount | — | — |
-| P0-08 | readPathEnabledAfterRollbackCount | — | — |
-
-## Test alert
-
-| Field | Result |
-|-------|--------|
-| Fired | **no** |
-| Marked as test | — |
-| Alert rule ID | — |
-| Fired at (UTC) | — |
-| Route (spec) | PagerDuty → `#peima-incident` |
-| Production incident | **no** |
-
-## Ops action
-
-Import dashboard first, then Grafana **Test rule** / contact point test notification. Record rule ID + UTC timestamp in a credentialed rerun (no API keys in artifacts).
+**若** dashboard 已 import 但无 test alert：下一轮应为 `NEED_TEST_ALERT_EVIDENCE`（本轮未达到 import PASS）。

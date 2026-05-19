@@ -1,27 +1,30 @@
 {
-  "generatedAt": "2026-05-19T14:00:00.000Z",
+  "generatedAt": "2026-05-19T16:00:00.000Z",
   "task": "P7.6-r9e3f2",
   "environment": "production-like-staging",
+  "decision": "NEED_GRAFANA_IMPORT",
   "accessCheck": {
     "grafanaAlertingReachable": false,
-    "reason": "blocked_by_missing_grafana_access"
+    "reason": "blocked_at_import_no_grafana_access"
   },
   "p0Rules": {
-    "P0-01_finalScoreChangedCount": { "exists": null, "testExecuted": false },
-    "P0-02_matchResultCandidateChangedCount": { "exists": null, "testExecuted": false },
-    "P0-03_workerMutationUnexpectedCount": { "exists": null, "testExecuted": false },
-    "P0-04_nonAllowlistSidecarDisplayCount": { "exists": null, "testExecuted": false },
-    "P0-05_rolledBackSidecarDisplayCount": { "exists": null, "testExecuted": false },
-    "P0-06_violationSidecarDisplayCount": { "exists": null, "testExecuted": false },
-    "P0-07_percentEnabledWithoutSignoffCount": { "exists": null, "testExecuted": false },
-    "P0-08_readPathEnabledAfterRollbackCount": { "exists": null, "testExecuted": false }
+    "P0-01_finalScoreChangedCount": { "exists": false, "testExecuted": false },
+    "P0-02_matchResultCandidateChangedCount": { "exists": false, "testExecuted": false },
+    "P0-03_workerMutationUnexpectedCount": { "exists": false, "testExecuted": false },
+    "P0-04_nonAllowlistSidecarDisplayCount": { "exists": false, "testExecuted": false },
+    "P0-05_rolledBackSidecarDisplayCount": { "exists": false, "testExecuted": false },
+    "P0-06_violationSidecarDisplayCount": { "exists": false, "testExecuted": false },
+    "P0-07_percentEnabledWithoutSignoffCount": { "exists": false, "testExecuted": false },
+    "P0-08_readPathEnabledAfterRollbackCount": { "exists": false, "testExecuted": false }
   },
   "p1Rules": {
-    "P1-01_exceptionFallbackSpike": { "exists": null, "testExecuted": false },
-    "P1-02_fallbackLegacyAbnormal": { "exists": null, "testExecuted": false },
-    "P1-03_sidecarReadSuccessDrop": { "exists": null, "testExecuted": false },
-    "P1-04_userReportThreshold": { "exists": null, "testExecuted": false },
-    "P1-05_monitoringDataGap": { "exists": null, "testExecuted": false }
+    "P1-01_exceptionFallbackSpike": { "exists": false, "testExecuted": false },
+    "P1-02_fallbackLegacyAbnormal": { "exists": false, "testExecuted": false },
+    "P1-03_sidecarReadSuccessDrop": { "exists": false, "testExecuted": false },
+    "P1-04_userReportThreshold": { "exists": false, "testExecuted": false },
+    "P1-05_monitoringDataGap": { "exists": false, "testExecuted": false },
+    "P1-external_api5xxSpike": { "exists": false, "testExecuted": false },
+    "P1-admin_regression": { "exists": false, "testExecuted": false }
   },
   "testAlert": {
     "executed": false,
@@ -34,7 +37,9 @@
     "productionIncidentTriggered": false
   },
   "conclusion": {
-    "status": "P7_6_R9E3F2_BLOCKED_BY_MISSING_GRAFANA_ACCESS",
-    "alternateIfImportOnly": "P7_6_R9E3F2_GRAFANA_IMPORT_PASS_TEST_ALERT_PENDING"
+    "status": "NEED_GRAFANA_IMPORT",
+    "alternateIfImportOnlyLater": "NEED_TEST_ALERT_EVIDENCE",
+    "passToken": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+    "passTokenIssued": false
   }
 }
