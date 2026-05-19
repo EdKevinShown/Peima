@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-18T23:41:50.004Z",
+  "generatedAt": "2026-05-19T00:09:02.932Z",
   "sourceType": "p76_canonical_match_result_sidecar_writer_smoke",
   "sourceVersion": "p7.10-r3f3-canonical-sidecar-writer-smoke-v1",
-  "auditRunId": "r3f3-local-insert-smoke-001",
+  "auditRunId": "p77-r4-4-admin-sidecar-ui-smoke-001",
   "environment": "dev",
   "mode": "insert_only",
   "attemptedCount": 3,
@@ -18,9 +18,9 @@
     "promotionStatusNotPromotedCount": 2
   },
   "cleanup": {
-    "requested": true,
-    "deletedCount": 2,
-    "finalRowsForAuditRunId": 0
+    "requested": false,
+    "deletedCount": 0,
+    "finalRowsForAuditRunId": 2
   },
   "safety": {
     "matchResultTouched": false,

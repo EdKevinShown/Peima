@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "p7.7-r4.4-admin-sidecar-ui-smoke-v1",
+  "generatedAt": "2026-05-19T00:13:23.419Z",
+  "auditRunId": "p77-r4-4-admin-sidecar-ui-smoke-001",
+  "seed": {
+    "insertedCount": 2,
+    "duplicateCount": 2,
+    "skippedCount": 1,
+    "appliedToMatchResultTrueCount": 0,
+    "appliedToFinalScoreTrueCount": 0,
+    "appliedToWorkerRankingTrueCount": 0,
+    "cleanupRequested": false,
+    "finalRowsBeforeCleanup": 2
+  },
+  "apiSmoke": {
+    "listPass": true,
+    "listHttpStatus": 200,
+    "aggregatePass": true,
+    "aggregateHttpStatus": 200,
+    "detailPass": true,
+    "detailHttpStatus": 200,
+    "featureEnabled": true,
+    "totalVisible": 2,
+    "itemsLength": 2,
+    "violationCounts": {
+      "appliedToMatchResultViolationCount": 0,
+      "appliedToFinalScoreViolationCount": 0,
+      "appliedToWorkerRankingViolationCount": 0
+    },
+    "rollbackTokenPresentIsBoolean": true,
+    "readByGetPath": false,
+    "readByWorker": false,
+    "rawRollbackTokenLeaked": false
+  },
+  "uiSmoke": {
+    "pageOpenPass": true,
+    "bannerPass": true,
+    "filterPass": true,
+    "tablePass": false,
+    "detailDrawerPass": false,
+    "exportPass": false,
+    "noWriteControlsPass": true,
+    "manualBrowserCheckDeferred": true,
+    "staticVerificationPass": true,
+    "route": "/admin/p76/canonical-sidecar",
+    "notes": [
+      "Page shell + safety banner bullets + filters rendered in browser (localhost:5173).",
+      "Table rows / detail drawer / export not exercised in-browser: admin JWT localStorage is origin-scoped (bridge on :5199 does not carry to :5173).",
+      "Data path validated via Admin API HTTP smoke with admin JWT (PEIMA_ADMIN_USER_IDS[0]); no JWT logged."
+    ]
+  },
+  "cleanup": {
+    "cleanupDeletedCount": 2,
+    "finalRowsForAuditRunId": 0
+  },
+  "safety": {
+    "matchResultTouched": false,
+    "matchInsightsTouched": false,
+    "workerTouched": false,
+    "getMatchingResultTouched": false,
+    "productionTouched": false
+  },
+  "status": "P7_7_R4_4_LOCAL_ADMIN_SIDECAR_UI_SMOKE_PARTIAL_API_AND_BUILD_COMPLETE",
+  "buildBaseline": {
+    "apiBuild": "pass",
+    "webBuild": "pass",
+    "apiTestP77R41": "pass",
+    "webTest": "pass"
+  },
+  "sideEffects": [
+    "r3f3 runner re-wrote artifacts/p76/r3f3/canonical-sidecar-writer-smoke-summary.json for this auditRunId (seed step only)."
+  ]
+}
