@@ -924,3 +924,53 @@ model P76CanonicalMatchResultMeta {
   @@index([environment, createdAt])
   @@map("p76_canonical_match_result_meta")
 }
+
+/// P7.10-r8c: canonical apply rollback snapshot persistence (dev/staging; no MatchResult mutation from this table).
+model P76CanonicalApplyRollbackSnapshot {
+  id                             String   @id @default(cuid())
+  snapshotId                     String   @unique
+  sidecarId                      String
+  matchResultId                  String
+  viewerUserId                   String
+
+  beforeCandidateUserId          String
+  beforeFinalScore               Float
+  beforeReasonSummary            String?
+  beforeMatchInsightsChecksum    String?
+  beforeMatchInsightsSummaryJson Json?
+  beforeUpdatedAt                DateTime?
+  baselineFingerprint            String
+
+  proposedCandidateUserId        String
+  proposedFinalScore             Float
+  proposedReasonSummary          String?
+  proposedSourceVersion          String?
+
+  rollbackTokenHash              String?
+  rollbackExpiresAt              DateTime?
+  rollbackUsedAt                 DateTime?
+  rolledBack                     Boolean  @default(false)
+  rolledBackAt                   DateTime?
+  rollbackReason                 String?
+
+  applyAuditRunId                String?
+  appliedBy                      String?
+  approvedByPm                   String?
+  approvedByOps                  String?
+  approvedByEngineering          String?
+  promotionStatus                String   @default("snapshot_created")
+
+  sourceType                     String
+  sourceVersion                  String
+  environment                    String
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+
+  @@index([sidecarId])
+  @@index([matchResultId])
+  @@index([viewerUserId])
+  @@index([rollbackExpiresAt])
+  @@index([rolledBack])
+  @@index([promotionStatus])
+  @@map("p76_canonical_apply_rollback_snapshot")
+}
