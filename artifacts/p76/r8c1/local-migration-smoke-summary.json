@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-05-19T18:45:42.128Z",
+  "decision": "PASS_R8C1_LOCAL_MIGRATION_AND_SNAPSHOT_PERSISTENCE_SMOKE",
+  "migration": {
+    "tableExists": true,
+    "indexNames": [
+      "p76_canonical_apply_rollback_snapshot_pkey",
+      "p76_canonical_apply_rollback_snapshot_snapshotId_key",
+      "p76_canonical_apply_rollback_snapshot_sidecarId_idx",
+      "p76_canonical_apply_rollback_snapshot_matchResultId_idx",
+      "p76_canonical_apply_rollback_snapshot_viewerUserId_idx",
+      "p76_canonical_apply_rollback_snapshot_rollbackExpiresAt_idx",
+      "p76_canonical_apply_rollback_snapshot_rolledBack_idx",
+      "p76_canonical_apply_rollback_snapshot_promotionStatus_idx"
+    ],
+    "migrationApplied": true,
+    "matchResultColumnCount": 0
+  },
+  "databaseUrlRedacted": "postgresql://localhost:5432/peima"
+}
