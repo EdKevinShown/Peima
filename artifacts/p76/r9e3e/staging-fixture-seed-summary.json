@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-05-19T01:33:42.403Z",
+  "task": "P7.6-r9e3e",
+  "environment": "staging",
+  "status": "FIXTURE_SEED_PASS",
+  "fixtureTag": "p7.6-r9e3e-staging-fixture-get-smoke",
+  "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+  "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+  "caseCount": 6,
+  "allowlistActiveCount": 4,
+  "rolledBackCount": 1,
+  "nonAllowlistCount": 1,
+  "matchBatchId": "cmpbylu5m00066z38knip29ye",
+  "seedActions": [
+    {
+      "caseLabel": "case_allowlist_active_1",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "upsert_allowlist_active",
+      "finalScore": 0.75
+    },
+    {
+      "caseLabel": "case_allowlist_active_2",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "upsert_allowlist_active",
+      "finalScore": 0.75
+    },
+    {
+      "caseLabel": "case_allowlist_active_3",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "upsert_allowlist_active",
+      "finalScore": 0.75
+    },
+    {
+      "caseLabel": "case_allowlist_active_4",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "upsert_allowlist_active",
+      "finalScore": 0.75
+    },
+    {
+      "caseLabel": "case_rolled_back",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "upsert_allowlist_rolled_back",
+      "finalScore": 0.75
+    },
+    {
+      "caseLabel": "case_non_allowlist",
+      "matchResultAction": "created_match_result",
+      "allowlistAction": "no_allowlist_row",
+      "finalScore": 0.75
+    }
+  ],
+  "cases": [
+    {
+      "caseLabel": "case_allowlist_active_1",
+      "caseType": "allowlist_active",
+      "matchResultSeeded": true,
+      "allowlistSeeded": true,
+      "expectedDisplaySource": "p76_allowlist_sidecar_readonly"
+    },
+    {
+      "caseLabel": "case_allowlist_active_2",
+      "caseType": "allowlist_active",
+      "matchResultSeeded": true,
+      "allowlistSeeded": true,
+      "expectedDisplaySource": "p76_allowlist_sidecar_readonly"
+    },
+    {
+      "caseLabel": "case_allowlist_active_3",
+      "caseType": "allowlist_active",
+      "matchResultSeeded": true,
+      "allowlistSeeded": true,
+      "expectedDisplaySource": "p76_allowlist_sidecar_readonly"
+    },
+    {
+      "caseLabel": "case_allowlist_active_4",
+      "caseType": "allowlist_active",
+      "matchResultSeeded": true,
+      "allowlistSeeded": true,
+      "expectedDisplaySource": "p76_allowlist_sidecar_readonly"
+    },
+    {
+      "caseLabel": "case_rolled_back",
+      "caseType": "rolled_back",
+      "matchResultSeeded": true,
+      "allowlistSeeded": true,
+      "expectedDisplaySource": "baseline_fallback"
+    },
+    {
+      "caseLabel": "case_non_allowlist",
+      "caseType": "non_allowlist",
+      "matchResultSeeded": true,
+      "allowlistSeeded": false,
+      "expectedDisplaySource": "baseline_fallback"
+    }
+  ],
+  "manifestPath": "tmp/p76-r9e3e-fixture-manifest.json",
+  "renderEnvViewerIdCount": 5
+}

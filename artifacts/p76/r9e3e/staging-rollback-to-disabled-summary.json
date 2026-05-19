@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-05-19T09:04:36.614Z",
+  "task": "P7.6-r9e3e",
+  "check": "read_path_disabled_no_sidecar_overlay",
+  "pass": true,
+  "notes": "After Render READ_PATH_ENABLED=0, no case returned p76_allowlist_sidecar_readonly",
+  "caseOutcomes": [
+    {
+      "caseLabel": "case_allowlist_active_1",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    },
+    {
+      "caseLabel": "case_allowlist_active_2",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    },
+    {
+      "caseLabel": "case_allowlist_active_3",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    },
+    {
+      "caseLabel": "case_allowlist_active_4",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    },
+    {
+      "caseLabel": "case_rolled_back",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    },
+    {
+      "caseLabel": "case_non_allowlist",
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "env_disabled"
+    }
+  ]
+}
