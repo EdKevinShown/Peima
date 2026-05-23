@@ -1,10 +1,11 @@
 import type { RrmScenarioKeyV1 } from "./ai-simulation-v1-rrm.constants";
 import { RRM_SCENARIO_KEYS_ORDERED } from "./ai-simulation-v1-rrm.constants";
 import { AI_SIMULATION_RRM_SOURCE_VERSION } from "./ai-simulation-v1-rrm.constants";
+import { RRM_SIM_SOURCE_VERSION } from "../rrm-shared";
 
 export const RRM_SIM_RESULT_SCHEMA_VERSION = 1 as const;
 
-export const RRM_SIM_SOURCE_VERSION = "rrm-sim-v1" as const;
+export { RRM_SIM_SOURCE_VERSION };
 
 /** Mirrors the simulation payload this evaluator is designed for. */
 export const RRM_SIM_SOURCE_SIMULATION_VERSION = AI_SIMULATION_RRM_SOURCE_VERSION;

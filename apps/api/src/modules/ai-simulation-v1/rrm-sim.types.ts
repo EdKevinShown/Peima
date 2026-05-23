@@ -4,6 +4,7 @@ import type {
   RrmSimProgressionWindow,
   RrmSimSuggestedAction,
 } from "./rrm-sim.constants";
+import { RRM_SOURCE_VERSION_SIM } from "../rrm-shared";
 
 export type RrmSimScenarioScoreRow = {
   scenario: RrmScenarioKeyV1;
@@ -47,7 +48,7 @@ export type RrmSimEvidenceBlock = {
 /** M1-Full — read-time `rrmSimResult`; not persisted on item rows in this phase. */
 export type RrmSimResult = {
   schemaVersion: 1;
-  sourceVersion: "rrm-sim-v1";
+  sourceVersion: typeof RRM_SOURCE_VERSION_SIM;
   sourceSimulationVersion: string;
   fallbackUsed: boolean;
   rrmUnavailableReason: string | null;

@@ -1,7 +1,9 @@
 import type { RrmSimMultiCandidateDiagnostic } from "./ai-simulation-v1-rrm-multi-candidate-diagnostic";
 
 /** M4.0 read-only: hypothetical RRM-only ordering for admin/diagnostic review only. */
-export const RRM_RANKING_PROPOSAL_SOURCE_VERSION = "m4.0-readonly-rrm-ranking-proposal-v1" as const;
+import { RRM_SOURCE_VERSION_RANKING_PROPOSAL } from "../rrm-shared";
+
+export const RRM_RANKING_PROPOSAL_SOURCE_VERSION = RRM_SOURCE_VERSION_RANKING_PROPOSAL;
 
 export type RrmRankingProposalRecommendation =
   | "do_not_use_for_ranking"
