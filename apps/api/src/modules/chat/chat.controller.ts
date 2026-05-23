@@ -12,6 +12,7 @@ import type { ProfileUpdateSuggestion } from "@peima/database";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { RrmObservedReadonlyService } from "../rrm-observed";
+import { RrmTimelineReadonlyService } from "../rrm-timeline";
 import { RrmAssistantReadonlyService } from "../rrm-assistant/rrm-assistant-readonly.service";
 import { RrmAssistantDraftAssessmentDto } from "./dto/rrm-assistant-draft-assessment.dto";
 import { ChatService } from "./chat.service";
@@ -29,6 +30,7 @@ export class ChatController {
     private readonly chatService: ChatService,
     private readonly rrmObservedReadonlyService: RrmObservedReadonlyService,
     private readonly rrmAssistantReadonlyService: RrmAssistantReadonlyService,
+    private readonly rrmTimelineReadonlyService: RrmTimelineReadonlyService,
     private readonly conversationProfileCompletionService: ConversationProfileCompletionService,
   ) {}
 
@@ -106,6 +108,22 @@ export class ChatController {
       conversationId,
       tokenUserId,
       dto.draft,
+    );
+  }
+
+  /** M5.1-r9 — readonly timeline trend + advancement-window rhythm bands; no MatchResult writes. */
+  @Get("conversations/:conversationId/rrm-timeline-summary")
+  getRrmTimelineSummary(
+    @Param("conversationId") conversationId: string,
+    @Req() req: JwtReq,
+  ) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.rrmTimelineReadonlyService.getReadonlySummaryForConversation(
+      conversationId,
+      tokenUserId,
     );
   }
 
