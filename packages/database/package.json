@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./matching-observability": {
+      "types": "./dist/matching-observability/index.d.ts",
+      "default": "./dist/matching-observability/index.js"
     }
   },
   "scripts": {
