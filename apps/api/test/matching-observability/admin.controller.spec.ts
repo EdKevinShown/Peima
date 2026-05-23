@@ -4,15 +4,15 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { AdminController } from "../src/modules/admin/admin.controller";
-import { AdminService } from "../src/modules/admin/admin.service";
-import { PrescreenV0Service } from "../src/modules/prescreen-v0/prescreen-v0.service";
-import { PostPoolDeepScreenOrchestratorService } from "../src/modules/post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
-import { AiSimulationV1Service } from "../src/modules/ai-simulation-v1/ai-simulation-v1.service";
-import { MatchingObservabilitySummaryService } from "../src/modules/admin/matching-observability-summary.service";
-import { RrmObservationSummaryService } from "../src/modules/admin/rrm-observation-summary.service";
+import { AdminController } from "../../src/modules/admin/admin.controller";
+import { AdminService } from "../../src/modules/admin/admin.service";
+import { PrescreenV0Service } from "../../src/modules/prescreen-v0/prescreen-v0.service";
+import { PostPoolDeepScreenOrchestratorService } from "../../src/modules/post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
+import { AiSimulationV1Service } from "../../src/modules/ai-simulation-v1/ai-simulation-v1.service";
+import { MatchingObservabilitySummaryService } from "../../src/modules/admin/matching-observability-summary.service";
+import { RrmObservationSummaryService } from "../../src/modules/admin/rrm-observation-summary.service";
 
-describe("AdminController matchingObservabilitySummary", () => {
+describe("AdminController · matchingObservabilitySummary", () => {
   function createModule(summaryImpl?: { getSummary: jest.Mock }) {
     return Test.createTestingModule({
       controllers: [AdminController],
