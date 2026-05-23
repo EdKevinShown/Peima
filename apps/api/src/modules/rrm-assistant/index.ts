@@ -13,6 +13,11 @@ export {
 } from "./rrm-assistant-draft.detector";
 
 export { buildRrmAssistantDraftAssessment } from "./rrm-assistant-draft.assessment";
+export { computeRrmAssistantActionFit } from "./rrm-assistant-action-fit";
+export type {
+  RrmAssistantActionFitV1,
+  RrmAssistantSimContextHint,
+} from "./rrm-assistant-action-fit";
 
 export type {
   BuildRrmAssistantDraftAssessmentInput,

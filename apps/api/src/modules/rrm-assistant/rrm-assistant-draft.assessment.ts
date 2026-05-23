@@ -1,6 +1,7 @@
 import { RRM_ADAPTER_LAYER, RRM_SIGNAL_SUMMARY_SCHEMA_VERSION, RRM_SOURCE_VERSION_ASSISTANT } from "../rrm-shared";
 import type { RrmObservedSuggestedAction } from "../rrm-observed";
 import { RRM_ASSISTANT_DRAFT_SCHEMA_VERSION } from "./rrm-assistant-draft.constants";
+import { computeRrmAssistantActionFit } from "./rrm-assistant-action-fit";
 import { detectRrmAssistantDraft } from "./rrm-assistant-draft.detector";
 import type {
   BuildRrmAssistantDraftAssessmentInput,
@@ -59,20 +60,30 @@ export function buildRrmAssistantDraftAssessment(
   }
 
   if (detection.advancementDetected) {
+    const observed =
+      input.observedSummary && !input.observedSummary.insufficientData
+        ? input.observedSummary
+        : null;
+    const actionFit = computeRrmAssistantActionFit({
+      draft: draft.trim(),
+      detection,
+      observedSummary: observed,
+      simHint: input.simHint ?? null,
+    });
     return {
       schemaVersion: RRM_ASSISTANT_DRAFT_SCHEMA_VERSION,
       sourceVersion: RRM_SOURCE_VERSION_ASSISTANT,
       layer: RRM_ADAPTER_LAYER.ADAPTER,
-      mode: "signal_summary_only",
+      mode: "core_formula_output",
       fallbackUsed: false,
       insufficientData: false,
       unavailableReason: null,
       generatedAt,
       draftLength: draft.trim().length,
       detection,
-      toneAdvice: null,
-      suggestedAction: null,
-      actionFit: null,
+      toneAdvice: actionFit.toneAdvice,
+      suggestedAction: actionFit.suggestedAction,
+      actionFit,
     };
   }
 

@@ -12,6 +12,8 @@ import type { ProfileUpdateSuggestion } from "@peima/database";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { RrmObservedReadonlyService } from "../rrm-observed";
+import { RrmAssistantReadonlyService } from "../rrm-assistant/rrm-assistant-readonly.service";
+import { RrmAssistantDraftAssessmentDto } from "./dto/rrm-assistant-draft-assessment.dto";
 import { ChatService } from "./chat.service";
 import { ConversationProfileCompletionService } from "./conversation-profile-completion.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -26,6 +28,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly rrmObservedReadonlyService: RrmObservedReadonlyService,
+    private readonly rrmAssistantReadonlyService: RrmAssistantReadonlyService,
     private readonly conversationProfileCompletionService: ConversationProfileCompletionService,
   ) {}
 
@@ -85,6 +88,24 @@ export class ChatController {
     return this.rrmObservedReadonlyService.getReadonlySummaryForConversation(
       conversationId,
       tokenUserId,
+    );
+  }
+
+  /** M5.1-r8 — draft ActionFit (readonly); does not write MatchResult or send messages. */
+  @Post("conversations/:conversationId/rrm-assistant-draft-assessment")
+  assessRrmAssistantDraft(
+    @Param("conversationId") conversationId: string,
+    @Body() dto: RrmAssistantDraftAssessmentDto,
+    @Req() req: JwtReq,
+  ) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.rrmAssistantReadonlyService.assessDraftForConversation(
+      conversationId,
+      tokenUserId,
+      dto.draft,
     );
   }
 

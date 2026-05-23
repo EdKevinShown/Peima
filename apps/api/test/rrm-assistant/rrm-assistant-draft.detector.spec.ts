@@ -41,12 +41,13 @@ describe("rrm-assistant draft detector (M5.1-r7)", () => {
     expect(out.sourceVersion).toBe("rrm-assistant-v1");
   });
 
-  it("omits tone path when advancement detected (ActionFit in r8)", () => {
+  it("computes ActionFit when advancement detected (M5.1-r8)", () => {
     const out = buildRrmAssistantDraftAssessment({
       draft: "周末见面聊聊？",
     });
     expect(out.detection.advancementDetected).toBe(true);
-    expect(out.toneAdvice).toBeNull();
-    expect(out.actionFit).toBeNull();
+    expect(out.mode).toBe("core_formula_output");
+    expect(out.actionFit).not.toBeNull();
+    expect(out.toneAdvice).toBeTruthy();
   });
 });

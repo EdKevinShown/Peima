@@ -1,6 +1,7 @@
 ﻿import { Module } from "@nestjs/common";
 import { ProfileSuggestionModule } from "../profile-suggestion/profile-suggestion.module";
 import { RrmObservedReadonlyService } from "../rrm-observed";
+import { RrmAssistantReadonlyService } from "../rrm-assistant/rrm-assistant-readonly.service";
 import { ChatController } from "./chat.controller";
 import { ChatTimelineController } from "./chat-timeline.controller";
 import { ChatService } from "./chat.service";
@@ -16,6 +17,7 @@ import { ConversationProfileCompletionService } from "./conversation-profile-com
   providers: [
     ChatService,
     RrmObservedReadonlyService,
+    RrmAssistantReadonlyService,
     ChatSummaryRepository,
     ChatSummaryService,
     ConversationProfileCompletionAiConfigService,
