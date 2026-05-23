@@ -8,11 +8,17 @@ import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
 import { MatchingObservabilitySummaryService } from "./matching-observability-summary.service";
 import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
+import { RrmEvalCollectorService } from "../rrm-eval";
 
 @Module({
   imports: [PrescreenV0Module, PostPoolDeepScreenModule, AiSimulationV1Module, AiPairwiseDecisionModule],
   controllers: [AdminController, AiPairwiseDecisionAdminController],
-  providers: [AdminService, RrmObservationSummaryService, MatchingObservabilitySummaryService],
+  providers: [
+    AdminService,
+    RrmObservationSummaryService,
+    MatchingObservabilitySummaryService,
+    RrmEvalCollectorService,
+  ],
   exports: [AdminService],
 })
 export class AdminModule {}

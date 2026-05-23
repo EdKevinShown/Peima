@@ -22,6 +22,7 @@ import { PrescreenV0Service } from "../prescreen-v0/prescreen-v0.service";
 import { AdminService } from "./admin.service";
 import { MatchingObservabilitySummaryService } from "./matching-observability-summary.service";
 import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
+import { RrmEvalCollectorService } from "../rrm-eval";
 import { AdminPostPoolOrchestrationMvpDto } from "./dto/admin-post-pool-orchestration-mvp.dto";
 import { AdminPostPoolDeepScreenShadowDto } from "./dto/admin-post-pool-deep-screen-shadow.dto";
 import { AdminPrescreenV0BatchDebugDto } from "./dto/admin-prescreen-v0-batch-debug.dto";
@@ -40,6 +41,7 @@ export class AdminController {
     private readonly aiSimulationV1Service: AiSimulationV1Service,
     private readonly rrmObservationSummaryService: RrmObservationSummaryService,
     private readonly matchingObservabilitySummaryService: MatchingObservabilitySummaryService,
+    private readonly rrmEvalCollectorService: RrmEvalCollectorService,
   ) {}
 
   @Get("capabilities")
@@ -247,6 +249,28 @@ export class AdminController {
       throw new InternalServerErrorException(
         "failed_to_build_rrm_observation_summary",
       );
+    }
+  }
+
+  /** M5.1-r11 — de-identified RRM-Eval cohort aggregates (no RFI per user; no MatchResult writes). */
+  @Get("rrm-eval/aggregate")
+  async rrmEvalAggregate(
+    @Req() req: JwtReq,
+    @Query("limit") limit?: string,
+    @Query("sinceDays") sinceDays?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    this.adminService.assertCanReadMatchingObservabilitySummary(userId);
+    try {
+      return await this.rrmEvalCollectorService.buildAggregate({ limit, sinceDays });
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      throw new InternalServerErrorException("failed_to_build_rrm_eval_aggregate");
     }
   }
 }
