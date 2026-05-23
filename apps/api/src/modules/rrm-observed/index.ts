@@ -5,6 +5,13 @@ export {
 
 export { buildRrmObservedSignalSummary } from "./rrm-observed.adapter";
 
+export { RrmObservedReadonlyService } from "./rrm-observed-readonly.service";
+
+export {
+  RRM_OBSERVED_READONLY_HTTP_SCHEMA_VERSION,
+} from "./rrm-observed-readonly.response";
+export type { RrmObservedReadonlyHttpDto } from "./rrm-observed-readonly.response";
+
 export type {
   BuildRrmObservedSignalSummaryInput,
   RrmObservedMessageInput,

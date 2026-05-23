@@ -11,6 +11,7 @@ import {
 import type { ProfileUpdateSuggestion } from "@peima/database";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
+import { RrmObservedReadonlyService } from "../rrm-observed";
 import { ChatService } from "./chat.service";
 import { ConversationProfileCompletionService } from "./conversation-profile-completion.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -24,6 +25,7 @@ type JwtReq = {
 export class ChatController {
   constructor(
     private readonly chatService: ChatService,
+    private readonly rrmObservedReadonlyService: RrmObservedReadonlyService,
     private readonly conversationProfileCompletionService: ConversationProfileCompletionService,
   ) {}
 
@@ -65,6 +67,22 @@ export class ChatController {
       throw new UnauthorizedException("not authenticated");
     }
     return this.chatService.generateConversationSummaryPersisted(
+      conversationId,
+      tokenUserId,
+    );
+  }
+
+  /** M5.1-r6 — readonly observed rhythm signals; no RFI_obs; no MatchResult writes. */
+  @Get("conversations/:conversationId/rrm-observed-summary")
+  getRrmObservedSummary(
+    @Param("conversationId") conversationId: string,
+    @Req() req: JwtReq,
+  ) {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    return this.rrmObservedReadonlyService.getReadonlySummaryForConversation(
       conversationId,
       tokenUserId,
     );
