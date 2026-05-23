@@ -24,6 +24,7 @@ M5 已完成将 **RRM-Sim** 从 **只读 / shadow 观察层** 接到 **enabled d
 | **M5.3-C2.1** | Env parser hardening（`1` / `true` / `yes` 等）。 | **Done** |
 | **M5.3-D** | Enabled display targeted regression run record。 | **Done** — [M5.3-enabled-display-regression-run-round1.md](./M5.3-enabled-display-regression-run-round1.md) |
 | **M5.3-E** | Feedback `decisionContext` prep（M6.1 归因形状与红线；本轮无业务代码）。 | **Done** — [M5.3-feedback-decision-context-prep.md](./M5.3-feedback-decision-context-prep.md) |
+| **M5.1 三层轨道** | `rrm-shared` + Observed / Assistant / Timeline Adapter + Eval Consumer（r1～r12）；**不**改 MatchResult 主链。 | **Done** — [M5.1-closeout.md](./M5.1-closeout.md) · [M5.1-rrm-three-layer-architecture.md](./M5.1-rrm-three-layer-architecture.md) |
 
 **说明**：上表 **不**声称 M5.2-M5 已在真实 DB 上产出统计上可信的 shadow aggregate；该子项的 **数据面** 仍为 **Partial / Blocked**，直至在具备合法 `DATABASE_URL` 的环境重跑并单独修订 run record（见 M5.2-M5 文档 §4～§8）。
 
@@ -55,6 +56,8 @@ M5 已完成将 **RRM-Sim** 从 **只读 / shadow 观察层** 接到 **enabled d
 | [M5.3-B-rrm-top2-resolver-extension-design.md](./M5.3-B-rrm-top2-resolver-extension-design.md) | Resolver 优先级与侧车读取契约。 |
 | [M5.3-enabled-display-regression-run-round1.md](./M5.3-enabled-display-regression-run-round1.md) | M5.3-D 自动化回归验收记录。 |
 | [M5.3-feedback-decision-context-prep.md](./M5.3-feedback-decision-context-prep.md) | M6.1 `decisionContext` 形状与 Feedback 红线。 |
+| [M5.1-closeout.md](./M5.1-closeout.md) | 三层架构 r1～r12 交付矩阵 · HTTP · 验收。 |
+| [M5.1-rrm-three-layer-architecture.md](./M5.1-rrm-three-layer-architecture.md) | Core / Adapter / Consumer canonical。 |
 
 ## 5. 架构不变量（M5 收口重申）
 
