@@ -1,4 +1,5 @@
 import type { MatchResult } from "@peima/database";
+import { RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET } from "../rrm-shared";
 import { buildGuardrailsReadonly } from "./matching-guardrails-readonly";
 import { RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY } from "./matching-rrm-sim-readonly-summary";
 import type {
@@ -15,11 +16,6 @@ export const MULTI_SOURCE_FINAL_DECISION_READONLY_SCHEMA_VERSION = 1 as const;
 /** Bumped M5.2-M3: shadow contract + optional shadow display proposal (never applied server-side). */
 export const MULTI_SOURCE_FINAL_DECISION_READONLY_SOURCE_VERSION =
   "m5.2-m3-multi-source-final-decision-shadow-proposal-v1" as const;
-
-const ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS = new Set<string>([
-  "rrm-sim-v1",
-  "m4.0-readonly-rrm-ranking-proposal-v1",
-]);
 
 export type MultiSourceDecisionTraceStepReadonly =
   | "source_hydration_readonly"
@@ -241,7 +237,7 @@ export function tryParseRrmSimReadonlySummaryFromMatchInsights(
   if (!isRecord(raw)) return null;
   if (raw.schemaVersion !== 1) return null;
   const sourceVersion = typeof raw.sourceVersion === "string" ? raw.sourceVersion.trim() : "";
-  if (!sourceVersion || !ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS.has(sourceVersion)) {
+  if (!sourceVersion || !RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET.has(sourceVersion)) {
     return null;
   }
   const suggestedAction = typeof raw.suggestedAction === "string" ? raw.suggestedAction.trim() : null;

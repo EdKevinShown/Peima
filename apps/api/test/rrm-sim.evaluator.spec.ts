@@ -44,6 +44,7 @@ const RRM_SIM_ENTRYPOINT_FORBIDDEN_PREFIXES = [
 function isAllowedRrmSimEntrypointFile(rel: string): boolean {
   const n = rel.replace(/\\/g, "/");
   if (RRM_SIM_ENTRYPOINT_FORBIDDEN_PREFIXES.some((p) => n.startsWith(p))) return false;
+  if (n.startsWith("apps/api/src/modules/rrm-shared/")) return true;
   if (n === "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator.ts") return true;
   if (n.startsWith("apps/api/src/modules/ai-simulation-v1/")) return true;
   if (n.startsWith("apps/api/test/")) return true;

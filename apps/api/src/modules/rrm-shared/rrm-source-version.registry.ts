@@ -82,6 +82,8 @@ export const RRM_SOURCE_VERSION_EVAL = "rrm-eval-v1" as const satisfies RrmSourc
 export const RRM_SOURCE_VERSION_RANKING_PROPOSAL =
   "m4.0-readonly-rrm-ranking-proposal-v1" as const satisfies RrmSourceVersion;
 
+export const RRM_SOURCE_VERSION_PAIRWISE = "rrm-lite-pairwise-decision-v1" as const satisfies RrmSourceVersion;
+
 const REGISTRY_KEYS = new Set<string>(Object.keys(RRM_SOURCE_VERSION_REGISTRY));
 
 export function isKnownRrmSourceVersion(value: string): value is RrmSourceVersion {

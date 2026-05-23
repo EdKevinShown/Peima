@@ -1,10 +1,13 @@
 import {
   RRM_ADAPTER_LAYER,
+  RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS,
   RRM_SOURCE_VERSION_OBSERVED,
+  RRM_SOURCE_VERSION_RANKING_PROPOSAL,
   RRM_SOURCE_VERSION_SIM,
   assertAdapterSourceVersionNotCoreSim,
   getRrmSourceVersionMeta,
   isKnownRrmSourceVersion,
+  isRrmMatchingReadonlyDisplaySourceVersion,
 } from "../../src/modules/rrm-shared";
 
 describe("rrm-source-version.registry (M5.1-r2)", () => {
@@ -31,5 +34,14 @@ describe("rrm-source-version.registry (M5.1-r2)", () => {
 
   it("rejects unknown versions", () => {
     expect(isKnownRrmSourceVersion("rrm-sim-v0")).toBe(false);
+  });
+
+  it("matching readonly display allow-list is registry-backed", () => {
+    expect(RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS).toEqual([
+      RRM_SOURCE_VERSION_SIM,
+      RRM_SOURCE_VERSION_RANKING_PROPOSAL,
+    ]);
+    expect(isRrmMatchingReadonlyDisplaySourceVersion("rrm-sim-v1")).toBe(true);
+    expect(isRrmMatchingReadonlyDisplaySourceVersion("rrm-observed-v1")).toBe(false);
   });
 });

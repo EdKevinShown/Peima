@@ -4,6 +4,7 @@ export {
   RRM_SOURCE_VERSION_ASSISTANT,
   RRM_SOURCE_VERSION_EVAL,
   RRM_SOURCE_VERSION_OBSERVED,
+  RRM_SOURCE_VERSION_PAIRWISE,
   RRM_SOURCE_VERSION_RANKING_PROPOSAL,
   RRM_SOURCE_VERSION_REGISTRY,
   RRM_SOURCE_VERSION_SIM,
@@ -12,6 +13,13 @@ export {
   getRrmSourceVersionMeta,
   isKnownRrmSourceVersion,
 } from "./rrm-source-version.registry";
+
+export {
+  RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS,
+  RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET,
+  isRrmMatchingReadonlyDisplaySourceVersion,
+} from "./rrm-matching-readonly.constants";
+export type { RrmMatchingReadonlyDisplaySourceVersion } from "./rrm-matching-readonly.constants";
 export type { RrmAdapterLayer, RrmSourceVersion, RrmSourceVersionMeta } from "./rrm-source-version.registry";
 
 export {

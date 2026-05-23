@@ -7,17 +7,19 @@
  */
 
 import type { RrmRankingProposal } from "../ai-simulation-v1/ai-simulation-v1-rrm-ranking-proposal";
-import { RRM_RANKING_PROPOSAL_SOURCE_VERSION } from "../ai-simulation-v1/ai-simulation-v1-rrm-ranking-proposal";
-import { RRM_SIM_SOURCE_VERSION } from "../ai-simulation-v1/rrm-sim.constants";
 import type { RrmSimResult } from "../ai-simulation-v1/rrm-sim.types";
+import {
+  RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET,
+  RRM_SOURCE_VERSION_RANKING_PROPOSAL,
+  RRM_SOURCE_VERSION_SIM,
+} from "../rrm-shared";
+
+/** Re-export for callers that already import from this module. */
+export const RRM_RANKING_PROPOSAL_SOURCE_VERSION = RRM_SOURCE_VERSION_RANKING_PROPOSAL;
+export const RRM_SIM_SOURCE_VERSION = RRM_SOURCE_VERSION_SIM;
 
 /** Key on `MatchResult.matchInsights` for viewer-safe RRM-Sim summary JSON (M5.1-M2). */
 export const RRM_SIM_READONLY_SUMMARY_INSIGHTS_KEY = "rrmSimReadonlySummary" as const;
-
-const ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS_STRICT = new Set<string>([
-  "rrm-sim-v1",
-  "m4.0-readonly-rrm-ranking-proposal-v1",
-]);
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return x != null && typeof x === "object" && !Array.isArray(x);
@@ -226,7 +228,7 @@ export function tryParseRrmSimReadonlySummaryPayloadV1FromMatchInsights(
   if (raw.schemaVersion !== RRM_SIM_READONLY_SUMMARY_PAYLOAD_SCHEMA_VERSION) return null;
   if (raw.sourceType !== RRM_SIM_READONLY_SUMMARY_SOURCE_TYPE) return null;
   const sourceVersion = typeof raw.sourceVersion === "string" ? raw.sourceVersion.trim() : "";
-  if (!sourceVersion || !ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS_STRICT.has(sourceVersion)) {
+  if (!sourceVersion || !RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET.has(sourceVersion)) {
     return null;
   }
 

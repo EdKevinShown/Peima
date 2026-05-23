@@ -1,11 +1,6 @@
+import { RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET } from "../rrm-shared";
 import type { RrmSimReadonlySummaryPayloadV1 } from "./matching-rrm-sim-readonly-summary";
 import type { MatchResultRrmTop2DisplayMetaV1 } from "./rrm-top2-display-meta.types";
-
-/**
- * Keep in sync with `ALLOWED_RRM_SIM_READONLY_SOURCE_VERSIONS` in
- * `matching-multi-source-final-decision-m51m0.ts` (M5.3-C1 duplicate to avoid import cycles).
- */
-const RRM_SIM_READONLY_SOURCE_VERSIONS_ALLOWED_M53 = new Set<string>(["rrm-sim-v1", "m4.0-readonly-rrm-ranking-proposal-v1"]);
 
 export const RRM_TOP2_DISPLAY_NO_OP_REASON_CODES = [
   "env_off",
@@ -115,7 +110,7 @@ export function validateRrmTop2DisplayEligibility(
   if (sum.schemaVersion !== 1) {
     return { ok: false, noOpReasonCode: "rrm_summary_schema_invalid" };
   }
-  if (!RRM_SIM_READONLY_SOURCE_VERSIONS_ALLOWED_M53.has(sum.sourceVersion)) {
+  if (!RRM_MATCHING_READONLY_DISPLAY_SOURCE_VERSIONS_SET.has(sum.sourceVersion)) {
     return { ok: false, noOpReasonCode: "rrm_summary_version_rejected" };
   }
 
