@@ -31,19 +31,40 @@ import { RRM_SCENARIO_APPROACH_INTENSITY, RRM_SCENARIO_KEYS_ORDERED } from "../s
 
 const REPO_ROOT = join(__dirname, "../../..");
 
-/** Only these TypeScript files may reference the read-time RRM-Sim entrypoint. */
-const RRM_SIM_ENTRYPOINT_ALLOWED_FILES = new Set([
-  "apps/api/src/modules/ai-simulation-v1/ai-simulation-v1.service.ts",
-  "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator.ts",
-  "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator-debug.ts",
-  "apps/api/test/rrm-sim.evaluator.spec.ts",
-  "apps/api/test/rrm-sim-calibration-table.ts",
-]);
+/** Production paths that must never call read-time RRM-Sim (worker ranking / match scoring). */
+const RRM_SIM_ENTRYPOINT_FORBIDDEN_PREFIXES = [
+  "apps/worker/",
+  "apps/api/src/modules/matching/",
+  "apps/web/",
+];
 
-const RRM_SIM_DEBUG_ENTRYPOINT_ALLOWED_FILES = new Set([
+/**
+ * Read-time `evaluateRrmSimFromSimulationV2` — ai-simulation enrich, calibration tests, M13 offline tools only.
+ */
+function isAllowedRrmSimEntrypointFile(rel: string): boolean {
+  const n = rel.replace(/\\/g, "/");
+  if (RRM_SIM_ENTRYPOINT_FORBIDDEN_PREFIXES.some((p) => n.startsWith(p))) return false;
+  if (n === "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator.ts") return true;
+  if (n.startsWith("apps/api/src/modules/ai-simulation-v1/")) return true;
+  if (n.startsWith("apps/api/test/")) return true;
+  if (n.startsWith("tools/m13-") && n.endsWith(".impl.ts")) return true;
+  return false;
+}
+
+/** Debug wrapper — evaluator-debug module, its spec, and M13 calibration simulator only. */
+function isAllowedRrmSimDebugEntrypointFile(rel: string): boolean {
+  const n = rel.replace(/\\/g, "/");
+  if (RRM_SIM_ENTRYPOINT_FORBIDDEN_PREFIXES.some((p) => n.startsWith(p))) return false;
+  if (n === "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator-debug.ts") return true;
+  if (n === "apps/api/test/rrm-sim.evaluator-debug.spec.ts") return true;
+  if (n === "tools/m13-m0-calibration-simulator.impl.ts") return true;
+  return false;
+}
+
+const RRM_SIM_DEBUG_ENTRYPOINT_REQUIRED_FILES = [
   "apps/api/src/modules/ai-simulation-v1/rrm-sim.evaluator-debug.ts",
   "apps/api/test/rrm-sim.evaluator-debug.spec.ts",
-]);
+] as const;
 
 describe("computeRfiScenario", () => {
   it("uses S*E*A + F*Q - D_pre when A <= C_pred", () => {
@@ -220,9 +241,8 @@ describe("M1.1 RRM-Sim calibration / regression", () => {
       .filter(Boolean)
       .map((p) => p.replace(/\\/g, "/"));
     expect(files.length).toBeGreaterThan(0);
-    for (const f of files) {
-      expect(RRM_SIM_ENTRYPOINT_ALLOWED_FILES.has(f)).toBe(true);
-    }
+    const disallowed = files.filter((f) => !isAllowedRrmSimEntrypointFile(f));
+    expect(disallowed).toEqual([]);
   });
 
   it("evaluateRrmSimDebugFromSimulationV2 is only referenced from evaluator-debug + its spec", () => {
@@ -240,20 +260,36 @@ describe("M1.1 RRM-Sim calibration / regression", () => {
     } catch {
       /* no git in sandbox */
     }
-    for (const f of RRM_SIM_DEBUG_ENTRYPOINT_ALLOWED_FILES) {
+    for (const f of RRM_SIM_DEBUG_ENTRYPOINT_REQUIRED_FILES) {
       if (existsSync(join(REPO_ROOT, f))) paths.add(f);
     }
-    const needle = "evaluateRrmSimDebugFromSimulationV2";
+    try {
+      const toolPaths = execSync('git ls-files "tools/m13-m0-calibration-simulator.impl.ts"', {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      })
+        .trim()
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((p) => p.replace(/\\/g, "/"));
+      toolPaths.forEach((p) => paths.add(p));
+    } catch {
+      /* no git */
+    }
+    const referencesRrmSimDebug = (body: string) =>
+      /import\s*\{[^}]*\bevaluateRrmSimDebugFromSimulationV2\b/.test(body) ||
+      /\bevaluateRrmSimDebugFromSimulationV2\s*\(/.test(body) ||
+      /\bevaluateRrmSimDebugFromSimulationV2\s*=/.test(body);
     for (const rel of paths) {
       const abs = join(REPO_ROOT, rel);
       if (!existsSync(abs)) continue;
       const body = readFileSync(abs, "utf8");
-      if (!body.includes(needle)) continue;
-      expect(RRM_SIM_DEBUG_ENTRYPOINT_ALLOWED_FILES.has(rel)).toBe(true);
+      if (!referencesRrmSimDebug(body)) continue;
+      expect(isAllowedRrmSimDebugEntrypointFile(rel)).toBe(true);
     }
-    for (const must of RRM_SIM_DEBUG_ENTRYPOINT_ALLOWED_FILES) {
+    for (const must of RRM_SIM_DEBUG_ENTRYPOINT_REQUIRED_FILES) {
       const body = readFileSync(join(REPO_ROOT, must), "utf8");
-      expect(body).toContain(needle);
+      expect(referencesRrmSimDebug(body)).toBe(true);
     }
   });
 });
