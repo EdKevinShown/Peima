@@ -175,6 +175,11 @@ export class AdminService {
     this.assertIsAdminUserOrThrow(userId);
   }
 
+  /** P7.11-r1: read-only matching observability summary (M4.4-M2). */
+  assertCanReadMatchingObservabilitySummary(userId: string): void {
+    this.assertIsAdminUserOrThrow(userId);
+  }
+
   async runBatchMatchSubprocess(): Promise<void> {
     const root = getMonorepoRoot();
     const workerMainJs = join(root, "apps", "worker", "dist", "main.js");

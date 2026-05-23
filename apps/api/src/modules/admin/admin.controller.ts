@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -19,6 +20,7 @@ import { AiSimulationV1Service } from "../ai-simulation-v1/ai-simulation-v1.serv
 import { PostPoolDeepScreenOrchestratorService } from "../post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
 import { PrescreenV0Service } from "../prescreen-v0/prescreen-v0.service";
 import { AdminService } from "./admin.service";
+import { MatchingObservabilitySummaryService } from "./matching-observability-summary.service";
 import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
 import { AdminPostPoolOrchestrationMvpDto } from "./dto/admin-post-pool-orchestration-mvp.dto";
 import { AdminPostPoolDeepScreenShadowDto } from "./dto/admin-post-pool-deep-screen-shadow.dto";
@@ -37,6 +39,7 @@ export class AdminController {
     private readonly postPoolDeepScreenOrchestrator: PostPoolDeepScreenOrchestratorService,
     private readonly aiSimulationV1Service: AiSimulationV1Service,
     private readonly rrmObservationSummaryService: RrmObservationSummaryService,
+    private readonly matchingObservabilitySummaryService: MatchingObservabilitySummaryService,
   ) {}
 
   @Get("capabilities")
@@ -198,6 +201,33 @@ export class AdminController {
     this.adminService.assertCanTriggerBatchMatch(userId);
     await this.adminService.runBatchMatchSubprocess();
     return { ok: true };
+  }
+
+  /** P7.11-r1 / M4.4-M2: read-only matching pipeline observability (pairwise / sim / finalize / pool counts). */
+  @Get("matching-observability/summary")
+  async matchingObservabilitySummary(
+    @Req() req: JwtReq,
+    @Query("limit") limit?: string,
+    @Query("sinceDays") sinceDays?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    this.adminService.assertCanReadMatchingObservabilitySummary(userId);
+    try {
+      return await this.matchingObservabilitySummaryService.getSummary({
+        limit,
+        sinceDays,
+      });
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      throw new InternalServerErrorException(
+        "failed_to_build_matching_observability_summary",
+      );
+    }
   }
 
   /** M6.7-C3: read-only anonymous summary for admin/debug observation. */

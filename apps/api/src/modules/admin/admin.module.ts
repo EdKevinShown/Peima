@@ -6,12 +6,13 @@ import { PostPoolDeepScreenModule } from "../post-pool-deep-screen/post-pool-dee
 import { PrescreenV0Module } from "../prescreen-v0/prescreen-v0.module";
 import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
+import { MatchingObservabilitySummaryService } from "./matching-observability-summary.service";
 import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
 
 @Module({
   imports: [PrescreenV0Module, PostPoolDeepScreenModule, AiSimulationV1Module, AiPairwiseDecisionModule],
   controllers: [AdminController, AiPairwiseDecisionAdminController],
-  providers: [AdminService, RrmObservationSummaryService],
+  providers: [AdminService, RrmObservationSummaryService, MatchingObservabilitySummaryService],
   exports: [AdminService],
 })
 export class AdminModule {}
