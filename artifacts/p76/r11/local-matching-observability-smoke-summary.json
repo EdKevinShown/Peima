@@ -1,0 +1,33 @@
+{
+  "fixtureTag": "p7.11-r1-local-admin-matching-observability-smoke",
+  "environment": "local-dev",
+  "apiRoute": "GET /admin/matching-observability/summary",
+  "query": { "limit": 500, "sinceDays": 30 },
+  "httpStatus": 200,
+  "sourceVersion": "m4.4-m1-admin-observability-summary-v1",
+  "schemaVersion": 1,
+  "aggregatesOnly": {
+    "pairwise": { "totalInWindow": 0, "schemaValidationCount": 0 },
+    "simulation": {
+      "failedItemCountInWindow": 0,
+      "schemaValidationItemCountInWindow": 0
+    },
+    "finalizeMeta": {
+      "totalInWindow": 0,
+      "totalAllTime": 0,
+      "metaRowsParsed": 0
+    },
+    "matchAndPreview": {
+      "matchResultsTotal": 0,
+      "previewPoolsTotal": 0,
+      "previewPoolsWithFinalizeMetaRow": 0,
+      "distinctPreviewPoolsWithSucceededSimulationInWindow": 0
+    }
+  },
+  "notes": [
+    "No userId, poolId, jobId, or candidate lists in response (contract).",
+    "Zero counts expected on empty local Postgres; parity with CLI on same DB.",
+    "Recorded 2026-05-23 after manual PowerShell Invoke-RestMethod smoke."
+  ],
+  "recordedAt": "2026-05-23T10:54:33.000Z"
+}
