@@ -1,5 +1,7 @@
 # Peima / 配吗
 
+语言 / Languages：**中文** · [English](./README.en.md)
+
 面向关系匹配的 MVP：**P0 主链路已稳定**；**P1 已完成「结构化占位版」能力建设**（匹配洞察、聊天只读摘要、预览池条目元数据、worker 工程与文案收口）。**P2-MVP 已完成最小闭环主体落地**（摘要可选持久化、结构化反馈、画像建议显式 accept、行为信号追加、轻量只读统计、会话级 **规则化** Copilot 只读建议、ChatPage 轻接入）。**P2.5 已完成一轮产品化补完**（画像建议在聊天页 accept/dismiss、独立 Copilot 页、摘要手动生成入口、全局 analytics 白名单、建议区分区展示、P2 表 migration 收口、联调验收文档）。**P3（关系时间线）已整阶段收口并联调通过**：只读聚合 API 与 `/chat/timeline`（P3-1）、`/final-match` 第二入口（P3-2）、长会话消息分页与「加载更多消息」（P3-3）。**本仓库所称 P3 仅指该「关系时间线」切片**，不等同于口头或路线图里可能出现的「所有中长期 P3 级能力」。详见 **`docs/P3/P3-relationship-timeline.md`**。
 
 **M5 / M5.6 — RRM Top2 controlled production path 已收口**：RRM display resolver、**`displayCandidateUserId`** 展示路径、FinalMatch → Chat 经 **`matchResultId`** 的 handoff 对齐、RRM meta writer、hook job outbox、controlled create runner、dry-run consumer、controlled apply gate、shared apply service、independent dry-run poller、staging-style apply run record 等已按受控链路交付。该能力可在闸门与 eligibility 满足时影响 **`displayCandidateUserId` / `displaySourceType`**，**不**改写 `MatchResult.candidateUserId`、**不**重算 **`finalScore`**；**`GET /matching/result` 保持只读、不写库**。**production 默认由 worker 对 RRM hook job 自动轮询 / 自动 apply 尚未作为开箱默认能力**。总述见 **`docs/M5/M5.6-closure-rrm-top2-controlled-production-path.md`**。
