@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useNavigate, useSearchParams } from "rea
 import MainAppShell from "../components/layout/MainAppShell";
 import FinalMatchPage from "../pages/FinalMatchPage";
 import MatchingWaitingPage from "../pages/MatchingWaitingPage";
+import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
 import QuestionnaireProfilePage from "../pages/QuestionnaireProfilePage";
 import ChatPage from "../pages/ChatPage";
@@ -30,16 +31,6 @@ function LegacyMyImagesRedirect() {
   const to = userId
     ? `/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`
     : "/onboarding/photo-upload";
-  return <Navigate to={to} replace />;
-}
-
-/** P7.10-r11: legacy photo preview pool UI removed. */
-function LegacyPhotoPreviewRedirect() {
-  const [searchParams] = useSearchParams();
-  const userId = resolveUserId(searchParams);
-  const to = userId
-    ? `/questionnaire?userId=${encodeURIComponent(userId)}`
-    : "/questionnaire";
   return <Navigate to={to} replace />;
 }
 
@@ -152,6 +143,9 @@ function HomePage() {
                 审美偏好
               </Link>
               {" · "}
+              <Link to={`/preview-pool${q}`} style={navLink}>
+                第一印象预览池
+              </Link>
             </p>
             <div style={{ fontWeight: 600, color: "#334155", margin: "0.75rem 0 0.35rem" }}>问卷与匹配</div>
             <p style={{ margin: "0 0 0.5rem" }}>
@@ -191,6 +185,8 @@ function HomePage() {
             <Link to={`/onboarding/photo-upload${q}`}>上传 / 更新照片</Link>
             {" · "}
             <Link to={`/onboarding/photo-preference${q}`}>审美偏好</Link>
+            {" · "}
+            <Link to={`/preview-pool${q}`}>第一印象预览池</Link>
             {" · "}
             <Link to="/my-activity">我的反馈与动态</Link>
           </li>
@@ -260,8 +256,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/onboarding/photo-upload" element={<OnboardingPhotoUploadPage />} />
       <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
-      <Route path="/onboarding/photo-preview" element={<LegacyPhotoPreviewRedirect />} />
-      <Route path="/preview-pool" element={<LegacyPhotoPreviewRedirect />} />
+      <Route path="/onboarding/photo-preview" element={<PreviewPoolPage />} />
+      <Route path="/preview-pool" element={<PreviewPoolPage />} />
       <Route path="/my-images" element={<LegacyMyImagesRedirect />} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />

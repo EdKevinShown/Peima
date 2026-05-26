@@ -11,6 +11,7 @@ import { PostPoolDeepScreenOrchestratorService } from "../../src/modules/post-po
 import { AiSimulationV1Service } from "../../src/modules/ai-simulation-v1/ai-simulation-v1.service";
 import { MatchingObservabilitySummaryService } from "../../src/modules/admin/matching-observability-summary.service";
 import { RrmObservationSummaryService } from "../../src/modules/admin/rrm-observation-summary.service";
+import { RrmEvalCollectorService } from "../../src/modules/rrm-eval";
 
 describe("AdminController · matchingObservabilitySummary", () => {
   function createModule(summaryImpl?: { getSummary: jest.Mock }) {
@@ -33,6 +34,7 @@ describe("AdminController · matchingObservabilitySummary", () => {
         { provide: PostPoolDeepScreenOrchestratorService, useValue: {} },
         { provide: AiSimulationV1Service, useValue: {} },
         { provide: RrmObservationSummaryService, useValue: { getSummary: jest.fn() } },
+        { provide: RrmEvalCollectorService, useValue: { buildAggregate: jest.fn() } },
         {
           provide: MatchingObservabilitySummaryService,
           useValue:

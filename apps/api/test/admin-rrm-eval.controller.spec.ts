@@ -1,5 +1,6 @@
 import { Test } from "@nestjs/testing";
 import {
+  BadRequestException,
   InternalServerErrorException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -12,8 +13,8 @@ import { MatchingObservabilitySummaryService } from "../src/modules/admin/matchi
 import { RrmObservationSummaryService } from "../src/modules/admin/rrm-observation-summary.service";
 import { RrmEvalCollectorService } from "../src/modules/rrm-eval";
 
-describe("AdminController rrmObservationSummary", () => {
-  function createModule(summaryImpl?: { getSummary: jest.Mock }) {
+describe("AdminController rrmEvalAggregate", () => {
+  function createModule(evalImpl?: { buildAggregate: jest.Mock }) {
     return Test.createTestingModule({
       controllers: [AdminController],
       providers: [
@@ -21,6 +22,7 @@ describe("AdminController rrmObservationSummary", () => {
           provide: AdminService,
           useValue: {
             canSeeBatchMatchTrigger: jest.fn(),
+            assertCanReadMatchingObservabilitySummary: jest.fn(),
             assertCanRunAiSimulationV1: jest.fn(),
             assertCanRunPostPoolDeepScreenShadow: jest.fn(),
             assertCanRunPrescreenDebug: jest.fn(),
@@ -32,63 +34,79 @@ describe("AdminController rrmObservationSummary", () => {
         { provide: PostPoolDeepScreenOrchestratorService, useValue: {} },
         { provide: AiSimulationV1Service, useValue: {} },
         { provide: MatchingObservabilitySummaryService, useValue: { getSummary: jest.fn() } },
-        { provide: RrmEvalCollectorService, useValue: { buildAggregate: jest.fn() } },
+        { provide: RrmObservationSummaryService, useValue: { getSummary: jest.fn() } },
         {
-          provide: RrmObservationSummaryService,
+          provide: RrmEvalCollectorService,
           useValue:
-            summaryImpl ??
+            evalImpl ??
             ({
-              getSummary: jest.fn().mockResolvedValue({
-                sampleSize: 1,
-                coverage: { withResolvedProjectionUnavailableInDbNote: true },
+              buildAggregate: jest.fn().mockResolvedValue({
+                sourceVersion: "rrm-eval-v1",
+                appliedToMatchResult: false,
               }),
-            } as any),
+            } as { buildAggregate: jest.Mock }),
         },
       ],
     }).compile();
   }
 
-  it("requires auth and admin gate, delegates summary query", async () => {
+  it("requires admin gate and delegates query params", async () => {
     const mod = await createModule();
     const c = mod.get(AdminController);
-    const admin = mod.get(AdminService) as unknown as { assertCanRunAiSimulationV1: jest.Mock };
-    const summary = mod.get(RrmObservationSummaryService) as unknown as { getSummary: jest.Mock };
+    const admin = mod.get(AdminService) as unknown as {
+      assertCanReadMatchingObservabilitySummary: jest.Mock;
+    };
+    const evalService = mod.get(RrmEvalCollectorService) as unknown as {
+      buildAggregate: jest.Mock;
+    };
 
-    const out = await c.rrmObservationSummary(
+    const out = await c.rrmEvalAggregate(
       { user: { userId: "admin-1" } } as never,
-      "20",
+      "100",
+      "30",
     );
 
-    expect(admin.assertCanRunAiSimulationV1).toHaveBeenCalledWith("admin-1");
-    expect(summary.getSummary).toHaveBeenCalledWith("20");
-    expect(out).toEqual({
-      sampleSize: 1,
-      coverage: { withResolvedProjectionUnavailableInDbNote: true },
+    expect(admin.assertCanReadMatchingObservabilitySummary).toHaveBeenCalledWith("admin-1");
+    expect(evalService.buildAggregate).toHaveBeenCalledWith({
+      limit: "100",
+      sinceDays: "30",
+    });
+    expect(out).toMatchObject({
+      sourceVersion: "rrm-eval-v1",
+      appliedToMatchResult: false,
     });
   });
 
   it("throws UnauthorizedException when token user missing", async () => {
     const mod = await createModule();
     const c = mod.get(AdminController);
-    await expect(c.rrmObservationSummary({ user: {} } as never, undefined)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      c.rrmEvalAggregate({ user: {} } as never, undefined, undefined),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it("returns safe internal error when summary service fails", async () => {
+  it("rethrows BadRequestException from aggregate service", async () => {
     const mod = await createModule({
-      getSummary: jest.fn().mockRejectedValue(new Error("db://secret-connection-string")),
+      buildAggregate: jest.fn().mockRejectedValue(new BadRequestException("limit invalid")),
     });
     const c = mod.get(AdminController);
     await expect(
-      c.rrmObservationSummary({ user: { userId: "admin-1" } } as never, "50"),
+      c.rrmEvalAggregate({ user: { userId: "admin-1" } } as never, "0", "30"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("returns safe internal error when aggregate service fails unexpectedly", async () => {
+    const mod = await createModule({
+      buildAggregate: jest.fn().mockRejectedValue(new Error("db://secret")),
+    });
+    const c = mod.get(AdminController);
+    await expect(
+      c.rrmEvalAggregate({ user: { userId: "admin-1" } } as never, "50", "30"),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
     await expect(
-      c.rrmObservationSummary({ user: { userId: "admin-1" } } as never, "50"),
+      c.rrmEvalAggregate({ user: { userId: "admin-1" } } as never, "50", "30"),
     ).rejects.toMatchObject({
-      response: {
-        message: "failed_to_build_rrm_observation_summary",
-      },
+      response: { message: "failed_to_build_rrm_eval_aggregate" },
     });
   });
 });

@@ -20,6 +20,33 @@ export type PreviewPoolItem = {
   updatedAt: string;
 };
 
+export type PreviewPoolShortlistEvidence = {
+  rankInPool: number;
+  candidateType: string;
+  displayMode: string;
+  baseScore: number | null;
+  preferenceScore: number;
+  profileScalar: number;
+  styleScore: number;
+  styleWeightActive: boolean;
+};
+
+export type PreviewPoolShortlistContract = {
+  schemaVersion: "preview_pool_shortlist_contract_v0";
+  viewerUserId: string;
+  poolId: string;
+  shortlist: {
+    size: number;
+    candidateUserIds: string[];
+  };
+  staticEvidence: Record<string, PreviewPoolShortlistEvidence>;
+  exclusionReport: Array<{
+    candidateUserId: string;
+    reasonCode: string;
+    detail: string;
+  }>;
+};
+
 export type PreviewPoolRecord = {
   id: string;
   userId: string;
@@ -31,6 +58,7 @@ export type PreviewPoolRecord = {
 export type LatestPreviewPoolResponse = {
   previewPool: PreviewPoolRecord;
   items: PreviewPoolItem[];
+  shortlistContract?: PreviewPoolShortlistContract;
 };
 
 /** P7.10-r11: read-only — legacy pool generate removed. */
