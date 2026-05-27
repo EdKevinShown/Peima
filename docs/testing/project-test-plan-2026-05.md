@@ -143,7 +143,41 @@ Required checks for this batch:
 - Risk: test flakiness from live DB state  
   Mitigation: use deterministic seed + explicit queue setup for smoke paths.
 
-## 7. Merge Gate
+## 7. Test Matrix Snapshot (2026-05-27)
+
+Latest local run:
+
+| Suite | Command | Result |
+| --- | --- | --- |
+| API unit/module | `pnpm --filter @peima/api test` | 212 suites, 1916+ tests passed (after controller DI fix) |
+| API e2e (dev smoke) | `pnpm --filter @peima/api test:e2e -- test-dev-smoke-hooks.e2e-spec.ts` | 4/4 passed |
+| Worker unit | `pnpm --filter @peima/worker test` | 8/8 suites, 97 tests passed |
+
+Known gaps to continue:
+
+- broader e2e coverage for full journey: enqueue -> worker batch-match -> final-match page APIs
+- web layer automated tests (currently mostly API/worker)
+- scheduled CI job to run matrix on every PR
+
+## 8. Pressure Baseline Tool
+
+Script: `tools/local-pressure-baseline.mjs`
+
+Example:
+
+```bash
+node tools/local-pressure-baseline.mjs \
+  --baseUrl http://127.0.0.1:3000 \
+  --token "<jwt>" \
+  --userId "<viewerUserId>" \
+  --concurrency 20 \
+  --requests 200 \
+  --path all
+```
+
+Outputs JSON with `successRate`, `p50Ms`, `p95Ms`, and status histogram.
+
+## 9. Merge Gate
 
 Before merge:
 
