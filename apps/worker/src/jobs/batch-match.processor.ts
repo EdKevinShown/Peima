@@ -18,6 +18,7 @@ import {
   OLD_PHOTO_MATCHING_WRITER_SHUTDOWN_REASON,
   type MatchResultCreateClient,
   readOldPhotoMatchingWriterGate,
+  readOldPhotoMatchingWriterGateForUser,
   writeLegacyPhotoMatchResultIfAllowed,
 } from "./old-photo-matching-writer-shutdown-env.js";
 
@@ -187,6 +188,8 @@ export async function runBatchMatch(): Promise<void> {
     let failedCount = 0;
 
     for (const q of waiting) {
+      const userWriterGate = readOldPhotoMatchingWriterGateForUser(q.userId);
+
       await prisma.batchMatchQueue.update({
         where: { id: q.id },
         data: { status: QUEUE_STATUS.PROCESSING, batchId: batch.id },
@@ -199,7 +202,7 @@ export async function runBatchMatch(): Promise<void> {
         viewerUserId: q.userId,
       });
 
-      if (!legacyWriterGate.canWriteMatchResult) {
+      if (!userWriterGate.canWriteMatchResult) {
         await prisma.batchMatchQueue.update({
           where: { id: q.id },
           data: { status: QUEUE_STATUS.FAILED },
@@ -211,8 +214,8 @@ export async function runBatchMatch(): Promise<void> {
           queueId: q.id,
           viewerUserId: q.userId,
           outcome: "blocked",
-          reasonCode: legacyWriterGate.reason,
-          legacyWriterMode: legacyWriterGate.mode,
+          reasonCode: userWriterGate.reason,
+          legacyWriterMode: userWriterGate.mode,
         });
         continue;
       }
@@ -382,7 +385,7 @@ export async function runBatchMatch(): Promise<void> {
           matchInsights: matchInsights as import("@peima/database").Prisma.InputJsonValue,
           status: RESULT_STATUS_READY,
         },
-        legacyWriterGate,
+        userWriterGate,
       );
 
       if (!writeResult.written) {

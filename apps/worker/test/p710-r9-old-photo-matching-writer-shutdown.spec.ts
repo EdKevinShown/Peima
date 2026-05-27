@@ -2,7 +2,10 @@ import {
   OLD_PHOTO_MATCHING_WRITER_DISABLED_REASON,
   OLD_PHOTO_MATCHING_WRITER_PRODUCTION_BLOCKED_REASON,
   OLD_PHOTO_MATCHING_WRITER_SHUTDOWN_REASON,
+  TEST_MATCH_RESULT_WRITER_ALLOWED_REASON,
+  TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON,
   readOldPhotoMatchingWriterGate,
+  readOldPhotoMatchingWriterGateForUser,
   writeLegacyPhotoMatchResultIfAllowed,
 } from "../src/jobs/old-photo-matching-writer-shutdown-env";
 
@@ -71,6 +74,31 @@ describe("P7.10-r9 old photo matching writer shutdown env", () => {
 
     const gate = readOldPhotoMatchingWriterGate();
     expect(gate.canWriteMatchResult).toBe(false);
+  });
+
+  it("dev allowlist override permits one local smoke-test user", () => {
+    const gate = readOldPhotoMatchingWriterGateForUser("viewer-1", {
+      PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED: "1",
+      PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS: "viewer-1,viewer-2",
+      NODE_ENV: "development",
+      PEIMA_P76_PRODUCTION_PERCENT: "0",
+    });
+
+    expect(gate.canWriteMatchResult).toBe(true);
+    expect(gate.mode).toBe("allowed");
+    expect(gate.reason).toBe(TEST_MATCH_RESULT_WRITER_ALLOWED_REASON);
+  });
+
+  it("dev allowlist override remains blocked for non-allowlisted users", () => {
+    const gate = readOldPhotoMatchingWriterGateForUser("viewer-x", {
+      PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED: "1",
+      PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS: "viewer-1,viewer-2",
+      NODE_ENV: "development",
+      PEIMA_P76_PRODUCTION_PERCENT: "0",
+    });
+
+    expect(gate.canWriteMatchResult).toBe(false);
+    expect(gate.reason).toBe(TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON);
   });
 });
 

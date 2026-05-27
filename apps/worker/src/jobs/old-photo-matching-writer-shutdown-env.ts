@@ -13,6 +13,10 @@ export const OLD_PHOTO_MATCHING_WRITER_DISABLED_REASON =
 
 export const OLD_PHOTO_MATCHING_WRITER_PRODUCTION_BLOCKED_REASON =
   "old_photo_matching_writer_production_blocked" as const;
+export const TEST_MATCH_RESULT_WRITER_ALLOWED_REASON =
+  "test_match_result_writer_allowlist" as const;
+export const TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON =
+  "test_match_result_writer_user_not_allowed" as const;
 
 const TRUTHY = new Set(["1", "true", "yes"]);
 const FALSY = new Set(["0", "false", "no"]);
@@ -23,6 +27,14 @@ function parseTruthy(raw: string | undefined, defaultValue: boolean): boolean {
   if (TRUTHY.has(v)) return true;
   if (FALSY.has(v)) return false;
   return defaultValue;
+}
+
+function parseIds(raw: string | undefined): Set<string> {
+  const ids = (raw ?? "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return new Set(ids);
 }
 
 export function normalizeOldPhotoMatchingWriterEnvironment(
@@ -152,6 +164,59 @@ export function readOldPhotoMatchingWriterGate(
     reason,
     safety: {
       writesMatchResult: false,
+      triggersWorker: false,
+      changesCanonical: false,
+      changesPercent: false,
+    },
+  };
+}
+
+/**
+ * Dev/QA-only override: allows local smoke-test users to exercise the legacy
+ * PreviewPool -> MatchResult writer without reopening it globally.
+ */
+export function readOldPhotoMatchingWriterGateForUser(
+  userId: string,
+  env: NodeJS.ProcessEnv = process.env,
+): OldPhotoMatchingWriterGateV1 {
+  const base = readOldPhotoMatchingWriterGate(env);
+  if (base.canWriteMatchResult) {
+    return base;
+  }
+
+  const testWriterEnabled = parseTruthy(
+    env.PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED,
+    false,
+  );
+  if (!testWriterEnabled) {
+    return base;
+  }
+  if (parseTruthy(env.PEIMA_TEST_MATCH_RESULT_WRITER_DISABLED, false)) {
+    return {
+      ...base,
+      reason: OLD_PHOTO_MATCHING_WRITER_DISABLED_REASON,
+    };
+  }
+  if (base.productionBlocked || base.percentEnabled || base.productionPercent > 0) {
+    return base;
+  }
+
+  const allow = parseIds(env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
+  if (!allow.has(userId)) {
+    return {
+      ...base,
+      reason: TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON,
+    };
+  }
+
+  return {
+    ...base,
+    writerEnabled: true,
+    canWriteMatchResult: true,
+    mode: "allowed",
+    reason: TEST_MATCH_RESULT_WRITER_ALLOWED_REASON,
+    safety: {
+      writesMatchResult: true,
       triggersWorker: false,
       changesCanonical: false,
       changesPercent: false,
