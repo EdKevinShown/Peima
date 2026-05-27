@@ -3,7 +3,9 @@ import { Test } from "@nestjs/testing";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { AI_PAIRWISE_DECISION_JOB_STATUS } from "../src/modules/ai-pairwise-decision/ai-pairwise-decision-job.constants";
 import { MatchingController } from "../src/modules/matching/matching.controller";
+import { MatchingDecisionComparisonService } from "../src/modules/matching/matching-decision-comparison.service";
 import { MatchingFinalizePairwiseService } from "../src/modules/matching/matching-finalize-pairwise.service";
+import { MatchingRrmRankingProposalService } from "../src/modules/matching/matching-rrm-ranking-proposal.service";
 import { MatchingService } from "../src/modules/matching/matching.service";
 
 const shortlistSnapshot = {
@@ -284,6 +286,8 @@ describe("MatchingController finalize-with-pairwise", () => {
       providers: [
         { provide: MatchingService, useValue: {} },
         { provide: MatchingFinalizePairwiseService, useValue: finalizePairwise },
+        { provide: MatchingRrmRankingProposalService, useValue: {} },
+        { provide: MatchingDecisionComparisonService, useValue: {} },
       ],
     }).compile();
     const ctrl = mod.get(MatchingController);
