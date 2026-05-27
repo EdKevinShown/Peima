@@ -153,11 +153,20 @@ Latest local run:
 | API e2e (dev smoke) | `pnpm --filter @peima/api test:e2e -- test-dev-smoke-hooks.e2e-spec.ts` | 4/4 passed |
 | Worker unit | `pnpm --filter @peima/worker test` | 8/8 suites, 97 tests passed |
 
+Full journey e2e (added):
+
+```bash
+pnpm --filter @peima/api test:e2e -- matching-full-journey.e2e-spec.ts
+```
+
+Covers: preview-pool seed → `POST /matching/enqueue` → `POST /test/matching/run-batch-once` (worker subprocess) → `GET /matching/status` ready → `GET /matching/result` with row; second case runs `tools/local-pressure-baseline.mjs` against the test HTTP listener.
+
+Frontend manual smoke: [frontend-smoke-checklist.md](./frontend-smoke-checklist.md)
+
 Known gaps to continue:
 
-- broader e2e coverage for full journey: enqueue -> worker batch-match -> final-match page APIs
-- web layer automated tests (currently mostly API/worker)
-- scheduled CI job to run matrix on every PR
+- web layer automated tests (Playwright / RTL)
+- scheduled CI job to run matrix on every PR (include full-journey e2e when DB available)
 
 ## 8. Pressure Baseline Tool
 
