@@ -67,3 +67,12 @@ export async function getLatestPreviewPool(userId: string) {
   const res = await fetch(url, { headers: authHeaders() });
   return handleJson<LatestPreviewPoolResponse>(res);
 }
+
+/** Dev/QA only: creates a local readonly latest pool for smoke testing. */
+export async function seedLatestPreviewPoolForTest() {
+  const res = await fetch(`${baseUrl}/test/preview-pool/seed-latest`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handleJson<LatestPreviewPoolResponse>(res);
+}

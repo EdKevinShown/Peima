@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getLatestPreviewPool } from "../api/previewPool";
+import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
+import { getTestMatchingCapabilities } from "../api/testMatch";
 import { resolveUserId } from "../utils/resolveUserId";
 
 const card = {
@@ -31,6 +32,8 @@ export default function PreviewPoolPage() {
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const [bundle, setBundle] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedAllowed, setSeedAllowed] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -55,6 +58,43 @@ export default function PreviewPoolPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const capabilities = await getTestMatchingCapabilities();
+        if (!cancelled) {
+          setSeedAllowed(Boolean(capabilities.testPreviewPoolSeed));
+        }
+      } catch {
+        if (!cancelled) {
+          setSeedAllowed(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const seedForTest = useCallback(async () => {
+    if (!userId) {
+      setError("缺少 userId：请先登录，或在 URL 里带上 ?userId=...");
+      return;
+    }
+    setSeeding(true);
+    setError("");
+    try {
+      const next = await seedLatestPreviewPoolForTest();
+      setBundle(next);
+    } catch (e) {
+      setBundle(null);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSeeding(false);
+    }
+  }, [userId]);
 
   const q = userId ? `?userId=${encodeURIComponent(userId)}` : "";
   const shortlistIds = bundle?.shortlistContract?.shortlist?.candidateUserIds ?? [];
@@ -87,6 +127,25 @@ export default function PreviewPoolPage() {
           >
             {loading ? "刷新中…" : "刷新"}
           </button>
+          {seedAllowed ? (
+            <button
+              type="button"
+              disabled={seeding || !userId}
+              onClick={() => void seedForTest()}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                padding: "0.6rem 1rem",
+                fontWeight: 600,
+                background: "#fff",
+                color: "#334155",
+                cursor: seeding || !userId ? "not-allowed" : "pointer",
+                opacity: seeding || !userId ? 0.72 : 1,
+              }}
+            >
+              {seeding ? "生成中…" : "生成本地测试预览池"}
+            </button>
+          ) : null}
           <Link to={`/matching-waiting${q}`} style={{ color: "#475569", fontWeight: 600 }}>
             去匹配等待
           </Link>
@@ -106,7 +165,10 @@ export default function PreviewPoolPage() {
           <h2 style={{ margin: "0 0 0.45rem", color: "#9a3412", fontSize: "1rem" }}>暂时没有可用预览池</h2>
           <p style={{ margin: 0, color: "#9a3412", lineHeight: 1.65 }}>{error}</p>
           <p style={{ margin: "0.7rem 0 0", color: "#7c2d12", fontSize: "0.86rem", lineHeight: 1.6 }}>
-            如果是 <code>No active preview pool</code>，需要先走 onboarding 照片/偏好流程，或用已有测试账号。
+            如果是 <code>No active preview pool</code>
+            {seedAllowed
+              ? "，可以点击「生成本地测试预览池」创建一组只读 smoke 数据；该路径不写 MatchResult。"
+              : "，需要先走 onboarding 照片/偏好流程，或让当前账号进入本地测试白名单后再生成 smoke 数据。"}
           </p>
         </section>
       ) : null}

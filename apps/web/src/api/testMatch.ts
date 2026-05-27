@@ -2,6 +2,7 @@ import { authHeaders, baseUrl, handleJson } from "./auth";
 
 export type TestMatchingCapabilities = {
   testBatchMatchTrigger: boolean;
+  testPreviewPoolSeed: boolean;
 };
 
 export async function getTestMatchingCapabilities(): Promise<TestMatchingCapabilities> {
@@ -9,7 +10,7 @@ export async function getTestMatchingCapabilities(): Promise<TestMatchingCapabil
     headers: authHeaders(),
   });
   if (res.status === 401) {
-    return { testBatchMatchTrigger: false };
+    return { testBatchMatchTrigger: false, testPreviewPoolSeed: false };
   }
   return handleJson<TestMatchingCapabilities>(res);
 }
