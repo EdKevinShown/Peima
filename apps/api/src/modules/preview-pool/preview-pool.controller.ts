@@ -18,7 +18,7 @@ type JwtReq = {
 };
 
 /**
- * P7.10-r11 — legacy PreviewPool HTTP API (read-only).
+ * P7.10-r11 — PreviewPool HTTP API (read + lazy ensure on GET latest).
  * POST /generate removed; formal MatchResult writer path removed in r9/r11.
  */
 @Controller("preview-pool")

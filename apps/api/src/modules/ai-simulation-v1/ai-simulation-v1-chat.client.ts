@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AiSimulationV1ConfigService } from "./ai-simulation-v1.config.service";
+import { buildOpenAiCompatibleChatCompletionsUrl } from "../../common/ai/chat-completions-url";
 
 /**
  * Resolves `AI_SIMULATION_V1_BASE_URL` / `MATCH_REVIEW_AI_BASE_URL` to a Chat Completions URL.
@@ -8,14 +9,7 @@ import { AiSimulationV1ConfigService } from "./ai-simulation-v1.config.service";
  * If the base already ends with `/chat/completions`, it is returned unchanged (no duplicate path).
  */
 export function buildAiSimulationV1ChatCompletionsUrl(baseUrl: string): string {
-  const b = baseUrl.trim().replace(/\/+$/, "");
-  if (!b) {
-    return "/chat/completions";
-  }
-  if (b.toLowerCase().endsWith("/chat/completions")) {
-    return b;
-  }
-  return `${b}/chat/completions`;
+  return buildOpenAiCompatibleChatCompletionsUrl(baseUrl);
 }
 
 export type AiSimulationV1ChatFailureKind =

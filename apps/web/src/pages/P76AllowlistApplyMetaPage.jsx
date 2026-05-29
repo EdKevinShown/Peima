@@ -6,6 +6,7 @@ import {
   listP76AllowlistApplyMeta,
 } from "../api/p76AdminAllowlistApplyMeta";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import {
   hasMainChainP0,
   hasNonAllowlistP0,
@@ -521,8 +522,12 @@ export default function P76AllowlistApplyMetaPage() {
                         : undefined
                   }
                 >
-                  <td style={td}>{r.viewerUserId}</td>
-                  <td style={td}>{r.selectedCandidateId}</td>
+                  <td style={td}>
+                    <UserIdWithName userId={r.viewerUserId} />
+                  </td>
+                  <td style={td}>
+                    <UserIdWithName userId={r.selectedCandidateId} />
+                  </td>
                   <td style={td}>{labelSidecarStatus(r.sidecarStatus)}</td>
                   <td style={td}>
                     {labelProductApplyStatus(r.productApplyStatus)}

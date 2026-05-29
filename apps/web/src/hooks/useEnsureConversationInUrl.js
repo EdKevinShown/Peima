@@ -3,33 +3,41 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { createConversation } from "../api/chat";
 import { resolveUserId } from "../utils/resolveUserId";
 
-/** Dedupe concurrent createConversation for same userId (e.g. React StrictMode). */
-const pendingCreatesByUserId = new Map();
+/** Dedupe concurrent createConversation for same userId + peer. */
+const pendingCreates = new Map();
 
-function getOrStartCreateConversation(userId) {
-  let p = pendingCreatesByUserId.get(userId);
+function createKey(userId, peerUserId) {
+  return `${userId}::${peerUserId ?? ""}`;
+}
+
+function getOrStartCreateConversation(userId, peerUserId) {
+  const key = createKey(userId, peerUserId);
+  let p = pendingCreates.get(key);
   if (!p) {
-    p = createConversation(userId).finally(() => {
-      pendingCreatesByUserId.delete(userId);
-    });
-    pendingCreatesByUserId.set(userId, p);
+    p = createConversation(userId, peerUserId ? { peerUserId } : undefined).finally(
+      () => {
+        pendingCreates.delete(key);
+      },
+    );
+    pendingCreates.set(key, p);
   }
   return p;
 }
 
 /**
- * When URL has viewer userId but no conversationId, call createConversation(userId)
- * then replace URL with ?conversationId=&userId= — same contract as FinalMatchPage.
+ * When URL has peerUserId but no conversationId, create conversation then replace URL.
+ * Bare /chat?userId= only shows friend picker (no auto-create).
  */
 export function useEnsureConversationInUrl(searchParams) {
   const navigate = useNavigate();
   const location = useLocation();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
+  const peerUserId = searchParams.get("peerUserId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const [ensureConversationError, setEnsureConversationError] = useState(null);
 
   useEffect(() => {
-    if (conversationId || !userId) {
+    if (conversationId || !userId || !peerUserId) {
       setEnsureConversationError(null);
       return;
     }
@@ -37,7 +45,7 @@ export function useEnsureConversationInUrl(searchParams) {
     let cancelled = false;
     setEnsureConversationError(null);
 
-    getOrStartCreateConversation(userId)
+    getOrStartCreateConversation(userId, peerUserId)
       .then((conv) => {
         if (cancelled) return;
         const q = new URLSearchParams();
@@ -53,11 +61,17 @@ export function useEnsureConversationInUrl(searchParams) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, userId, navigate, location.pathname]);
+  }, [conversationId, userId, peerUserId, navigate, location.pathname]);
 
   const shouldHoldForConversationBootstrap = Boolean(
-    userId && !conversationId && !ensureConversationError,
+    userId && peerUserId && !conversationId && !ensureConversationError,
   );
 
-  return { ensureConversationError, shouldHoldForConversationBootstrap };
+  const showFriendPicker = Boolean(userId && !conversationId && !peerUserId);
+
+  return {
+    ensureConversationError,
+    shouldHoldForConversationBootstrap,
+    showFriendPicker,
+  };
 }

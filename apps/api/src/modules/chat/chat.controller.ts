@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -44,7 +45,16 @@ export class ChatController {
       throw new UnauthorizedException("userId mismatch");
     }
     const mid = dto.matchResultId?.trim();
-    return this.chatService.createOrReuseConversation(tokenUserId, mid || undefined);
+    const peer = dto.peerUserId?.trim();
+    if (mid && peer) {
+      throw new BadRequestException(
+        "provide either matchResultId or peerUserId, not both",
+      );
+    }
+    return this.chatService.createOrReuseConversation(tokenUserId, {
+      matchResultId: mid || undefined,
+      peerUserId: peer || undefined,
+    });
   }
 
   @Get("conversations/:conversationId/summary")

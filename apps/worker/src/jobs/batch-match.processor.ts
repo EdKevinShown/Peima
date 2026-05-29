@@ -21,6 +21,11 @@ import {
   readOldPhotoMatchingWriterGateForUser,
   writeLegacyPhotoMatchResultIfAllowed,
 } from "./old-photo-matching-writer-shutdown-env.js";
+import {
+  ensureBidirectionalFriendship,
+  FRIENDSHIP_SOURCE_MATCH_AUTO,
+} from "./ensure-user-friendship.js";
+import { writeReciprocalMatchResultIfAbsent } from "./reciprocal-match-result-write.js";
 
 const BATCH_STATUS = {
   RUNNING: "running",
@@ -404,6 +409,57 @@ export async function runBatchMatch(): Promise<void> {
           legacyWriterMode: writeResult.mode,
         });
         continue;
+      }
+
+      const reciprocal = await writeReciprocalMatchResultIfAbsent(
+        prisma as Parameters<typeof writeReciprocalMatchResultIfAbsent>[0],
+        {
+          viewerUserId: q.userId,
+          candidateUserId: best.item.candidateUserId,
+          batchId: batch.id,
+          finalScore: best.components.finalScore,
+          reasonSummary: formatReasonSummaryV1(best.components),
+          matchInsights:
+            matchInsights as import("@peima/database").Prisma.InputJsonValue,
+        },
+      );
+      if (reciprocal.written) {
+        logBatchLine({
+          event: "reciprocal_match_result",
+          batchId: batch.id,
+          queueId: q.id,
+          viewerUserId: q.userId,
+          candidateUserId: best.item.candidateUserId,
+          outcome: "ok",
+          reasonCode: reciprocal.reason,
+        });
+      }
+
+      const primaryMatch = await prisma.matchResult.findFirst({
+        where: { userId: q.userId, batchId: batch.id },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      try {
+        await ensureBidirectionalFriendship(
+          prisma as Parameters<typeof ensureBidirectionalFriendship>[0],
+          q.userId,
+          best.item.candidateUserId,
+          {
+            source: FRIENDSHIP_SOURCE_MATCH_AUTO,
+            matchResultId: primaryMatch?.id ?? null,
+          },
+        );
+      } catch (friendErr) {
+        logBatchLine({
+          event: "match_friendship",
+          batchId: batch.id,
+          queueId: q.id,
+          viewerUserId: q.userId,
+          candidateUserId: best.item.candidateUserId,
+          outcome: "fail",
+          reasonCode: String(friendErr),
+        });
       }
 
       await prisma.batchMatchQueue.update({

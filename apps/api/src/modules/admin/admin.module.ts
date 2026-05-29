@@ -9,12 +9,14 @@ import { AdminService } from "./admin.service";
 import { MatchingObservabilitySummaryService } from "./matching-observability-summary.service";
 import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
 import { RrmEvalCollectorService } from "../rrm-eval";
+import { AdminMyAiRecordsService } from "./admin-my-ai-records.service";
 
 @Module({
   imports: [PrescreenV0Module, PostPoolDeepScreenModule, AiSimulationV1Module, AiPairwiseDecisionModule],
   controllers: [AdminController, AiPairwiseDecisionAdminController],
   providers: [
     AdminService,
+    AdminMyAiRecordsService,
     RrmObservationSummaryService,
     MatchingObservabilitySummaryService,
     RrmEvalCollectorService,

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InteractionSimulationLiteConfigService } from "./interaction-simulation-lite.config.service";
+import { buildOpenAiCompatibleChatCompletionsUrl } from "../../common/ai/chat-completions-url";
 
 export type InteractionSimulationLiteChatFailureKind =
   | "disabled"
@@ -34,7 +35,7 @@ export class InteractionSimulationLiteChatCompletionsClient {
       return { ok: false, kind: "missing_api_key" };
     }
 
-    const url = `${this.aiConfig.baseUrl}/v1/chat/completions`;
+    const url = buildOpenAiCompatibleChatCompletionsUrl(this.aiConfig.baseUrl);
     const body = {
       model: this.aiConfig.model,
       messages: [

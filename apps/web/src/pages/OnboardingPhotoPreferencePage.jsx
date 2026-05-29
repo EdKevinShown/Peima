@@ -10,6 +10,7 @@ import {
   getOnboardingPhotoStatus,
   postOnboardingPhotoPreferences,
 } from "../api/onboarding";
+import { getQuestionnaireProfile } from "../api/questionnaire";
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -117,7 +118,12 @@ export default function OnboardingPhotoPreferencePage() {
     setError(null);
     try {
       await postOnboardingPhotoPreferences(tags);
-      navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
+      const profile = await getQuestionnaireProfile(userId);
+      if (profile?.profile?.userId === userId) {
+        navigate(`/matching-waiting?userId=${encodeURIComponent(userId)}`);
+      } else {
+        navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
+      }
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setError(

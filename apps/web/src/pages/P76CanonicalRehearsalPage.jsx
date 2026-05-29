@@ -6,6 +6,7 @@ import {
   listP76CanonicalRehearsalRows,
 } from "../api/p76CanonicalRehearsalAdmin";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import {
   appliedToMatchResultLabel,
   eligibleTone,
@@ -851,10 +852,16 @@ export default function P76CanonicalRehearsalPage() {
                       <CopyIdCell value={r.auditRunId} />
                     </td>
                     <td style={td}>{r.sourceVersion ?? "—"}</td>
-                    <td style={td}>{r.viewerUserId ?? "—"}</td>
+                    <td style={td}>
+                      {r.viewerUserId ? <UserIdWithName userId={r.viewerUserId} /> : "—"}
+                    </td>
                     <td style={td}>{r.matchResultId ?? "—"}</td>
-                    <td style={td}>{r.baselineCandidateUserId ?? "—"}</td>
-                    <td style={td}>{r.proposedCandidateUserId ?? "—"}</td>
+                    <td style={td}>
+                      {r.baselineCandidateUserId ? <UserIdWithName userId={r.baselineCandidateUserId} /> : "—"}
+                    </td>
+                    <td style={td}>
+                      {r.proposedCandidateUserId ? <UserIdWithName userId={r.proposedCandidateUserId} /> : "—"}
+                    </td>
                     <td style={td}>
                       {r.wouldChangeCandidate ? (
                         <span style={{ fontWeight: 600, color: "#b45309" }}>yes</span>

@@ -4,6 +4,7 @@ export type PreviewPoolItemMeta = {
   slotReason: string;
   shortHint?: string;
   tags?: string[];
+  candidateImageUrl?: string;
 };
 
 export type PreviewPoolItem = {

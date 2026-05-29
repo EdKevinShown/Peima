@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { MatchReviewAiConfigService } from "./match-review-ai.config.service";
+import { buildOpenAiCompatibleChatCompletionsUrl } from "../../common/ai/chat-completions-url";
 
 export type MatchReviewAiChatFailureKind =
   | "disabled"
@@ -34,7 +35,7 @@ export class MatchReviewAiChatCompletionsClient {
       return { ok: false, kind: "missing_api_key" };
     }
 
-    const url = `${this.aiConfig.baseUrl}/v1/chat/completions`;
+    const url = buildOpenAiCompatibleChatCompletionsUrl(this.aiConfig.baseUrl);
     const body = {
       model: this.aiConfig.model,
       messages: [

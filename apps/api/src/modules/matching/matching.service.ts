@@ -39,6 +39,10 @@ import {
   type MatchResultResultStateFields,
 } from "./matching-result-state";
 import { enrichNoRowResultForLegacyWriterShutdown } from "./p710-r10-safe-fallback-final-policy";
+import {
+  projectMatchResultForViewer,
+  resolveLatestMatchResultAccess,
+} from "./matching-latest-result-access";
 
 export type MatchStatusPayload = {
   status: "not_queued" | "waiting" | "processing" | "ready";
@@ -113,10 +117,7 @@ export class MatchingService {
   async getStatusForUser(userId: string): Promise<MatchStatusPayload> {
     await this.ensureUserExists(userId);
 
-    const latestResult = await this.prisma.matchResult.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
+    const latestAccess = await resolveLatestMatchResultAccess(this.prisma, userId);
 
     const latestQueue = await this.prisma.batchMatchQueue.findFirst({
       where: { userId },
@@ -124,7 +125,7 @@ export class MatchingService {
     });
 
     if (!latestQueue) {
-      return { status: latestResult ? "ready" : "not_queued" };
+      return { status: latestAccess ? "ready" : "not_queued" };
     }
 
     if (latestQueue.status === "waiting") {
@@ -137,7 +138,7 @@ export class MatchingService {
       return { status: "ready" };
     }
 
-    if (latestResult) {
+    if (latestAccess) {
       return { status: "ready" };
     }
     return { status: "not_queued" };
@@ -148,11 +149,8 @@ export class MatchingService {
 
     const resultStateContract = readP76ResultStateContractEnv();
 
-    const result = await this.prisma.matchResult.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
-    if (!result) {
+    const access = await resolveLatestMatchResultAccess(this.prisma, userId);
+    if (!access) {
       if (!resultStateContract.enabled) {
         throw new NotFoundException(`No match result for user ${userId}`);
       }
@@ -169,7 +167,9 @@ export class MatchingService {
       });
     }
 
-    const payload = await this.buildMatchResultViewerPayload(result);
+    const payload = await this.buildMatchResultViewerPayload(
+      projectMatchResultForViewer(access),
+    );
     if (!resultStateContract.enabled) {
       return payload;
     }

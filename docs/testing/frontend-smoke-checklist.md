@@ -18,7 +18,8 @@
 - [ ] `pnpm dev:api` 在 `http://127.0.0.1:3000` 可访问
 - [ ] `pnpm dev:web` 在 `http://127.0.0.1:5173` 可访问
 - [ ] Worker / Redis / DB 正常
-- [ ] 测试用户已在 `.env` 白名单中：`PEIMA_TEST_MATCH_*`、`PEIMA_TEST_PREVIEW_POOL_SEED_*`、`PEIMA_TEST_MATCH_RESULT_WRITER_*`
+- [ ] 测试用户已在 `.env` 白名单中：`PEIMA_TEST_MATCH_*`、`PEIMA_TEST_PREVIEW_POOL_SEED_*`（可选，用于强制换池）、`PEIMA_TEST_MATCH_RESULT_WRITER_*`
+- [ ] 预览池懒生成默认开启（`PEIMA_PREVIEW_POOL_AUTO_ENSURE_DISABLED` 未设为 `1`）；首次打开预览池页会自动建池
 - [ ] 浏览器控制台无持续报错（偶发可记录）
 
 ---
@@ -134,12 +135,33 @@
 
 ---
 
+## C. Fallback 路径验收（负责人 / 发版前，约 30 分钟）
+
+**详细说明与对照表：** [backend-qa-and-fallback-manual-guide.md](./backend-qa-and-fallback-manual-guide.md) §4。
+
+自动化门禁（无需浏览器）：
+
+```bash
+pnpm --filter @peima/api exec jest test/runtime-fallback-path-gates.spec.ts
+```
+
+手工最小打勾（在 API 已启动、有两账号 JWT 时）：
+
+- [ ] **F1** 预览池无池 → `GET /preview-pool/user/:id/latest` 自动有池；`.env` 设 `PEIMA_PREVIEW_POOL_AUTO_ENSURE_DISABLED=1` 重启后同用户无池（验证开关有效）
+- [ ] **F2** 跑批匹配后，**被匹配方**也能在 `/final-match` 看到结果（`PEIMA_MATCH_RESULT_RECIPROCAL_ENABLED` 勿误关）
+- [ ] **F3** 关 `SUMMARY_AI_ENABLED` 调摘要接口 → 响应 `sourceType` 为 `summary_rule_based`；开启且 key 有效 → `summary_model_*`
+- [ ] **F4** 问卷画像页：正常卷有命名标题；边缘卷可出现「尚未收敛到命名标签」（约 3–4%，见 `questionnaire:non-convergence-analysis`）
+
+---
+
 ## 备注
 
 | 类型 | 位置 |
 | --- | --- |
+| **后端 + Fallback 完整测试指南（负责人）** | [backend-qa-and-fallback-manual-guide.md](./backend-qa-and-fallback-manual-guide.md) |
 | 全链路自动化（API + worker，无浏览器） | `apps/api/test/matching-full-journey.e2e-spec.ts` |
+| Fallback 环境默认门禁 | `apps/api/test/runtime-fallback-path-gates.spec.ts` |
 | 对运行中 dev API 一键冒烟 + 压力 | `node tools/local-api-smoke.mjs` |
 | 压力脚本单独使用 | `tools/local-pressure-baseline.mjs` |
 
-**分工建议：** 发版前跑 **A 全流程手工** + 自动化 e2e；日常改 UI 只跑 **B 分页面** 即可。
+**分工建议：** 发版前跑 **A 全流程手工** + **C Fallback** + 自动化 e2e；日常改 UI 只跑 **B 分页面** 即可。

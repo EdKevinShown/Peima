@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConversationProfileCompletionAiConfigService } from "./conversation-profile-completion-ai.config.service";
+import { buildOpenAiCompatibleChatCompletionsUrl } from "../../common/ai/chat-completions-url";
 
 export type ProfileCompletionChatFailureKind =
   | "disabled"
@@ -31,7 +32,7 @@ export class ConversationProfileCompletionChatCompletionsClient {
       return { ok: false, kind: "missing_api_key" };
     }
 
-    const url = `${this.aiConfig.baseUrl}/v1/chat/completions`;
+    const url = buildOpenAiCompatibleChatCompletionsUrl(this.aiConfig.baseUrl);
     const body = {
       model: this.aiConfig.model,
       messages: [

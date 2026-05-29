@@ -15,6 +15,7 @@ import MyActivityPage from "../pages/MyActivityPage";
 import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
 import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
 import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
+import AdminMyAiRecordsPage from "../pages/AdminMyAiRecordsPage";
 import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
 import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
 import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
@@ -23,6 +24,7 @@ import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getOnboardingPhotoStatus } from "../api/onboarding";
+import { getQuestionnaireProfile } from "../api/questionnaire";
 
 /** P7 收口：旧 /my-images 统一进 onboarding 上传页，避免绕过审美与预览门禁。 */
 function LegacyMyImagesRedirect() {
@@ -70,10 +72,13 @@ function HomePage() {
         navigate(`/onboarding/photo-upload${q}`);
       } else if (status.nextStep === "photo_preference") {
         navigate(`/onboarding/photo-preference${q}`);
-      } else if (status.nextStep === "photo_preview") {
-        navigate(`/questionnaire${q}`);
       } else {
-        navigate(`/questionnaire${q}`);
+        const profile = await getQuestionnaireProfile(userId);
+        if (profile?.profile?.userId === userId) {
+          navigate(`/matching-waiting${q}`);
+        } else {
+          navigate(`/questionnaire${q}`);
+        }
       }
     } catch {
       navigate(`/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`);
@@ -221,6 +226,10 @@ function HomePage() {
               照片审核
             </Link>
             {" · "}
+            <Link to="/admin/my-ai-records" style={{ color: "#94a3b8" }}>
+              我的 AI 记录
+            </Link>
+            {" · "}
             <Link to="/admin/p76/allowlist-apply-meta" style={{ color: "#94a3b8" }}>
               P76 Allowlist Meta
             </Link>
@@ -263,6 +272,7 @@ export default function AppRoutes() {
       <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
       <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
       <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
+      <Route path="/admin/my-ai-records" element={<AdminMyAiRecordsPage />} />
       <Route
         path="/admin/p76/allowlist-apply-meta"
         element={<P76AllowlistApplyMetaPage />}

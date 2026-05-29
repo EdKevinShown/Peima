@@ -42,6 +42,8 @@ model User {
   matchResultsAsCandidate      MatchResult[]       @relation("MatchResultCandidate")
   conversationEntriesAsViewer Conversation[] @relation("ConversationViewer")
   conversationEntriesAsCandidate Conversation[] @relation("ConversationCandidate")
+  friendshipsOwned  UserFriendship[] @relation("FriendshipOwner")
+  friendshipsAsPeer UserFriendship[] @relation("FriendshipPeer")
   messagesAsSender Message[] @relation("MessageSender")
   structuredFeedbacks      UserFeedback[]
   profileUpdateSuggestions ProfileUpdateSuggestion[]
@@ -518,6 +520,24 @@ model MatchResult {
   rrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
 
   @@map("match_results")
+}
+
+/// Directed friendship (A→B). Match success writes both directions (`match_auto`).
+model UserFriendship {
+  id            String   @id @default(cuid())
+  userId        String
+  friendUserId  String
+  source        String
+  matchResultId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user   User @relation("FriendshipOwner", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendshipPeer", fields: [friendUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendUserId])
+  @@index([userId, createdAt])
+  @@map("user_friendships")
 }
 
 /// One-to-one chat between two matched users.

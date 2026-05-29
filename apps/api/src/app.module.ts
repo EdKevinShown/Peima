@@ -7,6 +7,7 @@ import { PreviewPoolModule } from "./modules/preview-pool/preview-pool.module";
 import { QuestionnaireModule } from "./modules/questionnaire/questionnaire.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ChatModule } from "./modules/chat/chat.module";
+import { FriendsModule } from "./modules/friends/friends.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { ProfileSuggestionModule } from "./modules/profile-suggestion/profile-suggestion.module";
@@ -48,6 +49,7 @@ import { P76CanonicalSidecarAdminModule } from "./modules/matching/p76-canonical
     QuestionnaireModule,
     MatchingModule,
     ChatModule,
+    FriendsModule,
     FeedbackModule,
     ProfileSuggestionModule,
     BehaviorSignalModule,

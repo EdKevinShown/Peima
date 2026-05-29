@@ -163,6 +163,10 @@ Covers: preview-pool seed → `POST /matching/enqueue` → `POST /test/matching/
 
 Frontend manual smoke: [frontend-smoke-checklist.md](./frontend-smoke-checklist.md)
 
+Backend QA + fallback manual guide (owner sign-off): [backend-qa-and-fallback-manual-guide.md](./backend-qa-and-fallback-manual-guide.md)
+
+Fallback env gate spec: `apps/api/test/runtime-fallback-path-gates.spec.ts`
+
 Known gaps to continue:
 
 - web layer automated tests (Playwright / RTL)

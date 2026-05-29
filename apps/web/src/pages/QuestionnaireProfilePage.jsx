@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import { getQuestionnaireProfile } from "../api/questionnaire";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -165,7 +166,7 @@ export default function QuestionnaireProfilePage() {
       </p>
 
       <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "0.75rem" }}>
-        userId：<code>{userId || "（未设置）"}</code>
+        userId：<code><UserIdWithName userId={userId} /></code>
       </p>
 
       {!userId ? (

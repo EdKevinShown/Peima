@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import {
+  deleteUserImage,
   listUserImages,
+  resolveUserImageUrl,
   uploadUserImageFile,
 } from "../api/images";
 import { getMe } from "../api/auth";
 import { getOnboardingPhotoStatus } from "../api/onboarding";
+import { getQuestionnaireProfile } from "../api/questionnaire";
 import { resolveUserId } from "../utils/resolveUserId";
 import {
   getBlockedPhotoReviewBanner,
@@ -43,6 +46,8 @@ export default function OnboardingPhotoUploadPage() {
   const [photoStatus, setPhotoStatus] = useState(null);
   const [pickedFile, setPickedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState("");
+  const [deletingAll, setDeletingAll] = useState(false);
   const [brokenImageIds, setBrokenImageIds] = useState(() => new Set());
   const fileInputRef = useRef(null);
 
@@ -99,18 +104,19 @@ export default function OnboardingPhotoUploadPage() {
   }, [load]);
 
   const navigateByStatus = useCallback(
-    (status) => {
+    async (status) => {
       if (!userId || !status) return;
       const q = `?userId=${encodeURIComponent(userId)}`;
       if (status.nextStep === "photo_preference") {
         navigate(`/onboarding/photo-preference${q}`);
         return;
       }
-      if (status.nextStep === "photo_preview") {
-        navigate(`/questionnaire${q}`);
-        return;
-      }
       if (status.nextStep === "questionnaire") {
+        const profile = await getQuestionnaireProfile(userId);
+        if (profile?.profile?.userId === userId) {
+          navigate(`/matching-waiting${q}`);
+          return;
+        }
         navigate(`/questionnaire${q}`);
       }
     },
@@ -199,7 +205,7 @@ export default function OnboardingPhotoUploadPage() {
         return;
       }
 
-      navigateByStatus(status);
+      void navigateByStatus(status);
     } catch (e) {
       setError(new Error(mapOnboardingPhotoUploadError(e)));
     } finally {
@@ -219,11 +225,79 @@ export default function OnboardingPhotoUploadPage() {
       if (status.nextStep === "photo_upload") {
         return;
       }
-      navigateByStatus(status);
+      void navigateByStatus(status);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
   }, [userId, applyStatus, navigateByStatus]);
+
+  const onDeleteImage = useCallback(
+    async (imageId) => {
+      if (!imageId || uploading || deletingImageId) return;
+      if (!window.confirm("确定删除这张照片吗？")) return;
+      setError(null);
+      setPhotoWarning(null);
+      setDeletingImageId(imageId);
+      try {
+        await deleteUserImage(imageId);
+        setBrokenImageIds((prev) => {
+          const next = new Set(prev);
+          next.delete(imageId);
+          return next;
+        });
+        const [list, status] = await Promise.all([
+          listUserImages(userId),
+          getOnboardingPhotoStatus(),
+        ]);
+        setExistingImages(Array.isArray(list) ? list : []);
+        applyStatus(status);
+      } catch (e) {
+        setError(e instanceof Error ? e : new Error(String(e)));
+      } finally {
+        setDeletingImageId("");
+      }
+    },
+    [uploading, deletingImageId, userId, applyStatus],
+  );
+
+  const onDeleteAllImages = useCallback(async () => {
+    if (!userId || uploading || deletingImageId || deletingAll || existingImages.length === 0) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `确定删除当前全部 ${existingImages.length} 张照片吗？此操作不可撤销。`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setPhotoWarning(null);
+    setDeletingAll(true);
+    try {
+      for (const row of existingImages) {
+        await deleteUserImage(row.id);
+      }
+      setBrokenImageIds(new Set());
+      const [list, status] = await Promise.all([
+        listUserImages(userId),
+        getOnboardingPhotoStatus(),
+      ]);
+      setExistingImages(Array.isArray(list) ? list : []);
+      applyStatus(status);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setDeletingAll(false);
+    }
+  }, [
+    userId,
+    uploading,
+    deletingImageId,
+    deletingAll,
+    existingImages,
+    applyStatus,
+  ]);
 
   return (
     <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
@@ -326,9 +400,43 @@ export default function OnboardingPhotoUploadPage() {
           {hasPhoto ? (
             <div style={{ marginBottom: "1.25rem" }}>
               <div
-                style={{ fontWeight: 600, color: "#334155", marginBottom: "0.5rem", fontSize: "0.95rem" }}
+                style={{
+                  marginBottom: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.6rem",
+                }}
               >
-                当前照片
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: "#334155",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  当前照片
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void onDeleteAllImages()}
+                  disabled={uploading || deletingImageId !== "" || deletingAll}
+                  style={{
+                    border: "1px solid #fecaca",
+                    background: "#fff1f2",
+                    color: "#b91c1c",
+                    borderRadius: 999,
+                    fontSize: "0.75rem",
+                    lineHeight: 1,
+                    padding: "0.3rem 0.55rem",
+                    cursor:
+                      uploading || deletingImageId !== "" || deletingAll
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                >
+                  {deletingAll ? "删除中…" : "删除全部"}
+                </button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem" }}>
                 {existingImages.map((row) => (
@@ -346,20 +454,49 @@ export default function OnboardingPhotoUploadPage() {
                       justifyContent: "center",
                     }}
                   >
-                    {brokenImageIds.has(row.id) ? (
-                      <span style={{ fontSize: "0.72rem", color: "#94a3b8", padding: "0.35rem", textAlign: "center" }}>
-                        图片暂时无法显示，请稍后重试或重新上传
-                      </span>
-                    ) : (
-                      <img
-                        src={row.imageUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        onError={() => {
-                          setBrokenImageIds((prev) => new Set(prev).add(row.id));
+                    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+                      {brokenImageIds.has(row.id) ? (
+                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", padding: "0.35rem", textAlign: "center" }}>
+                          图片暂时无法显示，请稍后重试或重新上传
+                        </span>
+                      ) : (
+                        <img
+                          src={resolveUserImageUrl(row.imageUrl)}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={() => {
+                            setBrokenImageIds((prev) => new Set(prev).add(row.id));
+                          }}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void onDeleteImage(row.id)}
+                        disabled={
+                          uploading || deletingAll || deletingImageId === row.id
+                        }
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          border: "1px solid #fecaca",
+                          background: "#fff1f2",
+                          color: "#b91c1c",
+                          borderRadius: 999,
+                          fontSize: "0.72rem",
+                          lineHeight: 1,
+                          padding: "0.2rem 0.45rem",
+                          cursor:
+                            uploading || deletingImageId === row.id
+                              ? "not-allowed"
+                              : "pointer",
                         }}
-                      />
-                    )}
+                        title="删除照片"
+                        aria-label="删除照片"
+                      >
+                        {deletingImageId === row.id ? "…" : "删除"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

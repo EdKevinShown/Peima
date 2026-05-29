@@ -1,6 +1,6 @@
 /**
- * P7.10-r11 — legacy PreviewPool read-only (generate/writer path removed in r11).
- * Historical rows remain queryable for admin/shadow; batch-match writer gated by r9.
+ * P7.10-r11 — legacy PreviewPool read path (formal writer removed in r11).
+ * When no active pool exists, optional lazy ensure creates one on GET latest.
  */
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type {
@@ -16,6 +16,8 @@ import {
   buildPreviewPoolShortlistContractV0,
   type PreviewPoolShortlistContractV0,
 } from "./preview-pool-shortlist-contract.v0";
+import { isPreviewPoolAutoEnsureEnabled } from "./preview-pool-auto-ensure.policy";
+import { PreviewPoolGeneratorService } from "./preview-pool-generator.service";
 
 const POOL_STATUS = {
   ACTIVE: "active",
@@ -29,9 +31,30 @@ export type PreviewPoolBundle = {
 
 export type { PreviewPoolShortlistContractV0 };
 
+function mergeItemMetaWithImageUrl(
+  item: PreviewPoolItem,
+  candidateImageUrl: string | null,
+): PreviewPoolItem {
+  const baseMeta =
+    item.itemMeta && typeof item.itemMeta === "object" ? item.itemMeta : {};
+  if (!candidateImageUrl) {
+    return item;
+  }
+  return {
+    ...item,
+    itemMeta: {
+      ...(baseMeta as Record<string, unknown>),
+      candidateImageUrl,
+    },
+  };
+}
+
 @Injectable()
 export class PreviewPoolService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly previewPoolGenerator: PreviewPoolGeneratorService,
+  ) {}
 
   async buildShortlistContractV0ForPool(
     viewerUserId: string,
@@ -108,7 +131,7 @@ export class PreviewPoolService {
   async findLatestActiveForUser(viewerUserId: string): Promise<PreviewPoolBundle> {
     await this.ensureUserExists(viewerUserId);
 
-    const pool = await this.prisma.previewPool.findFirst({
+    let pool = await this.prisma.previewPool.findFirst({
       where: { userId: viewerUserId, status: POOL_STATUS.ACTIVE },
       orderBy: { createdAt: "desc" },
       include: {
@@ -116,19 +139,51 @@ export class PreviewPoolService {
       },
     });
 
-    if (!pool) {
+    if ((!pool || pool.items.length === 0) && isPreviewPoolAutoEnsureEnabled()) {
+      await this.previewPoolGenerator.ensureActivePool(viewerUserId, {
+        source: "auto_ensure",
+        replaceExisting: false,
+      });
+      pool = await this.prisma.previewPool.findFirst({
+        where: { userId: viewerUserId, status: POOL_STATUS.ACTIVE },
+        orderBy: { createdAt: "desc" },
+        include: {
+          items: { orderBy: { rankInPool: "asc" } },
+        },
+      });
+    }
+
+    if (!pool || pool.items.length === 0) {
       throw new NotFoundException(
         `No active preview pool for user ${viewerUserId}`,
       );
     }
 
     const { items, ...previewPool } = pool;
+    const candidateIds = [...new Set(items.map((it) => it.candidateUserId))];
+    const latestCandidateImages = await this.prisma.userImage.findMany({
+      where: { userId: { in: candidateIds } },
+      orderBy: [{ userId: "asc" }, { createdAt: "desc" }],
+      select: { userId: true, imageUrl: true },
+    });
+    const imageUrlByCandidateId = new Map<string, string>();
+    for (const row of latestCandidateImages) {
+      if (!imageUrlByCandidateId.has(row.userId)) {
+        imageUrlByCandidateId.set(row.userId, row.imageUrl);
+      }
+    }
+    const enrichedItems = items.map((it) =>
+      mergeItemMetaWithImageUrl(
+        it,
+        imageUrlByCandidateId.get(it.candidateUserId) ?? null,
+      ),
+    );
     const shortlistContract = await this.attachShortlistContractV0(
       viewerUserId,
       previewPool.id,
-      items,
+      enrichedItems,
     );
-    return { previewPool, items, shortlistContract };
+    return { previewPool, items: enrichedItems, shortlistContract };
   }
 
   async remove(poolId: string, viewerUserId: string): Promise<void> {

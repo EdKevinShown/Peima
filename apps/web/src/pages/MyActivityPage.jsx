@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import { getP2OverviewGlobal, getP2OverviewMine } from "../api/analytics";
 import {
   createBehaviorSignal,
@@ -104,7 +105,7 @@ export default function MyActivityPage() {
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>P2 活动与统计</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        userId: <code>{userId || "（未设置）"}</code>
+        userId: <code><UserIdWithName userId={userId} /></code>
       </p>
       <p style={{ marginBottom: "1rem", fontSize: "0.85rem" }}>
         <Link to="/">首页</Link>

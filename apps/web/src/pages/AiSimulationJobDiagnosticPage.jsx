@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getAdminAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 
 function readJobId(searchParams) {
   return (searchParams.get("jobId") || searchParams.get("aiSimJobId") || "").trim();
@@ -373,7 +374,9 @@ export default function AiSimulationJobDiagnosticPage() {
                     {items.map((it, idx) => (
                       <tr key={`${it.candidateUserId}-${idx}`}>
                         <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{it.candidateUserId}</code>
+                          <code style={{ fontSize: "0.72rem" }}>
+                            <UserIdWithName userId={it.candidateUserId} />
+                          </code>
                         </td>
                         <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>{it.status || "—"}</td>
                         <td style={{ textAlign: "right", padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
@@ -463,7 +466,9 @@ export default function AiSimulationJobDiagnosticPage() {
                             {row.rrmRank == null ? "—" : row.rrmRank}
                           </td>
                           <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
-                            <code style={{ fontSize: "0.68rem" }}>{row.candidateUserId}</code>
+                            <code style={{ fontSize: "0.68rem" }}>
+                              <UserIdWithName userId={row.candidateUserId} />
+                            </code>
                           </td>
                           <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
                             {row.simulatedRhythmScore == null ? "—" : row.simulatedRhythmScore}
@@ -496,7 +501,7 @@ export default function AiSimulationJobDiagnosticPage() {
                 以下排序为<strong>假设仅按 RRM 节奏分</strong>的对比，不参与真实匹配排序，不改变 finalScore / MatchResult。
               </p>
               <p style={{ margin: "0 0 0.35rem", fontSize: "0.76rem", color: "#5b21b6" }}>
-                jobId：<code>{rrmDiag.jobId}</code> · viewerUserId：<code>{rrmDiag.viewerUserId}</code> · transcript 侧 sourceVersion
+                jobId：<code>{rrmDiag.jobId}</code> · viewerUserId：<code><UserIdWithName userId={rrmDiag.viewerUserId} /></code> · transcript 侧 sourceVersion
                 摘要：<code>{rrmDiag.sourceVersion}</code>
               </p>
               <div
@@ -556,7 +561,9 @@ export default function AiSimulationJobDiagnosticPage() {
                           {row.existingRank == null ? "—" : row.existingRank}
                         </td>
                         <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
-                          <code style={{ fontSize: "0.7rem" }}>{row.candidateUserId}</code>
+                          <code style={{ fontSize: "0.7rem" }}>
+                            <UserIdWithName userId={row.candidateUserId} />
+                          </code>
                         </td>
                         <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>{String(row.aiSimulationV2Full)}</td>
                         <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>

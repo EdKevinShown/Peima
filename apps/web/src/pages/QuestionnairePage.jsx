@@ -7,6 +7,7 @@ import {
 import { getToken } from "../api/auth";
 import { getOnboardingPhotoStatus } from "../api/onboarding";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import { resolveUserId } from "../utils/resolveUserId";
 
 export default function QuestionnairePage() {
@@ -159,7 +160,7 @@ export default function QuestionnairePage() {
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>轻量画像问卷</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        userId: <code>{userId || "（未设置）"}</code>
+        userId: <code><UserIdWithName userId={userId} /></code>
         {version ? (
           <>
             {" "}

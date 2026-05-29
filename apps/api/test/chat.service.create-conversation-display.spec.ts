@@ -4,9 +4,15 @@ import * as matchingDisplay from "../src/modules/matching/matching-result-displa
 
 describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
   const summaryStub = {} as any;
+  const friendshipStub = {
+    assertFriendship: jest.fn(),
+    ensureMatchFriends: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    friendshipStub.assertFriendship.mockReset();
+    friendshipStub.ensureMatchFriends.mockReset();
   });
 
   it("uses resolveMatchResultDisplay displayCandidateUserId when matchResultId is provided", async () => {
@@ -36,14 +42,15 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
         update: matchResultUpdate,
       },
       conversation: {
-        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
         create,
         update: jest.fn(),
       },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
-    await svc.createOrReuseConversation("viewer-1", "mr-1");
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await svc.createOrReuseConversation("viewer-1", { matchResultId: "mr-1" });
 
     expect(create).toHaveBeenCalledWith({
       data: {
@@ -82,14 +89,15 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
         update: jest.fn(),
       },
       conversation: {
-        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
         create,
         update: jest.fn(),
       },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
-    await svc.createOrReuseConversation("viewer-1", "mr-2");
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await svc.createOrReuseConversation("viewer-1", { matchResultId: "mr-2" });
 
     expect(create).toHaveBeenCalledWith({
       data: {
@@ -126,25 +134,84 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
         }),
       },
       conversation: {
-        findFirst: jest.fn().mockResolvedValue({ id: "existing" }),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "existing",
+            viewerUserId: "other",
+            candidateUserId: "display-b",
+            updatedAt: new Date(),
+            _count: { messages: 2 },
+          },
+        ]),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update,
       },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
-    await svc.createOrReuseConversation("viewer-1", "mr-1");
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await svc.createOrReuseConversation("viewer-1", { matchResultId: "mr-1" });
 
-    expect(prisma.conversation.findFirst).toHaveBeenCalledWith(
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          viewerUserId: "viewer-1",
-          candidateUserId: "display-b",
           status: "active",
+          OR: expect.arrayContaining([
+            { viewerUserId: "viewer-1", candidateUserId: "display-b" },
+            { viewerUserId: "display-b", candidateUserId: "viewer-1" },
+          ]),
         }),
       }),
     );
     expect(update).toHaveBeenCalled();
+  });
+
+  it("reuses reverse-direction conversation so both users share one thread", async () => {
+    jest.spyOn(matchingDisplay, "resolveMatchResultDisplay").mockResolvedValue({
+      displayCandidateUserId: "user-6",
+      displaySourceType: "match_result_original",
+      finalMatchDecisionMeta: null,
+    });
+
+    const update = jest.fn().mockResolvedValue({ id: "shared-conv" });
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ id: "user-6" }) },
+      matchResult: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "mr-inbound",
+          userId: "user-7",
+          candidateUserId: "user-6",
+          matchInsights: null,
+          finalScore: 0.8,
+          batchId: "b",
+          reasonSummary: null,
+          status: "ready",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      },
+      conversation: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "conv-7-6",
+            viewerUserId: "user-7",
+            candidateUserId: "user-6",
+            updatedAt: new Date(),
+            _count: { messages: 3 },
+          },
+        ]),
+        create: jest.fn(),
+        update,
+      },
+    };
+
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await svc.createOrReuseConversation("user-6", { matchResultId: "mr-inbound" });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "conv-7-6" } }),
+    );
+    expect(prisma.conversation.create).not.toHaveBeenCalled();
   });
 
   it("throws Forbidden when matchResult belongs to another user", async () => {
@@ -160,8 +227,10 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
       conversation: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
-    await expect(svc.createOrReuseConversation("viewer-1", "mr-x")).rejects.toBeInstanceOf(ForbiddenException);
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await expect(
+      svc.createOrReuseConversation("viewer-1", { matchResultId: "mr-x" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("throws NotFound when matchResultId does not exist", async () => {
@@ -171,8 +240,10 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
       conversation: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
-    await expect(svc.createOrReuseConversation("viewer-1", "missing")).rejects.toBeInstanceOf(NotFoundException);
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
+    await expect(
+      svc.createOrReuseConversation("viewer-1", { matchResultId: "missing" }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it("without matchResultId uses latest MatchResult.candidateUserId (legacy)", async () => {
@@ -189,13 +260,14 @@ describe("ChatService.createOrReuseConversation (M5.5-Chat-R2A)", () => {
         }),
       },
       conversation: {
-        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
         create,
         update: jest.fn(),
       },
     };
 
-    const svc = new ChatService(prisma as any, summaryStub);
+    const svc = new ChatService(prisma as any, summaryStub, friendshipStub as any);
     await svc.createOrReuseConversation("viewer-1");
 
     expect(matchingDisplay.resolveMatchResultDisplay).not.toHaveBeenCalled();

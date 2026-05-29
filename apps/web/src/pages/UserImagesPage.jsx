@@ -5,8 +5,10 @@ import {
   createUserImage,
   deleteUserImage,
   listUserImages,
+  resolveUserImageUrl,
   uploadUserImageFile,
 } from "../api/images";
+import UserIdWithName from "../components/common/UserIdWithName";
 import { resolveUserId } from "../utils/resolveUserId";
 
 export default function UserImagesPage() {
@@ -124,7 +126,7 @@ export default function UserImagesPage() {
     <main style={{ maxWidth: 640, margin: "2rem auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem" }}>我的图片</h1>
       <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        userId: <code>{userId || "（未设置）"}</code>
+        userId: <code><UserIdWithName userId={userId} /></code>
       </p>
       <p style={{ color: "#666", fontSize: "0.82rem", lineHeight: 1.5 }}>
         <strong>本地上传</strong>：文件会保存到 API 服务器目录，并写入可访问的 URL（单张最大 5MB，支持 jpeg / png / webp / gif）。
@@ -240,13 +242,13 @@ export default function UserImagesPage() {
                   <code>{r.id}</code>
                 </div>
                 <div style={{ marginTop: "0.35rem" }}>
-                  <a href={r.imageUrl} target="_blank" rel="noreferrer">
-                    {r.imageUrl}
+                  <a href={resolveUserImageUrl(r.imageUrl)} target="_blank" rel="noreferrer">
+                    {resolveUserImageUrl(r.imageUrl)}
                   </a>
                 </div>
                 <div style={{ marginTop: "0.35rem" }}>
                   <img
-                    src={r.imageUrl}
+                    src={resolveUserImageUrl(r.imageUrl)}
                     alt=""
                     style={{
                       maxWidth: "100%",

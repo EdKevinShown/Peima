@@ -6,6 +6,7 @@ import {
   listP76CanonicalSidecarAdmin,
 } from "../api/p76CanonicalSidecarAdmin";
 import LoadingState from "../components/common/LoadingState";
+import UserIdWithName from "../components/common/UserIdWithName";
 import {
   appliedFlagTone,
   getCanonicalSidecarAppliedFlagLabel,
@@ -867,9 +868,13 @@ export default function P76CanonicalSidecarPage() {
                       <CopyIdCell value={r.auditRunId} />
                     </td>
                     <td style={td}>{r.sourceVersion ?? "—"}</td>
-                    <td style={td}>{r.viewerUserId ?? "—"}</td>
+                    <td style={td}>
+                      {r.viewerUserId ? <UserIdWithName userId={r.viewerUserId} /> : "—"}
+                    </td>
                     <td style={td}>{r.matchResultId ?? "—"}</td>
-                    <td style={td}>{r.selectedCandidateId ?? "—"}</td>
+                    <td style={td}>
+                      {r.selectedCandidateId ? <UserIdWithName userId={r.selectedCandidateId} /> : "—"}
+                    </td>
                     <td style={td}>{r.score != null ? String(r.score) : "—"}</td>
                     <td style={td}>{getCanonicalSidecarModeLabel(r.mode)}</td>
                     <td style={td}>

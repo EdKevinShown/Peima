@@ -8,6 +8,10 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { resolveMatchResultDisplay } from "../matching/matching-result-display";
+import {
+  projectMatchResultForViewer,
+  resolveLatestMatchResultAccess,
+} from "../matching/matching-latest-result-access";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import type { ConversationSummaryResponse } from "./dto/conversation-summary.response";
@@ -24,7 +28,13 @@ import {
   mapMessage,
   mapSummarySnapshot,
 } from "./chat-timeline.mapper";
+import { FriendshipService } from "../friends/friendship.service";
 import { ChatSummaryService } from "./chat-summary.service";
+import {
+  activeConversationPairWhere,
+  peerUserIdForParticipant,
+  pickCanonicalConversation,
+} from "./chat-conversation-participants";
 
 @Injectable()
 export class ChatService {
@@ -33,6 +43,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatSummaryService: ChatSummaryService,
+    private readonly friendshipService: FriendshipService,
   ) {}
 
   private async ensureUserExists(userId: string) {
@@ -47,13 +58,25 @@ export class ChatService {
    * M5.5-Chat-R2A: when `matchResultId` is set, resolve display candidate with `resolveMatchResultDisplay`
    * so chat aligns with `GET /matching/result` (e.g. RRM Top2 `displayCandidateUserId`).
    */
-  async createOrReuseConversation(userId: string, matchResultId?: string) {
+  async createOrReuseConversation(
+    userId: string,
+    opts?: { matchResultId?: string; peerUserId?: string },
+  ) {
     await this.ensureUserExists(userId);
+
+    const peerUserId = opts?.peerUserId?.trim();
+    const matchResultId = opts?.matchResultId?.trim();
+
+    if (peerUserId) {
+      await this.ensureUserExists(peerUserId);
+      await this.friendshipService.assertFriendship(userId, peerUserId);
+      return this.openConversationWithPeer(userId, peerUserId, null);
+    }
 
     let effectiveCandidateId: string;
     let resolvedMatchResultId: string;
 
-    if (matchResultId?.trim()) {
+    if (matchResultId) {
       const mid = matchResultId.trim();
       const matchRow = await this.prisma.matchResult.findUnique({
         where: { id: mid },
@@ -61,37 +84,58 @@ export class ChatService {
       if (!matchRow) {
         throw new NotFoundException(`Match result ${mid} not found`);
       }
-      if (matchRow.userId !== userId) {
+      if (matchRow.userId !== userId && matchRow.candidateUserId !== userId) {
         throw new ForbiddenException("match result not accessible by this user");
       }
-      const display = await resolveMatchResultDisplay(this.prisma, matchRow);
+      const access =
+        matchRow.userId === userId
+          ? { row: matchRow, viewerUserId: userId, kind: "outbound" as const }
+          : {
+              row: matchRow,
+              viewerUserId: userId,
+              kind: "inbound" as const,
+            };
+      const projected = projectMatchResultForViewer(access);
+      const display = await resolveMatchResultDisplay(this.prisma, projected);
       const resolved =
-        display.displayCandidateUserId?.trim() || matchRow.candidateUserId.trim();
+        display.displayCandidateUserId?.trim() ||
+        projected.candidateUserId.trim();
       effectiveCandidateId = resolved;
       resolvedMatchResultId = matchRow.id;
     } else {
-      const latest = await this.prisma.matchResult.findFirst({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, candidateUserId: true },
-      });
-
-      if (!latest) {
+      const access = await resolveLatestMatchResultAccess(this.prisma, userId);
+      if (!access) {
         throw new NotFoundException(`No match result for user ${userId}`);
       }
-
-      effectiveCandidateId = latest.candidateUserId;
-      resolvedMatchResultId = latest.id;
+      const projected = projectMatchResultForViewer(access);
+      effectiveCandidateId = projected.candidateUserId;
+      resolvedMatchResultId = access.row.id;
     }
 
-    const existing = await this.prisma.conversation.findFirst({
-      where: {
-        viewerUserId: userId,
-        candidateUserId: effectiveCandidateId,
-        status: "active",
-      },
-      orderBy: { createdAt: "desc" },
+    await this.friendshipService.ensureMatchFriends(
+      userId,
+      effectiveCandidateId,
+      resolvedMatchResultId,
+    );
+
+    return this.openConversationWithPeer(
+      userId,
+      effectiveCandidateId,
+      resolvedMatchResultId,
+    );
+  }
+
+  private async openConversationWithPeer(
+    userId: string,
+    effectiveCandidateId: string,
+    resolvedMatchResultId: string | null,
+  ) {
+    const existingRows = await this.prisma.conversation.findMany({
+      where: activeConversationPairWhere(userId, effectiveCandidateId),
+      orderBy: { updatedAt: "desc" },
+      include: { _count: { select: { messages: true } } },
     });
+    const existing = pickCanonicalConversation(existingRows);
 
     if (existing) {
       return this.prisma.conversation.update({
@@ -141,7 +185,25 @@ export class ChatService {
   }
 
   async getConversationWithMessages(conversationId: string, viewerUserId: string) {
-    return this.loadConversationForParticipant(conversationId, viewerUserId);
+    const conversation = await this.loadConversationForParticipant(
+      conversationId,
+      viewerUserId,
+    );
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: { in: [conversation.viewerUserId, conversation.candidateUserId] },
+      },
+      select: { id: true, nickname: true },
+    });
+    const byId = new Map(users.map((u) => [u.id, u.nickname]));
+    const peerUserId = peerUserIdForParticipant(conversation, viewerUserId);
+    return {
+      ...conversation,
+      peerUserId,
+      peerNickname: byId.get(peerUserId) ?? null,
+      viewerNickname: byId.get(conversation.viewerUserId) ?? null,
+      candidateNickname: byId.get(conversation.candidateUserId) ?? null,
+    };
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { CopilotAiConfigService } from "./copilot-ai.config.service";
+import { buildOpenAiCompatibleChatCompletionsUrl } from "../../common/ai/chat-completions-url";
 
 /**
  * Copilot Chat Completions 客户端。失败时 `kind` 写入服务日志 `reason` 字段。
@@ -34,7 +35,7 @@ export class CopilotChatCompletionsClient {
       return { ok: false, kind: "missing_api_key" };
     }
 
-    const url = `${this.aiConfig.baseUrl}/v1/chat/completions`;
+    const url = buildOpenAiCompatibleChatCompletionsUrl(this.aiConfig.baseUrl);
     const body = {
       model: this.aiConfig.model,
       messages: [

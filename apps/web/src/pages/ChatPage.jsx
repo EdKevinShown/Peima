@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { listMyFriends } from "../api/friends";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
@@ -56,8 +57,16 @@ export default function ChatPage() {
     [searchParams],
   );
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
-  const { ensureConversationError, shouldHoldForConversationBootstrap } =
-    useEnsureConversationInUrl(searchParams);
+  const navigate = useNavigate();
+  const {
+    ensureConversationError,
+    shouldHoldForConversationBootstrap,
+    showFriendPicker,
+  } = useEnsureConversationInUrl(searchParams);
+
+  const [friends, setFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+  const [friendsError, setFriendsError] = useState(null);
 
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -103,12 +112,32 @@ export default function ChatPage() {
   /** M5.5-Chat-R2A: optional rhythm hint from Final Match handoff (dismissible). */
   const [rhythmHandoffDismissed, setRhythmHandoffDismissed] = useState(false);
 
-  /** M6.6-C1：会话中的对方 userId（与 `Conversation.candidateUserId` 一致）；无会话数据时为 null。 */
+  /** M6.6-C1：会话中的对方 userId（API `peerUserId` 或从 viewer/candidate 推导）。 */
   const actualConversationPeerUserId = useMemo(() => {
-    if (!conversation || typeof conversation.candidateUserId !== "string") return null;
-    const s = conversation.candidateUserId.trim();
+    if (!conversation || !userId) return null;
+    const fromApi =
+      typeof conversation.peerUserId === "string" ? conversation.peerUserId.trim() : "";
+    if (fromApi) return fromApi;
+    if (conversation.viewerUserId === userId) {
+      const s =
+        typeof conversation.candidateUserId === "string"
+          ? conversation.candidateUserId.trim()
+          : "";
+      return s === "" ? null : s;
+    }
+    if (conversation.candidateUserId === userId) {
+      const s =
+        typeof conversation.viewerUserId === "string"
+          ? conversation.viewerUserId.trim()
+          : "";
+      return s === "" ? null : s;
+    }
+    const s =
+      typeof conversation.candidateUserId === "string"
+        ? conversation.candidateUserId.trim()
+        : "";
     return s === "" ? null : s;
-  }, [conversation]);
+  }, [conversation, userId]);
 
   /**
    * M6.6-C1：expected 缺失、actual 缺失、或二者相同 → true；二者均存在且不同 → false。
@@ -130,6 +159,44 @@ export default function ChatPage() {
           expectedPeerUserId !== actualConversationPeerUserId,
       ),
     [expectedPeerUserId, actualConversationPeerUserId],
+  );
+
+  useEffect(() => {
+    if (!showFriendPicker || !userId) {
+      setFriends([]);
+      setFriendsError(null);
+      return;
+    }
+    let cancelled = false;
+    setFriendsLoading(true);
+    setFriendsError(null);
+    listMyFriends()
+      .then((rows) => {
+        if (!cancelled) setFriends(Array.isArray(rows) ? rows : []);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setFriends([]);
+          setFriendsError(e instanceof Error ? e : new Error(String(e)));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFriendsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showFriendPicker, userId]);
+
+  const openChatWithFriend = useCallback(
+    (peerUserId) => {
+      if (!userId || !peerUserId) return;
+      const q = new URLSearchParams();
+      q.set("userId", userId);
+      q.set("peerUserId", peerUserId);
+      navigate(`/chat?${q.toString()}`);
+    },
+    [userId, navigate],
   );
 
   const load = useCallback(async (source = "manual") => {
@@ -329,6 +396,21 @@ export default function ChatPage() {
   }, [conversationId]);
 
   const messages = conversation?.messages ?? [];
+  const getUserDisplayName = useCallback(
+    (id) => {
+      if (!conversation || !id) return id || "未知用户";
+      if (id === conversation.viewerUserId) {
+        return conversation.viewerNickname?.trim() || conversation.viewerUserId;
+      }
+      if (id === conversation.candidateUserId) {
+        return (
+          conversation.candidateNickname?.trim() || conversation.candidateUserId
+        );
+      }
+      return id;
+    },
+    [conversation],
+  );
   const latestPendingSuggestion = useMemo(() => {
     const rows = (profileSuggestions ?? []).filter(
       (s) => s.status === "pending",
@@ -644,9 +726,76 @@ export default function ChatPage() {
         refreshSource={refreshSource}
       />
 
+      {showFriendPicker ? (
+        <section
+          style={{
+            marginBottom: "1.25rem",
+            padding: "1rem",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            background: "#fff",
+          }}
+        >
+          <h2 style={{ margin: "0 0 0.5rem", fontSize: "1rem", color: "#0f172a" }}>
+            选择好友聊天
+          </h2>
+          <p style={{ margin: "0 0 0.75rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.5 }}>
+            匹配成功后会自动加为好友。从列表选一位即可进入同一条会话（双方消息互通）。
+          </p>
+          {friendsLoading ? <LoadingState label="加载好友…" /> : null}
+          {friendsError ? (
+            <p style={{ color: "#b00020", margin: "0 0 0.5rem" }} role="alert">
+              {friendsError.message}
+            </p>
+          ) : null}
+          {!friendsLoading && !friendsError && friends.length === 0 ? (
+            <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>
+              暂无好友。完成一次匹配后会出现在这里；也可从
+              {" "}
+              <Link to={`/final-match?userId=${encodeURIComponent(userId || "")}`}>最终结果</Link>
+              {" "}
+              进入聊天。
+            </p>
+          ) : null}
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {friends.map((f) => (
+              <li key={f.friendUserId}>
+                <button
+                  type="button"
+                  onClick={() => openChatWithFriend(f.friendUserId)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "0.65rem 0.85rem",
+                    background: "#f8fafc",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    color: "#0f172a",
+                  }}
+                >
+                  {f.nickname || f.friendUserId}
+                  {f.source === "match_auto" ? (
+                    <span style={{ marginLeft: 8, fontSize: "0.76rem", color: "#64748b", fontWeight: 500 }}>
+                      匹配好友
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {shouldHoldForConversationBootstrap && (
         <LoadingState label="正在准备会话…" />
       )}
+      {ensureConversationError ? (
+        <p style={{ color: "#b00020" }} role="alert">
+          {ensureConversationError.message}
+        </p>
+      ) : null}
       {loading && <LoadingState label="加载对话…" />}
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
@@ -1175,10 +1324,11 @@ export default function ChatPage() {
               ) : null}
             </div>
             <div style={{ fontSize: "0.95rem", color: "#333" }}>
-              viewer: <code>{conversation.viewerUserId}</code>
+              viewer: <code>{getUserDisplayName(conversation.viewerUserId)}</code>
             </div>
             <div style={{ fontSize: "0.95rem", color: "#333" }}>
-              candidate: <code>{conversation.candidateUserId}</code>
+              candidate:{" "}
+              <code>{getUserDisplayName(conversation.candidateUserId)}</code>
             </div>
           </div>
 
@@ -1219,7 +1369,7 @@ export default function ChatPage() {
                         {m.content}
                       </div>
                       <div style={{ fontSize: "0.75rem", color: "#666", marginTop: 4 }}>
-                        sender: {m.senderUserId}
+                        sender: {getUserDisplayName(m.senderUserId)}
                       </div>
                     </div>
                   </div>

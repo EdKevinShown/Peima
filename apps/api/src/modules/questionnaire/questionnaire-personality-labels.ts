@@ -190,6 +190,21 @@ function collectStyleLabels(
     .map((x) => x.label);
 }
 
+/** 所有核心人格规则中，弱匹配比率的最高值（用于诊断「差一点命中」）。 */
+export function bestCoreLabelWeakMatchRatio(
+  layer1: Record<number, AxisBranchProfileV3>,
+): number {
+  let best = 0;
+  for (const rule of PERSONALITY_CORE_LABEL_RULES) {
+    const conditions = parseRuleConditions(rule.tokens);
+    const { matchedCount, requiredCount } = ruleWeakStats(layer1, conditions);
+    if (requiredCount > 0) {
+      best = Math.max(best, matchedCount / requiredCount);
+    }
+  }
+  return best;
+}
+
 export function matchPersonalityLabelsV3(
   layer1: Record<number, AxisBranchProfileV3>,
 ): PersonalityLabelsResult {

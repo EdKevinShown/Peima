@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
 import { getTestMatchingCapabilities } from "../api/testMatch";
 import { resolveUserId } from "../utils/resolveUserId";
+import UserIdWithName from "../components/common/UserIdWithName";
 
 const card = {
   border: "1px solid #e2e8f0",
@@ -25,6 +26,25 @@ const pill = {
 
 function fmtScore(n) {
   return typeof n === "number" && Number.isFinite(n) ? n.toFixed(3) : "-";
+}
+
+function resolvePreviewImageUrl(raw) {
+  if (!raw) return "";
+  try {
+    const u = new URL(raw, window.location.origin);
+    const imageHost = u.hostname.toLowerCase();
+    const pageHost = window.location.hostname.toLowerCase();
+    const imageIsLoopback = imageHost === "localhost" || imageHost === "127.0.0.1";
+    const pageIsLoopback = pageHost === "localhost" || pageHost === "127.0.0.1";
+    if (imageIsLoopback && !pageIsLoopback) {
+      const api = new URL(import.meta.env.VITE_API_BASE_URL || "http://localhost:3000");
+      u.protocol = api.protocol;
+      u.host = api.host;
+    }
+    return u.toString();
+  } catch {
+    return raw;
+  }
 }
 
 export default function PreviewPoolPage() {
@@ -154,7 +174,7 @@ export default function PreviewPoolPage() {
 
       <section style={{ ...card, marginTop: "1rem", background: "#f8fafc" }}>
         <div style={{ color: "#475569", fontSize: "0.92rem", lineHeight: 1.7 }}>
-          当前 userId：<code>{userId || "-"}</code>
+          当前 userId：<code><UserIdWithName userId={userId} /></code>
           <br />
           API：<code>GET /preview-pool/user/:userId/latest</code>
         </div>
@@ -167,8 +187,8 @@ export default function PreviewPoolPage() {
           <p style={{ margin: "0.7rem 0 0", color: "#7c2d12", fontSize: "0.86rem", lineHeight: 1.6 }}>
             如果是 <code>No active preview pool</code>
             {seedAllowed
-              ? "，可以点击「生成本地测试预览池」创建一组只读 smoke 数据；该路径不写 MatchResult。"
-              : "，需要先走 onboarding 照片/偏好流程，或让当前账号进入本地测试白名单后再生成 smoke 数据。"}
+              ? "。正常情况下刷新页面会自动生成；也可点击「生成本地测试预览池」强制换一批测试数据（不写 MatchResult）。"
+              : "。请确认 API 已启动且 `PEIMA_PREVIEW_POOL_AUTO_ENSURE` 未关闭；刷新页面会尝试自动生成预览池。"}
           </p>
         </section>
       ) : null}
@@ -208,7 +228,10 @@ export default function PreviewPoolPage() {
                     <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.1rem", color: "#64748b", lineHeight: 1.6 }}>
                       {bundle.shortlistContract.exclusionReport.map((row) => (
                         <li key={`${row.candidateUserId}:${row.reasonCode}`}>
-                          <code>{row.candidateUserId}</code> · {row.reasonCode} · {row.detail}
+                          <code>
+                            <UserIdWithName userId={row.candidateUserId} />
+                          </code>{" "}
+                          · {row.reasonCode} · {row.detail}
                         </li>
                       ))}
                     </ul>
@@ -227,6 +250,7 @@ export default function PreviewPoolPage() {
                 <thead>
                   <tr style={{ textAlign: "left", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>
                     <th style={{ padding: "0.5rem" }}>Rank</th>
+                    <th style={{ padding: "0.5rem" }}>照片</th>
                     <th style={{ padding: "0.5rem" }}>Candidate</th>
                     <th style={{ padding: "0.5rem" }}>Mode</th>
                     <th style={{ padding: "0.5rem" }}>Base</th>
@@ -240,11 +264,32 @@ export default function PreviewPoolPage() {
                   {bundle.items.map((item) => {
                     const ev = evidence[item.candidateUserId];
                     const inShortlist = shortlistIds.includes(item.candidateUserId);
+                    const imageUrl = resolvePreviewImageUrl(item.itemMeta?.candidateImageUrl);
                     return (
                       <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9", background: inShortlist ? "#f0fdf4" : "#fff" }}>
                         <td style={{ padding: "0.55rem" }}>{item.rankInPool}</td>
                         <td style={{ padding: "0.55rem" }}>
-                          <code>{item.candidateUserId}</code>
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt=""
+                              style={{
+                                width: 52,
+                                height: 52,
+                                objectFit: "cover",
+                                borderRadius: 8,
+                                border: "1px solid #e2e8f0",
+                                background: "#f8fafc",
+                              }}
+                            />
+                          ) : (
+                            <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>无图</span>
+                          )}
+                        </td>
+                        <td style={{ padding: "0.55rem" }}>
+                          <code>
+                            <UserIdWithName userId={item.candidateUserId} />
+                          </code>
                           {inShortlist ? <span style={{ marginLeft: 6, ...pill }}>shortlist</span> : null}
                         </td>
                         <td style={{ padding: "0.55rem" }}>{item.displayMode}</td>

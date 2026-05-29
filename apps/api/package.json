@@ -36,7 +36,9 @@
     "p710:r6a:canonical-writer-shadow-audit": "node dist/dev-cli/p710-r6a-canonical-writer-shadow-audit-runner.js",
     "p710:r6f3:rehearsal-writer": "node dist/dev-cli/p710-r6f3-rehearsal-writer-runner.js",
     "p710:r3f3:canonical-sidecar-writer-smoke": "node dist/dev-cli/p710-r3f3-canonical-sidecar-writer-runner.js",
-    "p77:r2:local-smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p77-r2-local-smoke-automation.ps1"
+    "p77:r2:local-smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/p77-r2-local-smoke-automation.ps1",
+    "questionnaire:overall-explanation-audit": "tsx src/dev-cli/questionnaire-overall-explanation-convergence-audit-runner.ts",
+    "questionnaire:non-convergence-analysis": "tsx src/dev-cli/questionnaire-non-convergence-cause-analysis-runner.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

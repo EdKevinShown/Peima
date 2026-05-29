@@ -13,6 +13,12 @@ export type {
   BuildMatchingObservabilitySummaryOptions,
   MatchingObservabilitySummaryReport,
 } from "./matching-observability";
+export {
+  ensureBidirectionalFriendship,
+  ensureUserFriendship,
+  FRIENDSHIP_SOURCE_MATCH_AUTO,
+} from "./ensure-user-friendship";
+export type { EnsureUserFriendshipInput } from "./ensure-user-friendship";
 export type {
   BatchMatchQueue,
   BehaviorSignal,
@@ -26,6 +32,7 @@ export type {
   ProfileUpdateSuggestion,
   User,
   UserFeedback,
+  UserFriendship,
   UserImage,
   UserPreference,
   UserProfile,

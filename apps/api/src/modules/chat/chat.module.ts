@@ -1,4 +1,5 @@
 ﻿import { Module } from "@nestjs/common";
+import { FriendsModule } from "../friends/friends.module";
 import { ProfileSuggestionModule } from "../profile-suggestion/profile-suggestion.module";
 import { RrmObservedReadonlyService } from "../rrm-observed";
 import { RrmAssistantReadonlyService } from "../rrm-assistant/rrm-assistant-readonly.service";
@@ -13,7 +14,7 @@ import { ConversationProfileCompletionChatCompletionsClient } from "./conversati
 import { ConversationProfileCompletionService } from "./conversation-profile-completion.service";
 
 @Module({
-  imports: [ProfileSuggestionModule],
+  imports: [ProfileSuggestionModule, FriendsModule],
   controllers: [ChatController, ChatTimelineController],
   providers: [
     ChatService,

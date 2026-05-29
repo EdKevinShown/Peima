@@ -26,6 +26,7 @@ import { RrmEvalCollectorService } from "../rrm-eval";
 import { AdminPostPoolOrchestrationMvpDto } from "./dto/admin-post-pool-orchestration-mvp.dto";
 import { AdminPostPoolDeepScreenShadowDto } from "./dto/admin-post-pool-deep-screen-shadow.dto";
 import { AdminPrescreenV0BatchDebugDto } from "./dto/admin-prescreen-v0-batch-debug.dto";
+import { AdminMyAiRecordsService } from "./admin-my-ai-records.service";
 
 type JwtReq = {
   user?: { userId: string };
@@ -42,6 +43,7 @@ export class AdminController {
     private readonly rrmObservationSummaryService: RrmObservationSummaryService,
     private readonly matchingObservabilitySummaryService: MatchingObservabilitySummaryService,
     private readonly rrmEvalCollectorService: RrmEvalCollectorService,
+    private readonly adminMyAiRecordsService: AdminMyAiRecordsService,
   ) {}
 
   @Get("capabilities")
@@ -272,5 +274,16 @@ export class AdminController {
       }
       throw new InternalServerErrorException("failed_to_build_rrm_eval_aggregate");
     }
+  }
+
+  /** Admin self-service: inspect own persisted AI outputs/snapshots for diagnostics. */
+  @Get("my-ai-records")
+  async myAiRecords(@Req() req: JwtReq) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    this.adminService.assertCanRunAiSimulationV1(userId);
+    return this.adminMyAiRecordsService.getMine(userId);
   }
 }

@@ -4,6 +4,11 @@ export type Conversation = {
   id: string;
   viewerUserId: string;
   candidateUserId: string;
+  /** Resolved peer for the authenticated user (GET conversation). */
+  peerUserId?: string | null;
+  peerNickname?: string | null;
+  viewerNickname?: string | null;
+  candidateNickname?: string | null;
   matchResultId: string | null;
   status: string;
   createdAt: string;
@@ -21,13 +26,21 @@ export type Conversation = {
 export type CreateConversationOptions = {
   /** M5.5-Chat-R2A: server resolves chat peer from this row + `resolveMatchResultDisplay`. */
   matchResultId?: string;
+  /** Chat with a friend from `GET /friends/me`. */
+  peerUserId?: string;
 };
 
 export async function createConversation(userId: string, options?: CreateConversationOptions) {
-  const body: { userId: string; matchResultId?: string } = { userId };
+  const body: { userId: string; matchResultId?: string; peerUserId?: string } = {
+    userId,
+  };
   const mid = options?.matchResultId?.trim();
+  const peer = options?.peerUserId?.trim();
   if (mid) {
     body.matchResultId = mid;
+  }
+  if (peer) {
+    body.peerUserId = peer;
   }
   const res = await fetch(`${baseUrl}/chat/conversations`, {
     method: "POST",

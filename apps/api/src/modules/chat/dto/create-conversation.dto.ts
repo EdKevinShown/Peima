@@ -10,4 +10,10 @@ export class CreateConversationDto {
   @IsString()
   @MinLength(1)
   matchResultId?: string;
+
+  /** Open chat with a friend (requires `user_friendships` row). */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  peerUserId?: string;
 }

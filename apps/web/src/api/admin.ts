@@ -4,6 +4,42 @@ export type AdminCapabilities = {
   batchMatchTrigger: boolean;
 };
 
+export type AdminMyAiRecordsResponse = {
+  userId: string;
+  generatedAt: string;
+  note: string;
+  conversationSummaries: Array<{
+    id: string;
+    conversationId: string;
+    viewerUserId: string;
+    candidateUserId: string;
+    sourceType: string;
+    sourceVersion: string;
+    summaryPreview: string;
+    createdAt: string;
+  }>;
+  profileSuggestions: Array<{
+    id: string;
+    status: string;
+    sourceType: string;
+    sourceVersion: string;
+    sourceConversationId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    resolvedAt: string | null;
+  }>;
+  aiSimulationJobs: Array<{
+    id: string;
+    poolId: string;
+    jobStatus: string;
+    schemaVersion: string;
+    runSpecVersion: string;
+    hintSource: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+};
+
 /** Orchestrator MVP envelope (narrowed to fields the web caller needs). */
 export type AdminPostPoolOrchestrationMvpEnvelope = {
   schemaVersion: "post_pool_orchestration_mvp_v0";
@@ -54,6 +90,13 @@ export async function runAdminBatchMatchOnce(): Promise<{ ok: true }> {
     headers: authHeaders(),
   });
   return handleJson<{ ok: true }>(res);
+}
+
+export async function getAdminMyAiRecords(): Promise<AdminMyAiRecordsResponse> {
+  const res = await fetch(`${baseUrl}/admin/my-ai-records`, {
+    headers: authHeaders(),
+  });
+  return handleJson<AdminMyAiRecordsResponse>(res);
 }
 
 export async function runAdminPostPoolOrchestrationMvp(

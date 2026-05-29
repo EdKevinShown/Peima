@@ -17,6 +17,31 @@ export type UserImageRow = {
   reviewedByUserId?: string | null;
 };
 
+/**
+ * Normalize stored image URLs for cross-device local dev.
+ * If backend persisted localhost/127.0.0.1 but web runs on another host,
+ * rewrite to the configured API base host so browser can reach the file.
+ */
+export function resolveUserImageUrl(raw: string): string {
+  try {
+    const image = new URL(raw, window.location.origin);
+    const api = new URL(baseUrl);
+    const imageHost = image.hostname.toLowerCase();
+    const pageHost = window.location.hostname.toLowerCase();
+    const imageIsLoopback =
+      imageHost === "localhost" || imageHost === "127.0.0.1";
+    const pageIsLoopback = pageHost === "localhost" || pageHost === "127.0.0.1";
+    if (imageIsLoopback && !pageIsLoopback) {
+      image.protocol = api.protocol;
+      image.host = api.host;
+      return image.toString();
+    }
+    return image.toString();
+  } catch {
+    return raw;
+  }
+}
+
 export async function listUserImages(userId: string) {
   const res = await fetch(
     `${baseUrl}/images/user/${encodeURIComponent(userId)}`,
