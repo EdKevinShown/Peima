@@ -155,15 +155,24 @@ export class ImagesService {
     if (!buf?.length) {
       throw new BadRequestException("Empty file");
     }
+
+    // Run detection on the in-memory buffer BEFORE persisting to disk or DB.
+    // Photos that fail (no human face, too dark, too blurry, unreadable) are
+    // rejected immediately so they never reach storage.
+    const detection = await this.userImageDetection.detectFromBuffer(buf);
+    if (detection.status === "failed") {
+      throw new BadRequestException(
+        `PHOTO_REJECTED:${detection.reasonCodes.join(",")}`,
+      );
+    }
+
+    await this.ensureUserExists(userId);
+
     const stored = `${userId}-${randomUUID()}${ext}`;
     const dest = join(this.uploadDir, stored);
     await writeFile(dest, buf);
     const base = publicBaseUrl.replace(/\/$/, "");
     const imageUrl = `${base}/uploads/user-images/${stored}`;
-
-    await this.ensureUserExists(userId);
-
-    const detection = await this.userImageDetection.detectFromBuffer(buf);
 
     const row = await this.prisma.userImage.create({
       data: {

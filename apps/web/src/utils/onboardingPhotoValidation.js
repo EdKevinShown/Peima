@@ -67,6 +67,17 @@ export function mapOnboardingPhotoUploadError(err) {
   const raw = err instanceof Error ? err.message : String(err ?? "");
   const r = raw.toLowerCase();
 
+  // Server rejected the photo at the detection stage (no human face, too dark, etc.).
+  // Format: "PHOTO_REJECTED:CODE1,CODE2"
+  if (raw.startsWith("PHOTO_REJECTED:")) {
+    const codes = raw
+      .slice("PHOTO_REJECTED:".length)
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    return mapDetectionReasonCodesToMessage(codes);
+  }
+
   if (r.includes("unsupported") && r.includes("type")) {
     return "请上传 JPG、PNG 或 WebP 格式的照片。";
   }
