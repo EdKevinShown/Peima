@@ -1,6 +1,8 @@
 /**
- * Preview pool preference gating — dimensions MUST stay aligned with
- * `apps/worker/src/jobs/matching-score.ts` → `computePreferenceScore` (denom++ branches only).
+ * Preview pool preference gating — list dimensions align with
+ * `apps/worker/src/jobs/matching-score.ts` → `computePreferenceScore` (worker unchanged).
+ * Age / height: shared gate supports **one-sided** bounds (min-only / max-only); worker v1
+ * still only scores bilateral age/height; API preview / onboarding uses this module + `preference-score.ts`.
  * `styleTags` are NOT part of preferenceScore denom and do NOT participate here.
  */
 
@@ -35,21 +37,47 @@ function inList(value: string, list: string[]): boolean {
   return set.has(v);
 }
 
-/** Same denom count as `computePreferenceScore` when pref is non-null. */
+/**
+ * Count of active preference dimensions (age/height count as one each when either bound set).
+ * `denom === 0` → no constraints → pass-through.
+ */
 export function preferenceGateDenominator(pref: PreferenceGatePref): number {
   let d = 0;
-  if (pref.minAge != null && pref.maxAge != null) d++;
+  if (pref.minAge != null || pref.maxAge != null) d++;
   if (pref.preferredCities.length > 0) d++;
-  if (pref.minHeight != null && pref.maxHeight != null) d++;
+  if (pref.minHeight != null || pref.maxHeight != null) d++;
   if (pref.educationPreferences.length > 0) d++;
   if (pref.occupationPreferences.length > 0) d++;
   if (pref.relationshipGoalPreferences.length > 0) d++;
   return d;
 }
 
+function passesAgeGate(
+  minAge: number | null,
+  maxAge: number | null,
+  age: number | null,
+): boolean {
+  if (minAge == null && maxAge == null) return true;
+  if (age == null) return false;
+  if (minAge != null && age < minAge) return false;
+  if (maxAge != null && age > maxAge) return false;
+  return true;
+}
+
+function passesHeightGate(
+  minHeight: number | null,
+  maxHeight: number | null,
+  height: number | null,
+): boolean {
+  if (minHeight == null && maxHeight == null) return true;
+  if (height == null) return false;
+  if (minHeight != null && height < minHeight) return false;
+  if (maxHeight != null && height > maxHeight) return false;
+  return true;
+}
+
 /**
- * Hard gate: every dimension that would increment `denom` in `computePreferenceScore`
- * must be satisfied (same bounds / lists as scoring).
+ * Hard gate: every configured dimension must be satisfied.
  * `pref === null` or zero denom → always pass.
  */
 export function passesPreferenceHardGate(
@@ -59,28 +87,16 @@ export function passesPreferenceHardGate(
   if (pref == null) return true;
   if (preferenceGateDenominator(pref) === 0) return true;
 
-  if (pref.minAge != null && pref.maxAge != null) {
-    if (
-      c.age == null ||
-      c.age < pref.minAge ||
-      c.age > pref.maxAge
-    ) {
-      return false;
-    }
+  if (!passesAgeGate(pref.minAge, pref.maxAge, c.age)) {
+    return false;
   }
 
   if (pref.preferredCities.length > 0) {
     if (!inList(c.city, pref.preferredCities)) return false;
   }
 
-  if (pref.minHeight != null && pref.maxHeight != null) {
-    if (
-      c.height == null ||
-      c.height < pref.minHeight ||
-      c.height > pref.maxHeight
-    ) {
-      return false;
-    }
+  if (!passesHeightGate(pref.minHeight, pref.maxHeight, c.height)) {
+    return false;
   }
 
   if (pref.educationPreferences.length > 0) {

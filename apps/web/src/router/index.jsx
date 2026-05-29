@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FileText, Sparkles, Heart, MessageCircle,
   User, Image as ImageIcon, BarChart3, Users,
@@ -8,7 +8,6 @@ import {
 import LandingPage from "../pages/LandingPage";
 import FinalMatchPage from "../pages/FinalMatchPage";
 import MatchingWaitingPage from "../pages/MatchingWaitingPage";
-import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
 import QuestionnaireProfilePage from "../pages/QuestionnaireProfilePage";
 import ChatPage from "../pages/ChatPage";
@@ -16,26 +15,49 @@ import CopilotPage from "../pages/CopilotPage";
 import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
 import LoginPage from "../pages/LoginPage";
 import OnboardingPage, { isProfileIncomplete } from "../pages/OnboardingPage";
-import { getMe } from "../api/auth";
-import UserImagesPage from "../pages/UserImagesPage";
 import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
 import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
 import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
+import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
+import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
+import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
+import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
+import P76CanonicalSidecarApplyReviewPage from "../pages/P76CanonicalSidecarApplyReviewPage";
+import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
+import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import PersonalizedMatchmakerPage from "../pages/PersonalizedMatchmakerPage";
 import MainAppShell from "../components/layout/MainAppShell";
+import { resolveUserId } from "../utils/resolveUserId";
+import { getMe } from "../api/auth";
 
-/** Redirect to /login if not authenticated */
 function RequireAuth({ children }) {
   const token = localStorage.getItem("peimaToken");
   if (!token) return <Navigate to="/login" replace />;
   return children;
 }
 
-/** 404 fallback: logged-in → /home, else → / (landing) */
 function SmartFallback() {
   const token = localStorage.getItem("peimaToken");
   return <Navigate to={token ? "/home" : "/"} replace />;
+}
+
+function LegacyMyImagesRedirect() {
+  const [searchParams] = useSearchParams();
+  const userId = resolveUserId(searchParams);
+  const to = userId
+    ? `/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`
+    : "/onboarding/photo-upload";
+  return <Navigate to={to} replace />;
+}
+
+function LegacyPhotoPreviewRedirect() {
+  const [searchParams] = useSearchParams();
+  const userId = resolveUserId(searchParams);
+  const to = userId
+    ? `/questionnaire?userId=${encodeURIComponent(userId)}`
+    : "/questionnaire";
+  return <Navigate to={to} replace />;
 }
 
 function NavCard({ to, Icon, title, desc }) {
@@ -65,10 +87,9 @@ function DashboardPage() {
     if (!token) { navigate("/login", { replace: true }); return; }
     const stored = localStorage.getItem("peimaUserNickname");
     if (stored) setNickname(stored);
-    // Soft prompt: surface a banner if profile is incomplete (no forced redirect)
     getMe()
       .then((me) => setNeedsOnboarding(isProfileIncomplete(me)))
-      .catch(() => { /* offline or unauth — ignore */ });
+      .catch(() => {});
   }, [navigate]);
 
   const userId = localStorage.getItem("peimaUserId") || "";
@@ -86,7 +107,6 @@ function DashboardPage() {
       <div className="orb orb-purple" />
 
       <div className="relative z-10 max-w-lg mx-auto px-4 py-10 animate-slide-up">
-        {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-glow flex-shrink-0"
@@ -104,7 +124,6 @@ function DashboardPage() {
           </button>
         </div>
 
-        {/* Incomplete-profile prompt */}
         {needsOnboarding && (
           <Link to="/onboarding"
                 className="glass rounded-2xl p-4 flex items-center gap-3 mb-6 transition-all duration-200 hover:scale-[1.01] animate-fade-in"
@@ -126,7 +145,6 @@ function DashboardPage() {
           </Link>
         )}
 
-        {/* Journey steps */}
         <div className="mb-8">
           <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 ml-1">开始你的旅程</p>
           <div className="space-y-2">
@@ -154,15 +172,14 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* Secondary options */}
         <div className="space-y-6">
           <div>
             <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 ml-1">我的</p>
             <div className="grid grid-cols-2 gap-3">
               <NavCard to={`/account?userId=${userId}`} Icon={User}      title="我的资料"  desc="偏好与设置" />
-              <NavCard to="/my-images"                   Icon={ImageIcon} title="我的图片"  desc="上传与管理" />
+              <NavCard to={`/onboarding/photo-upload?userId=${userId}`} Icon={ImageIcon} title="我的照片"  desc="上传与管理" />
               <NavCard to="/my-activity"                 Icon={BarChart3} title="我的活动"  desc="反馈与统计" />
-              <NavCard to="/preview-pool"                Icon={Users}     title="预览池"    desc="浏览候选用户" />
+              <NavCard to="/questionnaire-profile"       Icon={Users}     title="问卷画像"  desc="性格与偏好" />
             </div>
           </div>
           <div>
@@ -174,7 +191,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        <p className="text-center text-white/20 text-xs mt-10">Peima · P6.10</p>
+        <p className="text-center text-white/20 text-xs mt-10">Peima</p>
       </div>
     </div>
   );
@@ -192,16 +209,28 @@ export default function AppRoutes() {
       <Route path="/home"       element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
 
-      {/* Direct (legacy) routes */}
-      <Route path="/preview-pool" element={<PreviewPoolPage />} />
-      <Route path="/my-images"    element={<UserImagesPage />} />
-      <Route path="/account"      element={<AccountPage />} />
+      {/* Upstream photo onboarding sub-flow */}
+      <Route path="/onboarding/photo-upload"     element={<OnboardingPhotoUploadPage />} />
+      <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
+      <Route path="/onboarding/photo-preview"    element={<LegacyPhotoPreviewRedirect />} />
+
+      {/* Deprecated direct pages → redirect into the new onboarding sub-flow */}
+      <Route path="/preview-pool" element={<LegacyPhotoPreviewRedirect />} />
+      <Route path="/my-images"    element={<LegacyMyImagesRedirect />} />
+
+      {/* Direct routes */}
+      <Route path="/account" element={<AccountPage />} />
 
       {/* Admin diagnostics */}
       <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
       <Route path="/admin/ai-sim-job-triage"     element={<AiSimulationJobTriagePage />} />
+      <Route path="/admin/photo-review"          element={<AdminPhotoReviewPage />} />
+      <Route path="/admin/p76/allowlist-apply-meta" element={<P76AllowlistApplyMetaPage />} />
+      <Route path="/admin/p76/canonical-rehearsal"  element={<P76CanonicalRehearsalPage />} />
+      <Route path="/admin/p76/canonical-sidecar"    element={<P76CanonicalSidecarPage />} />
+      <Route path="/admin/p76/canonical-sidecar/:id/apply-review" element={<P76CanonicalSidecarApplyReviewPage />} />
 
-      {/* Phase G v0.1 routes wrapped in MainAppShell layout */}
+      {/* App pages wrapped in MainAppShell layout */}
       <Route element={<MainAppShell />}>
         <Route path="questionnaire"         element={<QuestionnairePage />} />
         <Route path="questionnaire-profile" element={<QuestionnaireProfilePage />} />

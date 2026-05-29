@@ -12,6 +12,12 @@ import { writeFile } from "node:fs/promises";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
 import type { MemoryUploadedFile } from "./memory-uploaded-file";
+import { UserImageDetectionService } from "./user-image-detection.service";
+import { toUserImagePublicDto, type UserImagePublicDto } from "./user-image-public.dto";
+import { resolveUserImageReviewStateFromDetection } from "./user-image-review-status";
+import type { UserImageDetectionResult } from "./user-image-quality-detection";
+import { UserImageVisionSidecarService } from "./user-image-vision-sidecar.service";
+import { UserImageCloudVisionAsyncService } from "./user-image-cloud-vision-async.service";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -26,7 +32,12 @@ export class ImagesService {
   private readonly uploadDir =
     process.env.UPLOAD_DIR ?? join(process.cwd(), "uploads", "user-images");
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userImageDetection: UserImageDetectionService,
+    private readonly visionSidecar: UserImageVisionSidecarService,
+    private readonly cloudVisionAsync: UserImageCloudVisionAsyncService,
+  ) {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
@@ -39,11 +50,60 @@ export class ImagesService {
     }
   }
 
+  private detectionScoreJsonForPersist(
+    detectionScoreJson: UserImageDetectionResult["scoreJson"],
+    options?: { forUpload?: boolean; userId?: string },
+  ): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    const merged = options?.forUpload
+      ? this.visionSidecar.applyToDetectionScoreJsonForUpload(
+          detectionScoreJson,
+          { userId: options.userId ?? "" },
+        )
+      : this.visionSidecar.applyToDetectionScoreJson(detectionScoreJson);
+    if (merged === null || merged === undefined) {
+      return Prisma.JsonNull;
+    }
+    return merged as Prisma.InputJsonValue;
+  }
+
+  private detectionAndReviewToCreateFields(
+    detection: UserImageDetectionResult,
+    options?: { forUpload?: boolean; userId?: string },
+  ) {
+    const review = resolveUserImageReviewStateFromDetection({
+      detectionStatus: detection.status,
+      detectionReasonCodes: detection.reasonCodes,
+      detectionScoreJson: detection.scoreJson,
+    });
+    return {
+      detectionStatus: detection.status,
+      detectionReasonCodes: detection.reasonCodes,
+      detectionScoreJson: this.detectionScoreJsonForPersist(
+        detection.scoreJson,
+        options,
+      ),
+      detectionRulesVersion: detection.rulesVersion,
+      detectedAt: new Date(),
+      reviewStatus: review.reviewStatus,
+      reviewReasonCodes: review.reviewReasonCodes,
+    };
+  }
+
+  private reviewFieldsForLegacySkippedDetection() {
+    return resolveUserImageReviewStateFromDetection({
+      detectionStatus: "skipped",
+    });
+  }
+
   private toCreateInput(dto: CreateUserImageDto): Prisma.UserImageCreateInput {
     const input: Prisma.UserImageCreateInput = {
       user: { connect: { id: dto.userId } },
       imageUrl: dto.imageUrl,
       styleTags: dto.styleTags ?? [],
+      detectionStatus: "skipped",
+      detectionReasonCodes: [],
+      detectedAt: new Date(),
+      ...this.reviewFieldsForLegacySkippedDetection(),
     };
 
     if (dto.faceEmbedding !== undefined) {
@@ -65,11 +125,12 @@ export class ImagesService {
     return input;
   }
 
-  async create(dto: CreateUserImageDto) {
+  async create(dto: CreateUserImageDto): Promise<UserImagePublicDto> {
     await this.ensureUserExists(dto.userId);
-    return this.prisma.userImage.create({
+    const row = await this.prisma.userImage.create({
       data: this.toCreateInput(dto),
     });
+    return toUserImagePublicDto(row);
   }
 
   private extFromMimetype(mimetype: string): string | null {
@@ -77,13 +138,13 @@ export class ImagesService {
   }
 
   /**
-   * Saves multipart file to disk and creates a row with a public URL under /uploads/user-images/.
+   * Saves multipart file to disk, runs P7.4-r1a quality detection, creates row.
    */
   async createFromUpload(
     userId: string,
     file: MemoryUploadedFile,
     publicBaseUrl: string,
-  ): Promise<UserImage> {
+  ): Promise<UserImagePublicDto> {
     const ext = this.extFromMimetype(file.mimetype);
     if (!ext) {
       throw new BadRequestException(
@@ -99,18 +160,52 @@ export class ImagesService {
     await writeFile(dest, buf);
     const base = publicBaseUrl.replace(/\/$/, "");
     const imageUrl = `${base}/uploads/user-images/${stored}`;
-    return this.create({ userId, imageUrl });
+
+    await this.ensureUserExists(userId);
+
+    const detection = await this.userImageDetection.detectFromBuffer(buf);
+
+    const row = await this.prisma.userImage.create({
+      data: {
+        user: { connect: { id: userId } },
+        imageUrl,
+        ...this.detectionAndReviewToCreateFields(detection, {
+          forUpload: true,
+          userId,
+        }),
+      },
+    });
+
+    this.cloudVisionAsync.scheduleAfterUpload({
+      userImageId: row.id,
+      userId,
+      detectionScoreJson: row.detectionScoreJson,
+      imageBuffer: buf,
+      mimeType: file.mimetype,
+    });
+
+    return toUserImagePublicDto(row);
   }
 
-  async findAllByUser(userId: string) {
+  async findAllByUser(userId: string): Promise<UserImagePublicDto[]> {
     await this.ensureUserExists(userId);
-    return this.prisma.userImage.findMany({
+    const rows = await this.prisma.userImage.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
     });
+    return rows.map(toUserImagePublicDto);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<UserImagePublicDto> {
+    const row = await this.prisma.userImage.findUnique({ where: { id } });
+    if (!row) {
+      throw new NotFoundException(`Image ${id} not found`);
+    }
+    return toUserImagePublicDto(row);
+  }
+
+  /** @internal auth checks need userId from full row */
+  async findOneRecord(id: string): Promise<UserImage> {
     const row = await this.prisma.userImage.findUnique({ where: { id } });
     if (!row) {
       throw new NotFoundException(`Image ${id} not found`);
@@ -119,7 +214,7 @@ export class ImagesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    await this.findOneRecord(id);
     await this.prisma.userImage.delete({ where: { id } });
   }
 }

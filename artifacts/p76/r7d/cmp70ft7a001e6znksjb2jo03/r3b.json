@@ -1,0 +1,1042 @@
+﻿{
+  "schemaVersion": "p7.6-r3b-photovisual-pool-shadow-audit-v1",
+  "generatedAt": "2026-05-17T07:03:26.932Z",
+  "viewerUserId": "cmp70ft7a001e6znksjb2jo03",
+  "sourcePoolType": "onboarding_gated_cohort",
+  "limit": 20,
+  "selectionLimit": 6,
+  "dryRun": true,
+  "scannedCandidates": 20,
+  "eligibleCandidates": 6,
+  "selectedCandidates": 6,
+  "ineligibleReasonDistribution": {
+    "GENDER_GATE": 14,
+    "PREFERENCE_GATE": 1,
+    "VISION_NOT_OK": 2
+  },
+  "selectedCandidateIds": [
+    "cmfemn002000306z64seed0002",
+    "cmfemn003000506z64seed0003",
+    "cmr4hm000816z64demo00m04a",
+    "cmfemn00100016z64seed0001",
+    "cmr4hf000716z64demo00f04a",
+    "cmr4hf000916z64demo00f05a"
+  ],
+  "shadow": {
+    "schemaVersion": "p7.6-photo-first-mutual-matching-shadow-v1",
+    "sourceVersion": "p7.6-r3-photovisual-first-pool-shadow-v1",
+    "viewerUserId": "cmp70ft7a001e6znksjb2jo03",
+    "poolId": "p76-r3b-audit-cmp70ft7a001e6znksjb2jo03",
+    "sourcePoolType": "onboarding_gated_cohort",
+    "generatedAt": "2026-05-17T07:03:26.932Z",
+    "stage1PhotoVisualPool": {
+      "eligibleCandidatesCount": 6,
+      "ineligibleCandidatesCount": 14,
+      "selectedCandidateIds": [
+        "cmfemn002000306z64seed0002",
+        "cmfemn003000506z64seed0003",
+        "cmr4hm000816z64demo00m04a",
+        "cmfemn00100016z64seed0001",
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a"
+      ],
+      "pairs": [
+        {
+          "candidateUserId": "cmo7ksq8s00006znosryc9k0n",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE",
+            "PREFERENCE_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "户外感",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线偏暗"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "甜美可爱",
+            "生活感",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线正常"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "室内日常"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnjc000x6z64esun9iur",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "简约干净",
+            "精致感",
+            "高级感",
+            "生活感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmoc1gnjo001u6z64ghwpseih",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "??",
+            "peima-style-seed-a"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "简约干净",
+            "精致感",
+            "高级感",
+            "生活感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmoc1gnk1002r6z64iapqf5n9",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "生活感",
+            "简约干净"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "室内日常"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnkd003o6z64zobqegdc",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "生活感",
+            "简约干净"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "室内日常"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmoc1gnkq004l6z64jdq89d4a",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "peima-style-seed-z"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "生活感",
+            "简约干净"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-dry-run-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "室内日常"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c67h00006zysf8ziq782",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "生活感",
+            "清爽自然"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmp75c936000h6zys1l85c3ui",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "生活感",
+            "清爽自然"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "文艺温柔",
+            "户外感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c96h000m6zysncxsxpia",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "生活感",
+            "清爽自然"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "户外感",
+            "清爽自然",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmp75c99e000r6zyskv0kkooj",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "生活感",
+            "清爽自然"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "生活感",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmfemn003000506z64seed0003",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.25,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.29166666666666663,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "清爽自然",
+            "生活感"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "清爽自然",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线正常"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmfam002000406z64seed000b",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "运动阳光",
+            "简约干净"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "甜美可爱",
+            "生活感",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线正常"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "室内日常"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmfam003000606z64seed000c",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE",
+            "VISION_NOT_OK"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "运动阳光",
+            "简约干净"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmfemn00100016z64seed0001",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.1111111111111111,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.2222222222222222,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "清爽自然",
+            "生活感"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "文艺温柔",
+            "户外感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmfam001000206z64seed000a",
+          "eligible": false,
+          "ineligibleReasons": [
+            "GENDER_GATE",
+            "VISION_NOT_OK"
+          ],
+          "AtoBPhotoVisualFit": null,
+          "BtoAPhotoVisualFit": null,
+          "mutualPhotoVisualFit": null,
+          "visualImbalancePenalty": null,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "运动阳光",
+            "简约干净"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "viewerVisionProvider": "rules"
+        },
+        {
+          "candidateUserId": "cmfemn002000306z64seed0002",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.25,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.29166666666666663,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "清爽自然",
+            "生活感"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "生活感",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "都市街景"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmr4hf000716z64demo00f04a",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.1111111111111111,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.2222222222222222,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "清爽自然",
+            "生活感"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "文艺温柔",
+            "户外感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmr4hm000816z64demo00m04a",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0.2222222222222222,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.2777777777777778,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "运动阳光",
+            "简约干净"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "户外感",
+            "清爽自然",
+            "松弛感"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线明亮",
+              "半身构图"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "户外自然"
+            ]
+          }
+        },
+        {
+          "candidateUserId": "cmr4hf000916z64demo00f05a",
+          "eligible": true,
+          "ineligibleReasons": [],
+          "AtoBPhotoVisualFit": 0,
+          "BtoAPhotoVisualFit": 0.3333333333333333,
+          "mutualPhotoVisualFit": 0.16666666666666666,
+          "visualImbalancePenalty": 0,
+          "usedViewerStyleTags": [
+            "精致感",
+            "清爽自然",
+            "生活感",
+            "松弛感",
+            "酷感个性",
+            "甜美可爱",
+            "成熟稳重",
+            "文艺温柔"
+          ],
+          "usedCandidateStyleTags": [
+            "清爽自然",
+            "生活感"
+          ],
+          "usedViewerPhotoVisualTags": [
+            "精致感",
+            "清爽自然",
+            "简约干净",
+            "高级感",
+            "生活感",
+            "运动阳光"
+          ],
+          "usedCandidatePhotoVisualTags": [
+            "户外感",
+            "有个性",
+            "都市精致"
+          ],
+          "viewerVisionSourceVersion": "p7.5-r2-rules",
+          "candidateVisionSourceVersion": "p7.5-r7-cloud-zhipu-v1",
+          "viewerVisionProvider": "rules",
+          "candidateVisionProvider": "cloud",
+          "qualitySignals": {
+            "candidateQualityTags": [
+              "清晰",
+              "光线正常"
+            ]
+          },
+          "sceneSignals": {
+            "candidateSceneTags": [
+              "都市街景"
+            ]
+          }
+        }
+      ],
+      "appliedToPool": false
+    },
+    "comparisons": {},
+    "finalShadow": {
+      "stage1SelectedCandidateIds": [
+        "cmfemn002000306z64seed0002",
+        "cmfemn003000506z64seed0003",
+        "cmr4hm000816z64demo00m04a",
+        "cmfemn00100016z64seed0001",
+        "cmr4hf000716z64demo00f04a",
+        "cmr4hf000916z64demo00f05a"
+      ],
+      "applied": false,
+      "appliedToPool": false,
+      "appliedToFinalScore": false,
+      "appliedToMatchResult": false,
+      "appliedToWorkerRanking": false
+    }
+  },
+  "applied": false
+}

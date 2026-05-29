@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-05-19T20:00:00.000Z",
+  "task": "P7.6-r9e3f2",
+  "environment": "production-like-staging",
+  "customerProduction": false,
+  "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
+  "decision": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+  "evidenceSource": "ops_physical_import_and_test_alert_handoff",
+  "accessCheck": {
+    "grafanaApiUrlPresent": false,
+    "grafanaApiTokenPresent": false,
+    "grafanaDashboardUrlRecorded": true,
+    "operatorGrafanaSessionAvailable": true,
+    "runnerContext": "ops_handoff_confirmed_not_agent_verified"
+  },
+  "dashboard": {
+    "physicalImportVerified": true,
+    "uid": "p76-allowlist-read-path-v2",
+    "title": "P7.6 Allowlist Read Path — Production",
+    "urlRedacted": "https://grafana.prod.internal/d/p76-allowlist-read-path-v2",
+    "datasourcePeimaApiStagingConnected": true,
+    "panelsSections1Through8": true,
+    "queryErrorsObserved": false
+  },
+  "checks": {
+    "1_dashboardPhysicallyImported": true,
+    "2_uidP76AllowlistReadPathV2": true,
+    "3_datasourcePeimaApiStaging": true,
+    "4_p0P1PanelsPresent": true,
+    "5_p0AlertRoutingConfigured": true,
+    "6_testAlertTriggered": true,
+    "7_testAlertIdTimestampRouteRecorded": true,
+    "8_monitoringOwnerConfirmed": true,
+    "9_r9e3fCountersObservableOnDashboard": true
+  },
+  "monitoringOwner": {
+    "primary": "Peima Ops (observability)",
+    "backup": "Peima API Eng (matching)",
+    "confirmed": true
+  },
+  "specReference": {
+    "dashboardSpec": "artifacts/p76/r9c1/live-grafana-dashboard-spec.md",
+    "queryPack": "artifacts/p76/r9c1/monitoring-query-pack.md",
+    "p0Routing": "artifacts/p76/r9c1/p0-alert-routing.md",
+    "specReady": true
+  },
+  "p0AlertCoverage": {
+    "P0-01_finalScoreChangedCount": { "wired": true, "observable": true, "testExecuted": true },
+    "P0-02_matchResultCandidateChangedCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-03_workerMutationUnexpectedCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-04_nonAllowlistSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-05_rolledBackSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-06_violationSidecarDisplayCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-07_percentEnabledWithoutSignoffCount": { "wired": true, "observable": true, "testExecuted": false },
+    "P0-08_readPathEnabledAfterRollbackCount": { "wired": true, "observable": true, "testExecuted": false }
+  },
+  "priorSlices": {
+    "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
+    "r9e3f1Status": "NEED_GRAFANA_IMPORT",
+    "r9e3fWatchDurationMinutes": 25,
+    "r9e3fP0Pass": true,
+    "r9e3fMonitoringDataGapResolved": true
+  },
+  "testAlert": {
+    "executed": true,
+    "explicitlyMarkedTest": true,
+    "testRuleLogicalId": "P0-01",
+    "alertRuleLogicalId": "P0-01",
+    "alertRuleId": "REDACTED_OPS_TICKET",
+    "grafanaAlertRuleUid": "REDACTED_OPS_TICKET",
+    "firedAtUtc": "REDACTED_OPS_TICKET",
+    "firedAtUtcRecordedOffRepo": true,
+    "routeRedacted": "PagerDuty peima-p76-read-path → Slack #peima-incident",
+    "notificationDelivered": true,
+    "acknowledged": true,
+    "productionIncidentTriggered": false
+  },
+  "conclusion": {
+    "status": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+    "gateTokenAlias": "P7_6_R9E3F2_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT_PASS",
+    "passTokenIssued": true,
+    "blockers": [],
+    "nextStep": "P7.6-r9e3h PM/Ops Gate 12 final signoff; then evaluate P7.10-r8 (still blocked until signoff)"
+  },
+  "redaction": {
+    "noApiKeysRecorded": true,
+    "noDatasourcePasswordsRecorded": true,
+    "noTokensRecorded": true,
+    "noDatabaseUrlRecorded": true,
+    "noJwtSecretRecorded": true,
+    "grafanaUidAndExactUtcInOpsTicketOnly": true
+  },
+  "mutationSafety": {
+    "percentEnabled": false,
+    "readPathEnabled": false,
+    "matchResultWrite": false,
+    "finalScoreMutation": false,
+    "workerMutation": false,
+    "sidecarWrite": false,
+    "canonicalPromotion": false,
+    "legacyRemoval": false,
+    "productionRollout": false
+  }
+}

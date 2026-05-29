@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "p76_canonical_writer_shadow_audit",
+  "sourceVersion": "p7.10-r6a-canonical-writer-shadow-audit-v1",
+  "generatedAt": "2026-05-18T19:30:04.090Z",
+  "mode": "dev_audit",
+  "dryRun": true,
+  "appliedToMatchResultCount": 0,
+  "totalRows": 1,
+  "eligibleCount": 0,
+  "blockedCount": 1,
+  "wouldChangeCandidateCount": 0,
+  "reasonCounts": {
+    "rolled_back": 1
+  },
+  "scoreDeltaBandCounts": {
+    "unknown": 1
+  },
+  "rows": [
+    {
+      "matchResultId": "cmpbd5hh8000a6z5kkpqauem3",
+      "viewerUserId": "cmr4r7j4050025z64stag0001",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:30:04.090Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmr4r7j4050025z64stag0001",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": "cmpb7vc8400006zrg2703fa23",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "rolled_back"
+        }
+      }
+    }
+  ]
+}

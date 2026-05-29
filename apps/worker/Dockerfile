@@ -7,5 +7,6 @@ COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @peima/database build
 RUN pnpm --filter @peima/shared build
+RUN pnpm --filter @peima/ai-simulation-v1-runner run build:worker
 RUN pnpm --filter @peima/worker build
 CMD ["node", "apps/worker/dist/main.js"]

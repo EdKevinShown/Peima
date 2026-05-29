@@ -1,6 +1,6 @@
 const TOKEN_KEY = "peimaToken";
 
-export function getToken() {
+export function getToken(): string {
   try {
     return localStorage.getItem(TOKEN_KEY) || "";
   } catch {
@@ -49,13 +49,6 @@ export const baseUrl = getApiBaseUrl();
 export async function handleJson<T>(res: Response): Promise<T> {
   const text = await res.text();
   if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error("未登录或 token 无效，请先登录（/login）");
-    }
-    if (res.status === 403) {
-      throw new Error("没有权限执行此操作（403）。若需全局数据，请确认账号是否在白名单内。");
-    }
-
     let detail = text;
     try {
       const body = JSON.parse(text) as { message?: string | string[] };
@@ -66,6 +59,15 @@ export async function handleJson<T>(res: Response): Promise<T> {
       }
     } catch {
       /* use raw text */
+    }
+    if (res.status === 401) {
+      throw new Error("未登录或 token 无效，请先登录（/login）");
+    }
+    if (res.status === 403) {
+      throw new Error(
+        detail?.trim() ||
+          "没有权限执行此操作（403）。若需全局数据，请确认账号是否在白名单内。",
+      );
     }
     throw new Error(detail || `HTTP ${res.status}`);
   }

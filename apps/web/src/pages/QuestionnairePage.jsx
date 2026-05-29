@@ -4,6 +4,8 @@ import {
   getQuestionnaireQuestions,
   submitQuestionnaire,
 } from "../api/questionnaire";
+import { getToken } from "../api/auth";
+import { getOnboardingPhotoStatus } from "../api/onboarding";
 import LoadingState from "../components/common/LoadingState";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -20,6 +22,59 @@ export default function QuestionnairePage() {
   const [loadError, setLoadError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [submitOk, setSubmitOk] = useState(false);
+
+  const [onboardingAllowed, setOnboardingAllowed] = useState(
+    () => !userId || !getToken(),
+  );
+
+  useEffect(() => {
+    if (!userId || !getToken()) {
+      setOnboardingAllowed(true);
+      return;
+    }
+    let cancelled = false;
+    setOnboardingAllowed(false);
+    void (async () => {
+      try {
+        const st = await getOnboardingPhotoStatus();
+        if (cancelled) return;
+        if (st.nextStep === "photo_upload") {
+          navigate(
+            `/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`,
+            { replace: true },
+          );
+          return;
+        }
+        if (st.nextStep === "photo_preference") {
+          navigate(
+            `/onboarding/photo-preference?userId=${encodeURIComponent(userId)}`,
+            { replace: true },
+          );
+          return;
+        }
+        if (st.nextStep === "photo_preview") {
+          navigate(
+            `/questionnaire?userId=${encodeURIComponent(userId)}`,
+            { replace: true },
+          );
+          return;
+        }
+        if (st.nextStep === "questionnaire") {
+          setOnboardingAllowed(true);
+          return;
+        }
+        navigate(
+          `/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`,
+          { replace: true },
+        );
+      } catch {
+        if (!cancelled) setOnboardingAllowed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,14 +171,18 @@ export default function QuestionnairePage() {
         <Link to="/home">首页</Link>
       </p>
 
-      {loadLoading && <LoadingState label="加载题目…" />}
-      {loadError && (
+      {!onboardingAllowed && <LoadingState label="校验入门流程…" />}
+      {onboardingAllowed && loadLoading && <LoadingState label="加载题目…" />}
+      {onboardingAllowed && loadError && (
         <p style={{ color: "#b00020" }} role="alert">
           {loadError.message}
         </p>
       )}
 
-      {!loadLoading && !loadError && questions.length > 0 && (
+      {onboardingAllowed &&
+        !loadLoading &&
+        !loadError &&
+        questions.length > 0 && (
         <>
           <p style={{ color: "#666", marginBottom: "1rem" }}>
             已选 {answeredCount} / {total} 题

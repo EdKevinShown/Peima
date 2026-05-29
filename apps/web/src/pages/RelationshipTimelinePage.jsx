@@ -3,10 +3,19 @@ import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
-import { getConversationTimeline } from "../api/chat";
+import { getConversation, getConversationTimeline } from "../api/chat";
 import { resolveUserId } from "../utils/resolveUserId";
 
 const TIMELINE_MESSAGE_LIMIT = 20;
+
+/** M6.6-C2：debug 脱敏（与 ChatPage 行为一致；后续可抽 shared helper）。 */
+function maskPeerIdForDebug(id) {
+  if (id == null || typeof id !== "string") return "—";
+  const t = id.trim();
+  if (t.length === 0) return "—";
+  if (t.length <= 8) return "…";
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
 
 const TYPE_LABELS = {
   conversation_opened: "会话开始",
@@ -94,8 +103,17 @@ export default function RelationshipTimelinePage() {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  /** M6.6-C2：与 FinalMatchPage 跳转 query 对齐；不参与时间线拉取参数。 */
+  const expectedTimelinePeerUserId = useMemo(
+    () => searchParams.get("finalMatchPeerUserId")?.trim() || null,
+    [searchParams],
+  );
   const { ensureConversationError, shouldHoldForConversationBootstrap } =
     useEnsureConversationInUrl(searchParams);
+
+  /** M6.6-C2：用既有 GET conversation 推导会话对方，不新增 timeline API。 */
+  const [peerLookup, setPeerLookup] = useState({ status: "unset", id: null });
 
   const [mergedItems, setMergedItems] = useState([]);
   const [messagePagination, setMessagePagination] = useState(null);
@@ -139,6 +157,7 @@ export default function RelationshipTimelinePage() {
 
   useEffect(() => {
     if (!conversationId) {
+      setPeerLookup({ status: "unset", id: null });
       setMergedItems([]);
       setMessagePagination(null);
       setError(null);
@@ -149,6 +168,22 @@ export default function RelationshipTimelinePage() {
       return;
     }
     let cancelled = false;
+    setPeerLookup({ status: "loading", id: null });
+    (async () => {
+      try {
+        const conv = await getConversation(conversationId);
+        if (cancelled) return;
+        const raw = conv?.candidateUserId;
+        const id =
+          typeof raw === "string" && raw.trim() !== "" ? raw.trim() : null;
+        setPeerLookup({ status: "ready", id });
+      } catch {
+        if (!cancelled) {
+          setPeerLookup({ status: "failed", id: null });
+        }
+      }
+    })();
+
     setLoading(true);
     setLoadingMore(false);
     setError(null);
@@ -220,6 +255,27 @@ export default function RelationshipTimelinePage() {
     messagePagination?.hasMore === true &&
     !loading;
 
+  const actualTimelinePeerUserId =
+    peerLookup.status === "ready" ? peerLookup.id : null;
+
+  const timelineHandoffMatched = useMemo(
+    () =>
+      !expectedTimelinePeerUserId ||
+      !actualTimelinePeerUserId ||
+      expectedTimelinePeerUserId === actualTimelinePeerUserId,
+    [expectedTimelinePeerUserId, actualTimelinePeerUserId],
+  );
+
+  const timelineHandoffMismatch = useMemo(
+    () =>
+      Boolean(
+        expectedTimelinePeerUserId &&
+          actualTimelinePeerUserId &&
+          expectedTimelinePeerUserId !== actualTimelinePeerUserId,
+      ),
+    [expectedTimelinePeerUserId, actualTimelinePeerUserId],
+  );
+
   const items = mergedItems;
   const timelineSummary = useMemo(() => buildTimelineSummary(items), [items]);
   const relationshipStage = useMemo(
@@ -246,6 +302,82 @@ export default function RelationshipTimelinePage() {
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}
       />
+
+      {conversationId ? (
+        <section
+          style={{
+            marginBottom: "0.75rem",
+            padding: "0.65rem 0.8rem",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            background: "#f8fafc",
+          }}
+          aria-label="本页关系时间线"
+        >
+          <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a", marginBottom: "0.35rem" }}>
+            本页关系时间线
+          </div>
+          {timelineHandoffMismatch ? (
+            <p
+              role="status"
+              style={{
+                margin: 0,
+                fontSize: "0.84rem",
+                color: "#a16207",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              当前时间线对象与最终匹配入口传入对象不一致，本页仍按当前时间线继续。
+            </p>
+          ) : null}
+          {isDebugMode && !expectedTimelinePeerUserId ? (
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+              调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
+            </p>
+          ) : null}
+          {isDebugMode &&
+          expectedTimelinePeerUserId &&
+          actualTimelinePeerUserId &&
+          timelineHandoffMatched ? (
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#15803d", lineHeight: 1.45 }}>
+              调试：最终匹配 handoff 已对齐。
+            </p>
+          ) : null}
+          {isDebugMode && expectedTimelinePeerUserId && peerLookup.status === "loading" ? (
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+              调试：正在加载会话以比对 handoff…
+            </p>
+          ) : null}
+          {isDebugMode && expectedTimelinePeerUserId && peerLookup.status === "failed" ? (
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+              调试：无法加载会话，无法比对 finalMatch handoff。
+            </p>
+          ) : null}
+          {isDebugMode &&
+          expectedTimelinePeerUserId &&
+          peerLookup.status === "ready" &&
+          actualTimelinePeerUserId === null ? (
+            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+              调试：会话已加载但 candidate 为空，无法比对 handoff。
+            </p>
+          ) : null}
+          {isDebugMode && timelineHandoffMismatch ? (
+            <p
+              style={{
+                margin: "0.35rem 0 0",
+                fontSize: "0.76rem",
+                color: "#64748b",
+                lineHeight: 1.45,
+                fontFamily: "ui-monospace, monospace",
+              }}
+            >
+              调试：handoff expected（脱敏）{maskPeerIdForDebug(expectedTimelinePeerUserId)} · 会话 actual（脱敏）
+              {maskPeerIdForDebug(actualTimelinePeerUserId)}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {shouldHoldForConversationBootstrap ? (
         <LoadingState label="正在准备会话…" />

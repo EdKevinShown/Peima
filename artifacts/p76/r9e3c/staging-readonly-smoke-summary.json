@@ -1,0 +1,161 @@
+{
+  "generatedAt": "2026-05-19T01:25:52.496Z",
+  "task": "P7.6-r9e3c",
+  "environment": "staging",
+  "environmentType": "production-like-staging",
+  "customerProduction": false,
+  "priorBootstrap": {
+    "task": "P7.6-r9e5",
+    "status": "STAGING_BOOTSTRAP_PASS_FOR_INFRA",
+    "closeout": "docs/P7/P7.6-r9e5-staging-environment-bootstrap-execution-closeout.md"
+  },
+  "apiBaseHostRedacted": "peima-api-staging.onrender.com",
+  "readonlyDbHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+  "redactionPolicy": {
+    "noTokensRecorded": true,
+    "noFullDatabaseUrlRecorded": true,
+    "noViewerUserIdsRecorded": true,
+    "countsAndStatusOnly": true
+  },
+  "accessSummary": {
+    "peimaReadonlyDatabaseUrlPresent": true,
+    "peimaAdminServiceTokenPresent": true,
+    "peimaStagingApiBaseUrlPresent": false,
+    "credentialedRunnerExecuted": true,
+    "executionContext": "operator_powershell_session"
+  },
+  "readonlyDbSummary": {
+    "executed": true,
+    "connectionPass": true,
+    "tableExists": {
+      "p76_allowlist_apply_meta": true,
+      "p76_canonical_match_result_meta": true
+    },
+    "rowCounts": {
+      "p76_allowlist_apply_meta": 0,
+      "p76_canonical_match_result_meta": 0
+    },
+    "prismaMigrationsCount": 32,
+    "emptyRowsExpectedFreshStaging": true,
+    "violations": {
+      "allowlist_appliedToMatchResult": 0,
+      "allowlist_appliedToFinalScore": 0,
+      "allowlist_appliedToWorkerRanking": 0,
+      "allowlist_appliedToDisplay": 0,
+      "allowlist_combinedViolation": 0,
+      "canonical_appliedToMatchResult": 0,
+      "canonical_appliedToFinalScore": 0,
+      "canonical_appliedToWorkerRanking": 0,
+      "canonical_combinedViolation": 0
+    },
+    "errorRedacted": null
+  },
+  "adminApiSmokeSummary": {
+    "executed": true,
+    "requiredEndpointsNo401403404": true,
+    "passCount": 3,
+    "failedCount": 0,
+    "cases": [
+      {
+        "caseLabel": "admin_p76_allowlist-apply-meta",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/allowlist-apply-meta",
+        "statusCode": 200,
+        "outcome": "pass",
+        "emptyExpectedFreshStaging": true,
+        "bodySummary": {
+          "rowCount": 0,
+          "totalSidecarRows": 0,
+          "schemaVersion": "p7.6-r8g1-admin-allowlist-apply-meta-list-v1"
+        },
+        "errorRedacted": null
+      },
+      {
+        "caseLabel": "admin_p76_canonical-rehearsal",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/canonical-rehearsal",
+        "statusCode": 200,
+        "outcome": "pass",
+        "emptyExpectedFreshStaging": true,
+        "bodySummary": {
+          "featureEnabled": true,
+          "itemCount": 0,
+          "totalVisible": 0,
+          "appliedToMatchResultViolationCount": 0,
+          "schemaVersion": "p7.7-r3-admin-canonical-rehearsal-list-v1"
+        },
+        "errorRedacted": null
+      },
+      {
+        "caseLabel": "admin_p76_canonical-rehearsal_aggregate",
+        "endpointType": "admin_readonly",
+        "path": "/admin/p76/canonical-rehearsal/aggregate",
+        "statusCode": 200,
+        "outcome": "pass",
+        "bodySummary": {
+          "featureEnabled": true,
+          "totalVisible": 0,
+          "schemaVersion": "p7.7-r3-admin-canonical-rehearsal-aggregate-v1"
+        },
+        "errorRedacted": null
+      }
+    ],
+    "operatorManualObserved": {
+      "executed": true,
+      "notes": "Manual GET in operator session; not part of automated runner matrix; no tokens recorded.",
+      "cases": [
+        {
+          "caseLabel": "admin_p76_canonical-sidecar",
+          "path": "/admin/p76/canonical-sidecar",
+          "statusCode": 200,
+          "outcome": "pass",
+          "emptyExpectedFreshStaging": true,
+          "bodySummary": {
+            "featureEnabled": true,
+            "totalVisible": 0
+          }
+        },
+        {
+          "caseLabel": "admin_p76_canonical-sidecar_aggregate",
+          "path": "/admin/p76/canonical-sidecar/aggregate",
+          "statusCode": 200,
+          "outcome": "pass",
+          "bodySummary": {
+            "featureEnabled": true,
+            "totalVisible": 0
+          }
+        }
+      ]
+    }
+  },
+  "mutationSafety": {
+    "postPatchDeleteExecuted": false,
+    "dbWriteExecuted": false,
+    "migrationExecuted": false,
+    "sidecarWriterInsertExecuted": false,
+    "rehearsalWriterInsertExecuted": false,
+    "workerTriggered": false,
+    "matchResultWriteExecuted": false,
+    "matchInsightsWriteExecuted": false,
+    "finalScoreMutationExecuted": false,
+    "percentChanged": false,
+    "previewPoolDisabled": false,
+    "legacyRemovalExecuted": false,
+    "productionDeployExecuted": false,
+    "fixtureSeedExecuted": false,
+    "readPathEnabled": false,
+    "canonicalPromotionExecuted": false
+  },
+  "conclusion": {
+    "status": "PASS_STAGING_READONLY_SMOKE",
+    "summary": "Readonly DB connection and SELECT checks pass; violation counts 0; required Admin GET endpoints 200 with no 401/403/404; empty rows expected on fresh staging.",
+    "blockers": [],
+    "nextStep": "P7.6-r9e3d PM/Ops review; then r9e5 §7: fixture seed, P7.6 GET matrix, rollback drill, Grafana/monitoring, 30–60 min watch"
+  },
+  "gateImpact": {
+    "r9e3Status": "NEED_MORE_PROD_REVERIFY",
+    "stagingReadonlySmoke": "pass",
+    "r9e3Complete": false,
+    "note": "r9e3c slice PASS does not close Gate 12; remaining r9e3/r9e5 items pending PM/Ops and ops evidence"
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "generatedAt": "2026-05-19T09:04:36.614Z",
+  "task": "P7.6-r9e3e",
+  "environment": "staging",
+  "apiBaseHostRedacted": "peima-api-staging.onrender.com",
+  "results": [
+    {
+      "caseLabel": "case_allowlist_active_1",
+      "caseType": "allowlist_active",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "case_allowlist_active_2",
+      "caseType": "allowlist_active",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "case_allowlist_active_3",
+      "caseType": "allowlist_active",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "case_allowlist_active_4",
+      "caseType": "allowlist_active",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "case_rolled_back",
+      "caseType": "rolled_back",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "case_non_allowlist",
+      "caseType": "non_allowlist",
+      "phase": "read_path_disabled",
+      "httpStatus": 200,
+      "outcome": "pass",
+      "displaySourceType": "match_result_original",
+      "hasCandidateUserId": true,
+      "hasFinalScore": true,
+      "finalScoreUnchanged": true,
+      "candidateUserIdUnchanged": true,
+      "p76Enabled": false,
+      "fallbackUsed": true,
+      "fallbackReason": "env_disabled",
+      "errorRedacted": null
+    }
+  ],
+  "smokePhase": "disabled",
+  "summary": {
+    "totalCases": 6,
+    "passCount": 6,
+    "failCount": 0,
+    "readPathEnabledPass": null,
+    "readPathDisabledPass": true
+  },
+  "sqlVerification": {
+    "readonlyUrlSource": "PEIMA_READONLY_DATABASE_URL",
+    "before": {
+      "executed": true,
+      "fixtureTaggedMatchResultCount": 6,
+      "violations": {
+        "allowlist_combined": 0,
+        "canonical_combined": 0
+      },
+      "violationPass": true
+    },
+    "after": {
+      "executed": true,
+      "fixtureTaggedMatchResultCount": 6,
+      "violations": {
+        "allowlist_combined": 0,
+        "canonical_combined": 0
+      },
+      "violationPass": true
+    }
+  },
+  "conclusion": {
+    "status": "PASS_STAGING_FIXTURE_GET_SMOKE",
+    "blockers": [],
+    "nextStep": "P7.6-r9e3f or ops: Grafana, watch, full rollback drill; update r9e3 evidence"
+  },
+  "mutationSafety": {
+    "postPatchDeleteExecuted": false,
+    "dbWriteExecuted": false,
+    "migrationExecuted": false,
+    "workerTriggered": false,
+    "matchResultWriteExecuted": false,
+    "matchInsightsWriteExecuted": false,
+    "finalScoreMutationExecuted": false,
+    "percentChanged": false,
+    "canonicalPromotionExecuted": false,
+    "productionDeployExecuted": false
+  }
+}

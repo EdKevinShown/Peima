@@ -4,7 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { MatchingService } from "../matching/matching.service";
+import {
+  isMatchResultViewerPayload,
+  MatchingService,
+} from "../matching/matching.service";
 import { QuestionnaireService } from "../questionnaire/questionnaire.service";
 import { MatchReviewAiChatCompletionsClient } from "./match-review-ai-chat-completions.client";
 import { MatchReviewAiConfigService } from "./match-review-ai.config.service";
@@ -54,12 +57,20 @@ export class MatchReviewAiService {
     const t0 = Date.now();
     const cid = candidateUserId.trim();
 
-    const matchRow = await this.matchingService.getLatestResultForUser(
+    const matchResult = await this.matchingService.getLatestResultForUser(
       tokenUserId,
     );
-    if (matchRow.candidateUserId !== cid) {
+    if (!isMatchResultViewerPayload(matchResult)) {
+      throw new NotFoundException(`No match result for user ${tokenUserId}`);
+    }
+    const matchRow = matchResult;
+    /** Align with `GET /matching/result`: UI sends `displayCandidateUserId` when it differs from stored `candidateUserId` (e.g. RRM Top2). */
+    const staticId = matchRow.candidateUserId.trim();
+    const displayId = matchRow.displayCandidateUserId.trim();
+    const allowed = cid === staticId || cid === displayId;
+    if (!allowed) {
       throw new ForbiddenException(
-        "candidateUserId does not match your latest match result",
+        "candidateUserId must match your latest match result (static or display candidate)",
       );
     }
 

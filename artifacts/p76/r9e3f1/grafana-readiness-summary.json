@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-05-19T12:00:00.000Z",
+  "task": "P7.6-r9e3f1",
+  "environment": "production-like-staging",
+  "customerProduction": false,
+  "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
+  "dashboardUid": "p76-allowlist-read-path-v2",
+  "dashboardName": "P7.6 Allowlist Read Path — Production",
+  "specPath": "artifacts/p76/r9c1/live-grafana-dashboard-spec.md",
+  "queryPackPath": "artifacts/p76/r9c1/monitoring-query-pack.md",
+  "routingPath": "artifacts/p76/r9c1/p0-alert-routing.md",
+  "checks": {
+    "physicalDashboardImported": false,
+    "dashboardUidMatches": null,
+    "dashboardUrlRecorded": false,
+    "p0P1PanelsPresent": null,
+    "p0AlertRoutingConfigured": false,
+    "testAlertFired": false,
+    "testAlertIdRecorded": false,
+    "testAlertTimestampUtc": null,
+    "testAlertRouteRecorded": false,
+    "monitoringOwnerConfirmed": true,
+    "r9e3fCountersObservableOnDashboard": null
+  },
+  "p0AlertCoverage": {
+    "finalScoreChangedCount": { "ruleId": "P0-01", "wired": false, "observable": null },
+    "matchResultCandidateChangedCount": { "ruleId": "P0-02", "wired": false, "observable": null },
+    "workerMutationUnexpectedCount": { "ruleId": "P0-03", "wired": false, "observable": null },
+    "nonAllowlistSidecarDisplayCount": { "ruleId": "P0-04", "wired": false, "observable": null },
+    "rolledBackSidecarDisplayCount": { "ruleId": "P0-05", "wired": false, "observable": null },
+    "violationSidecarDisplayCount": { "ruleId": "P0-06", "wired": false, "observable": null },
+    "percentEnabledWithoutSignoffCount": { "ruleId": "P0-07", "wired": false, "observable": null },
+    "readPathEnabledAfterRollbackCount": { "ruleId": "P0-08", "wired": false, "observable": null }
+  },
+  "p1AlertCoverage": {
+    "api5xxSpike": { "ruleId": "P1-external", "wired": false },
+    "exceptionFallbackSpike": { "ruleId": "P1-01", "wired": false },
+    "fallbackLegacyAbnormal": { "ruleId": "P1-02", "wired": false },
+    "sidecarReadSuccessDrop": { "ruleId": "P1-03", "wired": false },
+    "userReportThreshold": { "ruleId": "P1-04", "wired": false },
+    "monitoringDataGap": { "ruleId": "P1-05", "wired": false }
+  },
+  "specReadiness": {
+    "dashboardSpecReady": true,
+    "queryPackReady": true,
+    "p0RoutingDocReady": true,
+    "stagingLogSourceAvailable": true,
+    "note": "Render logs for peima-api-staging; datasource must be wired by Ops"
+  },
+  "priorSlice": {
+    "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
+    "r9e3fWatchDurationMinutes": 25,
+    "r9e3fP0Pass": true
+  },
+  "conclusion": {
+    "status": "NEED_GRAFANA_IMPORT",
+    "blockers": [
+      "physical_dashboard_not_imported",
+      "test_alert_not_fired",
+      "dashboard_url_not_recorded",
+      "no_grafana_api_credentials_in_runner_session"
+    ],
+    "nextStep": "Ops: import dashboard per r9c1 spec into staging Grafana folder; wire P0 rules; fire test alert; rerun r9e3f1 with GRAFANA_DASHBOARD_URL in grafana-dashboard-url.txt"
+  },
+  "mutationSafety": {
+    "percentEnabled": false,
+    "readPathEnabled": false,
+    "matchResultWrite": false,
+    "workerMutation": false,
+    "canonicalPromotion": false,
+    "legacyRemoval": false
+  }
+}

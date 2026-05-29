@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "test": "node --test ./src/utils/preferenceIntOrNull.test.mjs ./src/utils/p76AllowlistApplyMetaLabels.test.mjs ./src/utils/p76CanonicalRehearsalLabels.test.mjs ./src/utils/p76CanonicalSidecarLabels.test.mjs ./src/utils/p76CanonicalApplyReviewLabels.test.mjs"
   },
   "dependencies": {
+    "@peima/shared": "workspace:*",
     "lucide-react": "^1.11.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

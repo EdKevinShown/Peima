@@ -1,0 +1,48 @@
+{
+  "fixtureTag": "p7.6-r9b-http-get-smoke-fixture",
+  "batchId": "cmpbd5hfu00006z5kuudemocy",
+  "finalScore": 0.75,
+  "seeded": [
+    {
+      "userId": "cmr4hm001016z64demo00m05a",
+      "action": "created",
+      "matchResultId": "cmpbd5hgi00026z5ktg63cx1l",
+      "candidateUserId": "cmr4hm001016z64demo00m05a",
+      "finalScore": 0.75,
+      "batchId": "cmpbd5hfu00006z5kuudemocy"
+    },
+    {
+      "userId": "cmfemn00100016z64seed0001",
+      "action": "created",
+      "matchResultId": "cmpbd5hgr00046z5kwqlkwt43",
+      "candidateUserId": "cmfemn00100016z64seed0001",
+      "finalScore": 0.75,
+      "batchId": "cmpbd5hfu00006z5kuudemocy"
+    },
+    {
+      "userId": "cmr4hf000716z64demo00f04a",
+      "action": "created",
+      "matchResultId": "cmpbd5hgx00066z5kkqu3idpq",
+      "candidateUserId": "cmr4hf000716z64demo00f04a",
+      "finalScore": 0.75,
+      "batchId": "cmpbd5hfu00006z5kuudemocy"
+    },
+    {
+      "userId": "cmr4hf000916z64demo00f05a",
+      "action": "created",
+      "matchResultId": "cmpbd5hh200086z5khc8r2414",
+      "candidateUserId": "cmr4hf000916z64demo00f05a",
+      "finalScore": 0.75,
+      "batchId": "cmpbd5hfu00006z5kuudemocy"
+    },
+    {
+      "userId": "cmr4r7j4050025z64stag0001",
+      "action": "created",
+      "matchResultId": "cmpbd5hh8000a6z5kkpqauem3",
+      "candidateUserId": "cmr4r7j4050025z64stag0001",
+      "finalScore": 0.75,
+      "batchId": "cmpbd5hfu00006z5kuudemocy"
+    }
+  ],
+  "seededAt": "2026-05-18T15:33:07.392Z"
+}

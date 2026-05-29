@@ -2,7 +2,21 @@
 
 export type Empty = Record<string, never>;
 
-export type { MatchInsights } from "./match-p1";
+export type {
+  MatchInsights,
+  MatchInsightsRrmBoundedDecision,
+  MatchInsightsRrmBoundedDecisionFallbackReason,
+  MatchInsightsRrmDecisionShadow,
+  MatchInsightsRrmDecisionShadowBlockReason,
+  MatchInsightsRrmV2Top2SelectorShadow,
+  MatchInsightsScoreShadowV2,
+  MatchInsightsTop2ScoreSnapshot,
+  MatchInsightsTop2ScoreSnapshotItem,
+} from "./match-p1";
+export {
+  MATCH_INSIGHTS_RRM_BOUNDED_DECISION_SOURCE_VERSION,
+  MATCH_INSIGHTS_RRM_V2_TOP2_SELECTOR_SHADOW_VERSION,
+} from "./match-p1";
 
 export type {
   P2SourceMetadata,

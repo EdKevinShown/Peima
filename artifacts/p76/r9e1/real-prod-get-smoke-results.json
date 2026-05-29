@@ -1,0 +1,37 @@
+{
+  "status": "pending",
+  "environment": "real-production",
+  "executedAt": null,
+  "executor": "Peima Ops + Peima API Eng (matching)",
+  "note": "Must be executed against real prod API with production JWT. Rehearsal baseline in artifacts/p76/r9d/production-get-smoke-results.json",
+  "requiredCases": [
+    "allowlist_active",
+    "rolled_back",
+    "non_allowlist"
+  ],
+  "requiredViewers": {
+    "allowlistActive": [
+      "cmr4hm001016z64demo00m05a",
+      "cmfemn00100016z64seed0001",
+      "cmr4hf000716z64demo00f04a",
+      "cmr4hf000916z64demo00f05a"
+    ],
+    "rolledBack": "cmr4r7j4050025z64stag0001",
+    "nonAllowlist": "cmo7ksq8s00006znosryc9k0n"
+  },
+  "acceptanceCriteria": {
+    "http5xxCount": 0,
+    "exceptionCount": 0,
+    "allowlistDisplaySourceType": "p76_allowlist_sidecar_readonly",
+    "nonAllowlistNoSidecar": true,
+    "rolledBackLegacyFallback": true,
+    "candidateUserIdUnchanged": true,
+    "finalScoreUnchanged": true
+  },
+  "rehearsalBaseline": {
+    "source": "artifacts/p76/r9d/production-get-smoke-results.json",
+    "passCount": 6,
+    "blockCount": 0
+  },
+  "results": []
+}

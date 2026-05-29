@@ -4,6 +4,7 @@ import {
   Get,
   GoneException,
   HttpCode,
+  InternalServerErrorException,
   Param,
   Post,
   Query,
@@ -18,6 +19,7 @@ import { AiSimulationV1Service } from "../ai-simulation-v1/ai-simulation-v1.serv
 import { PostPoolDeepScreenOrchestratorService } from "../post-pool-deep-screen/post-pool-deep-screen-orchestrator.service";
 import { PrescreenV0Service } from "../prescreen-v0/prescreen-v0.service";
 import { AdminService } from "./admin.service";
+import { RrmObservationSummaryService } from "./rrm-observation-summary.service";
 import { AdminPostPoolOrchestrationMvpDto } from "./dto/admin-post-pool-orchestration-mvp.dto";
 import { AdminPostPoolDeepScreenShadowDto } from "./dto/admin-post-pool-deep-screen-shadow.dto";
 import { AdminPrescreenV0BatchDebugDto } from "./dto/admin-prescreen-v0-batch-debug.dto";
@@ -34,6 +36,7 @@ export class AdminController {
     private readonly prescreenV0Service: PrescreenV0Service,
     private readonly postPoolDeepScreenOrchestrator: PostPoolDeepScreenOrchestratorService,
     private readonly aiSimulationV1Service: AiSimulationV1Service,
+    private readonly rrmObservationSummaryService: RrmObservationSummaryService,
   ) {}
 
   @Get("capabilities")
@@ -121,8 +124,7 @@ export class AdminController {
     }
     this.adminService.assertCanRunAiSimulationV1(userId);
     const job = await this.aiSimulationV1Service.getJobById(jobId);
-    await this.aiSimulationV1Service.runJob(jobId, job.viewerUserId as string);
-    return { ok: true as const };
+    return this.aiSimulationV1Service.requestRunJobAsync(jobId, job.viewerUserId as string);
   }
 
   /**
@@ -196,5 +198,25 @@ export class AdminController {
     this.adminService.assertCanTriggerBatchMatch(userId);
     await this.adminService.runBatchMatchSubprocess();
     return { ok: true };
+  }
+
+  /** M6.7-C3: read-only anonymous summary for admin/debug observation. */
+  @Get("rrm-observation/summary")
+  async rrmObservationSummary(
+    @Req() req: JwtReq,
+    @Query("limit") limit?: string,
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    this.adminService.assertCanRunAiSimulationV1(userId);
+    try {
+      return await this.rrmObservationSummaryService.getSummary(limit);
+    } catch {
+      throw new InternalServerErrorException(
+        "failed_to_build_rrm_observation_summary",
+      );
+    }
   }
 }

@@ -63,7 +63,3 @@
 ## Archive（历史与草稿）
 
 长文规划与早期草稿保留在 [`archive/historical/`](./archive/historical/) 与 [`archive/drafts/`](./archive/drafts/)，不作为当前默认真源。
-
-## Reorganization
-
-执行记录与检查项：[P6-docs-reorganization-round1-execution-checklist.md](./P6-docs-reorganization-round1-execution-checklist.md)

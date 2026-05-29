@@ -1,3 +1,5 @@
+import { registerAiSimulationV1QueueWorker } from "@peima/ai-simulation-v1-runner/worker-consumer";
+import { registerAiPairwiseDecisionQueueWorker } from "@peima/ai-pairwise-decision-runner/worker-consumer";
 import { runBatchMatch } from "./jobs/batch-match.processor.js";
 import { registerDailyMatchCron, runDailyMatchOnce } from "./schedulers/daily-match.scheduler.js";
 
@@ -8,6 +10,9 @@ async function main() {
 
   // Always register cron when worker starts.
   registerDailyMatchCron();
+
+  registerAiSimulationV1QueueWorker();
+  registerAiPairwiseDecisionQueueWorker();
 
   if (argv.includes("--batch-match")) {
     await runDailyMatchOnce();

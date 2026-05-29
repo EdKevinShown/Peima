@@ -21,6 +21,16 @@ export const Permission = {
   MANAGE_PERMISSIONS: "manage_permissions",
   VIEW_AUDIT_LOG: "view_audit_log",
   EXPORT_DATA: "export_data",
+  /** P7.4-r1d-c2: onboarding photo review (admin / operator). */
+  MANAGE_PHOTO_REVIEW: "manage_photo_review",
+  /** P7.6-r8g1: read-only P7.6 allowlist apply sidecar (admin review). */
+  VIEW_P76_ALLOWLIST_APPLY_META: "view_p76_allowlist_apply_meta",
+  /** P7.7-r3.4: read-only canonical writer rehearsal rows (shadow review). */
+  VIEW_P76_CANONICAL_REHEARSAL: "view_p76_canonical_rehearsal",
+  /** P7.10-r8f: hidden admin canonical Apply mutation (env-gated; not production). */
+  APPLY_P76_CANONICAL_REHEARSAL: "apply_p76_canonical_rehearsal",
+  /** P7.10-r8f: hidden admin canonical Rollback mutation (env-gated; token required). */
+  ROLLBACK_P76_CANONICAL_WRITE: "rollback_p76_canonical_write",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -32,12 +42,19 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.VIEW_ALL_SUGGESTIONS,
     Permission.MANAGE_ALL_SUGGESTIONS,
     Permission.EXPORT_SUGGESTIONS,
+    Permission.MANAGE_PHOTO_REVIEW,
+    Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
+    Permission.APPLY_P76_CANONICAL_REHEARSAL,
+    Permission.ROLLBACK_P76_CANONICAL_WRITE,
   ],
   [UserRole.DATA_ANALYST]: [
     Permission.VIEW_OWN_SUGGESTIONS,
     Permission.VIEW_GLOBAL_ANALYTICS,
     Permission.VIEW_ALL_SUGGESTIONS,
     Permission.EXPORT_DATA,
+    Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
   ],
   [UserRole.ADMIN]: [
     Permission.VIEW_OWN_SUGGESTIONS,
@@ -48,6 +65,11 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.MANAGE_PERMISSIONS,
     Permission.VIEW_AUDIT_LOG,
     Permission.EXPORT_DATA,
+    Permission.MANAGE_PHOTO_REVIEW,
+    Permission.VIEW_P76_ALLOWLIST_APPLY_META,
+    Permission.VIEW_P76_CANONICAL_REHEARSAL,
+    Permission.APPLY_P76_CANONICAL_REHEARSAL,
+    Permission.ROLLBACK_P76_CANONICAL_WRITE,
   ],
 };
 

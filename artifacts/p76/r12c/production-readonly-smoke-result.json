@@ -1,0 +1,106 @@
+{
+  "status": "PASS_R12C_PRODUCTION_DEPLOY_READONLY_SMOKE",
+  "task": "P7.10-r12c",
+  "generatedAt": "2026-05-19T21:14:47.583Z",
+  "startedAt": "2026-05-19T21:14:47.580Z",
+  "preflight": {
+    "pass": true,
+    "errors": [],
+    "r12aStatus": "PASS_R12A_PRODUCTION_READINESS_HUMAN_SIGNOFF",
+    "r12bStatus": "DONE_R12B_PRODUCTION_ROLLOUT_PLAN_RUNBOOK",
+    "apiBaseHostRedacted": "peima-api-prod.onrender.com",
+    "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+    "databaseHostFingerprint": "b6d1fc10ef48fafb",
+    "databaseClassifiedAs": "customer_production",
+    "gates": {
+      "oldPhotoWriterShutdownEnabled": true,
+      "oldPhotoWriterEnabled": false,
+      "hiddenMutationApiEnabled": false,
+      "hiddenAdminApplyRouteEnabled": false,
+      "hiddenAdminRollbackRouteEnabled": false,
+      "applyExecutionEnabled": false,
+      "applyAllowDbWrite": false,
+      "rollbackExecutionEnabled": false,
+      "rollbackAllowDbWrite": false,
+      "productionPercent": 0,
+      "productionPercentEnabled": false
+    },
+    "gatesAllSafe": true,
+    "owners": {
+      "rolloutLead": "Zhan Zhang",
+      "ops": "Zhan Zhang",
+      "eng": "Zhan Zhang",
+      "oncall": "Zhan Zhang"
+    },
+    "monitoringWindowMinutes": 60,
+    "customerProductionWritePlanned": false
+  },
+  "productionDeploy": {
+    "executed": true,
+    "completed": true,
+    "note": "deploy is operator-driven on Render; set PEIMA_P710_R12C_DEPLOY_COMPLETED=1 after manual deploy"
+  },
+  "readonlySmoke": {
+    "http": {
+      "executed": true,
+      "apiHostRedacted": "peima-api-prod.onrender.com",
+      "health": {
+        "statusCode": 404,
+        "pass": true
+      },
+      "generatePost": {
+        "statusCode": 404,
+        "unavailable": true
+      },
+      "isStagingHost": false
+    },
+    "database": {
+      "executed": true,
+      "connectionPass": true,
+      "matchResultCount": 6,
+      "hookJobPendingCount": 0,
+      "canonicalWorkerRankingViolations": 0,
+      "allowlistWorkerRankingViolations": 0,
+      "errorRedacted": null
+    },
+    "static": {
+      "previewPoolRedirects": true,
+      "onboardingPhotoPreviewRedirects": true,
+      "generateRouteRemoved": true,
+      "finalMatchUsesGetMatchingResult": true
+    }
+  },
+  "monitoringObservation": {
+    "executed": true,
+    "windowMinutes": 60,
+    "note": "operator observation; not automated in this runner",
+    "outcome": "delegated_to_operator"
+  },
+  "staticRepoChecks": {
+    "previewPoolRedirects": true,
+    "onboardingPhotoPreviewRedirects": true,
+    "generateRouteRemoved": true,
+    "finalMatchUsesGetMatchingResult": true
+  },
+  "safety": {
+    "readonly": true,
+    "customerProductionWrite": false,
+    "percent": 0,
+    "applyExecuted": false,
+    "rollbackExecuted": false,
+    "hiddenMutationEnabled": false,
+    "secretsExposed": false,
+    "oldWriterShutdownEnabled": true,
+    "oldWriterEnabled": false,
+    "safeFallbackPreserved": true,
+    "finalMatchPagePreserved": true
+  },
+  "security": {
+    "redactionPolicy": {
+      "noDatabaseUrl": true,
+      "noJwt": true,
+      "noRollbackToken": true,
+      "noViewerUserIds": true
+    }
+  }
+}

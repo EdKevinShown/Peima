@@ -5,10 +5,8 @@ import ConversationContextBar from "../components/common/ConversationContextBar"
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
-import P6ReviewSummary, {
-  normalizeP6ReviewSummary,
-  P6ProposedPatchDetails,
-} from "../components/profile/P6ReviewSummary.jsx";
+import { normalizeP6ReviewSummary } from "../components/profile/P6ReviewSummary.helpers.js";
+import P6ReviewSummary, { P6ProposedPatchDetails } from "../components/profile/P6ReviewSummary.jsx";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
@@ -35,11 +33,28 @@ const P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION =
 /** P6.12 structured feedback（与 `docs/P6/P6.12-chat-feedback-structured-payload-v0.md` 一致）。 */
 const P612_FEEDBACK_SOURCE_VERSION = "p6.12-chat-feedback-structured-v0";
 
+/** M6.6-C1：debug 用脱敏，不展示完整 userId。 */
+function maskPeerIdForDebug(id) {
+  if (id == null || typeof id !== "string") return "—";
+  const t = id.trim();
+  if (t.length === 0) return "—";
+  if (t.length <= 8) return "…";
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
+
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const matchResultIdParam =
     searchParams.get("matchResultId")?.trim() || undefined;
+  const fromFinalMatchHandoff = searchParams.get("fromFinalMatch") === "1";
+  const rhythmRecommendedHandoff = searchParams.get("rhythmRecommended") === "1";
+  const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  /** M6.6-C1：与 FinalMatchPage handoff query 对齐；不参与发消息或改会话。 */
+  const expectedPeerUserId = useMemo(
+    () => searchParams.get("finalMatchPeerUserId")?.trim() || null,
+    [searchParams],
+  );
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const { ensureConversationError, shouldHoldForConversationBootstrap } =
     useEnsureConversationInUrl(searchParams);
@@ -85,6 +100,37 @@ export default function ChatPage() {
   const [profileCompletionSuggestBusy, setProfileCompletionSuggestBusy] = useState(false);
   const [profileCompletionSuggestOk, setProfileCompletionSuggestOk] = useState(null);
   const [profileCompletionSuggestErr, setProfileCompletionSuggestErr] = useState(null);
+  /** M5.5-Chat-R2A: optional rhythm hint from Final Match handoff (dismissible). */
+  const [rhythmHandoffDismissed, setRhythmHandoffDismissed] = useState(false);
+
+  /** M6.6-C1：会话中的对方 userId（与 `Conversation.candidateUserId` 一致）；无会话数据时为 null。 */
+  const actualConversationPeerUserId = useMemo(() => {
+    if (!conversation || typeof conversation.candidateUserId !== "string") return null;
+    const s = conversation.candidateUserId.trim();
+    return s === "" ? null : s;
+  }, [conversation]);
+
+  /**
+   * M6.6-C1：expected 缺失、actual 缺失、或二者相同 → true；二者均存在且不同 → false。
+   * 不阻止发消息、不切换会话。
+   */
+  const handoffPeerMatched = useMemo(
+    () =>
+      !expectedPeerUserId ||
+      !actualConversationPeerUserId ||
+      expectedPeerUserId === actualConversationPeerUserId,
+    [expectedPeerUserId, actualConversationPeerUserId],
+  );
+
+  const handoffPeerMismatch = useMemo(
+    () =>
+      Boolean(
+        expectedPeerUserId &&
+          actualConversationPeerUserId &&
+          expectedPeerUserId !== actualConversationPeerUserId,
+      ),
+    [expectedPeerUserId, actualConversationPeerUserId],
+  );
 
   const load = useCallback(async (source = "manual") => {
     if (!conversationId) {
@@ -410,7 +456,8 @@ export default function ChatPage() {
     setFeedbackResult(null);
     setFeedbackSubmitting(true);
     try {
-      const targetUserId = conversation?.candidateUserId || undefined;
+      /** M6.6-C3：归因始终为当前会话对象（= actual peer）；handoff mismatch 时不写入 expected。 */
+      const feedbackAttributionTargetUserId = actualConversationPeerUserId || undefined;
       const structuredPayload = {
         schemaVersion: 1,
         kind: "p6.12_conversation_v0",
@@ -422,7 +469,7 @@ export default function ChatPage() {
         safetyFeeling: feedbackSafetyFeeling,
         awkwardness: feedbackAwkwardness,
         ...(matchResultIdParam ? { matchResultId: matchResultIdParam } : {}),
-        ...(targetUserId ? { targetUserId } : {}),
+        ...(feedbackAttributionTargetUserId ? { targetUserId: feedbackAttributionTargetUserId } : {}),
       };
       await submitFeedback({
         userId,
@@ -454,7 +501,7 @@ export default function ChatPage() {
     feedbackReplyQuality,
     feedbackSafetyFeeling,
     feedbackAwkwardness,
-    conversation,
+    actualConversationPeerUserId,
     matchResultIdParam,
   ]);
 
@@ -546,8 +593,12 @@ export default function ChatPage() {
     const q = new URLSearchParams();
     q.set("conversationId", conversationId);
     if (userId) q.set("userId", userId);
+    /** M6.6-C4：进入 Copilot 时透传 Final Match handoff，便于 CopilotPage 比对。 */
+    if (expectedPeerUserId) {
+      q.set("finalMatchPeerUserId", expectedPeerUserId);
+    }
     return `/copilot?${q.toString()}`;
-  }, [conversationId, userId]);
+  }, [conversationId, userId, expectedPeerUserId]);
 
   const timelineHref = useMemo(() => {
     if (!conversationId) return "/chat/timeline";
@@ -746,19 +797,73 @@ export default function ChatPage() {
                 沟通洞察加载失败：{copilotLoadError}
               </p>
             ) : null}
+            <p style={{ margin: "0 0 0.45rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+              {handoffPeerMismatch
+                ? "最终匹配入口传入对象与当前会话对象不一致，沟通建议仍基于当前会话。"
+                : "沟通建议基于当前会话生成。"}
+            </p>
+            {isDebugMode && (expectedPeerUserId || actualConversationPeerUserId) ? (
+              <p
+                style={{
+                  margin: "0 0 0.45rem",
+                  fontSize: "0.72rem",
+                  color: "#94a3b8",
+                  lineHeight: 1.45,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
+                调试：copilot 归因 = 当前会话 peer（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)} ·
+                handoff expected（脱敏）{maskPeerIdForDebug(expectedPeerUserId)}
+              </p>
+            ) : null}
             <CopilotInsightCard insights={copilotInsights} />
           </div>
           <div
+            data-m65-feedback-target-user-id={actualConversationPeerUserId || undefined}
             style={{
               borderTop: "1px dashed #ddd",
               paddingTop: "0.65rem",
               marginBottom: "0.7rem",
             }}
+            aria-label="会话反馈"
           >
             <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.4rem" }}>记录本次会话反馈</h3>
             <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.5rem" }}>
               仅用于改进体验（P6.12 结构化），对方不会看到；与匹配分、排序无关。
             </p>
+            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.45rem", lineHeight: 1.5 }}>
+              本页反馈按当前会话对象归因。
+            </p>
+            {handoffPeerMismatch ? (
+              <p
+                role="note"
+                style={{
+                  margin: "0 0 0.5rem",
+                  fontSize: "0.78rem",
+                  color: "#a16207",
+                  lineHeight: 1.5,
+                  maxWidth: 520,
+                }}
+              >
+                最终匹配入口对象与当前会话不一致；提交仍将写入当前聊天对象，不会写入另一用户。
+              </p>
+            ) : null}
+            {isDebugMode && (actualConversationPeerUserId || expectedPeerUserId) ? (
+              <p
+                style={{
+                  margin: "0 0 0.5rem",
+                  fontSize: "0.72rem",
+                  color: "#94a3b8",
+                  lineHeight: 1.45,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
+                调试：P6.12 targetUserId（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)}
+                {expectedPeerUserId
+                  ? ` · handoff expected（脱敏）${maskPeerIdForDebug(expectedPeerUserId)}`
+                  : ""}
+              </p>
+            ) : null}
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.45rem" }}>
               <label htmlFor="p4-feedback-rating">总评</label>
               <select
@@ -958,7 +1063,117 @@ export default function ChatPage() {
 
       {!loading && !error && conversation && (
         <section style={{ border: "1px solid #ddd", borderRadius: 8 }}>
+          {fromFinalMatchHandoff && rhythmRecommendedHandoff && !rhythmHandoffDismissed ? (
+            <div
+              style={{
+                padding: "0.75rem 1rem",
+                borderBottom: "1px solid #e2e8f0",
+                background: "#f8fafc",
+              }}
+              aria-label="聊天节奏建议"
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                <h2 style={{ fontSize: "0.95rem", margin: 0, fontWeight: 600, color: "#0f172a" }}>聊天节奏建议</h2>
+                <button
+                  type="button"
+                  onClick={() => setRhythmHandoffDismissed(true)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    fontSize: "0.82rem",
+                    padding: "0.1rem 0.25rem",
+                  }}
+                >
+                  收起
+                </button>
+              </div>
+              <p style={{ margin: "0.45rem 0 0.55rem", fontSize: "0.86rem", color: "#334155", lineHeight: 1.55 }}>
+                这次推荐已经结合了基础适配和相处节奏。建议先从轻松话题开始，观察双方回应是否自然，再慢慢深入。
+              </p>
+              <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", fontWeight: 600, color: "#475569" }}>快捷话题（仅填入输入框，不会自动发送）</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {["同城周末通常怎么安排？", "最近一件让你开心的小事？", "你平时更喜欢怎样的聊天节奏？"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setContent((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+                    style={{
+                      fontSize: "0.8rem",
+                      padding: "0.35rem 0.55rem",
+                      borderRadius: 999,
+                      border: "1px solid #cbd5e1",
+                      background: "#fff",
+                      color: "#334155",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div style={{ padding: "0.75rem 1rem", background: "#fafafa" }}>
+            <div
+              style={{
+                marginBottom: "0.55rem",
+                paddingBottom: "0.55rem",
+                borderBottom: "1px solid #e5e7eb",
+              }}
+              aria-label="本页聊天"
+            >
+              <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a", marginBottom: "0.35rem" }}>
+                本页聊天
+              </div>
+              {handoffPeerMismatch ? (
+                <p
+                  role="status"
+                  style={{
+                    margin: 0,
+                    fontSize: "0.84rem",
+                    color: "#a16207",
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  当前聊天对象与最终匹配入口传入对象不一致，本页仍按当前会话继续。
+                </p>
+              ) : null}
+              {isDebugMode && !expectedPeerUserId ? (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+                  调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
+                </p>
+              ) : null}
+              {isDebugMode &&
+              expectedPeerUserId &&
+              actualConversationPeerUserId &&
+              handoffPeerMatched ? (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#15803d", lineHeight: 1.45 }}>
+                  调试：最终匹配 handoff 已对齐。
+                </p>
+              ) : null}
+              {isDebugMode && expectedPeerUserId && !actualConversationPeerUserId ? (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
+                  调试：已带 handoff，会话 candidate 尚未加载完成，暂无法比对。
+                </p>
+              ) : null}
+              {isDebugMode && handoffPeerMismatch ? (
+                <p
+                  style={{
+                    margin: "0.35rem 0 0",
+                    fontSize: "0.76rem",
+                    color: "#64748b",
+                    lineHeight: 1.45,
+                    fontFamily: "ui-monospace, monospace",
+                  }}
+                >
+                  调试：handoff expected（脱敏）{maskPeerIdForDebug(expectedPeerUserId)} · 会话 actual（脱敏）
+                  {maskPeerIdForDebug(actualConversationPeerUserId)}
+                </p>
+              ) : null}
+            </div>
             <div style={{ fontSize: "0.95rem", color: "#333" }}>
               viewer: <code>{conversation.viewerUserId}</code>
             </div>

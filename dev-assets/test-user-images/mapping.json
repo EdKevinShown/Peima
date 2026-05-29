@@ -1,30 +1,95 @@
 {
   "version": 1,
   "publicBaseUrl": "http://127.0.0.1:3000",
+  "_devNote_r4n": "P7.5-r4-n: Demo seed mappings for dev/staging imports only.",
+  "_devNote_r4n2": "P7.5-r4-n2: Each item userId must be absent OR user.phone starts with demo-r4h*. All 12 rows use cmr4hf*/cmr4hm*demo* ids reserved for this folder import.",
+  "_devNote_r4o1": "P7.5-r4-o1: gender is HAND-MAINTAINED test metadata — it must match the human-judged subject in each file (no AI / no inference). Folder currently has ONE male-presenting portrait (NAM01915.jpg); test-user-images1–9.jpg are female-presenting. Rows are intentionally 11 female + 1 male: enough females for male-viewer onboarding preview (>=6 opposite); female-viewer full 6-slot preview needs more male test portraits — add assets or rely on staging data outside this folder.",
+  "_devNote_r4o2": "P7.5-r4-o2: After changing mapping gender, re-run `p75:r4-import-candidate-images` so `mergeDemoCandidateUserFields` updates `User.gender` in DB (skipped rows do not refresh gender). Preview pool generation dedupes by r4h source slug in `imageUrl` — two demo users reusing the same file cannot both appear in one 6-slot pool; add more distinct source files if needed.",
+
   "items": [
     {
       "file": "test-user-images1.jpg",
-      "userId": "cmoc1gnil00006z64l9w2oa5t"
+      "userId": "cmr4hf010016z64demo00f01a",
+      "nickname": "Demo Female 01",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images2.jpg",
-      "userId": "cmoc1gnjc000x6z64esun9iur"
+      "userId": "cmr4hm010026z64demo00m01a",
+      "nickname": "Demo Female 02",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images3.jpg",
-      "userId": "cmoc1gnjo001u6z64ghwpseih"
+      "userId": "cmr4hf010036z64demo00f02a",
+      "nickname": "Demo Female 03",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images4.jpg",
-      "userId": "cmoc1gnk1002r6z64iapqf5n9"
+      "userId": "cmr4hm010046z64demo00m02a",
+      "nickname": "Demo Female 04",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images5.jpg",
-      "userId": "cmoc1gnkd003o6z64zobqegdc"
+      "userId": "cmr4hf010056z64demo00f03a",
+      "nickname": "Demo Female 05",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
     },
     {
       "file": "test-user-images6.jpg",
-      "userId": "cmoc1gnkq004l6z64jdq89d4a"
+      "userId": "cmr4hm010066z64demo00m03a",
+      "nickname": "Demo Female 06",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "test-user-images7.jpg",
+      "userId": "cmr4hf000716z64demo00f04a",
+      "nickname": "Demo Female 07",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "test-user-images8.jpg",
+      "userId": "cmr4hm000816z64demo00m04a",
+      "nickname": "Demo Female 08",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "test-user-images9.jpg",
+      "userId": "cmr4hf000916z64demo00f05a",
+      "nickname": "Demo Female 09",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "test-user-images1.jpg",
+      "userId": "cmr4hm001016z64demo00m05a",
+      "nickname": "Demo Female 10",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "test-user-images3.jpg",
+      "userId": "cmr4hf001116z64demo00f06a",
+      "nickname": "Demo Female 11",
+      "gender": "female",
+      "styleTags": ["清爽自然", "生活感"]
+    },
+    {
+      "file": "NAM01915.jpg",
+      "userId": "cmr4hm001216z64demo00m06a",
+      "nickname": "Demo Male 01",
+      "gender": "male",
+      "styleTags": ["运动阳光", "简约干净"]
     }
   ]
 }

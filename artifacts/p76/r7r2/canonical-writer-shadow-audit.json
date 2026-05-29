@@ -1,0 +1,984 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "p76_canonical_writer_shadow_audit",
+  "sourceVersion": "p7.10-r6a-canonical-writer-shadow-audit-v1",
+  "generatedAt": "2026-05-18T19:09:36.139Z",
+  "mode": "dev_audit",
+  "dryRun": true,
+  "appliedToMatchResultCount": 0,
+  "totalRows": 20,
+  "eligibleCount": 4,
+  "blockedCount": 16,
+  "wouldChangeCandidateCount": 4,
+  "reasonCounts": {
+    "rolled_back": 1,
+    "ok": 4,
+    "missing_sidecar": 15
+  },
+  "scoreDeltaBandCounts": {
+    "unknown": 16,
+    "none": 4
+  },
+  "rows": [
+    {
+      "matchResultId": "cmpbd5hh8000a6z5kkpqauem3",
+      "viewerUserId": "cmr4r7j4050025z64stag0001",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmr4r7j4050025z64stag0001",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": "cmpb7vc8400006zrg2703fa23",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "rolled_back"
+        }
+      }
+    },
+    {
+      "matchResultId": "cmpbd5hgr00046z5kwqlkwt43",
+      "viewerUserId": "cmfemn00100016z64seed0001",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmfemn00100016z64seed0001",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": "cmr4hf000716z64demo00f04a",
+          "score": 0.75,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "allowlist_sidecar_selected_candidate_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": true,
+          "scoreDelta": 0,
+          "scoreDeltaBand": "none"
+        },
+        "provenance": {
+          "inputSource": "p76_allowlist_sidecar",
+          "allowlistApplyMetaId": "cmpb7v59200006zpw54nwuzco",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": true,
+          "reason": "ok"
+        }
+      }
+    },
+    {
+      "matchResultId": "cmpbd5hgi00026z5ktg63cx1l",
+      "viewerUserId": "cmr4hm001016z64demo00m05a",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmr4hm001016z64demo00m05a",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": "cmr4hf000916z64demo00f05a",
+          "score": 0.75,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "allowlist_sidecar_selected_candidate_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": true,
+          "scoreDelta": 0,
+          "scoreDeltaBand": "none"
+        },
+        "provenance": {
+          "inputSource": "p76_allowlist_sidecar",
+          "allowlistApplyMetaId": "cmpb7v33l00006z5o9l02u7x6",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": true,
+          "reason": "ok"
+        }
+      }
+    },
+    {
+      "matchResultId": "cmpbd5hgx00066z5kkqu3idpq",
+      "viewerUserId": "cmr4hf000716z64demo00f04a",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmr4hf000716z64demo00f04a",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": "cmfemn00100016z64seed0001",
+          "score": 0.75,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "allowlist_sidecar_selected_candidate_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": true,
+          "scoreDelta": 0,
+          "scoreDeltaBand": "none"
+        },
+        "provenance": {
+          "inputSource": "p76_allowlist_sidecar",
+          "allowlistApplyMetaId": "cmpb7v7h100006zvk49r9lrr1",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": true,
+          "reason": "ok"
+        }
+      }
+    },
+    {
+      "matchResultId": "cmpbd5hh200086z5khc8r2414",
+      "viewerUserId": "cmr4hf000916z64demo00f05a",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmr4hf000916z64demo00f05a",
+          "finalScore": 0.75,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": true,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": "cmr4hf000716z64demo00f04a",
+          "score": 0.75,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "allowlist_sidecar_selected_candidate_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": true,
+          "scoreDelta": 0,
+          "scoreDeltaBand": "none"
+        },
+        "provenance": {
+          "inputSource": "p76_allowlist_sidecar",
+          "allowlistApplyMetaId": "cmpb7v9ut00006zswa1gg3axp",
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": true,
+          "reason": "ok"
+        }
+      }
+    },
+    {
+      "matchResultId": "cmp79e1j600026zckr6wcku9i",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.7563391454224787,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmp6w5lf300026zac9po916b0",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.7313391454224787,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoy02vrn00026zuocvbywi2d",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswyfeh00026z8kri1wot8s",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswwd2500026z60c39nafrl",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswrmrp00026zwks47ayayp",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswq5ry00026zdk8o60dqp3",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswdqj500026zywth6op46e",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswbwom00026z640lysbcw5",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmoswa2hi00026zis9umf3z99",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmosw9v3c00026zf8nwo7o5zq",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmosw3zxm00026z9g48lox98r",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmosw0nha00026zwwnnxilpho",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmosilm0000026znwnw6rikca",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    },
+    {
+      "matchResultId": "cmosiliiz00026zsketh4c2el",
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "shadow": {
+        "schemaVersion": 1,
+        "sourceType": "p76_canonical_writer_shadow",
+        "sourceVersion": "p7.10-r6-p76-canonical-writer-shadow-v1",
+        "pipelineVersion": "p76-canonical-shadow-v1",
+        "generatedAt": "2026-05-18T19:09:36.139Z",
+        "mode": "shadow",
+        "appliedToMatchResult": false,
+        "baseline": {
+          "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+          "finalScore": 0.8933461199294532,
+          "displaySourceType": "match_result_original"
+        },
+        "inputPresence": {
+          "hasBaselineMatchResult": true,
+          "hasAllowlistSidecar": false,
+          "hasDisplayCandidate": false,
+          "hasFinalScore": true
+        },
+        "proposal": {
+          "selectedCandidateUserId": null,
+          "score": null,
+          "scoreVersion": "p76-canonical-shadow-score-v1",
+          "decisionRule": "shadow_ineligible_no_proposal_v1"
+        },
+        "comparison": {
+          "wouldChangeCandidate": false,
+          "scoreDelta": null,
+          "scoreDeltaBand": "unknown"
+        },
+        "provenance": {
+          "inputSource": "baseline_match_result",
+          "allowlistApplyMetaId": null,
+          "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+          "fallbackPolicy": "safe_fallback_v1"
+        },
+        "guardrails": {
+          "eligible": false,
+          "reason": "missing_sidecar"
+        },
+        "notes": [
+          "sidecar_lookup_best_effort: no p76_allowlist_apply_meta for viewer+sourceVersion",
+          "read_path_env_disabled_or_viewer_not_on_read_path_allowlist"
+        ]
+      }
+    }
+  ]
+}

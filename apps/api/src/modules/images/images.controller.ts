@@ -15,7 +15,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import type { UserImage } from "@peima/database";
+import type { UserImagePublicDto } from "./user-image-public.dto";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
@@ -45,7 +45,7 @@ export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
 
   @Post()
-  create(@Body() dto: CreateUserImageDto, @Req() req: JwtReq): Promise<UserImage> {
+  create(@Body() dto: CreateUserImageDto, @Req() req: JwtReq): Promise<UserImagePublicDto> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId || dto.userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");
@@ -63,7 +63,7 @@ export class ImagesController {
     @UploadedFile() file: MemoryUploadedFile | undefined,
     @Body("userId") userId: string | undefined,
     @Req() req: JwtReq,
-  ): Promise<UserImage> {
+  ): Promise<UserImagePublicDto> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId || !userId || userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");
@@ -80,7 +80,7 @@ export class ImagesController {
   findAllByUser(
     @Param("userId") userId: string,
     @Req() req: JwtReq,
-  ): Promise<UserImage[]> {
+  ): Promise<UserImagePublicDto[]> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId || userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");
@@ -89,16 +89,16 @@ export class ImagesController {
   }
 
   @Get(":id")
-  async findOne(@Param("id") id: string, @Req() req: JwtReq): Promise<UserImage> {
+  async findOne(@Param("id") id: string, @Req() req: JwtReq): Promise<UserImagePublicDto> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId) {
       throw new UnauthorizedException("not authenticated");
     }
-    const row = await this.imagesService.findOne(id);
+    const row = await this.imagesService.findOneRecord(id);
     if (row.userId !== tokenUserId) {
       throw new UnauthorizedException();
     }
-    return row;
+    return this.imagesService.findOne(id);
   }
 
   @Delete(":id")
@@ -108,7 +108,7 @@ export class ImagesController {
     if (!tokenUserId) {
       throw new UnauthorizedException("not authenticated");
     }
-    const row = await this.imagesService.findOne(id);
+    const row = await this.imagesService.findOneRecord(id);
     if (row.userId !== tokenUserId) {
       throw new UnauthorizedException();
     }

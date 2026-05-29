@@ -1,0 +1,78 @@
+{
+  "status": "PASS_R12D_PRODUCTION_OBSERVATION_GUARDRAIL_FREEZE",
+  "task": "P7.10-r12d",
+  "generatedAt": "2026-05-20T00:00:00.000Z",
+  "priorMilestones": {
+    "r12a": "PASS_R12A_PRODUCTION_READINESS_HUMAN_SIGNOFF",
+    "r12b": "DONE_R12B_PRODUCTION_ROLLOUT_PLAN_RUNBOOK",
+    "r12c": "PASS_R12C_PRODUCTION_DEPLOY_READONLY_SMOKE"
+  },
+  "productionContextRedacted": {
+    "apiHostRedacted": "peima-api-prod.onrender.com",
+    "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+    "databaseClassifiedAs": "customer_production",
+    "databaseHostFingerprint": "b6d1fc10ef48fafb"
+  },
+  "observation": {
+    "windowMinutes": 60,
+    "completed": true,
+    "apiErrorSpike": false,
+    "workerAbnormalTrigger": false,
+    "matchingResultReadFailureSpike": false,
+    "customerWriteIncident": false,
+    "oldWriterWrite": false,
+    "percentMutation": false,
+    "applyExecuted": false,
+    "rollbackExecuted": false,
+    "hiddenMutationEnabled": false,
+    "observedBy": "Zhan Zhang",
+    "observationDate": "2026-05-20"
+  },
+  "guardrails": {
+    "frozen": true,
+    "hiddenMutationApiEnabled": false,
+    "hiddenAdminApplyRouteEnabled": false,
+    "hiddenAdminRollbackRouteEnabled": false,
+    "applyExecutionEnabled": false,
+    "applyAllowDbWrite": false,
+    "rollbackExecutionEnabled": false,
+    "rollbackAllowDbWrite": false,
+    "oldPhotoWriterShutdownEnabled": true,
+    "oldPhotoWriterEnabled": false,
+    "productionPercent": 0,
+    "productionPercentEnabled": false
+  },
+  "rolloutFinalStatus": {
+    "productionDeployCompleted": true,
+    "readonlySmokeCompleted": true,
+    "observationCompleted": true,
+    "customerProductionWrite": false,
+    "safeFallbackPreserved": true,
+    "finalMatchPagePreserved": true
+  },
+  "secretHygiene": {
+    "noDatabaseUrlInArtifacts": true,
+    "noJwtInArtifacts": true,
+    "noTokenInArtifacts": true,
+    "noUserIdsInArtifacts": true,
+    "readonlyPasswordRotated": false,
+    "readonlyPasswordRotationFollowUp": "Rotate readonly DB credential if it was ever exposed outside secret store; not a blocker for r12d when no secret committed"
+  },
+  "remainingNoGo": {
+    "percentRollout": true,
+    "productionApplyExecution": true,
+    "productionRollbackExecution": true,
+    "hiddenMutationApiEnable": true,
+    "oldPhotoWriterReenable": true,
+    "categoryALegacyRestoration": true
+  },
+  "safety": {
+    "customerProductionWrite": false,
+    "applyExecuted": false,
+    "rollbackExecuted": false,
+    "percentMutated": false,
+    "oldWriterWrite": false,
+    "secretsExposed": false
+  },
+  "next": "P7.11-r1-production-matching-observability-readiness"
+}

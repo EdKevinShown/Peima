@@ -1,7 +1,6 @@
 /**
- * Preview-pool sorting helpers — logic MUST stay aligned with
- * `apps/worker/src/jobs/matching-score.ts` (`computePreferenceScore`, `computeStyleScore`).
- * Do not change weights or worker formulas here; this module is for ordering only.
+ * Preview-pool sorting helpers — list scoring aligned with `preference-hard-gate.ts`.
+ * Worker `apps/worker/src/jobs/matching-score.ts` is unchanged (bilateral age/height only there).
  */
 
 export type ViewerPreferenceLike = {
@@ -40,6 +39,30 @@ function inList(value: string, list: string[]): boolean {
   return set.has(v);
 }
 
+function ageHit(
+  minAge: number | null,
+  maxAge: number | null,
+  age: number | null,
+): boolean {
+  if (minAge == null && maxAge == null) return false;
+  if (age == null) return false;
+  if (minAge != null && age < minAge) return false;
+  if (maxAge != null && age > maxAge) return false;
+  return true;
+}
+
+function heightHit(
+  minHeight: number | null,
+  maxHeight: number | null,
+  height: number | null,
+): boolean {
+  if (minHeight == null && maxHeight == null) return false;
+  if (height == null) return false;
+  if (minHeight != null && height < minHeight) return false;
+  if (maxHeight != null && height > maxHeight) return false;
+  return true;
+}
+
 /** preferenceScore: hits / denom; denom 0 -> 0 */
 export function computePreferenceScore(
   pref: ViewerPreferenceLike,
@@ -50,15 +73,9 @@ export function computePreferenceScore(
   let denom = 0;
   let hits = 0;
 
-  if (pref.minAge != null && pref.maxAge != null) {
+  if (pref.minAge != null || pref.maxAge != null) {
     denom++;
-    if (
-      c.age != null &&
-      c.age >= pref.minAge &&
-      c.age <= pref.maxAge
-    ) {
-      hits++;
-    }
+    if (ageHit(pref.minAge, pref.maxAge, c.age)) hits++;
   }
 
   if (pref.preferredCities.length > 0) {
@@ -66,15 +83,9 @@ export function computePreferenceScore(
     if (inList(c.city, pref.preferredCities)) hits++;
   }
 
-  if (pref.minHeight != null && pref.maxHeight != null) {
+  if (pref.minHeight != null || pref.maxHeight != null) {
     denom++;
-    if (
-      c.height != null &&
-      c.height >= pref.minHeight &&
-      c.height <= pref.maxHeight
-    ) {
-      hits++;
-    }
+    if (heightHit(pref.minHeight, pref.maxHeight, c.height)) hits++;
   }
 
   if (pref.educationPreferences.length > 0) {

@@ -29,6 +29,12 @@ import { NotificationModule } from "./modules/notifications/notification.module"
 import { PrescreenV0Module } from "./modules/prescreen-v0/prescreen-v0.module";
 import { PostPoolDeepScreenModule } from "./modules/post-pool-deep-screen/post-pool-deep-screen.module";
 import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v1.module";
+import { AiPairwiseDecisionModule } from "./modules/ai-pairwise-decision/ai-pairwise-decision.module";
+import { OnboardingModule } from "./modules/onboarding/onboarding.module";
+import { AdminPhotoReviewModule } from "./modules/admin-photo-review/admin-photo-review.module";
+import { P76AdminAllowlistApplyMetaModule } from "./modules/matching/p76-admin-allowlist-apply-meta.module";
+import { P76CanonicalRehearsalAdminModule } from "./modules/matching/p76-canonical-rehearsal-admin.module";
+import { P76CanonicalSidecarAdminModule } from "./modules/matching/p76-canonical-sidecar-admin.module";
 
 @Module({
   imports: [
@@ -61,6 +67,12 @@ import { AiSimulationV1Module } from "./modules/ai-simulation-v1/ai-simulation-v
     PrescreenV0Module,
     PostPoolDeepScreenModule,
     AiSimulationV1Module,
+    AiPairwiseDecisionModule,
+    OnboardingModule,
+    AdminPhotoReviewModule,
+    P76AdminAllowlistApplyMetaModule,
+    P76CanonicalRehearsalAdminModule,
+    P76CanonicalSidecarAdminModule,
   ],
   controllers: [],
   providers: [],

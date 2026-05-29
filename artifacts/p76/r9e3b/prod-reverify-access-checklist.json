@@ -1,0 +1,224 @@
+{
+  "generatedAt": "2026-05-19T07:13:57Z",
+  "task": "P7.6-r9e3b",
+  "packageStatus": "P7_6_R9E3B_REAL_PROD_REVERIFY_ACCESS_PACKAGE_READY",
+  "priorAttempt": {
+    "task": "P7.6-r9e3a",
+    "status": "P7_6_R9E3A_REAL_PROD_REVERIFY_BLOCKED_BY_MISSING_ACCESS",
+    "r9e3Status": "NEED_MORE_PROD_REVERIFY"
+  },
+  "requiredAccessItems": [
+    {
+      "id": "prod_api_base_url",
+      "name": "Prod API base URL",
+      "required": true,
+      "envVar": "PEIMA_PROD_API_BASE_URL",
+      "purpose": "Remote GET /health and GET /matching/result smoke",
+      "providedBy": "Ops / Platform",
+      "secretHandling": "Secret manager or operator shell only; never commit",
+      "r9e3aGap": true
+    },
+    {
+      "id": "staging_prod_like_api_base_url",
+      "name": "Staging-prod-like API base URL",
+      "required": true,
+      "envVar": "PEIMA_STAGING_API_BASE_URL",
+      "purpose": "Production-like reverify when customer prod unavailable",
+      "providedBy": "Ops / Platform",
+      "secretHandling": "HTTPS origin only in artifacts (host redacted)",
+      "r9e3aGap": true,
+      "notes": "Preferred path per P7.6-r9e4 if prod window not granted"
+    },
+    {
+      "id": "readonly_database_url",
+      "name": "Read-only prod/staging DB URL",
+      "required": true,
+      "envVar": "PEIMA_READONLY_DATABASE_URL",
+      "purpose": "violation_count, applied_count, table-exists SQL (SELECT only)",
+      "providedBy": "DBA + Ops",
+      "secretHandling": "Read-only role; log host only in evidence",
+      "r9e3aGap": true
+    },
+    {
+      "id": "admin_service_auth",
+      "name": "Admin/service JWT or auth method",
+      "required": true,
+      "envVar": "PEIMA_ADMIN_SERVICE_TOKEN",
+      "purpose": "Bearer auth for allowlist viewer GET smoke",
+      "providedBy": "API Eng + Ops",
+      "secretHandling": "Short-lived token; rotate after r9e3c; never in git",
+      "r9e3aGap": true
+    },
+    {
+      "id": "allowed_viewer_cohort",
+      "name": "Allowed viewer/user cohort",
+      "required": true,
+      "purpose": "Six-case GET matrix per prod-get-smoke-runbook",
+      "providedBy": "PM + Ops",
+      "secretHandling": "Redact user IDs in artifacts; use caseType labels",
+      "r9e3aGap": true
+    },
+    {
+      "id": "grafana_dashboard",
+      "name": "Grafana dashboard URL",
+      "required": true,
+      "purpose": "p76-allowlist-read-path-v2 import and P0/P1 panels",
+      "providedBy": "Ops (observability)",
+      "secretHandling": "Dashboard URL may be partially redacted",
+      "r9e3aGap": true
+    },
+    {
+      "id": "monitoring_alerts",
+      "name": "Alert/monitoring access",
+      "required": true,
+      "purpose": "30-60 min watch; P0 counters must stay 0",
+      "providedBy": "Ops (observability)",
+      "secretHandling": "No webhook secrets in repo",
+      "r9e3aGap": true
+    },
+    {
+      "id": "kubectl_or_env_audit",
+      "name": "kubectl context or rollback-equivalent env export",
+      "required": true,
+      "purpose": "Read-only PEIMA_P76_* pod env audit; percent=0 confirmation",
+      "providedBy": "Platform",
+      "secretHandling": "Context name only; no kubeconfig in repo",
+      "r9e3aGap": true
+    },
+    {
+      "id": "rollback_owner",
+      "name": "Rollback owner",
+      "required": true,
+      "purpose": "Human authority for read-path off / kill switch during incident",
+      "providedBy": "Ops lead",
+      "secretHandling": "Name in private run sheet only",
+      "r9e3aGap": true
+    },
+    {
+      "id": "kill_switch_owner",
+      "name": "Kill switch owner",
+      "required": true,
+      "purpose": "PEIMA_P76_PRODUCTION_KILL_SWITCH authority",
+      "providedBy": "Ops lead",
+      "secretHandling": "May coincide with rollback owner",
+      "r9e3aGap": true
+    },
+    {
+      "id": "deployment_owner",
+      "name": "Deployment owner",
+      "required": true,
+      "purpose": "Approves r9e3c calendar window and go/no-go",
+      "providedBy": "Release manager",
+      "secretHandling": "N/A",
+      "r9e3aGap": true
+    },
+    {
+      "id": "incident_channel",
+      "name": "Incident channel",
+      "required": true,
+      "purpose": "P0/P1 escalation during monitoring window",
+      "providedBy": "Ops",
+      "secretHandling": "Channel name only in handoff",
+      "r9e3aGap": true
+    },
+    {
+      "id": "monitoring_time_window",
+      "name": "30-60 min monitoring time window",
+      "required": true,
+      "purpose": "Scheduled watch per r9e2 prod-monitoring-watch-template",
+      "providedBy": "Ops + PM",
+      "secretHandling": "Calendar metadata only",
+      "r9e3aGap": true
+    }
+  ],
+  "requiredEnvVars": [
+    "PEIMA_PROD_API_BASE_URL",
+    "PEIMA_STAGING_API_BASE_URL",
+    "PEIMA_READONLY_DATABASE_URL",
+    "PEIMA_ADMIN_SERVICE_TOKEN",
+    "PEIMA_P76_READ_PATH_SAFE_FALLBACK",
+    "PEIMA_P76_RESULT_STATE_CONTRACT_ENABLED",
+    "P76_SMOKE_EXPECT_RESULT_STATE_CONTRACT"
+  ],
+  "additionalEnvAuditNames": [
+    "PEIMA_P76_READ_PATH_ENABLED",
+    "PEIMA_P76_READ_PATH_VIEWER_IDS",
+    "PEIMA_P76_PRODUCTION_PERCENT",
+    "PEIMA_P76_PRODUCTION_PERCENT_ENABLED",
+    "PEIMA_P76_PRODUCTION_KILL_SWITCH",
+    "JWT_SECRET"
+  ],
+  "allowedCommands": [
+    "GET /health or GET /api/health",
+    "GET /matching/result/:viewerUserId with Bearer token (6 cases)",
+    "p76-r9b-http-get-smoke.mjs contract mode (read-only assertions; remote or approved harness)",
+    "Read-only SELECT from prod-rds-sql-pack (violation_count, table exists, counts)",
+    "Grafana panel read / P0 metric query",
+    "kubectl get/describe read-only for pod env audit"
+  ],
+  "forbiddenCommands": [
+    "POST / PATCH / DELETE",
+    "Admin Apply / sidecar apply",
+    "prisma migrate deploy",
+    "rollback mutation drill (separate approval required)",
+    "percent enable or PEIMA_P76_PRODUCTION_PERCENT > 0",
+    "worker / batch-match trigger",
+    "MatchResult or matchInsights UPDATE",
+    "rehearsal writer insert",
+    "PreviewPool disable",
+    "legacy photo matching removal",
+    "p76-r9d-execute.mjs full orchestration (mutation risk)"
+  ],
+  "goCriteria": [
+    "Prod or staging-prod-like API available (non-localhost HTTPS)",
+    "Read-only DB available",
+    "Admin/service auth available",
+    "Monitoring/Grafana available",
+    "Kill switch owner identified",
+    "Rollback owner identified",
+    "Deployment owner approved window",
+    "Only read-only commands approved",
+    "Incident channel staffed for 30-60 min watch"
+  ],
+  "noGoCriteria": [
+    "Any required access item missing",
+    "Only local docker/localhost available",
+    "Token cannot be safely handled or rotated",
+    "Unknown mutation risk from unreviewed scripts",
+    "No rollback owner",
+    "No monitoring for watch window",
+    "Percent > 0 or unapproved read path change in same window"
+  ],
+  "redactionPolicy": {
+    "noTokensInArtifacts": true,
+    "noFullDatabaseUrl": true,
+    "noFullJwt": true,
+    "userIdsRedactedOrHashed": true,
+    "recordCountsAndStatusOnly": true
+  },
+  "r9e3cExpectedEvidence": [
+    "real-prod-reverify-smoke-summary.json",
+    "real-prod-reverify-smoke-summary.md",
+    "endpointPassFailCounts",
+    "resultStateDistribution",
+    "safeFallbackCount",
+    "violationCount",
+    "noMutationConfirmation",
+    "monitoringWindowNotes",
+    "rollbackKillSwitchOwnerConfirmation"
+  ],
+  "p710r7GateImpact": {
+    "gate12RealProdReverify": "BLOCKED",
+    "canonicalProductionWrite": "BLOCKED",
+    "percentRollout": "BLOCKED",
+    "previewPoolDisable": "BLOCKED",
+    "legacyRemoval": "BLOCKED",
+    "note": "r9e3b prepares access only; gate 12 clears after r9e3c evidence + PM/Ops review"
+  },
+  "conclusion": {
+    "r9e3bStatus": "P7_6_R9E3B_REAL_PROD_REVERIFY_ACCESS_PACKAGE_READY",
+    "r9e3Status": "NEED_MORE_PROD_REVERIFY",
+    "r9e3cBlockedUntil": "Ops completes checklist and go criteria",
+    "nextMilestone": "P7.6-r9e3c — Real Prod Reverify Read-only Smoke Execution"
+  }
+}

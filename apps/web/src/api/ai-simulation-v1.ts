@@ -9,6 +9,68 @@ export type AiSimulationV1JobResultItem = {
   evaluator: unknown;
   failureDetail: { path?: string; reason?: string } | null;
   errorCode: string | null;
+  rrmSimResult?: unknown;
+};
+
+/** Admin GET job — M3 只读多候选人 RRM-Sim 对比（不参与真实排序）。 */
+export type RrmSimMultiCandidateDiagnostic = {
+  jobId: string;
+  viewerUserId: string;
+  sourceVersion: string;
+  items: Array<{
+    candidateUserId: string;
+    status: string;
+    existingRank: number | null;
+    simulationRankScore: number | null;
+    aiSimulationV2Full: boolean;
+    simulatedRhythmScore: number | null;
+    suggestedAction: string | null;
+    progressionWindow: string | null;
+    fallbackUsed: boolean | null;
+    rrmUnavailableReason: string | null;
+  }>;
+  rankings: {
+    existingSimulationRank: string[];
+    rrmRhythmRank: string[];
+  };
+  diagnostics: {
+    rrmAvailableCount: number;
+    fallbackCount: number;
+    scoreRange: { min: number; max: number; spread: number };
+    scoreDistributionFlag: "ok" | "too_narrow" | "too_many_fallbacks";
+    topCandidateChangedIfRrmOnly: boolean;
+  };
+};
+
+/** M4.0 admin-only read-only RRM ranking proposal (not applied to worker or finalScore). */
+export type RrmRankingProposal = {
+  schemaVersion: 1;
+  sourceVersion: string;
+  mode: "readonly";
+  appliedToFinalScore: false;
+  appliedToWorkerRanking: false;
+  existingTopCandidateUserId: string | null;
+  rrmTopCandidateUserId: string | null;
+  topCandidateChanged: boolean;
+  scoreDistributionFlag: "ok" | "too_narrow" | "too_many_fallbacks";
+  confidenceLevel: "low" | "medium" | "high";
+  recommendation:
+    | "do_not_use_for_ranking"
+    | "insufficient_separation"
+    | "review_manually"
+    | "supports_existing_rank"
+    | "diagnostic_only";
+  items: Array<{
+    candidateUserId: string;
+    existingRank: number | null;
+    rrmRank: number | null;
+    simulatedRhythmScore: number | null;
+    suggestedAction: string | null;
+    progressionWindow: string | null;
+    fallbackUsed: boolean | null;
+    reasonSummary: string;
+  }>;
+  warnings: string[];
 };
 
 export type AiSimulationV1JobResponse = {
@@ -41,7 +103,15 @@ export type AiSimulationV1JobResponse = {
     buildabilityDetail: string;
   };
   results: AiSimulationV1JobResultItem[];
+  rrmSimMultiCandidateDiagnostic?: RrmSimMultiCandidateDiagnostic;
+  rrmRankingProposal?: RrmRankingProposal;
 };
+
+/** Viewer GET `GET /ai-simulation/v1/jobs/:jobId` — no admin-only RRM diagnostics or M4.0 proposal. */
+export type AiSimulationV1ViewerJobResponse = Omit<
+  AiSimulationV1JobResponse,
+  "rrmSimMultiCandidateDiagnostic" | "rrmRankingProposal"
+>;
 
 export type AiSimulationV1JobTriageRow = {
   simulationJobId: string;
@@ -74,6 +144,14 @@ export async function getAdminAiSimulationV1Job(jobId: string): Promise<AiSimula
   return handleJson<AiSimulationV1JobResponse>(res);
 }
 
+/** Viewer job read (JWT; job must belong to the authenticated user). Excludes M4.0 / multi-candidate admin diagnostics. */
+export async function getViewerAiSimulationV1Job(jobId: string): Promise<AiSimulationV1ViewerJobResponse> {
+  const res = await fetch(`${baseUrl}/ai-simulation/v1/jobs/${encodeURIComponent(jobId)}`, {
+    headers: authHeaders(),
+  });
+  return handleJson<AiSimulationV1ViewerJobResponse>(res);
+}
+
 export async function getAdminAiSimulationV1JobsTriage(query?: {
   limit?: number;
   jobStatus?: string;
@@ -98,11 +176,19 @@ export async function getAdminAiSimulationV1JobsTriage(query?: {
   return handleJson<AiSimulationV1JobTriageRow[]>(res);
 }
 
-/** Admin: run AI simulation job once (sync LLM work on API). Caller should catch errors / abort. */
+export type AiSimulationV1RunJobResponse = {
+  ok: true;
+  jobId: string;
+  jobStatus: string;
+  started: boolean;
+  reason?: string;
+};
+
+/** Admin: trigger AI simulation job run (M3.2: API returns immediately; LLM continues in background). */
 export async function postAdminAiSimulationV1RunJob(
   jobId: string,
   options?: { timeoutMs?: number },
-): Promise<{ ok: true }> {
+): Promise<AiSimulationV1RunJobResponse> {
   const timeoutMs = options?.timeoutMs ?? 30_000;
   const controller = new AbortController();
   const tid = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -112,7 +198,7 @@ export async function postAdminAiSimulationV1RunJob(
       headers: authHeaders(),
       signal: controller.signal,
     });
-    return handleJson<{ ok: true }>(res);
+    return handleJson<AiSimulationV1RunJobResponse>(res);
   } finally {
     window.clearTimeout(tid);
   }

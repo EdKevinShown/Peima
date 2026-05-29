@@ -174,7 +174,19 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: PrescreenV0Service, useValue: { prescreenBatch: prescreenBatch } },
         { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool: jest.fn() } },
-        { provide: AiSimulationV1Service, useValue: { enqueue: jest.fn() } },
+        {
+          provide: AiSimulationV1Service,
+          useValue: {
+            enqueue: jest.fn(),
+            requestRunJobAsync: jest.fn().mockResolvedValue({
+              ok: true,
+              jobId: "sim-job",
+              jobStatus: "queued",
+              started: false,
+              reason: "enqueued_for_worker",
+            }),
+          },
+        },
       ],
     }).compile();
 
@@ -243,7 +255,19 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: PrescreenV0Service, useValue: { prescreenBatch: prescreenBatch } },
         { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool: jest.fn() } },
-        { provide: AiSimulationV1Service, useValue: { enqueue: jest.fn() } },
+        {
+          provide: AiSimulationV1Service,
+          useValue: {
+            enqueue: jest.fn(),
+            requestRunJobAsync: jest.fn().mockResolvedValue({
+              ok: true,
+              jobId: "sim-job",
+              jobStatus: "queued",
+              started: false,
+              reason: "enqueued_for_worker",
+            }),
+          },
+        },
       ],
     }).compile();
 
@@ -317,6 +341,13 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
       acceptedCandidateCount: 2,
       simulationQueueActual: ["c1", "c2"],
     });
+    const requestRunJobAsync = jest.fn().mockResolvedValue({
+      ok: true,
+      jobId: "sim-job-anchor",
+      jobStatus: "queued",
+      started: false,
+      reason: "enqueued_for_worker",
+    });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -324,7 +355,7 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
         { provide: PrismaService, useValue: prisma },
         { provide: PrescreenV0Service, useValue: { prescreenBatch } },
         { provide: PreviewPoolService, useValue: { buildShortlistContractV0ForPool } },
-        { provide: AiSimulationV1Service, useValue: { enqueue } },
+        { provide: AiSimulationV1Service, useValue: { enqueue, requestRunJobAsync } },
       ],
     }).compile();
 
@@ -340,6 +371,7 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
     expect(shadowCall?.[0].candidateUserIds).toHaveLength(6);
 
     expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(requestRunJobAsync).toHaveBeenCalledWith("sim-job-anchor", "v1");
     expect(enqueue.mock.calls[0][1]).toBe(AI_SIMULATION_V1_ENQUEUE_ALLOWED_SOURCE);
     const enqueueArg = enqueue.mock.calls[0][0] as {
       hintSnapshot: { candidateUserId: string }[];
@@ -365,5 +397,6 @@ describe("PostPoolDeepScreenOrchestratorService", () => {
     expect(out.simulationQueueHint).toHaveLength(2);
     expect(out.simulationQueueActual).toEqual(["c1", "c2"]);
     expect(out.stages.aiSimulation.simulationJobId).toBe("sim-job-anchor");
+    expect(out.stages.aiSimulation.runTriggered).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { getMe, login, register } from "../api/auth";
-import { isProfileIncomplete } from "./OnboardingPage";
+import { getOnboardingPhotoStatus } from "../api/onboarding";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,7 +20,6 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  // Already logged in → go home
   if (localStorage.getItem("peimaToken")) {
     return <Navigate to="/home" replace />;
   }
@@ -37,8 +36,19 @@ export default function LoginPage() {
       localStorage.setItem("peimaToken", res.token);
       localStorage.setItem("peimaUserId", res.user.id);
       localStorage.setItem("peimaUserNickname", res.user.nickname || "");
-      const me = await getMe();
-      navigate(isProfileIncomplete(me) ? "/onboarding" : "/home", { replace: true });
+      await getMe();
+
+      const uid = encodeURIComponent(res.user.id);
+      const status = await getOnboardingPhotoStatus();
+      if (status.nextStep === "photo_upload") {
+        navigate(`/onboarding/photo-upload?userId=${uid}`, { replace: true });
+      } else if (status.nextStep === "photo_preference") {
+        navigate(`/onboarding/photo-preference?userId=${uid}`, { replace: true });
+      } else if (status.nextStep === "photo_preview") {
+        navigate(`/questionnaire?userId=${uid}`, { replace: true });
+      } else {
+        navigate(`/questionnaire?userId=${uid}`, { replace: true });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -48,7 +58,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Background orbs */}
       <div className="orb orb-pink" />
       <div className="orb orb-purple" />
 
@@ -60,7 +69,6 @@ export default function LoginPage() {
       </Link>
 
       <div className="relative z-10 w-full max-w-sm animate-slide-up">
-        {/* Logo / brand */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl mb-4 shadow-glow"
                style={{ background: 'linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%)' }}>
@@ -70,9 +78,7 @@ export default function LoginPage() {
           <p className="text-white/50 text-sm">找到真正合适的那个人</p>
         </div>
 
-        {/* Card */}
         <div className="glass rounded-3xl p-8 shadow-glass">
-          {/* Mode tabs */}
           <div className="flex rounded-2xl p-1 mb-7" style={{ background: 'rgba(255,255,255,0.06)' }}>
             {["login", "register"].map((m) => (
               <button
@@ -92,7 +98,6 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-5 px-4 py-3 rounded-2xl text-sm text-red-300 border border-red-400/25 animate-fade-in"
                  style={{ background: 'rgba(255,80,80,0.10)' }}>

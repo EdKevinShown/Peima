@@ -1,0 +1,78 @@
+{
+  "snapshotAt": "2026-05-18T16:03:20.895Z",
+  "environment": "local-docker-peima-postgres (production cutover rehearsal)",
+  "sourceArtifact": "artifacts/p76/r9d/production-get-smoke-results.json",
+  "summary": {
+    "totalCases": 6,
+    "passCount": 6,
+    "blockCount": 0,
+    "http5xxCount": 0,
+    "exceptionCount": 0,
+    "allowlistActiveSidecarReadonly": 4,
+    "rolledBackLegacyFallback": 1,
+    "nonAllowlistFallback": 1,
+    "candidateUserIdUnchanged": true,
+    "finalScoreUnchanged": true
+  },
+  "cases": [
+    {
+      "viewerUserId": "cmr4hm001016z64demo00m05a",
+      "caseType": "allowlist_active",
+      "httpStatus": 200,
+      "displaySourceType": "p76_allowlist_sidecar_readonly",
+      "candidateUserId": "cmr4hm001016z64demo00m05a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hf000916z64demo00f05a",
+      "passBlock": "PASS"
+    },
+    {
+      "viewerUserId": "cmfemn00100016z64seed0001",
+      "caseType": "allowlist_active",
+      "httpStatus": 200,
+      "displaySourceType": "p76_allowlist_sidecar_readonly",
+      "candidateUserId": "cmfemn00100016z64seed0001",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hf000716z64demo00f04a",
+      "passBlock": "PASS"
+    },
+    {
+      "viewerUserId": "cmr4hf000716z64demo00f04a",
+      "caseType": "allowlist_active",
+      "httpStatus": 200,
+      "displaySourceType": "p76_allowlist_sidecar_readonly",
+      "candidateUserId": "cmr4hf000716z64demo00f04a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmfemn00100016z64seed0001",
+      "passBlock": "PASS"
+    },
+    {
+      "viewerUserId": "cmr4hf000916z64demo00f05a",
+      "caseType": "allowlist_active",
+      "httpStatus": 200,
+      "displaySourceType": "p76_allowlist_sidecar_readonly",
+      "candidateUserId": "cmr4hf000916z64demo00f05a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hf000716z64demo00f04a",
+      "passBlock": "PASS"
+    },
+    {
+      "viewerUserId": "cmr4r7j4050025z64stag0001",
+      "caseType": "rolled_back",
+      "httpStatus": 200,
+      "displaySourceType": "match_result_original",
+      "fallbackReason": "rolled_back",
+      "candidateUserId": "cmr4r7j4050025z64stag0001",
+      "finalScore": 0.75,
+      "passBlock": "PASS"
+    },
+    {
+      "viewerUserId": "cmo7ksq8s00006znosryc9k0n",
+      "caseType": "non_allowlist",
+      "httpStatus": 200,
+      "displaySourceType": "static_fallback",
+      "fallbackReason": "not_allowlisted",
+      "passBlock": "PASS"
+    }
+  ],
+  "realProdGetSmokeExecuted": false
+}

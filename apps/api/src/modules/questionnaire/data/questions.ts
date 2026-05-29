@@ -490,7 +490,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["10A", "6A"], ["10B", "2B"], ["10C", "8A"], ["10B", "3A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q29",
     "emotionalExpression",
     "你更希望在亲密关系里被怎样「看见」？",
@@ -503,7 +503,7 @@ export const QUESTIONS: QuestionDef[] = [
     [["2A", "6B"], ["2A", "5A"], ["2B", "8A"], ["2B", "12A"]],
   ),
   buildQuestion(
-    "draft",
+    "canonical",
     "q30",
     "relationshipPace",
     "如果感情进入平淡期，你更倾向？",

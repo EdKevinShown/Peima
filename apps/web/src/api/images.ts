@@ -6,6 +6,15 @@ export type UserImageRow = {
   imageUrl: string;
   createdAt: string;
   updatedAt: string;
+  detectionStatus?: string;
+  detectionReasonCodes?: string[];
+  detectionScoreJson?: Record<string, unknown> | null;
+  detectionRulesVersion?: string | null;
+  detectedAt?: string | null;
+  reviewStatus?: string;
+  reviewReasonCodes?: string[];
+  reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
 };
 
 export async function listUserImages(userId: string) {

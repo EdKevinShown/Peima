@@ -1,0 +1,79 @@
+{
+  "sourceVersionUsed": "p7.6-r7j3-staging-cohort-v1",
+  "note": "User prompt suggested p7.6-r8b-allowlist-apply-writer-v1; actual DB value from SQL precheck differs.",
+  "precheck": [
+    {
+      "viewerUserId": "cmfemn00100016z64seed0001",
+      "selectedCandidateId": "cmr4hf000716z64demo00f04a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hf000716z64demo00f04a",
+      "selectedCandidateId": "cmfemn00100016z64seed0001",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hf000916z64demo00f05a",
+      "selectedCandidateId": "cmr4hf000716z64demo00f04a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4hm001016z64demo00m05a",
+      "selectedCandidateId": "cmr4hf000916z64demo00f05a",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": true,
+      "dryRun": false,
+      "rolledBack": false,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    },
+    {
+      "viewerUserId": "cmr4r7j4050025z64stag0001",
+      "selectedCandidateId": "cmr4r7j4070025z64stag0003",
+      "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+      "pmSignoffStatus": "approved",
+      "opsSignoffStatus": "approved",
+      "applied": false,
+      "dryRun": true,
+      "rolledBack": true,
+      "appliedToMatchResult": false,
+      "appliedToFinalScore": false,
+      "appliedToWorkerRanking": false,
+      "appliedToDisplay": false
+    }
+  ],
+  "violation_count": 0,
+  "rolled_back_count": 1,
+  "route_c_rows": 5
+}

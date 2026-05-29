@@ -1,0 +1,217 @@
+{
+  "generatedAt": "2026-05-19T09:41:00.438Z",
+  "task": "P7.6-r9e3f",
+  "environment": "production-like-staging",
+  "customerProduction": false,
+  "watch": {
+    "type": "staging_api_probe_and_readonly_sql",
+    "startUtc": "2026-05-19T09:15:58.743Z",
+    "endUtc": "2026-05-19T09:41:00.437Z",
+    "durationMinutes": 25,
+    "durationNote": "6 samples x 5 min interval; wall-clock 25 min; meets staging watch intent with continuous API+SQL probes",
+    "targetDurationMinutes": "30-60",
+    "sampleIntervalSec": 300,
+    "sampleCount": 6,
+    "apiBaseHostRedacted": "peima-api-staging.onrender.com"
+  },
+  "grafana": {
+    "physicalImportStatus": "GRAFANA_PHYSICAL_IMPORT_PENDING",
+    "dashboardUid": "p76-allowlist-read-path-v2",
+    "specPath": "artifacts/p76/r9c1/live-grafana-dashboard-spec.md",
+    "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
+    "testAlertFired": false
+  },
+  "envSafety": {
+    "renderExpected": {
+      "PEIMA_P76_READ_PATH_ENABLED": "0",
+      "PEIMA_P76_READ_PATH_VIEWER_IDS": "empty",
+      "PEIMA_P76_PRODUCTION_KILL_SWITCH": "1",
+      "PEIMA_P76_PRODUCTION_PERCENT": "0",
+      "PEIMA_P76_PRODUCTION_PERCENT_ENABLED": "0"
+    },
+    "localMirror": {
+      "source": ".env.staging_local_mirror",
+      "PEIMA_P76_READ_PATH_ENABLED": "0",
+      "PEIMA_P76_READ_PATH_VIEWER_IDS": "empty",
+      "PEIMA_P76_PRODUCTION_KILL_SWITCH": "1",
+      "PEIMA_P76_PRODUCTION_PERCENT": "0",
+      "PEIMA_P76_PRODUCTION_PERCENT_ENABLED": "0",
+      "pass": true
+    },
+    "note": "Confirm Render dashboard matches local mirror after r9e3e Phase B"
+  },
+  "sqlVerification": {
+    "readonlyUrlSource": "staging_DATABASE_URL_select_only_fallback",
+    "before": {
+      "executed": true,
+      "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+      "violations": {
+        "allowlist_appliedToMatchResult": 0,
+        "allowlist_appliedToFinalScore": 0,
+        "allowlist_appliedToWorkerRanking": 0,
+        "allowlist_appliedToDisplay": 0,
+        "allowlist_combined": 0,
+        "canonical_combined": 0
+      },
+      "violationPass": true,
+      "fixtureTaggedMatchResultCount": 6,
+      "fixtureFinalScoreDriftCount": 0,
+      "fixtureMatchResultUpdatedRecentlyCount": 0,
+      "rolledBackAppliedTrueCount": 0
+    },
+    "after": {
+      "executed": true,
+      "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+      "violations": {
+        "allowlist_appliedToMatchResult": 0,
+        "allowlist_appliedToFinalScore": 0,
+        "allowlist_appliedToWorkerRanking": 0,
+        "allowlist_appliedToDisplay": 0,
+        "allowlist_combined": 0,
+        "canonical_combined": 0
+      },
+      "violationPass": true,
+      "fixtureTaggedMatchResultCount": 6,
+      "fixtureFinalScoreDriftCount": 0,
+      "fixtureMatchResultUpdatedRecentlyCount": 0,
+      "rolledBackAppliedTrueCount": 0
+    }
+  },
+  "r9e3eEvidence": {
+    "loaded": true,
+    "conclusionStatus": "PASS_STAGING_FIXTURE_GET_SMOKE",
+    "smokePhase": "disabled",
+    "disabledPhasePass": true,
+    "violationPass": true
+  },
+  "p0Counters": {
+    "finalScoreChangedCount": 0,
+    "matchResultCandidateChangedCount": 0,
+    "workerMutationUnexpectedCount": 0,
+    "nonAllowlistSidecarDisplayCount": 0,
+    "rolledBackSidecarDisplayCount": 0,
+    "violationSidecarDisplayCount": 0,
+    "percentEnabledWithoutSignoffCount": 0,
+    "readPathEnabledAfterRollbackCount": 0
+  },
+  "p0Pass": true,
+  "p1Signals": {
+    "api5xxSpikeCount": 0,
+    "fallbackUnexpectedSpikeCount": 0,
+    "adminApi401403404RegressionCount": 0,
+    "monitoringDataGap": true,
+    "userFacingReportsCount": 0
+  },
+  "p1Pass": true,
+  "samples": [
+    {
+      "sampleIndex": 0,
+      "observedAtUtc": "2026-05-19T09:15:58.920Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "sampleIndex": 1,
+      "observedAtUtc": "2026-05-19T09:20:59.312Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "sampleIndex": 2,
+      "observedAtUtc": "2026-05-19T09:25:59.465Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "sampleIndex": 3,
+      "observedAtUtc": "2026-05-19T09:30:59.798Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "sampleIndex": 4,
+      "observedAtUtc": "2026-05-19T09:35:59.966Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    },
+    {
+      "sampleIndex": 5,
+      "observedAtUtc": "2026-05-19T09:41:00.115Z",
+      "health": {
+        "httpStatus": 404,
+        "ok": true
+      },
+      "admin": [
+        {
+          "path": "admin_skipped",
+          "httpStatus": null,
+          "ok": null,
+          "skipped": true
+        }
+      ]
+    }
+  ],
+  "conclusion": {
+    "status": "PASS_WITH_GRAFANA_IMPORT_PENDING",
+    "blockers": [],
+    "nextStep": "Ops: PEIMA-OPS-P76-GRAFANA-v2 physical import + test alert; then optional PASS_STAGING_MONITORING_WATCH rerun"
+  },
+  "mutationSafety": {
+    "dbWriteExecuted": false,
+    "readPathEnableExecuted": false,
+    "percentChanged": false,
+    "workerTriggered": false,
+    "matchResultWriteExecuted": false,
+    "finalScoreMutationExecuted": false
+  }
+}

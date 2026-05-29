@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { getMatchingResult } from "../api/matching";
+import { enqueueMatching, getMatchingResult } from "../api/matching";
 import { getMatchExplanationAi } from "../api/match-explanation-ai";
 import { getInteractionSimulationLite } from "../api/interaction-simulation-lite";
 import { getMatchReadoutFusion } from "../api/match-readout-fusion";
 import { postMatchReviewAi } from "../api/match-review-ai";
-import { getAdminAiSimulationV1Job } from "../api/ai-simulation-v1";
+import { getViewerAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
 import AiSimulationSidecarV0 from "../components/review/AiSimulationSidecarV0";
 import { resolveUserId } from "../utils/resolveUserId";
 import { readValidatedFinalMatchConsumptionHint } from "../utils/finalMatchConsumptionHintStorage";
 import { createConversation } from "../api/chat";
+import FinalMatchHero from "../components/final-match/FinalMatchHero";
+import FinalMatchExplanationSections from "../components/final-match/FinalMatchExplanationSections";
+import { FinalMatchTechnicalDetailsContent } from "../components/final-match/FinalMatchTechnicalDetails";
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -34,6 +37,20 @@ function formatDateShort(iso) {
   }
 }
 
+/**
+ * M6.5-C3: first non-empty trimmed id among API / projection fallbacks (chat · timeline · feedback).
+ * @param {...unknown} ids
+ * @returns {string | null}
+ */
+function resolveTargetId(...ids) {
+  for (const id of ids) {
+    if (id == null) continue;
+    const s = String(id).trim();
+    if (s !== "") return s;
+  }
+  return null;
+}
+
 /** 主视图分数：0–1 内为匹配指数百分制；否则按 0–100 展示整数或一位小数。 */
 function formatScoreDisplay(v) {
   if (v == null || Number.isNaN(Number(v))) return "—";
@@ -47,22 +64,126 @@ function formatScoreDisplay(v) {
   return Number.isInteger(r) ? String(Math.round(x)) : r.toFixed(1);
 }
 
+/** M6.0-B：v1 分项（0–1）→ 百分数一位小数；缺失或非有限数显示「暂无」。 */
+function formatScoreBreakdownPercent(value) {
+  if (value == null || typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
+    return "暂无";
+  }
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+/** M6.0-J4：V2 band → 简短中文标签（技术区）。 */
+function formatV2BandLabelCn(band) {
+  const m = {
+    strong_conflict: "强分歧",
+    low: "偏低",
+    medium: "中等",
+    good: "较好适配",
+    high: "高度适配",
+    missing: "—",
+  };
+  return m[band] || "—";
+}
+
+function formatV2NullableNumber(n, digits) {
+  if (n == null || typeof n !== "number" || !Number.isFinite(n)) return "—";
+  return n.toFixed(digits);
+}
+
+function resolveScoreProjectionFallbackHint(reason) {
+  const map = {
+    top2_score_snapshot_missing: "暂未找到候选人分数快照",
+    resolved_candidate_missing: "暂未确认最终展示对象",
+    resolved_candidate_not_in_top2_snapshot: "最终展示对象不在 Top2 分数快照中",
+    resolved_score_missing: "候选人分数缺失",
+    malformed_top2_score_snapshot: "分数快照结构异常",
+    unexpected_exception: "分数投影异常",
+  };
+  return typeof reason === "string" && map[reason] ? map[reason] : "当前分数暂时回退到基线分数";
+}
+
+/** M6.0-H2: `VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE=1` 启用主视觉 V2。 */
+function readV2PrimaryScoreFlag() {
+  return import.meta.env.VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE === "1";
+}
+
+const V2_PRIMARY_BANDS = new Set(["high", "good", "medium", "low", "strong_conflict"]);
+
+function resolveV2BandSubtitle(band) {
+  if (!band || typeof band !== "string") return "";
+  const m = {
+    high: "高度适配",
+    good: "较好适配",
+    medium: "中等适配",
+    low: "低适配，建议谨慎了解",
+    strong_conflict: "存在明显关系冲突",
+  };
+  return m[band] || "";
+}
+
+/** M6.0-H2：主分数数据源（仅前端；不改 API / worker）。 */
+function resolvePrimaryMatchScore(result) {
+  const finalScore = result?.finalScore ?? null;
+
+  if (!readV2PrimaryScoreFlag()) {
+    return { kind: "legacy", finalScore };
+  }
+  if (!result) {
+    return {
+      kind: "legacy_fallback",
+      finalScore: null,
+      reason: "missing",
+      fallbackUsed: true,
+      heroHint: "该结果生成较早，暂无 V2 关系画像分。",
+    };
+  }
+
+  const v2 = result?.relationshipProfileScoreV2;
+  if (
+    v2?.source === "match_insights_score_shadow_v2" &&
+    typeof v2.displayScore100 === "number" &&
+    Number.isFinite(v2.displayScore100) &&
+    v2.displayScore100 >= 0 &&
+    v2.displayScore100 <= 100
+  ) {
+    const band =
+      typeof v2.band === "string" && V2_PRIMARY_BANDS.has(v2.band) ? v2.band : null;
+    const n = Math.round(v2.displayScore100);
+    return {
+      kind: "v2",
+      finalScore,
+      displayScore100: n,
+      scoreText: String(n),
+      suffix: "/ 100",
+      title: "关系画像适配度",
+      subtitle: band ? resolveV2BandSubtitle(band) : "",
+      footnote: "该分数基于双方 20 维关系画像、核心轴差异与冲突惩罚计算。",
+      fallbackUsed: false,
+    };
+  }
+
+  if (v2?.source === "invalid") {
+    return {
+      kind: "legacy_fallback",
+      finalScore,
+      reason: "invalid",
+      fallbackUsed: true,
+      heroHint: null,
+    };
+  }
+
+  return {
+    kind: "legacy_fallback",
+    finalScore,
+    reason: "missing",
+    fallbackUsed: true,
+    heroHint: "该结果生成较早，暂无 V2 关系画像分。",
+  };
+}
+
 function isStringArray(x) {
   return Array.isArray(x) && x.every((i) => typeof i === "string");
 }
-
-const SHORTLIST_SCENE_KEYS_V0 = [
-  "first_message_opening",
-  "pace_negotiation",
-  "boundary_conflict_response",
-  "misunderstanding_repair",
-  "long_term_lifestyle_alignment",
-  "values_commitment_conflict",
-  "re_engagement_after_lull",
-  "emotional_support_under_stress",
-  "friends_family_integration_boundary",
-  "future_planning_tradeoff",
-];
 
 function parseShortlistDecisionV0(job) {
   if (!job || typeof job !== "object") return { state: "unavailable" };
@@ -190,83 +311,6 @@ function parseShortlistFourDimV0(job, shortlistDecisionSidecar) {
   };
 }
 
-function parseShortlistScenariosV0(job, shortlistFourDimSidecar, shortlistDecisionSidecar) {
-  if (!job || typeof job !== "object") return { state: "unavailable" };
-  const scenarios = job.shortlistScenariosV0;
-  if (!scenarios || typeof scenarios !== "object" || Array.isArray(scenarios)) {
-    return { state: "unavailable" };
-  }
-  const s = scenarios;
-  const schemaVersion = typeof s.schemaVersion === "string" ? s.schemaVersion : "";
-  const shortlistFingerprint =
-    typeof s.shortlistFingerprint === "string" ? s.shortlistFingerprint : "";
-  const rawScenes = Array.isArray(s.scenes) ? s.scenes : [];
-  const scenes = rawScenes
-    .map((row) => {
-      if (!row || typeof row !== "object" || Array.isArray(row)) return null;
-      const r = row;
-      if (
-        typeof r.sceneKey !== "string" ||
-        typeof r.candidateUserId !== "string" ||
-        typeof r.score !== "number" ||
-        Number.isNaN(r.score)
-      ) {
-        return null;
-      }
-      if (r.status !== "succeeded" && r.status !== "failed") return null;
-      return {
-        sceneKey: r.sceneKey,
-        candidateUserId: r.candidateUserId,
-        score: r.score,
-        status: r.status,
-      };
-    })
-    .filter(Boolean);
-
-  if (!schemaVersion || !shortlistFingerprint || scenes.length === 0 || scenes.length !== rawScenes.length) {
-    return { state: "invalid", reason: "数据异常/不可用" };
-  }
-
-  const grouped = new Map();
-  for (const row of scenes) {
-    if (!SHORTLIST_SCENE_KEYS_V0.includes(row.sceneKey)) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    if (!grouped.has(row.candidateUserId)) grouped.set(row.candidateUserId, []);
-    grouped.get(row.candidateUserId).push(row.sceneKey);
-  }
-  for (const [, keys] of grouped) {
-    if (keys.length !== SHORTLIST_SCENE_KEYS_V0.length) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    const keySet = new Set(keys);
-    if (keySet.size !== SHORTLIST_SCENE_KEYS_V0.length) {
-      return { state: "invalid", reason: "数据异常/不可用" };
-    }
-    for (const expected of SHORTLIST_SCENE_KEYS_V0) {
-      if (!keySet.has(expected)) {
-        return { state: "invalid", reason: "数据异常/不可用" };
-      }
-    }
-  }
-
-  const fourDimFp =
-    shortlistFourDimSidecar?.state === "ok" ? shortlistFourDimSidecar.shortlistFingerprint : null;
-  const decisionFp =
-    shortlistDecisionSidecar?.state === "ok" ? shortlistDecisionSidecar.shortlistFingerprint : null;
-  const fingerprintConsistentWithFourDim = !fourDimFp || fourDimFp === shortlistFingerprint;
-  const fingerprintConsistentWithDecision = !decisionFp || decisionFp === shortlistFingerprint;
-
-  return {
-    state: "ok",
-    schemaVersion,
-    shortlistFingerprint,
-    scenes,
-    fingerprintConsistentWithFourDim,
-    fingerprintConsistentWithDecision,
-  };
-}
-
 function parseJobAuditV0(job) {
   if (!job || typeof job !== "object") {
     return { state: "unavailable", reason: "job 不可读" };
@@ -332,158 +376,6 @@ function parseJobAuditV0(job) {
   };
 }
 
-/** Phase E v1.0 — consumer assist card gate (values align with API jobAuditV0). */
-const JOB_AUDIT_SPEC_CURRENT_SHORTLIST = "current_shortlist_contract";
-const JOB_AUDIT_DIAG_CURRENT_OK = "current_ok";
-const JOB_AUDIT_BUILD_NONE = "none";
-
-function jobAuditAllowsPhaseEAssistCard(audit) {
-  if (audit.state !== "ok") return false;
-  if (!audit.shortlistBindingPresent || !audit.sidecarTrioPresent) return false;
-  if (audit.rankConsistent !== true) return false;
-  if (audit.specClassification !== JOB_AUDIT_SPEC_CURRENT_SHORTLIST) return false;
-  if (audit.diagnosticBucket !== JOB_AUDIT_DIAG_CURRENT_OK) return false;
-  if (audit.buildabilityDetail !== JOB_AUDIT_BUILD_NONE) return false;
-  return true;
-}
-
-/** Human labels for scene keys — card copy only; never shown as raw keys to users. */
-const SHORTLIST_SCENE_TITLE_ZH = {
-  first_message_opening: "开场寒暄",
-  pace_negotiation: "聊天节奏",
-  boundary_conflict_response: "边界与冲突",
-  misunderstanding_repair: "误会与修复",
-  long_term_lifestyle_alignment: "长期生活习惯",
-  values_commitment_conflict: "价值观与承诺",
-  re_engagement_after_lull: "冷场后再联系",
-  emotional_support_under_stress: "压力下的支持",
-  friends_family_integration_boundary: "朋友与家人边界",
-  future_planning_tradeoff: "未来规划取舍",
-};
-
-const DIM_LABEL_ZH = {
-  openingSmoothness: "开场自然度",
-  continuation: "继续了解",
-  conflictRisk: "互动摩擦信号",
-  longTermStability: "长期磨合空间",
-};
-
-const OPENING_SCENE_PICK_KEYS = ["first_message_opening", "misunderstanding_repair", "pace_negotiation"];
-
-/**
- * Phase E v1.0 — stable natural-language lines from sidecars (no sceneKey / fingerprint in output).
- * @returns {null | { summary: string, compatibilityLines: string[], reminder: string, opening: string }}
- */
-function buildPhaseEAssistCopy(job, candidateUserId, decision, fourDim, scenarios) {
-  if (
-    !candidateUserId ||
-    decision.state !== "ok" ||
-    fourDim.state !== "ok" ||
-    scenarios.state !== "ok" ||
-    !decision.rankedCandidateUserIds.includes(candidateUserId)
-  ) {
-    return null;
-  }
-
-  const tier = decision.confidenceTier;
-  let summary =
-    "基于短名单的多场景对话模拟，整理了一份「互动参考」：侧重聊天节奏与相处感受，便于你带着更轻松的心态去接触对方。";
-  if (tier === "high") {
-    summary =
-      "短名单对话模拟里，双方互动信号相对清晰，可作为「怎么聊、聊什么」的轻量参考——仍请以真实相处为准。";
-  } else if (tier === "medium") {
-    summary =
-      "短名单对话模拟给出的信号中等强度，更适合当作聊天前的「相处提示」，不必过度解读为结果好坏。";
-  } else if (tier === "low") {
-    summary =
-      "短名单对话模拟覆盖有限，下面的句子只作相处与开场的辅助提示，请更多依赖线下真实感受。";
-  }
-
-  const curRow = fourDim.candidateDimensions.find((r) => r.candidateUserId === candidateUserId);
-  if (!curRow) return null;
-
-  const n = fourDim.candidateDimensions.length;
-  const mean = (pick) =>
-    fourDim.candidateDimensions.reduce((s, r) => s + Number(r[pick]), 0) / Math.max(1, n);
-
-  const dims = ["openingSmoothness", "continuation", "longTermStability", "conflictRisk"];
-  const margins = dims.map((key) => {
-    const m = mean(key);
-    const cur = Number(curRow[key]);
-    if (key === "conflictRisk") {
-      return { key, margin: m - cur, higherIsBetter: false };
-    }
-    return { key, margin: cur - m, higherIsBetter: true };
-  });
-  margins.sort((a, b) => Math.abs(b.margin) - Math.abs(a.margin));
-
-  const compatibilityLines = [];
-  for (const row of margins) {
-    if (compatibilityLines.length >= 3) break;
-    if (Math.abs(row.margin) < 0.02) continue;
-    const label = DIM_LABEL_ZH[row.key];
-    if (!label) continue;
-    if (row.key === "conflictRisk") {
-      compatibilityLines.push(
-        row.margin > 0.02
-          ? `模拟观察：相对短名单整体，与你相关的「${label}」略低一些，通常意味着互动里可更从容确认彼此感受。`
-          : `模拟观察：相对短名单整体，与你相关的「${label}」略高一些，可作为聊天节奏上的轻量提醒（非对错判断）。`,
-      );
-    } else {
-      compatibilityLines.push(
-        row.margin > 0.02
-          ? `模拟观察：与你相关的「${label}」在短名单里相对更顺一些，可作为「从哪里聊起更自然」的参考。`
-          : `模拟观察：与你相关的「${label}」在短名单里不算突出，聊天时不妨多给对方接话与确认的空间。`,
-      );
-    }
-  }
-  if (compatibilityLines.length < 2) {
-    compatibilityLines.push(
-      "模拟观察：短名单内的差异主要体现在聊天节奏与感受表达上，下面的开场建议可当作轻量提示使用。",
-    );
-  }
-  if (compatibilityLines.length < 2) {
-    compatibilityLines.push(
-      "模拟观察：可把重点放在「聊得舒服」而非「谁更对」，更容易形成自然的互动节奏。",
-    );
-  }
-
-  const meanRisk = mean("conflictRisk");
-  let reminder =
-    "相处建议：模拟只覆盖部分话题，真实相处请以彼此节奏与边界为准；遇到不确定时，慢一点、多问一句往往更稳。";
-  if (curRow.conflictRisk > meanRisk + 0.04) {
-    reminder =
-      "相处建议：模拟里「互动摩擦信号」略高一点，并不代表不合适，更像是提醒聊天时少下结论、多确认对方感受。";
-  }
-
-  const scenesForCur = scenarios.scenes.filter((s) => s.candidateUserId === candidateUserId && s.status === "succeeded");
-  let opening = "开场建议：先从近况、轻松话题或共同兴趣聊起，少用「你应该」式表达，给对方接话空间。";
-  let best = null;
-  for (const sk of OPENING_SCENE_PICK_KEYS) {
-    const hit = scenesForCur.filter((s) => s.sceneKey === sk);
-    for (const s of hit) {
-      if (!best || s.score > best.score) best = s;
-    }
-  }
-  if (best && SHORTLIST_SCENE_TITLE_ZH[best.sceneKey]) {
-    const t = SHORTLIST_SCENE_TITLE_ZH[best.sceneKey];
-    opening = `开场建议：从「${t}」相关角度切入往往更自然——先分享一点近况或轻松观察，少用结论式表达。`;
-  } else {
-    const matched = Array.isArray(job?.results)
-      ? job.results.find((r) => r.candidateUserId === candidateUserId)
-      : null;
-    const ev = matched?.evaluator;
-    if (ev && typeof ev === "object" && !Array.isArray(ev) && Array.isArray(ev.mitigation_hints) && ev.mitigation_hints[0]) {
-      const h0 = ev.mitigation_hints[0];
-      if (typeof h0 === "string" && h0.trim().length > 0 && h0.length < 120) {
-        opening = `开场建议：${h0.trim()}`;
-      }
-    }
-  }
-
-  return { summary, compatibilityLines: compatibilityLines.slice(0, 3), reminder, opening };
-}
-
 function isValidMatchInsights(mi) {
   if (mi == null || typeof mi !== "object" || Array.isArray(mi)) return false;
   const e = mi.explanation;
@@ -497,130 +389,6 @@ function isValidMatchInsights(mi) {
   if (typeof mi.chatSimulationSummary !== "string") return false;
   return true;
 }
-
-const card = {
-  border: "1px solid #e5e7eb",
-  borderRadius: 10,
-  padding: "1rem 1.1rem",
-  background: "#fff",
-};
-
-const cardTitle = {
-  fontWeight: 600,
-  fontSize: "0.98rem",
-  margin: "0 0 0.55rem",
-  color: "#0f172a",
-};
-
-const MATCH_REVIEW_RECOMMENDATION_ZH = {
-  strong_match: "高度契合",
-  match: "总体匹配",
-  cautious_match: "谨慎尝试",
-  not_recommended: "暂不推荐",
-};
-
-const MATCH_REVIEW_POTENTIAL_ZH = {
-  high: "偏高",
-  medium: "中等",
-  low: "偏低",
-};
-
-function matchReviewRecommendationLabel(v) {
-  if (v == null || typeof v !== "string") return "—";
-  return MATCH_REVIEW_RECOMMENDATION_ZH[v] ?? v;
-}
-
-function matchReviewPotentialSentence(label, v) {
-  if (v == null || typeof v !== "string") return `${label}：—`;
-  const zh = MATCH_REVIEW_POTENTIAL_ZH[v] ?? v;
-  return `${label}：${zh}`;
-}
-
-function matchReviewConfidenceSentence(v) {
-  if (v === "high") return "结论可信度：较高";
-  if (v === "medium") return "结论可信度：中等";
-  return "结论可信度：有限（问卷或信号较少时请更多依赖线下感受）";
-}
-
-const layerSection = {
-  marginTop: "1.75rem",
-};
-
-const heroStyle = {
-  borderRadius: 12,
-  padding: "1.35rem 1.25rem 1.25rem",
-  background: "linear-gradient(165deg, #f0f7ff 0%, #ffffff 55%, #fafbff 100%)",
-  border: "1px solid #dbeafe",
-  boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
-};
-
-const aiLayerShell = {
-  marginTop: "1.75rem",
-  padding: "1.25rem 1.15rem 1.35rem",
-  borderRadius: 12,
-  border: "1px solid #c7d2fe",
-  background: "linear-gradient(180deg, #eef2ff 0%, #ffffff 28%)",
-  boxShadow: "0 2px 8px rgba(67,56,202,0.08)",
-};
-
-/** Phase E v1.0 — user-facing assist card (distinct from internal purple AI layer). */
-const phaseEAssistCardShell = {
-  marginTop: "1.05rem",
-  padding: "1.05rem 1.1rem 1.15rem",
-  borderRadius: 11,
-  border: "1px solid #93c5fd",
-  background: "linear-gradient(180deg, #eff6ff 0%, #ffffff 52%)",
-  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.07)",
-};
-
-const phaseEAssistChip = {
-  display: "inline-block",
-  fontSize: "0.72rem",
-  fontWeight: 600,
-  letterSpacing: "0.04em",
-  color: "#1d4ed8",
-  background: "rgba(219, 234, 254, 0.95)",
-  border: "1px solid #bfdbfe",
-  borderRadius: 999,
-  padding: "0.22rem 0.6rem",
-  marginBottom: "0.55rem",
-};
-
-const phaseEAssistSectionTitle = {
-  margin: "0.85rem 0 0.4rem",
-  fontSize: "0.82rem",
-  fontWeight: 600,
-  color: "#1e40af",
-};
-
-const phaseEAssistBody = {
-  margin: 0,
-  lineHeight: 1.65,
-  color: "#334155",
-  fontSize: "0.9rem",
-};
-
-const matchReviewMainPanelStyle = {
-  marginTop: "0.85rem",
-  padding: "0.9rem 1rem 1rem",
-  background: "#f8fafc",
-  borderRadius: 10,
-  border: "1px solid #e2e8f0",
-};
-
-const matchReviewExplanationStyle = {
-  margin: 0,
-  lineHeight: 1.75,
-  whiteSpace: "pre-wrap",
-  maxHeight: "15rem",
-  overflowY: "auto",
-  padding: "0.85rem 1rem",
-  background: "#fff",
-  borderRadius: 8,
-  border: "1px solid #e8eef4",
-  fontSize: "0.92rem",
-  color: "#1e293b",
-};
 
 const btnPrimary = {
   padding: "0.65rem 1.25rem",
@@ -656,25 +424,20 @@ const btnTertiary = {
   cursor: "pointer",
 };
 
-/** P6.y 初次聊天预判：三档展示（接话顺畅度 / 继续了解信号，high 为更有利） */
-function formatLiteBand3Zh(band) {
-  if (band === "high") return "高";
-  if (band === "medium") return "中";
-  return "偏低";
+/** M5.4-M2：首跳 enqueue 失败时，仅在错误形态像「池 / 候选」问题时再尝试 generate + 二次 enqueue。 */
+function shouldAttemptPreviewPoolRematchFallback(err) {
+  const text = (err instanceof Error ? err.message : String(err)).trim();
+  if (!text) return false;
+  if (/未登录|token\s*无效|401|没有权限|403|userId\s*mismatch|questionnaire|must complete/i.test(text)) {
+    return false;
+  }
+  return /\bpool\b|preview|active|候选|匹配池|candidate|items?|queue|batch|scored|empty|not found|404|unavailable|NO_ACTIVE/i.test(
+    text,
+  );
 }
 
-/** 风险轴：high 表示风险更高 */
-function formatLiteRiskBandZh(band) {
-  if (band === "low") return "低";
-  if (band === "medium") return "中";
-  return "高";
-}
-
-function formatLiteVerdictZh(verdict) {
-  if (verdict === "worth_exploring") return "值得继续了解";
-  if (verdict === "cautious") return "谨慎推进";
-  return "建议先放缓";
-}
+const REMATCH_USER_FACING_FAILURE =
+  "重新匹配失败，请稍后再试。若问题持续，请先返回预览池重新生成候选。";
 
 /** Internal: full URL for Final Match + AI simulation sidecar query params. */
 function buildFinalMatchDeeplink(viewerUserId, simulationJobId) {
@@ -688,6 +451,8 @@ export default function FinalMatchPage() {
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const aiSimJobId = useMemo(() => (searchParams.get("aiSimJobId") || "").trim(), [searchParams]);
+  /** M4.3-M1: show A/B tables, ids, internal tools only when `?debug=1`. */
+  const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
 
   const [consumptionHint, setConsumptionHint] = useState(null);
 
@@ -713,8 +478,157 @@ export default function FinalMatchPage() {
   const [deeplinkJobIdInput, setDeeplinkJobIdInput] = useState("");
   const [generatedDeeplink, setGeneratedDeeplink] = useState("");
   const [deeplinkCopyStatus, setDeeplinkCopyStatus] = useState("");
+  /** M5.4-M1：重新入队后去等待页，避免旧 ready 立刻跳回 final。 */
+  const [rematchLoading, setRematchLoading] = useState(false);
+  /** M5.4-M2：generate + 二次 enqueue 阶段。 */
+  const [rematchPreparingPool, setRematchPreparingPool] = useState(false);
+  const [rematchError, setRematchError] = useState(null);
+  /** M6.5-C3: 主展示锚点 = resolved → display → baseline（与 GET 投影一致；不单独猜 candidate）。 */
+  const resolvedCandidateUserId = useMemo(
+    () =>
+      resolveTargetId(
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [result?.resolvedCandidateUserId, result?.displayCandidateUserId, result?.candidateUserId],
+  );
+  /** M3.8-M13 + M6.5-C2: 主展示 / 侧车与 resolved 对齐。 */
+  const effectiveDisplayCandidateId = resolvedCandidateUserId;
+  /**
+   * M6.5-C3: 与 M6.5-r4 一致 — chatTarget → resolved → display → baseline。
+   * 建连仍只传 matchResultId；此处为 gating / handoff 声明的 peer（见 navigate query）。
+   */
+  const chatTargetUserId = useMemo(
+    () =>
+      resolveTargetId(
+        result?.chatTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.chatTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
+  );
+  const timelineTargetUserId = useMemo(
+    () =>
+      resolveTargetId(
+        result?.timelineTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.timelineTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
+  );
+  /**
+   * M6.5-C3: feedbackTarget → resolved → display → baseline。
+   * 页内尚无独立 feedback POST；供 C4+ / 自动化读取 footer `data-m65-feedback-target-user-id`。
+   */
+  const feedbackTargetUserId = useMemo(
+    () =>
+      resolveTargetId(
+        result?.feedbackTargetUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.feedbackTargetUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
+  );
+  const explanationTargetUserId = useMemo(
+    () =>
+      resolveTargetId(
+        result?.explanationOwnerCandidateUserId,
+        result?.resolvedCandidateUserId,
+        result?.displayCandidateUserId,
+        result?.candidateUserId,
+      ) ?? "",
+    [
+      result?.explanationOwnerCandidateUserId,
+      result?.resolvedCandidateUserId,
+      result?.displayCandidateUserId,
+      result?.candidateUserId,
+    ],
+  );
+  /** M6.5-r4 §10：仅 blocking 级一致性提示可阻断聊天 / 时间线入口（info / warning 不挡主按钮）。 */
+  const blockingConsistencyWarnings = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return [];
+    return result.consistencyWarnings.filter((w) => w && w.severity === "blocking");
+  }, [result?.consistencyWarnings]);
+  const actionsBlockedByConsistency = blockingConsistencyWarnings.length > 0;
+
+  const hasApiScoreOwnerMismatchWarning = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return false;
+    return result.consistencyWarnings.some((w) => w && w.code === "score_owner_mismatch");
+  }, [result?.consistencyWarnings]);
+
+  const hasApiExplanationOwnerMismatchWarning = useMemo(() => {
+    if (!Array.isArray(result?.consistencyWarnings)) return false;
+    return result.consistencyWarnings.some((w) => w && w.code === "explanation_owner_mismatch");
+  }, [result?.consistencyWarnings]);
+
+  /** M6.6-C5：与 API owner 比较；字段缺失不误报。 */
+  const scoreOwnerMismatch = useMemo(() => {
+    const r = typeof resolvedCandidateUserId === "string" ? resolvedCandidateUserId.trim() : "";
+    const s =
+      result?.scoreOwnerCandidateUserId != null && typeof result.scoreOwnerCandidateUserId === "string"
+        ? result.scoreOwnerCandidateUserId.trim()
+        : "";
+    if (!r || !s) return false;
+    return r !== s;
+  }, [resolvedCandidateUserId, result?.scoreOwnerCandidateUserId]);
+
+  const explanationOwnerMismatch = useMemo(() => {
+    const r = typeof resolvedCandidateUserId === "string" ? resolvedCandidateUserId.trim() : "";
+    const e =
+      result?.explanationOwnerCandidateUserId != null &&
+      typeof result.explanationOwnerCandidateUserId === "string"
+        ? result.explanationOwnerCandidateUserId.trim()
+        : "";
+    if (!r || !e) return false;
+    return r !== e;
+  }, [resolvedCandidateUserId, result?.explanationOwnerCandidateUserId]);
+
+  /** API 已列出时不在主路径重复同一类提示。 */
+  const showScoreOwnerMainHint = scoreOwnerMismatch && !hasApiScoreOwnerMismatchWarning;
+  const showExplanationOwnerMainHint = explanationOwnerMismatch && !hasApiExplanationOwnerMismatchWarning;
+
+  /** M5.5-UI-R4: 关系节奏影响展示对象；finalScore 仍仅为基础适配参考，不由关系节奏重算。 */
+  const isRrmDisplay = useMemo(
+    () => result?.displaySourceType === "rrm_top2_bounded_selector",
+    [result?.displaySourceType],
+  );
+  /** M6.0-r8: server-resolved readonly display path（前端不解析 matchInsights / scoreShadow）。 */
+  const isRrmV2ReadonlyDisplay = useMemo(
+    () => result?.displaySourceType === "rrm_top2_v2_selector_readonly",
+    [result?.displaySourceType],
+  );
+  /** M6.0-H2: 主视觉 V2 vs legacy（feature flag）。 */
+  const effectiveFinalScore = useMemo(() => {
+    if (typeof result?.resolvedFinalScore === "number" && Number.isFinite(result.resolvedFinalScore)) {
+      return result.resolvedFinalScore;
+    }
+    return result?.finalScore ?? null;
+  }, [result?.resolvedFinalScore, result?.finalScore]);
+  const primaryResolution = useMemo(
+    () => resolvePrimaryMatchScore(result ? { ...result, finalScore: effectiveFinalScore } : result),
+    [result, effectiveFinalScore],
+  );
   const sidecarStatus = useMemo(() => {
-    const candidateUserId = result?.candidateUserId || "";
+    const candidateUserId = effectiveDisplayCandidateId;
     const hasJobId = aiSimJobId.length > 0;
     const hasReadableJob = Boolean(aiSimJob && !aiSimJobError);
     const candidateInJob = Boolean(
@@ -732,43 +646,13 @@ export default function FinalMatchPage() {
       sidecarReady,
       jobStatus: aiSimJob?.jobStatus || "—",
     };
-  }, [aiSimJobId, aiSimJob, aiSimJobError, result?.candidateUserId]);
+  }, [aiSimJobId, aiSimJob, aiSimJobError, effectiveDisplayCandidateId]);
   const shortlistDecisionSidecar = useMemo(() => parseShortlistDecisionV0(aiSimJob), [aiSimJob]);
   const shortlistFourDimSidecar = useMemo(
     () => parseShortlistFourDimV0(aiSimJob, shortlistDecisionSidecar),
     [aiSimJob, shortlistDecisionSidecar],
   );
-  const shortlistScenariosSidecar = useMemo(
-    () => parseShortlistScenariosV0(aiSimJob, shortlistFourDimSidecar, shortlistDecisionSidecar),
-    [aiSimJob, shortlistFourDimSidecar, shortlistDecisionSidecar],
-  );
   const jobAuditSidecar = useMemo(() => parseJobAuditV0(aiSimJob), [aiSimJob]);
-
-  const phaseEAssistCard = useMemo(() => {
-    if (!aiSimJobId?.trim()) return { visible: false, copy: null };
-    if (aiSimJobLoading || aiSimJobError || !aiSimJob) return { visible: false, copy: null };
-    if (aiSimJob.jobStatus !== "completed") return { visible: false, copy: null };
-    if (!jobAuditAllowsPhaseEAssistCard(jobAuditSidecar)) return { visible: false, copy: null };
-    const copy = buildPhaseEAssistCopy(
-      aiSimJob,
-      result?.candidateUserId || "",
-      shortlistDecisionSidecar,
-      shortlistFourDimSidecar,
-      shortlistScenariosSidecar,
-    );
-    if (!copy) return { visible: false, copy: null };
-    return { visible: true, copy };
-  }, [
-    aiSimJobId,
-    aiSimJobLoading,
-    aiSimJobError,
-    aiSimJob,
-    jobAuditSidecar,
-    result?.candidateUserId,
-    shortlistDecisionSidecar,
-    shortlistFourDimSidecar,
-    shortlistScenariosSidecar,
-  ]);
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -806,28 +690,41 @@ export default function FinalMatchPage() {
     }
   }, [userId]);
 
-  const loadAiSimJob = useCallback(async () => {
-    if (!aiSimJobId) {
-      setAiSimJob(null);
-      setAiSimJobError(null);
-      setAiSimJobLoading(false);
-      return;
-    }
-    setAiSimJobLoading(true);
-    setAiSimJobError(null);
-    try {
-      const data = await getAdminAiSimulationV1Job(aiSimJobId);
-      setAiSimJob(data);
-    } catch (e) {
-      setAiSimJob(null);
-      setAiSimJobError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setAiSimJobLoading(false);
-    }
-  }, [aiSimJobId]);
+  const loadAiSimJob = useCallback(
+    async (opts = {}) => {
+      const silent = Boolean(opts?.silent);
+      if (!aiSimJobId) {
+        setAiSimJob(null);
+        setAiSimJobError(null);
+        setAiSimJobLoading(false);
+        return;
+      }
+      if (!silent) {
+        setAiSimJobLoading(true);
+        setAiSimJobError(null);
+      }
+      try {
+        const data = await getViewerAiSimulationV1Job(aiSimJobId);
+        setAiSimJob(data);
+        if (!silent) {
+          setAiSimJobError(null);
+        }
+      } catch (e) {
+        if (!silent) {
+          setAiSimJob(null);
+          setAiSimJobError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!silent) {
+          setAiSimJobLoading(false);
+        }
+      }
+    },
+    [aiSimJobId],
+  );
 
   useEffect(() => {
-    if (!aiSimJobId || !result?.candidateUserId) {
+    if (!aiSimJobId || !effectiveDisplayCandidateId) {
       if (!aiSimJobId) {
         setAiSimJob(null);
         setAiSimJobError(null);
@@ -836,7 +733,19 @@ export default function FinalMatchPage() {
       return;
     }
     loadAiSimJob();
-  }, [aiSimJobId, result?.candidateUserId, loadAiSimJob]);
+  }, [aiSimJobId, effectiveDisplayCandidateId, loadAiSimJob]);
+
+  /** M3.2: poll job while server-side LLM generation is in progress (no full-page block). */
+  useEffect(() => {
+    if (!aiSimJobId || !effectiveDisplayCandidateId) return;
+    const st = (aiSimJob?.jobStatus || "").trim();
+    if (st !== "queued" && st !== "running") return;
+
+    const id = window.setInterval(() => {
+      void loadAiSimJob({ silent: true });
+    }, 3500);
+    return () => window.clearInterval(id);
+  }, [aiSimJobId, effectiveDisplayCandidateId, aiSimJob?.jobStatus, loadAiSimJob]);
 
   useEffect(() => {
     if (!aiSimJobId) {
@@ -847,19 +756,20 @@ export default function FinalMatchPage() {
   }, [aiSimJobId]);
 
   const onFetchMatchReview = useCallback(async () => {
-    if (!result?.candidateUserId) return;
+    if (!explanationTargetUserId) return;
     setMatchReviewError(null);
     setMatchReviewLoading(true);
     try {
-      const data = await postMatchReviewAi(result.candidateUserId);
+      const data = await postMatchReviewAi(explanationTargetUserId);
       setMatchReview(data);
     } catch (e) {
+      console.warn("[FinalMatchPage] match review failed", e);
       setMatchReview(null);
       setMatchReviewError(e instanceof Error ? e.message : String(e));
     } finally {
       setMatchReviewLoading(false);
     }
-  }, [result?.candidateUserId]);
+  }, [explanationTargetUserId]);
 
   const onFetchInteractionSim = useCallback(async () => {
     if (!result?.id) return;
@@ -869,6 +779,7 @@ export default function FinalMatchPage() {
       const data = await getInteractionSimulationLite(result.id);
       setInteractionSim(data);
     } catch (e) {
+      console.warn("[FinalMatchPage] interaction simulation lite failed", e);
       setInteractionSim(null);
       setInteractionSimError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -894,6 +805,45 @@ export default function FinalMatchPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const onRematchEnqueue = useCallback(async () => {
+    if (!userId || !result?.id) return;
+    setRematchLoading(true);
+    setRematchPreparingPool(false);
+    setRematchError(null);
+
+    const goWaiting = () => {
+      navigate(
+        `/matching-waiting?userId=${encodeURIComponent(userId)}&rematch=1&baselineResultId=${encodeURIComponent(result.id)}`,
+        { replace: true },
+      );
+    };
+
+    try {
+      await enqueueMatching(userId);
+      goWaiting();
+    } catch (firstErr) {
+      console.warn("[rematch] first enqueueMatching failed", firstErr);
+      if (!shouldAttemptPreviewPoolRematchFallback(firstErr)) {
+        setRematchError(REMATCH_USER_FACING_FAILURE);
+        return;
+      }
+      setRematchPreparingPool(true);
+      try {
+        try {
+          await enqueueMatching(userId);
+          goWaiting();
+        } catch (secondErr) {
+          console.warn("[rematch] second enqueueMatching failed", secondErr);
+          setRematchError(REMATCH_USER_FACING_FAILURE);
+        }
+      } finally {
+        setRematchPreparingPool(false);
+      }
+    } finally {
+      setRematchLoading(false);
+    }
+  }, [userId, result?.id, navigate]);
 
   useEffect(() => {
     if (aiSimJobId) {
@@ -936,34 +886,63 @@ export default function FinalMatchPage() {
   }, [generatedDeeplink, userId, deeplinkJobIdInput]);
 
   const onEnterChat = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !chatTargetUserId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
-      const conv = await createConversation(userId);
-      navigate(
-        `/chat?conversationId=${encodeURIComponent(conv.id)}&userId=${encodeURIComponent(userId)}`,
-      );
+      /** M6.5-C2: 客户端锚点为 `chatTargetUserId`；建连仍传 matchResultId，由服务端 `resolveMatchResultDisplay` 与 C1 投影一致。 */
+      const conv = result?.id
+        ? await createConversation(userId, { matchResultId: result.id })
+        : await createConversation(userId);
+      const q = new URLSearchParams();
+      q.set("conversationId", conv.id);
+      q.set("userId", userId);
+      if (result?.id) {
+        q.set("fromFinalMatch", "1");
+        q.set("matchResultId", result.id);
+      }
+      if (isRrmDisplay) {
+        q.set("rhythmRecommended", "1");
+      }
+      /** M6.5-C3: handoff 声明 peer（Chat/Timeline 仍以会话与 matchResultId 为准；下游可渐进消费）。 */
+      if (chatTargetUserId) {
+        q.set("finalMatchPeerUserId", chatTargetUserId);
+      }
+      navigate(`/chat?${q.toString()}`);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate]);
+  }, [userId, navigate, result?.id, isRrmDisplay, chatTargetUserId]);
 
   const onViewTimeline = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !timelineTargetUserId) return;
     try {
       localStorage.setItem("peimaUserId", userId);
-      const conv = await createConversation(userId);
-      navigate(
-        `/chat/timeline?conversationId=${encodeURIComponent(conv.id)}&userId=${encodeURIComponent(userId)}`,
-      );
+      const conv = result?.id
+        ? await createConversation(userId, { matchResultId: result.id })
+        : await createConversation(userId);
+      const q = new URLSearchParams();
+      q.set("conversationId", conv.id);
+      q.set("userId", userId);
+      if (result?.id) {
+        q.set("fromFinalMatch", "1");
+        q.set("matchResultId", result.id);
+      }
+      if (isRrmDisplay) {
+        q.set("rhythmRecommended", "1");
+      }
+      if (timelineTargetUserId) {
+        q.set("finalMatchPeerUserId", timelineTargetUserId);
+      }
+      navigate(`/chat/timeline?${q.toString()}`);
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     }
-  }, [userId, navigate]);
+  }, [userId, navigate, result?.id, isRrmDisplay, timelineTargetUserId]);
 
   return (
     <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>
-      {userId ? (
+      {userId && isDebugMode ? (
+        <>
         <details
           style={{
             marginBottom: "1rem",
@@ -976,7 +955,7 @@ export default function FinalMatchPage() {
           }}
         >
           <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-            内部工具：生成 Final Match 深链（含 aiSimJobId）
+            开发者调试：生成 Final Match 深链（含 aiSimJobId）
           </summary>
           <p style={{ margin: "0.5rem 0 0.35rem", lineHeight: 1.5 }}>
             当前页 <code style={{ fontSize: "0.76rem" }}>userId</code>（viewer）：
@@ -1075,7 +1054,6 @@ export default function FinalMatchPage() {
             不自动发现 job；仅拼接 URL。打开前请确认该 job 的 results 含当前页的对方 candidateUserId。
           </p>
         </details>
-      ) : null}
       <details
         style={{
           marginBottom: "1rem",
@@ -1088,7 +1066,7 @@ export default function FinalMatchPage() {
         }}
       >
         <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          AI 模拟侧车状态（内部）
+          开发者调试：AI 模拟侧车状态
         </summary>
         <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
           <p style={{ margin: "0 0 0.25rem" }}>
@@ -1196,104 +1174,7 @@ export default function FinalMatchPage() {
         }}
       >
         <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          AI 场景证据侧车（shortlistScenariosV0，内部只读）
-        </summary>
-        <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
-          {!aiSimJobId || aiSimJobLoading || aiSimJobError || shortlistScenariosSidecar.state === "unavailable" ? (
-            <p style={{ margin: 0 }}>AI 场景证据侧车暂不可用。</p>
-          ) : shortlistScenariosSidecar.state === "invalid" ? (
-            <p style={{ margin: 0, color: "#92400e" }}>{shortlistScenariosSidecar.reason}</p>
-          ) : (
-            <>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                schemaVersion：<code style={{ fontSize: "0.74rem" }}>{shortlistScenariosSidecar.schemaVersion}</code>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                shortlistFingerprint：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all", marginLeft: "0.25rem" }}>
-                  {shortlistScenariosSidecar.shortlistFingerprint}
-                </code>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                场景结构可读（每候选恰好固定场景集合）：
-                <strong style={{ color: "#166534", marginLeft: "0.25rem" }}>是</strong>
-              </p>
-              <p style={{ margin: "0 0 0.25rem" }}>
-                与 shortlistFourDimV0/shortlistDecisionV0 指纹一致性：
-                <strong
-                  style={{
-                    color:
-                      shortlistScenariosSidecar.fingerprintConsistentWithFourDim &&
-                      shortlistScenariosSidecar.fingerprintConsistentWithDecision
-                        ? "#166534"
-                        : "#92400e",
-                    marginLeft: "0.25rem",
-                  }}
-                >
-                  {shortlistScenariosSidecar.fingerprintConsistentWithFourDim &&
-                  shortlistScenariosSidecar.fingerprintConsistentWithDecision
-                    ? "一致"
-                    : "不一致（低权重警示）"}
-                </strong>
-              </p>
-              <div style={{ marginTop: "0.45rem", overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        candidateUserId
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        sceneKey
-                      </th>
-                      <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        score
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shortlistScenariosSidecar.scenes.map((row, idx) => (
-                      <tr key={`${row.candidateUserId}-${row.sceneKey}-${idx}`}>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{row.candidateUserId}</code>
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{row.sceneKey}</code>
-                        </td>
-                        <td style={{ textAlign: "right", padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {row.score.toFixed(4)}
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {row.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p style={{ margin: "0.4rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
-                本场景证据用于汇总到 shortlistFourDimV0，再支撑 shortlistDecisionV0。
-              </p>
-            </>
-          )}
-        </div>
-      </details>
-      <details
-        style={{
-          marginBottom: "1rem",
-          padding: "0.65rem 0.85rem",
-          borderRadius: 8,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-          fontSize: "0.8rem",
-          color: "#475569",
-        }}
-      >
-        <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          AI 四维侧车（shortlistFourDimV0，内部只读）
+          开发者调试：AI 四维侧车（shortlistFourDimV0）
         </summary>
         <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
           {!aiSimJobId || aiSimJobLoading || aiSimJobError || shortlistFourDimSidecar.state === "unavailable" ? (
@@ -1403,7 +1284,7 @@ export default function FinalMatchPage() {
         }}
       >
         <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          AI 决胜侧车（shortlistDecisionV0，内部只读）
+          开发者调试：AI 决胜侧车（shortlistDecisionV0）
         </summary>
         <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
           {!aiSimJobId || aiSimJobLoading || aiSimJobError || shortlistDecisionSidecar.state === "unavailable" ? (
@@ -1475,7 +1356,7 @@ export default function FinalMatchPage() {
         }}
       >
         <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none" }}>
-          编排 consumption hint（内部，sessionStorage）
+          开发者调试：编排 consumption hint（sessionStorage）
         </summary>
         <div style={{ marginTop: "0.5rem", lineHeight: 1.55 }}>
           {!aiSimJobId ? (
@@ -1510,7 +1391,9 @@ export default function FinalMatchPage() {
           )}
         </div>
       </details>
-      {loading && <LoadingState label="加载匹配结果…" />}
+        </>
+      ) : null}
+      {loading && <LoadingState label="加载匹配结果" />}
       {error && (
         <p style={{ color: "#b00020" }} role="alert">
           {error.message}
@@ -1519,538 +1402,286 @@ export default function FinalMatchPage() {
 
       {!loading && !error && result && (
         <article>
-          {/* —— 第一层：Hero —— */}
-          <header style={heroStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
-              <div>
-                <h1 style={{ fontSize: "1.45rem", margin: "0 0 0.35rem", color: "#0f172a", fontWeight: 700 }}>
-                  本轮为你匹配的对象
-                </h1>
-                <p style={{ margin: 0, color: "#475569", fontSize: "0.92rem", lineHeight: 1.55 }}>
-                  系统已综合你的问卷画像与偏好，从候选池中选择了一位更合适的对象。下方可以了解原因、聊天建议，以及可选的进一步解读。
-                </p>
-              </div>
-              <Link
-                to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
-                style={{ fontSize: "0.82rem", color: "#64748b", whiteSpace: "nowrap", flexShrink: 0 }}
-              >
-                返回等待页
-              </Link>
-            </div>
-            <div style={{ marginTop: "1.15rem", paddingTop: "1rem", borderTop: "1px solid rgba(148,163,184,0.35)" }}>
-              <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
-                匹配指数（越高表示本轮综合匹配度越好）
-              </p>
-              <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>
-                {formatScoreDisplay(result.finalScore)}
-              </p>
-              <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>
-                结果更新于 {formatDateShort(result.createdAt)}
-              </p>
-            </div>
-          </header>
-
-          {readoutFusion ? (
-            <section
-              style={{
-                marginTop: "1.05rem",
-                padding: "0.85rem 1rem",
-                borderRadius: 10,
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-              }}
-              aria-label="一眼读数"
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "0.72rem",
-                  color: "#64748b",
-                  letterSpacing: "0.06em",
-                  fontWeight: 600,
-                }}
-              >
-                一眼读数
-              </p>
-              <p
-                style={{
-                  margin: "0.4rem 0 0.55rem",
-                  fontWeight: 700,
-                  fontSize: "0.98rem",
-                  color: "#0f172a",
-                  lineHeight: 1.45,
-                }}
-              >
-                {readoutFusion.headlineZh}
-              </p>
-              <ul
-                style={{
-                  margin: 0,
-                  paddingLeft: "1.15rem",
-                  color: "#475569",
-                  fontSize: "0.86rem",
-                  lineHeight: 1.55,
-                }}
-              >
-                {readoutFusion.bulletsZh.map((line, i) => (
-                  <li key={`fusion-b-${i}`} style={{ marginBottom: "0.28rem" }}>
-                    {line}
-                  </li>
-                ))}
-              </ul>
-              {readoutFusion.tensionZh?.trim() ? (
-                <p
-                  style={{
-                    margin: "0.55rem 0 0",
-                    fontSize: "0.82rem",
-                    color: "#64748b",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {readoutFusion.tensionZh}
-                </p>
-              ) : null}
-              <details style={{ marginTop: "0.55rem", fontSize: "0.74rem", color: "#94a3b8" }}>
-                <summary style={{ cursor: "pointer", userSelect: "none" }}>读数依据（折叠）</summary>
-                <p style={{ margin: "0.35rem 0 0", lineHeight: 1.5 }}>
-                  系统档 {readoutFusion.debug.inputs.workerStance} · 问卷复审档{" "}
-                  {readoutFusion.debug.inputs.p6xStance} · 首轮互动档 {readoutFusion.debug.inputs.p6yStance}
-                  {readoutFusion.debug.inputs.workerScorePercent != null
-                    ? ` · 系统分(百分制约) ${Math.round(readoutFusion.debug.inputs.workerScorePercent)}`
-                    : ""}
-                </p>
-                <p style={{ margin: "0.25rem 0 0", lineHeight: 1.45 }}>
-                  {readoutFusion.debug.fusionVersion} · {readoutFusion.debug.ruleTrace}
-                </p>
-              </details>
-            </section>
-          ) : null}
-
-          {phaseEAssistCard.visible && phaseEAssistCard.copy ? (
-            <section style={phaseEAssistCardShell} aria-label="短名单对话模拟互动参考">
-              <span style={phaseEAssistChip}>模拟观察 · 仅供参考</span>
-              <h2 style={{ fontSize: "1.08rem", margin: "0 0 0.35rem", color: "#0f172a", fontWeight: 700 }}>
-                互动参考（短名单对话模拟）
-              </h2>
-              <p style={{ margin: "0 0 0.65rem", fontSize: "0.84rem", color: "#475569", lineHeight: 1.55 }}>
-                以下为辅助理解与互动建议，不替代上方匹配指数与系统结论，也不代表对方或关系的「最终评价」。
-              </p>
-              <p style={{ ...phaseEAssistBody, fontWeight: 500, color: "#1e293b" }}>{phaseEAssistCard.copy.summary}</p>
-              <h3 style={phaseEAssistSectionTitle}>兼容性提示</h3>
-              <ul
-                style={{
-                  margin: "0 0 0.15rem",
-                  paddingLeft: "1.15rem",
-                  lineHeight: 1.65,
-                  color: "#334155",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {phaseEAssistCard.copy.compatibilityLines.map((line, i) => (
-                  <li key={`phase-e-compat-${i}`} style={{ marginBottom: "0.35rem" }}>
-                    {line}
-                  </li>
-                ))}
-              </ul>
-              <h3 style={phaseEAssistSectionTitle}>相处建议</h3>
-              <p style={phaseEAssistBody}>{phaseEAssistCard.copy.reminder}</p>
-              <h3 style={phaseEAssistSectionTitle}>开场建议</h3>
-              <p style={{ ...phaseEAssistBody, marginBottom: 0 }}>{phaseEAssistCard.copy.opening}</p>
-            </section>
-          ) : null}
-
-          {/* —— 第二层：为什么匹配 / 如何开始互动 —— */}
-          {isValidMatchInsights(result.matchInsights) && (
-            <section style={layerSection} aria-label="匹配解读与互动建议">
-              <h2 style={{ fontSize: "1.12rem", margin: "0 0 1rem", color: "#0f172a", fontWeight: 700 }}>
-                了解这次匹配
-              </h2>
-
-              <div style={{ ...card, marginBottom: "0.85rem" }}>
-                <h3 style={cardTitle}>为什么是你们</h3>
-                <p style={{ margin: "0 0 0.65rem", lineHeight: 1.65, color: "#334155", fontSize: "0.92rem" }}>
-                  {result.matchInsights.explanation.whyMatch}
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>较合拍的方向</p>
-                <ul style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                  {result.matchInsights.explanation.strengths.map((t, i) => (
-                    <li key={`strength-${i}`} style={{ marginBottom: "0.3rem" }}>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={{ ...card, marginBottom: "0.85rem" }}>
-                <h3 style={cardTitle}>相处节奏与注意</h3>
-                <p style={{ margin: "0 0 0.65rem", lineHeight: 1.65, color: "#334155", fontSize: "0.92rem" }}>
-                  {result.matchInsights.explanation.rhythmPrediction}
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>需要留意的点</p>
-                <ul style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                  {result.matchInsights.explanation.cautions.map((t, i) => (
-                    <li key={`caution-${i}`} style={{ marginBottom: "0.3rem" }}>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={{ ...card, marginBottom: "0.85rem" }}>
-                <h3 style={cardTitle}>聊天怎么开场</h3>
-                <p style={{ margin: "0 0 0.45rem", fontSize: "0.82rem", color: "#64748b" }}>可以试试这些话题</p>
-                <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.2rem", lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                  {result.matchInsights.openingTopics.map((t, i) => (
-                    <li key={`topic-${i}`} style={{ marginBottom: "0.3rem" }}>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-                <p style={{ margin: 0, lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                  {result.matchInsights.chatSimulationSummary}
-                </p>
-              </div>
-
-              <div style={card}>
-                <h3 style={cardTitle}>系统参考标记</h3>
-                <p style={{ margin: "0 0 0.5rem", lineHeight: 1.55, color: "#475569", fontSize: "0.88rem" }}>
-                  以下为系统内部使用的简要标记，便于排查与对照；不影响你与对方正常沟通。
-                </p>
-                <details>
-                  <summary style={{ cursor: "pointer", fontSize: "0.86rem", color: "#2563eb", fontWeight: 500 }}>
-                    查看完整标记列表
-                  </summary>
-                  <ul
-                    style={{
-                      margin: "0.5rem 0 0",
-                      paddingLeft: "1.2rem",
-                      lineHeight: 1.55,
-                      fontSize: "0.84rem",
-                      color: "#475569",
-                    }}
-                  >
-                    {result.matchInsights.riskFlags.map((t, i) => (
-                      <li key={`risk-${i}`} style={{ marginBottom: "0.25rem" }}>
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </div>
-            </section>
-          )}
-
-          {/* —— P6.y：初次聊天互动预判（Lite）—— 位于「了解这次匹配」与「匹配复审」之间 —— */}
-          <section style={layerSection} aria-label="初次聊天互动预判">
-            <div style={{ ...card, borderColor: "#bae6fd", background: "#f8fafc" }}>
-              <h2 style={{ ...cardTitle, color: "#0c4a6e" }}>初次聊天互动预判</h2>
-              <p style={{ margin: "0 0 0.75rem", fontSize: "0.86rem", color: "#0369a1", lineHeight: 1.55 }}>
-                仅针对「第一次聊天」场景，结合双方问卷画像与静态摘要给出结构化参考；非诊断、非承诺，不包含对话逐条模拟。
-              </p>
-              <button
-                type="button"
-                style={{ ...btnSecondary, borderColor: "#7dd3fc", color: "#0c4a6e" }}
-                onClick={onFetchInteractionSim}
-                disabled={interactionSimLoading || !result?.id}
-              >
-                {interactionSimLoading ? "生成中…" : "生成初次聊天预判"}
-              </button>
-              {interactionSimError ? (
-                <p style={{ color: "#b00020", fontSize: "0.86rem", margin: "0.65rem 0 0" }} role="alert">
-                  {interactionSimError}
-                </p>
-              ) : null}
-              {interactionSim ? (
-                <div style={{ marginTop: "0.85rem" }}>
-                  <p style={{ margin: "0 0 0.45rem", fontSize: "0.78rem", color: "#64748b" }}>
-                    静态摘要分（与匹配指数不同）：{formatScoreDisplay(interactionSim.reviewStaticScore)}
-                  </p>
-                  <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.1rem", color: "#334155", fontSize: "0.88rem", lineHeight: 1.6 }}>
-                    <li style={{ marginBottom: "0.35rem" }}>
-                      <strong>接话顺畅度</strong>：{formatLiteBand3Zh(interactionSim.axes.pickupEase.band)} —{" "}
-                      {interactionSim.axes.pickupEase.oneLiner}
-                    </li>
-                    <li style={{ marginBottom: "0.35rem" }}>
-                      <strong>冷场风险</strong>：{formatLiteRiskBandZh(interactionSim.axes.coldFieldRisk.band)} —{" "}
-                      {interactionSim.axes.coldFieldRisk.oneLiner}
-                    </li>
-                    <li style={{ marginBottom: "0.35rem" }}>
-                      <strong>误解风险</strong>：{formatLiteRiskBandZh(interactionSim.axes.misunderstandingRisk.band)} —{" "}
-                      {interactionSim.axes.misunderstandingRisk.oneLiner}
-                    </li>
-                    <li style={{ marginBottom: "0.35rem" }}>
-                      <strong>继续了解信号</strong>：{formatLiteBand3Zh(interactionSim.axes.continuationSignal.band)} —{" "}
-                      {interactionSim.axes.continuationSignal.oneLiner}
-                    </li>
-                  </ul>
-                  <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem", color: "#64748b" }}>总体倾向</p>
-                  <p style={{ margin: "0 0 0.5rem", fontWeight: 600, color: "#0f172a", fontSize: "0.95rem" }}>
-                    {formatLiteVerdictZh(interactionSim.overall.verdict)}
-                  </p>
-                  <p style={{ margin: 0, lineHeight: 1.65, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.9rem" }}>
-                    {interactionSim.overall.summary}
-                  </p>
-                  <details style={{ marginTop: "0.65rem", fontSize: "0.76rem", color: "#64748b" }}>
-                    <summary style={{ cursor: "pointer" }}>技术说明</summary>
-                    <p style={{ margin: "0.35rem 0 0" }}>
-                      sourceType：{interactionSim.debug.sourceType}；fallbackUsed：
-                      {String(interactionSim.debug.fallbackUsed)}
-                      {interactionSim.debug.meta?.reason
-                        ? `；reason：${interactionSim.debug.meta.reason}`
-                        : ""}
-                    </p>
-                  </details>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          {/* —— 第三层：AI 复审主区 + 补充说明 —— */}
-          <section style={aiLayerShell} aria-label="匹配复审与补充解读">
-            {aiSimJobId &&
-            result?.candidateUserId &&
-            (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
-              <>
-                <p
-                  style={{
-                    margin: "0 0 0.65rem",
-                    fontSize: "0.78rem",
-                    color: "#64748b",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  以下为基于模拟的<strong>互动与相处参考</strong>（与上方主结果独立）；无说明引用时不显示本块。
-                </p>
-                <AiSimulationSidecarV0
-                  key={`${aiSimJobId || "no-job"}-${result.candidateUserId || ""}`}
-                  aiSimJobId={aiSimJobId}
-                  candidateUserId={result.candidateUserId}
-                  job={aiSimJob}
-                  jobLoading={aiSimJobLoading}
-                  jobError={aiSimJobError}
-                  onRefresh={loadAiSimJob}
-                />
-              </>
-            ) : null}
-            <h2 style={{ fontSize: "1.15rem", margin: "0 0 0.35rem", color: "#312e81", fontWeight: 700 }}>
-              匹配复审与相处参考
-            </h2>
-            <p style={{ margin: "0 0 1rem", color: "#4c1d95", fontSize: "0.86rem", lineHeight: 1.55, opacity: 0.92 }}>
-              结合双方问卷画像给出复审结论与相处参考，便于你带着问题去聊天或见面；不能替代真实相处与专业咨询。
-            </p>
-
-            {/* 主模块：AI 匹配复审 */}
-            <div style={{ marginBottom: "1.35rem" }}>
-              <h3 style={{ ...cardTitle, fontSize: "1.02rem", marginBottom: "0.5rem" }}>匹配复审</h3>
-              <p style={{ margin: "0 0 0.85rem", fontSize: "0.86rem", color: "#4338ca", lineHeight: 1.5 }}>
-                基于双方问卷画像与静态摘要生成；与上方「匹配指数」含义不同，用于多角度参考。
-              </p>
-              <button
-                type="button"
-                style={{
-                  ...btnPrimary,
-                  background: "#4338ca",
-                  padding: "0.7rem 1.4rem",
-                  fontSize: "0.96rem",
-                }}
-                onClick={onFetchMatchReview}
-                disabled={matchReviewLoading || !result.candidateUserId}
-              >
-                {matchReviewLoading ? "正在生成…" : "获取相处参考"}
-              </button>
-              {matchReviewError ? (
-                <p style={{ color: "#b00020", fontSize: "0.86rem", margin: "0.65rem 0 0" }} role="alert">
-                  {matchReviewError}
-                </p>
-              ) : null}
-              {matchReview?.aiReview ? (
-                <>
-                  <div style={matchReviewMainPanelStyle}>
-                    <div style={{ ...card, marginTop: "0.75rem", border: "1px solid #e2e8f0" }}>
-                      <h4 style={{ ...cardTitle, fontSize: "0.95rem" }}>复审结论</h4>
-                      <p style={{ margin: "0 0 0.35rem", fontSize: "0.8rem", color: "#64748b" }}>复审综合分（0–100）</p>
-                      <p style={{ margin: "0 0 0.5rem", fontSize: "1.85rem", fontWeight: 800, color: "#0f172a" }}>
-                        {formatScoreDisplay(matchReview.aiReview.finalScore)}
-                      </p>
-                      <p style={{ margin: "0 0 0.35rem", color: "#334155", fontSize: "0.95rem", lineHeight: 1.55 }}>
-                        匹配建议：<strong style={{ color: "#0f172a" }}>{matchReviewRecommendationLabel(matchReview.aiReview.recommendation)}</strong>
-                      </p>
-                      <p style={{ margin: "0 0 0.25rem", color: "#475569", fontSize: "0.88rem", lineHeight: 1.55 }}>
-                        {matchReviewPotentialSentence("轻松聊天空间", matchReview.aiReview.conversationPotential)}
-                      </p>
-                      <p style={{ margin: "0 0 0.25rem", color: "#475569", fontSize: "0.88rem", lineHeight: 1.55 }}>
-                        {matchReviewPotentialSentence("长期相处潜力", matchReview.aiReview.longTermPotential)}
-                      </p>
-                      <p style={{ margin: "0.45rem 0 0", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.5 }}>
-                        {matchReviewConfidenceSentence(matchReview.aiReview.confidence)}
-                      </p>
-                    </div>
-                    <div style={{ ...card, marginTop: "0.65rem", border: "1px solid #e2e8f0" }}>
-                      <h4 style={{ ...cardTitle, fontSize: "0.95rem" }}>相处亮点</h4>
-                      <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "#64748b", lineHeight: 1.45 }}>
-                        问卷与画像维度上较一致、或有利于开场互动的点。
-                      </p>
-                      <ul style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                        {matchReview.aiReview.strengths.map((t, i) => (
-                          <li key={`mrs-${i}`} style={{ marginBottom: "0.35rem" }}>
-                            {t}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div style={{ ...card, marginTop: "0.65rem", border: "1px solid #e2e8f0" }}>
-                      <h4 style={{ ...cardTitle, fontSize: "0.95rem" }}>需要留意</h4>
-                      <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "#64748b", lineHeight: 1.45 }}>
-                        更值得提前沟通或放慢节奏的地方（非评判、非诊断）。
-                      </p>
-                      <ul style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.65, color: "#334155", fontSize: "0.9rem" }}>
-                        {matchReview.aiReview.risks.map((t, i) => (
-                          <li key={`mrr-${i}`} style={{ marginBottom: "0.35rem" }}>
-                            {t}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div style={{ ...card, marginTop: "0.65rem", border: "1px solid #e2e8f0" }}>
-                      <h4 style={{ ...cardTitle, fontSize: "0.95rem" }}>综合说明</h4>
-                      <p style={{ margin: "0 0 0.5rem", fontSize: "0.8rem", color: "#64748b", lineHeight: 1.45 }}>
-                        将亮点与留意点串成一段可读说明。
-                      </p>
-                      <div style={matchReviewExplanationStyle}>{matchReview.aiReview.explanation}</div>
-                    </div>
-                  </div>
-                  <details
-                    style={{
-                      marginTop: "0.75rem",
-                      padding: "0.55rem 0.7rem",
-                      background: "#f1f5f9",
-                      borderRadius: 8,
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.74rem",
-                      color: "#475569",
-                    }}
-                  >
-                    <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155" }}>
-                      复审技术详情（可选）
-                    </summary>
-                    <p style={{ margin: "0.45rem 0 0.2rem" }}>
-                      静态摘要分 reviewStaticScore：<strong>{formatScoreDisplay(matchReview.reviewStaticScore)}</strong>
-                    </p>
-                    <p style={{ margin: "0.2rem 0" }}>
-                      系统匹配分（接口 debug.matchResultFinalScore，展示）：<strong>{formatScoreDisplay(matchReview.debug.matchResultFinalScore)}</strong>
-                    </p>
-                    <p style={{ margin: "0.2rem 0" }}>
-                      sourceType：<code>{matchReview.debug.sourceType}</code>
-                    </p>
-                    <p style={{ margin: "0.2rem 0", wordBreak: "break-all" }}>
-                      sourceVersion：<code>{matchReview.debug.sourceVersion}</code>
-                    </p>
-                    <p style={{ margin: "0.2rem 0" }}>
-                      fallbackUsed：<code>{String(matchReview.debug.fallbackUsed)}</code>
-                    </p>
-                    {matchReview.debug.meta?.reason ? (
-                      <p style={{ margin: "0.2rem 0" }}>
-                        reason：<code>{matchReview.debug.meta.reason}</code>
-                      </p>
-                    ) : null}
-                  </details>
-                </>
-              ) : null}
-            </div>
-
-            {/* 补充模块：AI 匹配说明 */}
-            <div
-              style={{
-                marginTop: "0.25rem",
-                paddingTop: "1.1rem",
-                borderTop: "1px solid rgba(99,102,241,0.25)",
-              }}
-            >
-              <h3 style={{ ...cardTitle, fontSize: "1rem", color: "#3730a3" }}>补充解读</h3>
-              <p style={{ margin: "0 0 0.65rem", fontSize: "0.84rem", color: "#5b21b6", lineHeight: 1.5 }}>
-                可选：基于当前匹配结果再生成一段文字说明，便于从不同角度理解本轮结果。
-              </p>
-              <button
-                type="button"
-                style={{ ...btnSecondary, borderColor: "#a5b4fc", color: "#3730a3" }}
-                onClick={onFetchAiExplanation}
-                disabled={aiExplanationLoading || !result.id}
-              >
-                {aiExplanationLoading ? "生成中…" : "生成补充解读"}
-              </button>
-              {aiExplanationError ? (
-                <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
-                  {aiExplanationError}
-                </p>
-              ) : null}
-              {aiExplanation ? (
-                <div style={{ ...card, marginTop: "0.75rem", border: "1px solid #e0e7ff" }}>
-                  <p style={{ margin: "0 0 0.65rem", lineHeight: 1.65, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.9rem" }}>
-                    {aiExplanation.explanationText}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          {/* —— 技术详情（整页一次折叠）：candidateId、reasonSummary 原文、AI 说明版本等 —— */}
-          <details
+          <div
             style={{
-              marginTop: "1.25rem",
-              padding: "0.65rem 0.85rem",
-              background: "#f8fafc",
-              borderRadius: 8,
-              border: "1px solid #e2e8f0",
-              fontSize: "0.78rem",
-              color: "#64748b",
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "0.65rem",
+              marginBottom: "0.5rem",
             }}
           >
-            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#475569" }}>
-              技术详情与原文摘要
-            </summary>
-            <p style={{ margin: "0.5rem 0 0.25rem" }}>
-              当前账号 userId（URL / 本地）：<code style={{ fontSize: "0.74rem" }}>{userId || "—"}</code>
-            </p>
-            <p style={{ margin: "0.25rem 0" }}>
-              对方用户 ID（candidateUserId）：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{result.candidateUserId}</code>
-            </p>
-            <p style={{ margin: "0.25rem 0" }}>
-              结果时间（createdAt 原文）：<code style={{ fontSize: "0.74rem" }}>{formatDate(result.createdAt)}</code>
-            </p>
-            <p style={{ margin: "0.45rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>reasonSummary（系统原文）</p>
-            <pre
+            <button
+              type="button"
+              onClick={() => void onRematchEnqueue()}
+              disabled={rematchLoading || !userId}
               style={{
-                margin: "0.25rem 0 0",
-                padding: "0.5rem 0.6rem",
-                background: "#fff",
-                border: "1px solid #e5e7eb",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                padding: "0.35rem 0.75rem",
                 borderRadius: 6,
-                fontSize: "0.72rem",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                color: "#334155",
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                color: "#0f172a",
+                cursor: rematchLoading || !userId ? "not-allowed" : "pointer",
+                opacity: rematchLoading || !userId ? 0.65 : 1,
               }}
             >
-              {result.reasonSummary ?? "（无）"}
-            </pre>
-            {aiExplanation ? (
-              <>
-                <p style={{ margin: "0.65rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>补充解读 · 来源</p>
-                <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
-                  sourceType：<code>{aiExplanation.sourceType}</code>
-                </p>
-                <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
-                  sourceVersion：<code>{aiExplanation.sourceVersion}</code>
-                </p>
-              </>
-            ) : null}
-          </details>
+              {rematchPreparingPool
+                ? "正在重新准备候选池并发起匹配"
+                : rematchLoading
+                  ? "处理中"
+                  : "重新匹配"}
+            </button>
+            <Link
+              to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
+              style={{ fontSize: "0.82rem", color: "#64748b", whiteSpace: "nowrap" }}
+            >
+              返回等待页
+            </Link>
+          </div>
+          {rematchError ? (
+            <p style={{ color: "#b00020", fontSize: "0.85rem", marginBottom: "0.75rem" }} role="alert">
+              {rematchError}
+            </p>
+          ) : null}
+          <FinalMatchHero
+            isRrmDisplay={isRrmDisplay}
+            finalScore={effectiveFinalScore}
+            createdAt={result.createdAt}
+            formatScoreDisplay={formatScoreDisplay}
+            formatDateShort={formatDateShort}
+            primaryResolution={primaryResolution}
+          />
+          {result.scoreProjectionFallbackUsed === true ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.84rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              当前分数暂时回退到基线分数（{resolveScoreProjectionFallbackHint(result.scoreProjectionFallbackReason)}）。
+            </p>
+          ) : result.resolvedScoreSourceType === "top2_score_snapshot" ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.84rem",
+                color: "#166534",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              当前分数已按最终展示对象计算（来源：Top2 分数快照）。
+            </p>
+          ) : null}
+          {Array.isArray(result.consistencyWarnings) && result.consistencyWarnings.length > 0 ? (
+            <div
+              role="region"
+              aria-label="一致性提示"
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.55rem 0.75rem",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                background: "#fafafa",
+                fontSize: "0.84rem",
+                lineHeight: 1.55,
+                maxWidth: 560,
+              }}
+            >
+              {result.consistencyWarnings.map((w, idx) => {
+                const sev = w.severity === "blocking" ? "blocking" : w.severity === "warning" ? "warning" : "info";
+                const color = sev === "blocking" ? "#991b1b" : sev === "warning" ? "#a16207" : "#475569";
+                const border = sev === "blocking" ? "#fecaca" : sev === "warning" ? "#fde047" : "#cbd5e1";
+                const label = sev === "blocking" ? "重要" : sev === "warning" ? "提醒" : "说明";
+                return (
+                  <p
+                    key={`${w.code}-${idx}`}
+                    style={{
+                      margin: idx === 0 ? 0 : "0.5rem 0 0",
+                      color,
+                      borderLeft: `3px solid ${border}`,
+                      paddingLeft: "0.45rem",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.78rem" }}>{label}</strong>：{w.message}
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
+          {result.fallbackUsed &&
+          (result.fallbackReason === "display_resolver_failed" || result.fallbackReason === "display_missing") ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.55rem",
+                fontSize: "0.82rem",
+                color: "#475569",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              本次结果已回退到稳定基线展示。
+              {result.fallbackReason ? (
+                <span style={{ color: "#64748b" }}>（{String(result.fallbackReason)}）</span>
+              ) : null}
+            </p>
+          ) : null}
+          {(() => {
+            const dst = result.displaySourceType;
+            const fb = typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : null;
+            const baselineOriginal = !dst || dst === "match_result_original";
+            const enhanced =
+              dst === "static_final" ||
+              dst === "pairwise_final" ||
+              dst === "static_fallback" ||
+              dst === "rrm_top2_bounded_selector";
 
-          {/* —— 第四层：底部行动区 —— */}
+            if (isRrmV2ReadonlyDisplay) {
+              return (
+                <div
+                  role="status"
+                  style={{
+                    marginTop: "0.85rem",
+                    padding: "0.75rem 0.95rem",
+                    borderRadius: 10,
+                    border: "1px solid #bae6fd",
+                    background: "linear-gradient(90deg, #f0f9ff 0%, #ffffff 100%)",
+                    maxWidth: 560,
+                    lineHeight: 1.65,
+                    fontSize: "0.88rem",
+                    color: "#0c4a6e",
+                  }}
+                >
+                  <p style={{ margin: "0 0 0.45rem", fontWeight: 600 }}>展示说明</p>
+                  <p style={{ margin: 0 }}>
+                    本次展示经过 RRM V2 只读候选选择器辅助排序。它只影响展示说明，不改变主匹配结果。
+                  </p>
+                  <p style={{ margin: "0.55rem 0 0" }}>
+                    主匹配分数与系统记录的主候选人未改写；如需核对字段，请展开下方「技术来源说明」。
+                  </p>
+                </div>
+              );
+            }
+            if (fb === true) {
+              return (
+                <p
+                  role="status"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.88rem",
+                    color: "#334155",
+                    lineHeight: 1.6,
+                    maxWidth: 520,
+                  }}
+                >
+                  当前展示使用稳定基线路径。
+                </p>
+              );
+            }
+            if (baselineOriginal) {
+              return (
+                <p
+                  role="note"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.86rem",
+                    color: "#475569",
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  展示来源：稳定基线（与批次主结果一致）。
+                </p>
+              );
+            }
+            if (enhanced) {
+              return (
+                <p
+                  role="note"
+                  style={{
+                    marginTop: "0.85rem",
+                    fontSize: "0.86rem",
+                    color: "#475569",
+                    lineHeight: 1.55,
+                    maxWidth: 520,
+                  }}
+                >
+                  展示来源：已有增强展示路径（仅影响展示对象或说明，不改写入库的主匹配分数与主候选人）。
+                </p>
+              );
+            }
+            return null;
+          })()}
+          {primaryResolution.kind === "legacy_fallback" && primaryResolution.reason === "invalid" ? (
+            <p
+              role="status"
+              style={{
+                marginTop: "0.65rem",
+                fontSize: "0.85rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              V2 shadow 数据异常，已使用旧版匹配指数。
+            </p>
+          ) : null}
+
+          {showExplanationOwnerMainHint ? (
+            <p
+              role="note"
+              style={{
+                marginTop: "1rem",
+                fontSize: "0.85rem",
+                color: "#92400e",
+                lineHeight: 1.55,
+                maxWidth: 520,
+              }}
+            >
+              当前说明内容仍按稳定基线对象生成，后续阶段会进一步统一说明归属。
+            </p>
+          ) : null}
+
+          {!isValidMatchInsights(result.matchInsights) ? (
+            <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
+              结构化匹配解读暂不可用。你可以在页面底部展开「技术来源说明」，查看系统侧保存的原始字段与读数摘要。
+            </p>
+          ) : null}
+
+          {isValidMatchInsights(result.matchInsights) ? (
+            <div style={{ marginTop: "1.1rem" }}>
+              <FinalMatchExplanationSections
+                isRrmDisplay={isRrmDisplay}
+                insights={result.matchInsights}
+                openingTopics={result.matchInsights.openingTopics}
+                interactionSim={interactionSim}
+                interactionSimLoading={interactionSimLoading}
+                interactionSimError={interactionSimError}
+                onFetchInteractionSim={onFetchInteractionSim}
+                matchReview={matchReview}
+                matchReviewLoading={matchReviewLoading}
+                matchReviewError={matchReviewError}
+                onRequestMatchReview={onFetchMatchReview}
+              />
+            </div>
+          ) : null}
+
+          {/* —— 主流程底部行动区 —— */}
+          {/* M6.5-C3: 反馈 POST 若在子组件落地，应优先读取本 footer 的 data-m65-feedback-target-user-id（= feedbackTargetUserId 链）。 */}
           <footer
+            data-m65-feedback-target-user-id={feedbackTargetUserId || undefined}
             style={{
-              marginTop: "2rem",
-              paddingTop: "1.25rem",
+              marginTop: "1.5rem",
+              paddingTop: "1.15rem",
               borderTop: "1px solid #e5e7eb",
               display: "flex",
               flexDirection: "column",
@@ -2059,20 +1690,23 @@ export default function FinalMatchPage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
-              <strong>下一步：</strong>与对方开始聊天；时间线与刷新为可选辅助。
+              <strong>下一步：</strong>准备好后点击「进入聊天」。如需核对模拟侧车、补充说明或原始技术字段，请展开页面底部的「技术来源说明」。
+            </p>
+            <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5, maxWidth: 440 }}>
+              结构化反馈请在聊天页提交；本页 footer 的 data-m65-feedback-target-user-id 与 API 的 feedback 目标链一致，供自动化读取。
             </p>
             <button
               type="button"
               style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
               onClick={onEnterChat}
-              disabled={!userId}
+              disabled={!userId || !chatTargetUserId || actionsBlockedByConsistency}
             >
               进入聊天
             </button>
             <button
               type="button"
               onClick={onViewTimeline}
-              disabled={!userId}
+              disabled={!userId || !timelineTargetUserId || actionsBlockedByConsistency}
               style={{
                 ...btnTertiary,
                 marginTop: 0,
@@ -2085,7 +1719,360 @@ export default function FinalMatchPage() {
             <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
               刷新匹配结果
             </button>
+            {actionsBlockedByConsistency ? (
+              <p role="status" style={{ margin: 0, fontSize: "0.8rem", color: "#991b1b", lineHeight: 1.5, maxWidth: 440 }}>
+                存在「重要」级一致性提示时，本页暂不开放进入聊天与时间线；请查看上方说明或技术来源。
+              </p>
+            ) : null}
           </footer>
+
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f1f5f9",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="匹配分数构成"
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
+              匹配分数构成
+            </summary>
+            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>候选池基础分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.previewPoolScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>偏好命中分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.preferenceScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>风格匹配分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.styleScore)}
+              </p>
+              <p style={{ margin: "0 0 0.35rem" }}>
+                <strong>问卷画像分：</strong>
+                {formatScoreBreakdownPercent(result.scoreBreakdown?.profileScore)}
+              </p>
+            </div>
+            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+              当前匹配指数由多项信号综合而来。候选池基础分和偏好命中分较高时，总分可能保持在较高区间；问卷画像分反映双方
+              20 维关系画像的相似度。
+            </p>
+            {isRrmDisplay ? (
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+                关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
+              </p>
+            ) : isRrmV2ReadonlyDisplay ? (
+              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+                当前候选人展示可能已与批次主排序略有差异；下方分项仍反映批次主算法口径，未随只读展示辅助路径改写。
+              </p>
+            ) : null}
+            {showScoreOwnerMainHint ? (
+              <p
+                role="note"
+                style={{
+                  margin: "0.45rem 0 0",
+                  fontSize: "0.78rem",
+                  color: "#92400e",
+                  lineHeight: 1.55,
+                }}
+              >
+                当前匹配分数仍按稳定基线对象计算，未重新计算为展示对象专属分数。
+              </p>
+            ) : null}
+          </details>
+
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f0fdf4",
+              borderRadius: 10,
+              border: "1px solid #bbf7d0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="V2 关系画像适配度实验"
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#14532d", userSelect: "none", fontSize: "0.92rem" }}>
+              V2 关系画像适配度（实验）
+            </summary>
+            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+              {(() => {
+                const v2 = result.relationshipProfileScoreV2;
+                const src = v2?.source;
+                if (src === "match_insights_score_shadow_v2" && v2) {
+                  const bandCn = formatV2BandLabelCn(v2.band);
+                  const bandEn = v2.band && v2.band !== "missing" ? v2.band : "—";
+                  const capText =
+                    v2.capApplied == null || typeof v2.capApplied !== "number"
+                      ? "暂无（null）"
+                      : formatV2NullableNumber(v2.capApplied, 3);
+                  return (
+                    <>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>展示分：</strong>
+                        {v2.displayScore100 != null ? `${v2.displayScore100} / 100` : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>档位：</strong>
+                        {bandCn} / {bandEn}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>原始画像分（raw，cap 前）：</strong>
+                        {formatV2NullableNumber(v2.rawCompatibilityScore, 3)}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem", fontSize: "0.76rem", color: "#64748b" }}>
+                        <strong>capped 内部 0–1：</strong>
+                        {formatV2NullableNumber(v2.cappedRawScore, 3)}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>penalty：</strong>
+                        {v2.penaltyTotal != null ? String(v2.penaltyTotal) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>cap：</strong>
+                        {capText}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>核心冲突数：</strong>
+                        {v2.coreConflictCount != null ? String(v2.coreConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>强冲突数：</strong>
+                        {v2.strongConflictCount != null ? String(v2.strongConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>红线冲突数：</strong>
+                        {v2.redFlagConflictCount != null ? String(v2.redFlagConflictCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>有效维度：</strong>
+                        {v2.validAxisCount != null ? String(v2.validAxisCount) : "—"}
+                      </p>
+                      <p style={{ margin: "0 0 0.35rem" }}>
+                        <strong>跳过维度：</strong>
+                        {v2.skippedAxisCount != null ? String(v2.skippedAxisCount) : "—"}
+                      </p>
+                    </>
+                  );
+                }
+                if (src === "invalid") {
+                  return <p style={{ margin: 0 }}>V2 shadow 数据异常，暂不展示。</p>;
+                }
+                return <p style={{ margin: 0 }}>暂无 V2 shadow。</p>;
+              })()}
+            </div>
+            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+              {readV2PrimaryScoreFlag() && primaryResolution.kind === "v2"
+                ? "以下为 V2 shadow 明细；主视觉已在灰度中使用 V2 展示分。legacy 匹配指数仍在「匹配分数构成」与技术区保留。"
+                : "以下为 V2 关系画像适配分实验明细与审计字段，不改变最终匹配对象或 legacy 匹配指数。"}
+            </p>
+          </details>
+
+          <details
+            style={{
+              marginTop: "1.35rem",
+              padding: "0.75rem 0.9rem",
+              background: "#f8fafc",
+              borderRadius: 10,
+              border: "1px solid #e2e8f0",
+              fontSize: "0.8rem",
+              color: "#475569",
+            }}
+            aria-label="技术来源说明"
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
+              技术来源说明
+            </summary>
+            <FinalMatchTechnicalDetailsContent
+              displaySourceType={result.displaySourceType}
+              displayResolverFallbackUsed={
+                typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : undefined
+              }
+              resolvedCandidateUserId={resolvedCandidateUserId}
+              resolvedSourceType={result.resolvedSourceType}
+              chatTargetUserId={chatTargetUserId}
+              timelineTargetUserId={timelineTargetUserId}
+              feedbackTargetUserId={feedbackTargetUserId}
+              scoreOwnerCandidateUserId={result.scoreOwnerCandidateUserId}
+              resolvedFinalScore={result.resolvedFinalScore}
+              resolvedScoreOwnerCandidateUserId={result.resolvedScoreOwnerCandidateUserId}
+              resolvedScoreSourceType={result.resolvedScoreSourceType}
+              scoreProjectionFallbackUsed={result.scoreProjectionFallbackUsed}
+              scoreProjectionFallbackReason={result.scoreProjectionFallbackReason}
+              explanationOwnerCandidateUserId={result.explanationOwnerCandidateUserId}
+              scoreOwnerMismatch={scoreOwnerMismatch}
+              explanationOwnerMismatch={explanationOwnerMismatch}
+              apiConsistencyHasScoreOwnerMismatch={hasApiScoreOwnerMismatchWarning}
+              apiConsistencyHasExplanationOwnerMismatch={hasApiExplanationOwnerMismatchWarning}
+              resolvedFallbackReason={result.fallbackReason}
+              consistencyWarnings={result.consistencyWarnings}
+              finalMatchDecisionMeta={result.finalMatchDecisionMeta}
+              readoutFusion={readoutFusion}
+              candidateUserId={result.candidateUserId}
+              displayCandidateUserId={effectiveDisplayCandidateId}
+              relationshipProfileScoreV1={result.relationshipProfileScore ?? null}
+              finalScore={result.finalScore}
+              reasonSummary={result.reasonSummary}
+              multiSourceFinalDecision={result.multiSourceFinalDecision}
+              matchReviewDebug={matchReview?.debug ?? null}
+              aiExplanationMeta={
+                aiExplanation
+                  ? { sourceType: aiExplanation.sourceType, sourceVersion: aiExplanation.sourceVersion }
+                  : null
+              }
+              matchInsights={result.matchInsights ?? null}
+              matchReviewFull={matchReview}
+              interactionSimFull={interactionSim}
+              footerPanels={
+                <>
+                  <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.5rem", color: "#0f172a" }}>模拟侧车</h3>
+                  <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                    以下为基于对话模拟的只读参考，与主推荐结论相互独立。
+                  </p>
+                  {aiSimJobId &&
+                  effectiveDisplayCandidateId &&
+                  (aiSimJobLoading || aiSimJob != null || aiSimJobError != null) ? (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <AiSimulationSidecarV0
+                        key={`${aiSimJobId || "no-job"}-${effectiveDisplayCandidateId || ""}`}
+                        aiSimJobId={aiSimJobId}
+                        candidateUserId={effectiveDisplayCandidateId}
+                        job={aiSimJob}
+                        jobLoading={aiSimJobLoading}
+                        jobError={aiSimJobError}
+                        onRefresh={loadAiSimJob}
+                      />
+                    </div>
+                  ) : (
+                    <p style={{ margin: "0 0 0.85rem", fontSize: "0.78rem", color: "#94a3b8" }}>
+                      当前链接未携带可用的模拟任务编号，或任务尚未加载。主推荐不依赖本区域。
+                    </p>
+                  )}
+                  <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
+                    <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.45rem", color: "#0f172a" }}>补充解读</h3>
+                    <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
+                      基于当前匹配结果生成的可选文字说明（仅供技术或复盘查看）。
+                    </p>
+                    <button
+                      type="button"
+                      style={btnSecondary}
+                      onClick={onFetchAiExplanation}
+                      disabled={aiExplanationLoading || !result.id}
+                    >
+                      {aiExplanationLoading ? "正在生成补充解读" : "生成补充解读"}
+                    </button>
+                    {aiExplanationError ? (
+                      <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
+                        暂时无法生成补充解读，请稍后再试。
+                      </p>
+                    ) : null}
+                    {aiExplanation ? (
+                      <div
+                        style={{
+                          marginTop: "0.65rem",
+                          padding: "0.75rem 0.85rem",
+                          borderRadius: 8,
+                          border: "1px solid #e2e8f0",
+                          background: "#fff",
+                        }}
+                      >
+                        <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.82rem" }}>
+                          {aiExplanation.explanationText}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              }
+            />
+          </details>
+
+          {isDebugMode ? (
+            <details
+              style={{
+                marginTop: "1rem",
+                padding: "0.65rem 0.85rem",
+                background: "#fff7ed",
+                borderRadius: 8,
+                border: "1px solid #fed7aa",
+                fontSize: "0.78rem",
+                color: "#64748b",
+              }}
+            >
+              <summary style={{ cursor: "pointer", fontWeight: 600, color: "#9a3412" }}>
+                开发者调试信息（含 ID 与系统原文）
+              </summary>
+              <p style={{ margin: "0.5rem 0 0.25rem" }}>
+                当前账号 userId（URL / 本地）：<code style={{ fontSize: "0.74rem" }}>{userId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.25rem 0" }}>
+                系统匹配对象 ID（MatchResult.candidateUserId）：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{result.candidateUserId}</code>
+              </p>
+              <p style={{ margin: "0.25rem 0" }}>
+                当前展示对象 ID（displayCandidateUserId · {result.displaySourceType || "—"}）：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{effectiveDisplayCandidateId}</code>
+              </p>
+              <p style={{ margin: "0.25rem 0", fontWeight: 600, color: "#64748b" }}>M6.5-C3 · 动作锚点（resolveTargetId 链）</p>
+              <p style={{ margin: "0.15rem 0" }}>
+                chatTargetUserId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{chatTargetUserId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.15rem 0" }}>
+                timelineTargetUserId：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{timelineTargetUserId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.15rem 0" }}>
+                feedbackTargetUserId：
+                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{feedbackTargetUserId || "—"}</code>
+              </p>
+              <p style={{ margin: "0.25rem 0" }}>
+                结果时间（createdAt 原文）：<code style={{ fontSize: "0.74rem" }}>{formatDate(result.createdAt)}</code>
+              </p>
+              <p style={{ margin: "0.45rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>reasonSummary（系统原文）</p>
+              <pre
+                style={{
+                  margin: "0.25rem 0 0",
+                  padding: "0.5rem 0.6rem",
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 6,
+                  fontSize: "0.72rem",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  color: "#334155",
+                }}
+              >
+                {result.reasonSummary ?? "（无）"}
+              </pre>
+              {matchReview?.debug ? (
+                <>
+                  <p style={{ margin: "0.65rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>复审接口 debug</p>
+                  <p style={{ margin: "0.15rem 0" }}>
+                    sourceType：<code>{matchReview.debug.sourceType}</code> · fallbackUsed：
+                    <code>{String(matchReview.debug.fallbackUsed)}</code>
+                  </p>
+                </>
+              ) : null}
+              {aiExplanation ? (
+                <>
+                  <p style={{ margin: "0.65rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>补充解读 · 来源</p>
+                  <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
+                    sourceType：<code>{aiExplanation.sourceType}</code>
+                  </p>
+                  <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
+                    sourceVersion：<code>{aiExplanation.sourceVersion}</code>
+                  </p>
+                </>
+              ) : null}
+            </details>
+          ) : null}
         </article>
       )}
 

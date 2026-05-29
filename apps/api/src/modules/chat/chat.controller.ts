@@ -36,7 +36,8 @@ export class ChatController {
     if (!tokenUserId || dto.userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");
     }
-    return this.chatService.createOrReuseConversation(tokenUserId);
+    const mid = dto.matchResultId?.trim();
+    return this.chatService.createOrReuseConversation(tokenUserId, mid || undefined);
   }
 
   @Get("conversations/:conversationId/summary")

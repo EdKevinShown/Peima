@@ -1,0 +1,113 @@
+{
+  "status": "PASS_R8H_STAGING_APPLY_ROLLBACK_SMOKE",
+  "environmentKind": "production-like-staging",
+  "productionTouched": false,
+  "generatedAt": "2026-05-19T19:31:20.880Z",
+  "startedAt": "2026-05-19T19:31:20.393Z",
+  "task": "P7.10-r8h",
+  "auditRunId": "r8h-staging-smoke-1779219080212",
+  "gitCommit": "a6c44f1",
+  "gitBranch": "main",
+  "gitStatusShort": "(see local only)",
+  "preflight": {
+    "pass": true,
+    "nodeEnv": "staging",
+    "databaseHostRedacted": true,
+    "databaseHostFingerprint": "54a4d720706c0593",
+    "databaseClassifiedAs": "production-like-staging",
+    "databasePreflightReason": "supabase_pooler_with_explicit_staging_confirm",
+    "percent": 0,
+    "productionPercentEnabled": true,
+    "workerBaselineCaptured": true,
+    "httpRouteSmoke": {
+      "attempted": false,
+      "status": "NOT_RUN",
+      "reason": "service_path_used_r8f_unit_tests_cover_http_wiring"
+    }
+  },
+  "fixture": {
+    "created": true,
+    "syntheticOnly": true,
+    "realUserDataUsed": false,
+    "idsRedacted": {
+      "matchResultId": "id-9c25e2458acb",
+      "sidecarId": "id-107a52edba85",
+      "snapshotId": "id-63bced0c6137"
+    }
+  },
+  "apply": {
+    "mode": "applied",
+    "applied": true,
+    "blockedReasons": [],
+    "matchResultChanged": true,
+    "sidecarPromoted": true,
+    "snapshotApplied": true,
+    "appliedToWorkerRanking": false,
+    "executionPath": "service",
+    "pass": true
+  },
+  "rollback": {
+    "mode": "rolled_back",
+    "rolledBack": true,
+    "blockedReasons": [],
+    "matchResultRestored": true,
+    "sidecarRolledBack": true,
+    "snapshotRollbackCompleted": true,
+    "tokenVerified": true,
+    "tokenPlaintextExposed": false,
+    "tokenHashPresent": true,
+    "executionPath": "service",
+    "pass": true
+  },
+  "dbStates": {
+    "beforeApply": {
+      "finalScore": 0.7,
+      "candidate": "synthetic-a"
+    },
+    "afterApply": {
+      "finalScore": 0.8,
+      "candidate": "synthetic-b"
+    },
+    "afterRollback": {
+      "finalScore": 0.7,
+      "candidate": "synthetic-a"
+    }
+  },
+  "safety": {
+    "workerTriggered": false,
+    "hookJobsForMatchResult": 0,
+    "percentMutated": false,
+    "legacyRemoved": false,
+    "productionTouched": false,
+    "pass": true
+  },
+  "cleanup": {
+    "finalRowsForAuditRunId": 0,
+    "remaining": {
+      "snapshot": 0,
+      "sidecar": 0
+    },
+    "countsRestored": true,
+    "pass": true
+  },
+  "baseline": {
+    "before": {
+      "matchResultCount": 6,
+      "sidecarCount": 0,
+      "snapshotCount": 0,
+      "hookJobCount": 0,
+      "appliedToWorkerRankingCount": 0,
+      "productionPercent": "0",
+      "productionPercentEnabled": "0"
+    },
+    "after": {
+      "matchResultCount": 6,
+      "sidecarCount": 0,
+      "snapshotCount": 0,
+      "hookJobCount": 0,
+      "appliedToWorkerRankingCount": 0,
+      "productionPercent": "0",
+      "productionPercentEnabled": "0"
+    }
+  }
+}

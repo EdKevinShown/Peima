@@ -1,0 +1,131 @@
+{
+  "generatedAt": "2026-05-19T07:09:02Z",
+  "task": "P7.6-r9e3a",
+  "attemptLabel": "real-prod-reverify-evidence-attempt",
+  "environmentAccess": {
+    "prodApiAvailable": false,
+    "stagingProdLikeApiAvailable": false,
+    "readonlyDbAvailable": false,
+    "adminTokenAvailable": false,
+    "notes": {
+      "prodApi": "PEIMA_PROD_API_BASE_URL unset; no remote prod HTTP base configured in workspace",
+      "stagingProdLikeApi": "PEIMA_STAGING_API_BASE_URL unset; no .env.staging or staging-prod-like endpoint in workspace",
+      "readonlyDb": "DATABASE_URL host is localhost only; no managed prod/staging readonly credentials",
+      "adminToken": "No prod/staging service JWT or admin auth endpoint configured; local dev JWT in .env is not prod evidence",
+      "monitoringGrafana": false,
+      "kubectlRollbackAccess": false,
+      "localDockerPostgres": true,
+      "localApiHealth": "unreachable (localhost:3000)"
+    }
+  },
+  "commandsAttempted": [
+    {
+      "command": "git status --short",
+      "result": "pass",
+      "notes": "Working tree clean before r9e3a artifacts"
+    },
+    {
+      "command": "PowerShell env var existence check (DATABASE_URL, PEIMA_*_API_BASE_URL, P76 flags)",
+      "result": "pass",
+      "notes": "No prod/staging API URL vars; PEIMA_PROD_API_BASE_URL and PEIMA_STAGING_API_BASE_URL absent"
+    },
+    {
+      "command": ".env host redaction (DATABASE_URL, VITE_API_BASE_URL)",
+      "result": "pass",
+      "notes": "dbHost=localhost; apiHost=localhost — not production"
+    },
+    {
+      "command": "kubectl config current-context",
+      "result": "blocked",
+      "notes": "No current-context; cannot audit prod pod env or run rollback drill"
+    },
+    {
+      "command": "GET http://localhost:3000/health",
+      "result": "fail",
+      "notes": "Local API not running; cannot run in-workspace HTTP GET smoke against live server"
+    },
+    {
+      "command": "docker ps (peima-postgres)",
+      "result": "pass",
+      "notes": "Local docker postgres container present; labeled local-only, not prod RDS"
+    }
+  ],
+  "commandsSkipped": [
+    {
+      "command": "Remote prod HTTP GET /matching/result smoke",
+      "reason": "PEIMA_PROD_API_BASE_URL not configured"
+    },
+    {
+      "command": "Staging-prod-like HTTP GET smoke",
+      "reason": "PEIMA_STAGING_API_BASE_URL not configured; r9e4 bootstrap not applied in workspace"
+    },
+    {
+      "command": "apps/api/scripts/p76-r9b-http-get-smoke.mjs against prod",
+      "reason": "Script is in-process Nest/supertest harness; requires running API + prod base URL — neither available for real prod"
+    },
+    {
+      "command": "apps/api/scripts/p76-r9d-execute.mjs production path",
+      "reason": "Would require prod credentials and may mutate; blocked by missing prod access and read-only policy"
+    },
+    {
+      "command": "Prod RDS readonly SQL (violation_count, applied_count)",
+      "reason": "No prod DATABASE_URL; local docker psql role mismatch — not executed as prod evidence"
+    },
+    {
+      "command": "Grafana dashboard import / P0-P1 alert verification",
+      "reason": "No Grafana URL or credentials in workspace"
+    },
+    {
+      "command": "Prod rollback / kill-switch drill",
+      "reason": "No kubectl context; no prod pod access"
+    },
+    {
+      "command": "30–60 min prod monitoring watch",
+      "reason": "No prod monitoring access"
+    }
+  ],
+  "smokeResults": {
+    "environmentLabel": "none",
+    "totalEndpointsChecked": 0,
+    "passCount": 0,
+    "failCount": 0,
+    "resultStateDistribution": null,
+    "safeFallbackCount": null,
+    "httpStatusBreakdown": {},
+    "noMutationConfirmed": true,
+    "localBaselineReferenceOnly": {
+      "label": "local-docker-NOT-prod",
+      "notes": "Prior r9e3/r9d local rehearsal (violation_count=0, GET 6/6) does not satisfy real prod reverify per P7.10-r7 and r9e3 closeout",
+      "countedAsProdPass": false
+    }
+  },
+  "blockers": [
+    "PEIMA_PROD_API_BASE_URL missing",
+    "PEIMA_STAGING_API_BASE_URL missing",
+    "DATABASE_URL points to localhost only",
+    "kubectl has no current-context",
+    "Grafana / prod monitoring credentials missing",
+    "Local API not running for remote-style HTTP smoke",
+    "No prod readonly DB credentials"
+  ],
+  "conclusion": {
+    "r9e3aStatus": "P7_6_R9E3A_REAL_PROD_REVERIFY_BLOCKED_BY_MISSING_ACCESS",
+    "r9e3PriorStatus": "NEED_MORE_PROD_REVERIFY",
+    "r9e3AfterAttempt": "NEED_MORE_PROD_REVERIFY",
+    "upgradedToReverifyEvidenceCollected": false,
+    "summary": "Evidence attempt documented; no real prod or staging-prod-like reverify executed. r9e3 remains blocked for P7.10-r7 gate 12."
+  },
+  "safety": {
+    "noProductionDbWrite": true,
+    "noMatchResultMutation": true,
+    "noMatchInsightsMutation": true,
+    "noWorkerAction": true,
+    "noPercentRollout": true,
+    "noLegacyRemoval": true,
+    "noCanonicalProductionWrite": true
+  },
+  "p710r7GateImpact": {
+    "gate12RealProdReverify": "BLOCKED",
+    "canonicalProductionWrite": "BLOCKED"
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "status": "PASS_R12A_PRODUCTION_READINESS_HUMAN_SIGNOFF",
+  "task": "P7.10-r12a",
+  "generatedAt": "2026-05-20T00:00:00.000Z",
+  "signedAt": "2026-05-20",
+  "p710LegacyPhotoMatchingRemoval": {
+    "complete": true,
+    "finalMilestone": "P7.10-r11c",
+    "finalStatus": "PASS_R11C_STAGING_POST_DELETION_FINAL_CLOSEOUT"
+  },
+  "productionRollout": {
+    "started": false,
+    "percent": 0,
+    "productionTouched": false,
+    "canonicalApplyEnabledInProduction": false,
+    "canonicalRollbackEnabledInProduction": false
+  },
+  "humanSignoff": {
+    "pm": {
+      "status": "signed",
+      "signed": true,
+      "signedBy": "Zhan Zhang",
+      "signedDate": "2026-05-20"
+    },
+    "ops": {
+      "status": "signed",
+      "signed": true,
+      "signedBy": "Zhan Zhang",
+      "signedDate": "2026-05-20"
+    },
+    "eng": {
+      "status": "signed",
+      "signed": true,
+      "signedBy": "Zhan Zhang",
+      "signedDate": "2026-05-20"
+    },
+    "sameOwnerNote": "Zhan Zhang covers PM, Ops, and Eng responsibilities; separate approvers not invented",
+    "notFaked": true
+  },
+  "evidenceChain": {
+    "r8d": {
+      "status": "PASS_R8D_CANONICAL_APPLY_SERVICE_HARD_DISABLED",
+      "closeout": "docs/P7/P7.10-r8d-canonical-apply-service-hard-disabled-closeout.md",
+      "highlights": [
+        "apply_service_implemented",
+        "hard_disabled_by_default",
+        "no_production_apply",
+        "no_worker_percent"
+      ]
+    },
+    "r8e": {
+      "status": "PASS_R8E_CANONICAL_ROLLBACK_SERVICE_TOKEN_GATED",
+      "closeout": "docs/P7/P7.10-r8e-canonical-rollback-service-token-gated-closeout.md",
+      "highlights": [
+        "rollback_service_implemented",
+        "token_gated_hmac",
+        "no_plaintext_token_exposure"
+      ]
+    },
+    "r8f": {
+      "status": "PASS_R8F_HIDDEN_ADMIN_APPLY_ROLLBACK_API_WIRING",
+      "closeout": "docs/P7/P7.10-r8f-hidden-admin-apply-rollback-api-wiring-closeout.md",
+      "highlights": [
+        "hidden_admin_routes_wired",
+        "default_disabled_404",
+        "no_ui",
+        "34_unit_tests"
+      ]
+    },
+    "r8g": {
+      "status": "PASS_R8G_LOCAL_APPLY_ROLLBACK_SMOKE",
+      "closeout": "docs/P7/P7.10-r8g-local-apply-rollback-smoke-closeout.md",
+      "artifact": "artifacts/p76/r8g/local-apply-rollback-smoke-result.json",
+      "highlights": [
+        "local_apply_rollback_loop",
+        "cleanup_pass",
+        "token_not_exposed"
+      ]
+    },
+    "r8h": {
+      "status": "PASS_R8H_STAGING_APPLY_ROLLBACK_SMOKE",
+      "closeout": "docs/P7/P7.10-r8h-staging-apply-rollback-smoke-closeout.md",
+      "artifact": "artifacts/p76/r8h/staging-apply-rollback-smoke-result.json",
+      "highlights": [
+        "production_like_staging_service_path",
+        "http_hidden_route_not_run",
+        "r8f_covers_controller",
+        "no_production_touched",
+        "cleanup_pass"
+      ]
+    },
+    "r8i": {
+      "status": "READY_FOR_R9_WRITER_SHUTDOWN_REVIEW_PENDING_HUMAN_SIGNOFF",
+      "closeout": "docs/P7/P7.10-r8i-pm-ops-apply-rollback-signoff.md",
+      "artifact": "artifacts/p76/r8i/apply-rollback-signoff-evidence-summary.json",
+      "highlights": [
+        "readiness_doc_exists",
+        "human_signoff_pending_prior_gate"
+      ]
+    },
+    "r9": {
+      "status": "PASS_R9_OLD_PHOTO_MATCHING_WRITER_SHUTDOWN",
+      "closeout": "docs/P7/P7.10-r9-old-photo-matching-writer-shutdown-closeout.md",
+      "highlights": [
+        "default_shutdown_on",
+        "writer_enabled_off",
+        "dev_rollback_only"
+      ]
+    },
+    "r10": {
+      "status": "PASS_R10_SAFE_FALLBACK_FINAL",
+      "closeout": "docs/P7/P7.10-r10-safe-fallback-final-closeout.md",
+      "highlights": [
+        "canonical_stable_baseline_matching_pending_no_result",
+        "no_preview_pool_formal_fallback_write"
+      ]
+    },
+    "r11": {
+      "status": "PASS_R11_CATEGORY_A_LEGACY_PHOTO_MATCHING_DELETION",
+      "closeout": "docs/P7/P7.10-r11-category-a-legacy-photo-matching-deletion-closeout.md",
+      "highlights": [
+        "category_a_legacy_deleted"
+      ]
+    },
+    "r11b": {
+      "status": "PASS_R11B_POST_DELETION_FULL_REGRESSION",
+      "closeout": "docs/P7/P7.10-r11b-post-deletion-full-regression-closeout.md",
+      "artifact": "artifacts/p76/r11b/post-deletion-full-regression-summary.json",
+      "highlights": [
+        "required_regression_pass",
+        "api_worker_web_build_pass",
+        "worker_full_95_tests_pass",
+        "unrelated_api_full_failures_documented"
+      ]
+    },
+    "r11c": {
+      "status": "PASS_R11C_STAGING_POST_DELETION_FINAL_CLOSEOUT",
+      "closeout": "docs/P7/P7.10-r11c-staging-post-deletion-final-closeout.md",
+      "artifact": "artifacts/p76/r11c/staging-post-deletion-smoke-result.json",
+      "highlights": [
+        "staging_readonly_db_pass",
+        "production_touched_false",
+        "percent_zero",
+        "old_writer_off",
+        "canonical_mutation_default_off"
+      ]
+    }
+  },
+  "defaultSafetyGates": {
+    "oldPhotoWriterShutdownEnabled": true,
+    "oldPhotoWriterEnabled": false,
+    "productionPercent": 0,
+    "productionPercentEnabled": false,
+    "hiddenAdminMutationApiEnabled": false,
+    "applyExecutionEnabled": false,
+    "rollbackExecutionEnabled": false,
+    "applyAllowDbWrite": false
+  },
+  "protectedCorePreserved": {
+    "matchResult": true,
+    "getMatchingResult": true,
+    "resolveMatchResultDisplay": true,
+    "finalMatchPage": true,
+    "r10SafeFallback": true,
+    "canonicalApplyRollbackServices": true,
+    "rollbackSnapshotPersistence": true,
+    "photoUploadReviewCloudVision": true,
+    "previewPoolReadOnlyLatest": true
+  },
+  "security": {
+    "secretsInArtifacts": false,
+    "tokenPlaintextInArtifacts": false,
+    "databaseUrlInArtifacts": false,
+    "jwtInArtifacts": false,
+    "realUserIdsInArtifacts": false,
+    "r11bScanNote": "git_diff_hits_only_deleted_visual_signal_enhance_stub_api_key_lines"
+  },
+  "goChecklist": {
+    "r8dThroughR11cComplete": true,
+    "technicalEvidenceComplete": true,
+    "pmOpsEngSignoffCapturedOrPending": true,
+    "pmOpsEngSignoffSigned": true,
+    "productionRolloutPlanComplete": true,
+    "productionRolloutExecutionStarted": false
+  },
+  "noGoTriggers": {
+    "mandatorySignoffMissingIfPolicyRequires": false,
+    "productionEnvUnclear": true,
+    "percentNotGuaranteedZero": true,
+    "mutationApiNotOffByDefault": true,
+    "oldWriterNotOffByDefault": true
+  },
+  "entryToR12c": {
+    "milestone": "P7.10-r12c",
+    "name": "production_rollout_execution",
+    "status": "NEXT",
+    "runbook": "docs/P7/P7.10-r12b-production-rollout-plan-runbook.md"
+  },
+  "redactionPolicy": {
+    "noDatabaseUrl": true,
+    "noJwt": true,
+    "noRollbackToken": true,
+    "noViewerUserIds": true,
+    "countsAndStatusOnly": true
+  }
+}

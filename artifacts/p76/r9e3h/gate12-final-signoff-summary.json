@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-05-19T21:00:00.000Z",
+  "task": "P7.6-r9e3h",
+  "environment": "production-like-staging",
+  "customerProduction": false,
+  "gate12FinalDecision": "PASS_GATE12_FOR_R8_CONTROLLED_IMPLEMENTATION",
+  "gate12DecisionAliases": [
+    "STAGING_GET_MATRIX_READY_GRAFANA_PASS_PM_SIGNOFF_COMPLETE",
+    "P7_6_R9E3H_GATE12_PASS_FOR_R8_CONTROLLED_IMPLEMENTATION"
+  ],
+  "evidenceRollup": {
+    "r9e3c": { "status": "PASS_STAGING_READONLY_SMOKE", "pass": true },
+    "r9e3d": { "status": "PASS_TO_R9E3E_STAGING_FIXTURE_SEED_AND_GET_SMOKE", "pass": true },
+    "r9e3e": { "status": "PASS_STAGING_FIXTURE_GET_SMOKE", "pass": true },
+    "r9e3f": { "status": "PASS_WITH_GRAFANA_IMPORT_PENDING", "pass": true, "note": "watch complete; Grafana superseded by r9e3f2" },
+    "r9e3f2": { "status": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT", "pass": true },
+    "p710_r7d_r7j": { "status": "DONE_READ_ONLY_CANONICAL_APPLY_REVIEW", "pass": true }
+  },
+  "requiredChecks": {
+    "grafanaDashboardPhysicalImportPass": true,
+    "p0TestAlertPass": true,
+    "renderEnvSafetyPass": true,
+    "secretRotationConfirmed": true,
+    "pmSignoffApproved": true,
+    "opsSignoffApproved": true,
+    "engineeringSignoffApproved": true,
+    "monitoringOwnerApproved": true,
+    "rollbackOwnerApproved": true,
+    "incidentOwnerApproved": true,
+    "percentZero": true,
+    "readPathDisabledByDefault": true,
+    "killSwitchVerified": true,
+    "noActiveIncident": true,
+    "noActiveWorkerDeploy": true,
+    "noOpenP0P1": true
+  },
+  "renderEnvSafety": {
+    "hostRedacted": "peima-api-staging.onrender.com",
+    "PEIMA_P76_READ_PATH_ENABLED": "0",
+    "PEIMA_P76_READ_PATH_VIEWER_IDS": "empty",
+    "PEIMA_P76_PRODUCTION_KILL_SWITCH": "1",
+    "PEIMA_P76_PRODUCTION_PERCENT": "0",
+    "PEIMA_P76_PRODUCTION_PERCENT_ENABLED": "0",
+    "canonicalWritersDisabled": true,
+    "sidecarWritersDisabled": true,
+    "applyExecutionDisabled": true,
+    "phaseBRestoreApplied": true,
+    "source": "r9e3e Phase B + r9e3f local mirror + r9e3h attestation"
+  },
+  "secretRotation": {
+    "status": "confirmed_staging_only",
+    "productionCredentialsTouched": false,
+    "envStagingNotCommitted": true,
+    "envReadonlyLocalNotCommitted": true,
+    "noSecretsInArtifacts": true,
+    "supersedesR9e3fRequiresRotation": true
+  },
+  "grafana": {
+    "dashboardUid": "p76-allowlist-read-path-v2",
+    "datasource": "peima-api-staging",
+    "p0RulesWired": "P0-01..P0-08",
+    "testAlertRule": "P0-01",
+    "r9e3f2Pass": true
+  },
+  "signoffSummary": {
+    "pm": "approved_with_caveat",
+    "ops": "approved_with_caveat",
+    "engineering": "approved_with_caveat",
+    "monitoringOwner": "approved",
+    "rollbackOwner": "approved",
+    "incidentOwner": "approved"
+  },
+  "r8Unlock": {
+    "allowed": [
+      "P7.10-r8a_preflight_closeout",
+      "P7.10-r8b_migration_design",
+      "P7.10-r8c_snapshot_persistence_dev_staging",
+      "P7.10-r8d_apply_service_hard_disabled_gate",
+      "local_staging_fixture_smoke_after_additional_r8_signoff"
+    ],
+    "blocked": [
+      "production_apply",
+      "percent_rollout",
+      "production_rollout",
+      "legacy_removal",
+      "default_enable_apply",
+      "default_enable_read_path",
+      "uncontrolled_match_result_mutation",
+      "automatic_worker_trigger"
+    ]
+  },
+  "mutationSafety": {
+    "percentEnabled": false,
+    "readPathEnabled": false,
+    "matchResultWrite": false,
+    "finalScoreMutation": false,
+    "workerMutation": false,
+    "canonicalPromotion": false,
+    "legacyRemoval": false,
+    "productionRollout": false
+  }
+}

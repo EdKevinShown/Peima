@@ -5,8 +5,19 @@ import {
   runAdminBatchMatchOnce,
   runAdminPostPoolOrchestrationMvp,
 } from "../api/admin";
-import { getAdminAiSimulationV1Job, postAdminAiSimulationV1RunJob } from "../api/ai-simulation-v1";
-import { enqueueMatching, getMatchingStatus } from "../api/matching";
+import {
+  createPairwiseDecisionJob,
+  getPairwiseDecisionJob,
+  runPairwiseDecisionJob,
+} from "../api/ai-pairwise-decision";
+import { getViewerAiSimulationV1Job, postAdminAiSimulationV1RunJob } from "../api/ai-simulation-v1";
+import { getToken } from "../api/auth";
+import {
+  enqueueMatching,
+  finalizeWithPairwise,
+  getMatchingResult,
+  getMatchingStatus,
+} from "../api/matching";
 import { getLatestPreviewPool } from "../api/previewPool";
 import {
   getTestMatchingCapabilities,
@@ -54,6 +65,23 @@ function ssRunPosted(jobId) {
   return `peima:g02:runPosted:${jobId}`;
 }
 
+/** M3.8-M6: dedupe pairwise create+run per viewer+pool (StrictMode / remount). */
+const m38PairwiseBootstrapByGate = new Map();
+
+/** M3.8-M12A: dedupe finalize POST per viewer+pool+pairwiseJob (StrictMode). */
+const m38FinalizePromiseByGate = new Map();
+
+function ssPairwiseJobId(userId, poolId) {
+  return `peima:m38:pairwiseJobId:${userId}:${poolId}`;
+}
+
+const PAIRWISE_POLL_MS = 5000;
+const PAIRWISE_DEADLINE_MS = 90_000;
+
+/** M5.4-M1：rematch 模式下轮询新 MatchResult.id，避免旧 ready 直接跳 final。 */
+const REMATCH_LATEST_POLL_MS = 2500;
+const REMATCH_READY_MAX_MS = 5 * 60 * 1000;
+
 function bindingPreviewPoolId(shortlistBinding) {
   if (shortlistBinding == null || typeof shortlistBinding !== "object" || Array.isArray(shortlistBinding)) {
     return null;
@@ -83,6 +111,14 @@ export default function MatchingWaitingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const baselineResultId = useMemo(
+    () => (searchParams.get("baselineResultId") || "").trim(),
+    [searchParams],
+  );
+  const isRematchMode = useMemo(
+    () => searchParams.get("rematch") === "1" && baselineResultId.length > 0,
+    [searchParams, baselineResultId],
+  );
 
   const [statusPayload, setStatusPayload] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -100,11 +136,39 @@ export default function MatchingWaitingPage() {
   const [readyPoolLoading, setReadyPoolLoading] = useState(false);
   const [readyPoolMissing, setReadyPoolMissing] = useState(false);
   const [readyPoolId, setReadyPoolId] = useState(null);
-  const [readyAiGenerating, setReadyAiGenerating] = useState(false);
-  const [readyAiJobId, setReadyAiJobId] = useState(null);
   const [readyAiFallback, setReadyAiFallback] = useState(false);
   const [readyAiError, setReadyAiError] = useState("");
   const navigatedToFinalRef = useRef(false);
+  /** M5.4-M1：status 已是 ready 但 GET result 仍为 baseline 行时，禁止走自动跳转链。 */
+  const [rematchAwaitingNewRow, setRematchAwaitingNewRow] = useState(false);
+  const [rematchNewResultNonce, setRematchNewResultNonce] = useState(0);
+  const [rematchReadyWaitError, setRematchReadyWaitError] = useState(
+    /** @type {string | null} */
+    (null),
+  );
+  const rematchStaleWaitStartedAtRef = useRef(null);
+
+  /** M3.8-M6: viewer pairwise poll (no A/B UI; does not gate FinalMatch navigation). */
+  const [pairwiseJobId, setPairwiseJobId] = useState(null);
+  const [
+    pairwiseStatus,
+    setPairwiseStatus,
+  ] = useState(
+    /** @type {"idle"|"creating"|"queued"|"running"|"succeeded"|"failed"|"timeout"|"skipped"} */
+    ("idle"),
+  );
+  const [pairwiseStartedAt, setPairwiseStartedAt] = useState(null);
+  const [pairwiseProposalReady, setPairwiseProposalReady] = useState(false);
+  const [pairwiseErrorMessage, setPairwiseErrorMessage] = useState("");
+  const pairwisePollRef = useRef(null);
+  const pairwiseDeadlineMsRef = useRef(null);
+
+  /** M3.8-M12A: finalize sidecar — does not gate FinalMatch navigation or change displayed candidate. */
+  const [pairwiseFinalizeStatus, setPairwiseFinalizeStatus] = useState(
+    /** @type {"idle"|"finalizing"|"finalized"|"already_frozen"|"disabled"|"failed"|"skipped"} */
+    ("idle"),
+  );
+  const [pairwiseFinalizeErrorMessage, setPairwiseFinalizeErrorMessage] = useState("");
 
   const load = useCallback(async () => {
     if (!userId) {
@@ -153,17 +217,15 @@ export default function MatchingWaitingPage() {
     };
   }, [userId]);
 
-  const tryAutoRunJobOnce = useCallback(async (jobId) => {
+  const tryAutoRunJobOnce = useCallback((jobId) => {
     const id = String(jobId).trim();
     if (!id || !PREVIEW_POOL_ORCH_CHAIN_RUN_JOB) return;
     const rk = ssRunPosted(id);
     if (sessionStorage.getItem(rk)) return;
     sessionStorage.setItem(rk, "1");
-    try {
-      await postAdminAiSimulationV1RunJob(id, { timeoutMs: PREVIEW_POOL_ORCH_RUN_JOB_TIMEOUT_MS });
-    } catch {
+    void postAdminAiSimulationV1RunJob(id, { timeoutMs: PREVIEW_POOL_ORCH_RUN_JOB_TIMEOUT_MS }).catch(() => {
       /* 与 Preview Pool 一致：run 失败不阻塞，仅依赖后续 GET */
-    }
+    });
   }, []);
 
   const navigateFinalWithJob = useCallback(
@@ -178,6 +240,43 @@ export default function MatchingWaitingPage() {
     [navigate],
   );
 
+  /** M5.4-M1：rematch 且仍卡在旧 result 时轮询 GET result，超时则提示错误。 */
+  useEffect(() => {
+    if (!userId || !isRematchMode || !baselineResultId) return;
+    if (!rematchAwaitingNewRow) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      const started = rematchStaleWaitStartedAtRef.current;
+      if (started != null && Date.now() - started > REMATCH_READY_MAX_MS) {
+        setRematchReadyWaitError("等待新匹配结果超时，请返回最终结果页重试或使用「重新匹配」。");
+        setRematchAwaitingNewRow(false);
+        rematchStaleWaitStartedAtRef.current = null;
+        return;
+      }
+      try {
+        const latest = await getMatchingResult(userId);
+        if (cancelled) return;
+        if (latest?.id && latest.id !== baselineResultId) {
+          rematchStaleWaitStartedAtRef.current = null;
+          setRematchAwaitingNewRow(false);
+          setRematchReadyWaitError(null);
+          setRematchNewResultNonce((n) => n + 1);
+        }
+      } catch {
+        /* 单次失败不阻塞；依赖下次 tick */
+      }
+    };
+
+    const id = window.setInterval(() => void tick(), REMATCH_LATEST_POLL_MS);
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [userId, isRematchMode, baselineResultId, rematchAwaitingNewRow]);
+
   /** ready + 有池：编排 / GET job / run（带 session 防重），不离开本页直至 completed 可消费后 navigate */
   useEffect(() => {
     if (!userId || statusPayload?.status !== "ready") {
@@ -185,10 +284,11 @@ export default function MatchingWaitingPage() {
       setReadyPoolLoading(false);
       setReadyPoolMissing(false);
       setReadyPoolId(null);
-      setReadyAiGenerating(false);
-      setReadyAiJobId(null);
       setReadyAiFallback(false);
       setReadyAiError("");
+      setRematchAwaitingNewRow(false);
+      setRematchReadyWaitError(null);
+      rematchStaleWaitStartedAtRef.current = null;
       return;
     }
 
@@ -196,8 +296,6 @@ export default function MatchingWaitingPage() {
 
     const setFallback = (msg = "") => {
       if (cancelled) return;
-      setReadyAiGenerating(false);
-      setReadyAiJobId(null);
       setReadyAiFallback(true);
       if (msg) setReadyAiError(msg);
     };
@@ -213,13 +311,10 @@ export default function MatchingWaitingPage() {
       }
       const stJob = job.jobStatus;
       if (stJob === "queued" || stJob === "running") {
-        await tryAutoRunJobOnce(job.simulationJobId);
+        void tryAutoRunJobOnce(job.simulationJobId);
         if (cancelled) return "stop";
-        setReadyAiGenerating(true);
-        setReadyAiJobId(job.simulationJobId);
-        setReadyAiFallback(false);
-        setReadyAiError("");
-        return "generating";
+        navigateFinalWithJob(uid, job.simulationJobId);
+        return "done";
       }
       if (stJob === "completed") {
         if (isJobConsumableForFinalMatch(job)) {
@@ -234,13 +329,44 @@ export default function MatchingWaitingPage() {
     };
 
     (async () => {
+      setReadyAiFallback(false);
+      setReadyAiError("");
+
+      if (isRematchMode && baselineResultId) {
+        try {
+          const latest = await getMatchingResult(userId);
+          if (cancelled) return;
+          if (latest?.id === baselineResultId) {
+            setReadyPoolLoading(false);
+            setReadyPoolMissing(false);
+            setReadyPoolId(null);
+            setRematchAwaitingNewRow(true);
+            setRematchReadyWaitError(null);
+            rematchStaleWaitStartedAtRef.current =
+              rematchStaleWaitStartedAtRef.current ?? Date.now();
+            return;
+          }
+        } catch (e) {
+          if (!cancelled) {
+            setReadyPoolLoading(false);
+            setReadyPoolMissing(false);
+            setReadyPoolId(null);
+            setError(e instanceof Error ? e : new Error(String(e)));
+          }
+          return;
+        }
+        rematchStaleWaitStartedAtRef.current = null;
+        setRematchAwaitingNewRow(false);
+        setRematchReadyWaitError(null);
+      } else {
+        setRematchAwaitingNewRow(false);
+        setRematchReadyWaitError(null);
+        rematchStaleWaitStartedAtRef.current = null;
+      }
+
       setReadyPoolLoading(true);
       setReadyPoolMissing(false);
       setReadyPoolId(null);
-      setReadyAiGenerating(false);
-      setReadyAiJobId(null);
-      setReadyAiFallback(false);
-      setReadyAiError("");
 
       let poolId = "";
       try {
@@ -275,7 +401,7 @@ export default function MatchingWaitingPage() {
 
       if (lastJobId) {
         try {
-          const job = await getAdminAiSimulationV1Job(lastJobId);
+          const job = await getViewerAiSimulationV1Job(lastJobId);
           const r = await processJob(job, uid, poolId);
           if (cancelled || r === "done" || r === "stop" || r === "generating") return;
           if (r === "mismatch") {
@@ -338,8 +464,8 @@ export default function MatchingWaitingPage() {
               /* ignore */
             }
 
-            await tryAutoRunJobOnce(simulationJobId);
-            const job = await getAdminAiSimulationV1Job(simulationJobId);
+            void tryAutoRunJobOnce(simulationJobId);
+            const job = await getViewerAiSimulationV1Job(simulationJobId);
             return { kind: "ok", job };
           })();
           chain = chain.finally(() => {
@@ -364,8 +490,6 @@ export default function MatchingWaitingPage() {
           if (cancelled) return;
           const msg = e instanceof Error ? e.message : String(e);
           setReadyAiError(msg);
-          setReadyAiGenerating(false);
-          setReadyAiJobId(null);
           setReadyAiFallback(true);
         }
       }
@@ -374,52 +498,207 @@ export default function MatchingWaitingPage() {
     return () => {
       cancelled = true;
     };
-  }, [userId, statusPayload?.status, tryAutoRunJobOnce, navigateFinalWithJob]);
+  }, [
+    userId,
+    statusPayload?.status,
+    tryAutoRunJobOnce,
+    navigateFinalWithJob,
+    isRematchMode,
+    baselineResultId,
+    rematchNewResultNonce,
+  ]);
 
-  /** queued / running：轮询 GET，不重复 orchestration / run */
+  /** M3.8-M6: pairwise create → run → poll (5s / 90s cap); does not block orchestration or FinalMatch. */
   useEffect(() => {
-    if (!userId || !readyPoolId || !readyAiJobId || !readyAiGenerating) return;
+    if (
+      !userId ||
+      statusPayload?.status !== "ready" ||
+      readyPoolMissing ||
+      !readyPoolId ||
+      readyPoolLoading
+    ) {
+      if (pairwisePollRef.current) {
+        clearInterval(pairwisePollRef.current);
+        pairwisePollRef.current = null;
+      }
+      setPairwiseJobId(null);
+      setPairwiseStatus("idle");
+      setPairwiseStartedAt(null);
+      setPairwiseProposalReady(false);
+      setPairwiseErrorMessage("");
+      pairwiseDeadlineMsRef.current = null;
+      setPairwiseFinalizeStatus("idle");
+      setPairwiseFinalizeErrorMessage("");
+      return undefined;
+    }
 
-    const uid = userId;
+    if (!getToken()) {
+      setPairwiseStatus("skipped");
+      setPairwiseFinalizeStatus("skipped");
+      return undefined;
+    }
+
     const poolId = readyPoolId;
-    const jobId = readyAiJobId;
+    const uid = userId;
+    let cancelled = false;
 
-    const tick = async () => {
-      try {
-        const job = await getAdminAiSimulationV1Job(jobId);
-        if (!jobMatchesViewerPool(job, uid, poolId)) {
-          setReadyAiGenerating(false);
-          setReadyAiJobId(null);
-          setReadyAiFallback(true);
-          setReadyAiError("说明与当前匹配池不一致，请刷新本页。");
-          return;
-        }
-        if (isJobConsumableForFinalMatch(job)) {
-          navigateFinalWithJob(uid, job.simulationJobId);
-          return;
-        }
-        if (job.jobStatus === "completed") {
-          setReadyAiGenerating(false);
-          setReadyAiJobId(null);
-          setReadyAiFallback(true);
-          setReadyAiError("匹配说明暂不可用。");
-          return;
-        }
-        if (job.jobStatus !== "queued" && job.jobStatus !== "running") {
-          setReadyAiGenerating(false);
-          setReadyAiJobId(null);
-          setReadyAiFallback(true);
-          setReadyAiError("说明生成已结束（未成功）。");
-        }
-      } catch {
-        /* 忽略单次轮询错误 */
+    const clearPoll = () => {
+      if (pairwisePollRef.current) {
+        clearInterval(pairwisePollRef.current);
+        pairwisePollRef.current = null;
       }
     };
 
-    void tick();
-    const id = window.setInterval(() => void tick(), 2500);
-    return () => window.clearInterval(id);
-  }, [userId, readyPoolId, readyAiJobId, readyAiGenerating, navigateFinalWithJob]);
+    const mapUiFromApiStatus = (st) => {
+      if (st === "queued") return "queued";
+      if (st === "running") return "running";
+      if (st === "succeeded") return "succeeded";
+      if (st === "failed") return "failed";
+      return "queued";
+    };
+
+    let lastTerminal = false;
+
+    (async () => {
+      try {
+        let jobId = "";
+        try {
+          jobId = (sessionStorage.getItem(ssPairwiseJobId(uid, poolId)) || "").trim();
+        } catch {
+          jobId = "";
+        }
+
+        const gate = `${uid}:${poolId}`;
+        if (!jobId) {
+          setPairwiseStatus("creating");
+          let boot = m38PairwiseBootstrapByGate.get(gate);
+          if (!boot) {
+            const p = (async () => {
+              const { job } = await createPairwiseDecisionJob(poolId);
+              await runPairwiseDecisionJob(job.id);
+              try {
+                sessionStorage.setItem(ssPairwiseJobId(uid, poolId), job.id);
+              } catch {
+                /* ignore */
+              }
+              return job.id;
+            })();
+            m38PairwiseBootstrapByGate.set(gate, p);
+            p.finally(() => {
+              m38PairwiseBootstrapByGate.delete(gate);
+            });
+            boot = p;
+          }
+          jobId = await boot;
+          if (cancelled) return;
+        }
+
+        setPairwiseJobId(jobId);
+        const started = Date.now();
+        setPairwiseStartedAt(started);
+        pairwiseDeadlineMsRef.current = started + PAIRWISE_DEADLINE_MS;
+
+        const tick = async () => {
+          if (cancelled) return;
+          const deadline = pairwiseDeadlineMsRef.current ?? started + PAIRWISE_DEADLINE_MS;
+          if (Date.now() > deadline) {
+            setPairwiseStatus("timeout");
+            setPairwiseFinalizeStatus("skipped");
+            lastTerminal = true;
+            clearPoll();
+            return;
+          }
+          try {
+            const job = await getPairwiseDecisionJob(jobId);
+            if (cancelled) return;
+            const ui = mapUiFromApiStatus(job.status);
+            setPairwiseStatus(ui);
+            if (job.status === "succeeded") {
+              setPairwiseProposalReady(true);
+              lastTerminal = true;
+              clearPoll();
+              return;
+            }
+            if (job.status === "failed") {
+              lastTerminal = true;
+              clearPoll();
+            }
+          } catch (e) {
+            if (cancelled) return;
+            setPairwiseStatus("failed");
+            setPairwiseErrorMessage(e instanceof Error ? e.message : String(e));
+            lastTerminal = true;
+            clearPoll();
+          }
+        };
+
+        await tick();
+        if (cancelled || lastTerminal) return;
+        pairwisePollRef.current = window.setInterval(() => {
+          void tick();
+        }, PAIRWISE_POLL_MS);
+      } catch (e) {
+        if (!cancelled) {
+          setPairwiseStatus("failed");
+          setPairwiseErrorMessage(e instanceof Error ? e.message : String(e));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      clearPoll();
+    };
+  }, [userId, statusPayload?.status, readyPoolId, readyPoolMissing, readyPoolLoading]);
+
+  /** M3.8-M12A: POST finalize-with-pairwise after terminal pairwise (succeeded/failed); timeout skips; StrictMode-safe via shared promise map. */
+  useEffect(() => {
+    if (!userId || !readyPoolId || readyPoolMissing || readyPoolLoading) return;
+    if (!pairwiseJobId) return;
+    if (pairwiseStatus !== "succeeded" && pairwiseStatus !== "failed") return;
+    if (!getToken()) return;
+
+    let cancelled = false;
+    const gate = `${userId}:${readyPoolId}:${pairwiseJobId}`;
+    setPairwiseFinalizeStatus((prev) => (prev === "skipped" ? prev : "finalizing"));
+    setPairwiseFinalizeErrorMessage("");
+
+    let chain = m38FinalizePromiseByGate.get(gate);
+    if (!chain) {
+      chain = finalizeWithPairwise({ poolId: readyPoolId, pairwiseJobId }).finally(() => {
+        m38FinalizePromiseByGate.delete(gate);
+      });
+      m38FinalizePromiseByGate.set(gate, chain);
+    }
+
+    void (async () => {
+      try {
+        const r = await chain;
+        if (cancelled) return;
+        if (r.status === "finalized" || r.status === "already_frozen") {
+          setPairwiseFinalizeStatus(r.status === "already_frozen" ? "already_frozen" : "finalized");
+          return;
+        }
+        if (r.status === "disabled") {
+          setPairwiseFinalizeStatus("disabled");
+          return;
+        }
+        if (r.status === "pending") {
+          setPairwiseFinalizeStatus("skipped");
+          return;
+        }
+        setPairwiseFinalizeStatus("skipped");
+      } catch (e) {
+        if (cancelled) return;
+        setPairwiseFinalizeErrorMessage(e instanceof Error ? e.message : String(e));
+        setPairwiseFinalizeStatus("failed");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, readyPoolId, readyPoolMissing, readyPoolLoading, pairwiseJobId, pairwiseStatus]);
 
   const onAdminRunBatchMatch = useCallback(async () => {
     if (
@@ -486,19 +765,6 @@ export default function MatchingWaitingPage() {
     }
   }, [userId, load]);
 
-  const refreshAiJobStatus = useCallback(async () => {
-    if (!userId || !readyPoolId || !readyAiJobId) return;
-    try {
-      const job = await getAdminAiSimulationV1Job(readyAiJobId);
-      if (!jobMatchesViewerPool(job, userId, readyPoolId)) return;
-      if (isJobConsumableForFinalMatch(job)) {
-        navigateFinalWithJob(userId, job.simulationJobId);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [userId, readyPoolId, readyAiJobId, navigateFinalWithJob]);
-
   const messageForStatus = (s) => {
     switch (s) {
       case "waiting":
@@ -515,13 +781,46 @@ export default function MatchingWaitingPage() {
   };
 
   const st = statusPayload?.status;
+  const primaryStatusLine =
+    st === "ready" && isRematchMode && rematchAwaitingNewRow
+      ? "上一轮结果仍显示为「已完成」；正在等待本轮新匹配写入…"
+      : messageForStatus(st);
+
+  const pairwisePrimaryLine =
+    pairwiseStatus === "idle" || pairwiseStatus === "skipped"
+      ? null
+      : pairwiseStatus === "creating"
+        ? "正在创建 AI 关系模拟任务…"
+        : pairwiseStatus === "queued" || pairwiseStatus === "running"
+          ? "正在进行最后一轮 AI 关系模拟，通常 1 分钟内完成。"
+          : pairwiseStatus === "succeeded"
+            ? "AI 关系模拟已完成，正在准备最终匹配结果。"
+            : pairwiseStatus === "failed"
+              ? "AI 关系模拟暂时不可用，系统将基于关系画像生成结果。"
+              : pairwiseStatus === "timeout"
+                ? "AI 关系模拟仍在后台处理中，本次先基于关系画像生成结果。"
+                : null;
+
+  const pairwiseSecondaryLine =
+    pairwiseStatus === "creating" || pairwiseStatus === "queued" || pairwiseStatus === "running"
+      ? "系统会在两位高匹配候选中进行关系节奏判断，你无需手动选择。"
+      : null;
+
+  const pairwiseFinalizeLine =
+    pairwiseFinalizeStatus === "finalizing"
+      ? "正在确认最终匹配来源…"
+      : pairwiseFinalizeStatus === "finalized" || pairwiseFinalizeStatus === "already_frozen"
+        ? "最终匹配来源已确认。"
+        : pairwiseFinalizeStatus === "failed"
+          ? "最终匹配来源确认暂时不可用，系统将继续使用关系画像结果。"
+          : null;
 
   return (
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "0 1rem" }}>
       <h1 style={{ fontSize: "1.25rem", color: "#0f172a" }}>匹配与说明</h1>
       <p style={{ fontSize: "0.88rem", marginBottom: "0.65rem", color: "#64748b", lineHeight: 1.5 }}>
-        在这里查看<strong>排队与处理进度</strong>。结果就绪后，若你已有预览池，本页会自动准备<strong>匹配说明</strong>，完成后会打开
-        <strong>最终结果</strong>页；你也可以在说明生成中留在本页，或稍后手动刷新。
+        在这里查看<strong>排队与处理进度</strong>。结果就绪后，若你已有预览池，本页会自动准备编排并打开
+        <strong>最终结果</strong>页；关系节奏预测等说明在后台生成，可在最终结果页查看进度，无需在本页长时间等待。
       </p>
       {userId ? (
         <p style={{ color: "#94a3b8", fontSize: "0.8rem", marginTop: 0, marginBottom: "0.35rem" }}>
@@ -535,10 +834,20 @@ export default function MatchingWaitingPage() {
           {error.message}
         </p>
       )}
+      {rematchReadyWaitError ? (
+        <p style={{ color: "#b00020", marginTop: "0.5rem" }} role="alert">
+          {rematchReadyWaitError}
+        </p>
+      ) : null}
+      {isRematchMode && rematchAwaitingNewRow && !rematchReadyWaitError ? (
+        <p style={{ color: "#475569", fontSize: "0.88rem", marginTop: "0.5rem", lineHeight: 1.55 }} role="status">
+          已发起重新匹配：当前服务端仍为上一轮结果，正在等待新匹配写入后再进入最终结果页（请勿关闭本页）。
+        </p>
+      ) : null}
 
       {!loading && statusPayload && (
         <p style={{ fontSize: "1.05rem", marginTop: "1rem" }}>
-          {messageForStatus(statusPayload.status)}
+          {primaryStatusLine}
         </p>
       )}
 
@@ -553,6 +862,48 @@ export default function MatchingWaitingPage() {
           <LoadingState label="正在加载匹配池并准备说明…" />
         ) : null}
 
+        {userId &&
+        statusPayload &&
+        st === "ready" &&
+        !readyPoolLoading &&
+        !readyPoolMissing &&
+        pairwisePrimaryLine ? (
+          <section
+            aria-live="polite"
+            data-m38-pairwise-panel="1"
+            data-m38-pairwise-status={pairwiseStatus}
+            data-m38-pairwise-proposal-ready={pairwiseProposalReady ? "1" : "0"}
+            data-m38-pairwise-has-job={pairwiseJobId ? "1" : "0"}
+            data-m38-pairwise-started-at={pairwiseStartedAt != null ? String(pairwiseStartedAt) : ""}
+            data-m38-pairwise-finalize-status={pairwiseFinalizeStatus}
+            data-m38-pairwise-finalize-has-error={pairwiseFinalizeErrorMessage ? "1" : "0"}
+            style={{
+              marginTop: "1rem",
+              padding: "0.85rem 1rem",
+              borderRadius: 8,
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            <p style={{ fontSize: "0.92rem", color: "#0f172a", margin: 0, lineHeight: 1.55 }}>{pairwisePrimaryLine}</p>
+            {pairwiseSecondaryLine ? (
+              <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0.45rem 0 0", lineHeight: 1.5 }}>
+                {pairwiseSecondaryLine}
+              </p>
+            ) : null}
+            {pairwiseStatus === "failed" && pairwiseErrorMessage ? (
+              <p style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "0.35rem 0 0" }} role="note">
+                {pairwiseErrorMessage}
+              </p>
+            ) : null}
+            {pairwiseFinalizeLine ? (
+              <p style={{ fontSize: "0.8rem", color: "#475569", margin: "0.5rem 0 0", lineHeight: 1.5 }} role="status">
+                {pairwiseFinalizeLine}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
         {userId && statusPayload && st === "ready" && !readyPoolLoading && readyPoolMissing ? (
           <>
             <p style={{ fontSize: "0.88rem", color: "#64748b", marginTop: 0, marginBottom: "0.5rem", lineHeight: 1.5 }}>
@@ -564,17 +915,6 @@ export default function MatchingWaitingPage() {
             >
               去预览池创建匹配池
             </Link>
-          </>
-        ) : null}
-
-        {userId && statusPayload && st === "ready" && !readyPoolLoading && !readyPoolMissing && readyAiGenerating ? (
-          <>
-            <p style={{ fontSize: "0.9rem", color: "#334155", marginTop: 0, marginBottom: "0.65rem", lineHeight: 1.5 }}>
-              <strong>匹配说明</strong>正在生成，请留在本页。完成后将<strong>自动打开</strong>最终结果页（已带上说明引用）。
-            </p>
-            <button type="button" onClick={() => void refreshAiJobStatus()} style={primaryBtn}>
-              刷新说明生成状态
-            </button>
           </>
         ) : null}
 
@@ -596,7 +936,6 @@ export default function MatchingWaitingPage() {
         st === "ready" &&
         !readyPoolLoading &&
         !readyPoolMissing &&
-        !readyAiGenerating &&
         !readyAiFallback ? (
           <LoadingState label="正在准备匹配说明…" />
         ) : null}

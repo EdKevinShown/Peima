@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-05-19T20:00:00.000Z",
+  "task": "P7.6-r9e3f2",
+  "environment": "production-like-staging",
+  "customerProduction": false,
+  "ticket": "PEIMA-OPS-P76-GRAFANA-v2",
+  "decision": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+  "evidenceSource": "ops_physical_import_and_test_alert_handoff",
+  "dashboard": {
+    "imported": true,
+    "exists": true,
+    "uid": "p76-allowlist-read-path-v2",
+    "title": "P7.6 Allowlist Read Path — Production",
+    "urlRedacted": "https://grafana.prod.internal/d/p76-allowlist-read-path-v2",
+    "datasourceConnected": true,
+    "datasourceTarget": "peima-api-staging (Render logs/metrics)",
+    "panelsLoaded": true,
+    "queryErrorsObserved": false
+  },
+  "monitoringOwner": {
+    "primary": "Peima Ops (observability)",
+    "backup": "Peima API Eng (matching)",
+    "confirmed": true
+  },
+  "priorSlice": {
+    "r9e3fStatus": "PASS_WITH_GRAFANA_IMPORT_PENDING",
+    "r9e3f1Status": "NEED_GRAFANA_IMPORT",
+    "r9e3fWatchCompleted": true,
+    "r9e3fWatchDurationMinutes": 25
+  },
+  "conclusion": {
+    "status": "PASS_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT",
+    "gateTokenAlias": "P7_6_R9E3F2_GRAFANA_PHYSICAL_IMPORT_AND_TEST_ALERT_PASS",
+    "blockers": [],
+    "nextStep": "P7.6-r9e3h PM/Ops Gate 12 signoff"
+  },
+  "redaction": {
+    "noApiKeysRecorded": true,
+    "noDatasourcePasswordsRecorded": true,
+    "noTokensRecorded": true,
+    "noDatabaseUrlRecorded": true
+  },
+  "mutationSafety": {
+    "percentEnabled": false,
+    "readPathEnabled": false,
+    "matchResultWrite": false,
+    "workerMutation": false,
+    "adminApplyExecuted": false,
+    "canonicalPromotion": false,
+    "productionRollout": false
+  }
+}

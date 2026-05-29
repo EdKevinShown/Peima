@@ -23,6 +23,10 @@ model User {
   occupation       String   @default("")
   relationshipGoal String   @default("")
   bio              String   @default("") @db.Text
+  /// P7.2: set when user submits onboarding aesthetic tags (not inferred from legacy styleTags).
+  onboardingPhotoAestheticCompletedAt DateTime?
+  /// P7.2: set when user acknowledges onboarding photo preview ("继续完成关系画像"); gates questionnaire.
+  onboardingPhotoPreviewCompletedAt   DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -48,9 +52,86 @@ model User {
   rolesGrantedByMe         UserRole[] @relation("UserRolesGrantedBy") // P5 Phase 2.2：由该用户授予的角色
   notifications            Notification[] // P5 Phase 2.3：通知记录
   aiSimulationV1Jobs       AiSimulationV1Job[] // P6：AI 模拟 v1（侧车，不写 MatchResult）
+  /// M3.8-M3：RRM-lite pairwise decision job（独立语义；不写 MatchResult）。
+  aiPairwiseDecisionJobs   AiPairwiseDecisionJob[]
+  /// M3.8-M11：finalize-with-pairwise sidecar（不写 MatchResult.candidateUserId / 不改 finalScore）。
+  pairwisePoolFinalizeMeta PairwisePoolFinalizeMeta[]
+  /// M5.3-C1：RRM Top2 display 侧车（不写 MatchResult.candidateUserId / 不改 finalScore）。
+  matchResultRrmTop2DisplayMeta MatchResultRrmTop2DisplayMeta[]
+  /// M5.6-B1：RRM Top2 display hook outbox rows（durable intent；consumer 未接）。
+  matchResultRrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
   chatProfileEvidence      ChatProfileEvidence[] // P6：聊天补全画像证据层 v1（accept 入账；不接主匹配）
+  /// P7.2: onboarding-only photo preview pools (never read by batch-match worker).
+  onboardingPhotoPreviewPools OnboardingPhotoPreviewPool[]
+  onboardingPhotoPreviewPoolItemsAsViewer OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemViewer")
+  onboardingPhotoPreviewPoolItemsAsCandidate OnboardingPhotoPreviewPoolItem[] @relation("OnboardingPhotoPreviewPoolItemCandidate")
+  /// P7.5-r4: readonly visual ranking shadow rows (hypothetical 3+2+1; never applied to items in r4).
+  onboardingPhotoPreviewPoolShadows OnboardingPhotoPreviewPoolShadow[]
+  /// P7.6-r8b: Route C allowlist apply sidecar (never writes MatchResult / finalScore / worker / display).
+  p76AllowlistApplyMeta P76AllowlistApplyMeta[]
 
   @@map("users")
+}
+
+/// P7.2: viewer onboarding photo preview (3+2+1); isolated from `PreviewPool` / worker.
+model OnboardingPhotoPreviewPool {
+  id            String   @id @default(cuid())
+  userId        String
+  status        String
+  sourceVersion String   @default("onboarding-photo-preview-v1")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User                              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items   OnboardingPhotoPreviewPoolItem[]
+  shadows OnboardingPhotoPreviewPoolShadow[]
+
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@map("onboarding_photo_preview_pools")
+}
+
+/// P7.5-r4: readonly shadow payload for onboarding photo preview pool (audit / ops; not viewer-facing).
+model OnboardingPhotoPreviewPoolShadow {
+  id            String   @id @default(cuid())
+  poolId        String
+  userId        String
+  shadowType    String
+  sourceVersion String
+  payloadJson   Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pool OnboardingPhotoPreviewPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, shadowType, sourceVersion])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([shadowType, createdAt(sort: Desc)])
+  @@index([poolId])
+  @@map("onboarding_photo_preview_pool_shadows")
+}
+
+model OnboardingPhotoPreviewPoolItem {
+  id              String   @id @default(cuid())
+  poolId          String
+  userId          String
+  candidateUserId String
+  tier            String
+  displayMode     String
+  rankInPool      Int
+  score           Float?
+  reasonTags      String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pool      OnboardingPhotoPreviewPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  viewer    User                       @relation("OnboardingPhotoPreviewPoolItemViewer", fields: [userId], references: [id], onDelete: Cascade)
+  candidate User                       @relation("OnboardingPhotoPreviewPoolItemCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, rankInPool])
+  @@index([poolId])
+  @@index([userId, poolId])
+  @@map("onboarding_photo_preview_pool_items")
 }
 
 /// Partner / filter preferences for matching (one row per user; extend with new scalar/array columns or JSON later).
@@ -76,20 +157,35 @@ model UserPreference {
 
 /// User photo metadata + analysis snapshot (URL assumed already hosted; no binary stored here).
 model UserImage {
-  id                  String   @id @default(cuid())
-  userId              String
-  imageUrl            String
-  faceEmbedding       Json?
-  attractivenessScore Float?
-  styleTags           String[] @default([])
-  ageEstimate         Int?
-  genderEstimate      String?
-  confidence          Float?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  userId                String
+  imageUrl              String
+  faceEmbedding         Json?
+  attractivenessScore   Float?
+  styleTags             String[]  @default([])
+  ageEstimate           Int?
+  genderEstimate        String?
+  confidence            Float?
+  /// P7.4-r1a: pending | passed | failed | skipped (legacy rows default skipped)
+  detectionStatus       String    @default("skipped")
+  detectionReasonCodes  String[]  @default([])
+  detectionScoreJson    Json?
+  detectionRulesVersion String?
+  detectedAt            DateTime?
+  /// P7.4-r1d-b: human/ops review (separate from machine detectionStatus)
+  reviewStatus          String    @default("not_required")
+  reviewReasonCodes     String[]  @default([])
+  reviewedAt            DateTime?
+  reviewedByUserId      String?
+  reviewNote            String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, detectionStatus, createdAt])
+  @@index([reviewStatus, createdAt])
+  @@index([userId, reviewStatus])
   @@map("user_images")
 }
 
@@ -175,6 +271,114 @@ model AiSimulationV1Item {
 
   @@index([jobId])
   @@map("ai_simulation_v1_items")
+}
+
+/// M3.8-M3: RRM-lite pairwise decision job (isolated from `ai_simulation_v1_jobs`; no MatchResult / finalScore).
+model AiPairwiseDecisionJob {
+  id                   String    @id @default(cuid())
+  viewerUserId         String
+  poolId               String
+  shortlistFingerprint String
+  /// `queued` | `running` | `succeeded` | `failed`
+  status               String    @default("queued")
+  /// Contract era for reuse + result validation (e.g. `rrm-lite-pairwise-decision-v1`).
+  sourceVersion        String
+  shortlistSnapshot    Json
+  decisionResult       Json?
+  /// Safe structured failure (no API key, no raw LLM body, no full prompts).
+  failureDetail        Json?
+  fallbackUsed         Boolean?
+  /// M3.8-M9: Phase-2 shadow final source (no MatchResult / no raw LLM / no scores in contract).
+  finalSourceShadow    Json?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@index([viewerUserId, poolId, shortlistFingerprint, sourceVersion, status])
+  @@map("ai_pairwise_decision_jobs")
+}
+
+/// M3.8-M11: viewer-scoped finalize sidecar per pool (idempotent; frozen blocks late job swap).
+model PairwisePoolFinalizeMeta {
+  id             String    @id @default(cuid())
+  viewerUserId   String
+  poolId         String
+  pairwiseJobId  String
+  /// `FinalMatchDecisionMeta` v1 JSON (no raw scores / dimensions / strongRisk).
+  meta           Json
+  frozen         Boolean   @default(false)
+  frozenAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerUserId, poolId])
+  @@map("pairwise_pool_finalize_meta")
+}
+
+/// M5.3-C1: parallel sidecar for RRM Top2 bounded display decision (does not write MatchResult.candidateUserId / finalScore).
+model MatchResultRrmTop2DisplayMeta {
+  id              String    @id @default(cuid())
+  matchResultId   String    @unique
+  viewerUserId    String
+  schemaVersion   Int
+  sourceVersion   String
+  top2Fingerprint String?
+  frozen            Boolean   @default(true)
+  frozenAt        DateTime?
+  meta              Json
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  matchResult MatchResult @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
+  viewer      User        @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@index([viewerUserId])
+  @@index([frozen, updatedAt])
+  @@map("match_result_rrm_top2_display_meta")
+}
+
+/// M5.6-B1: durable outbox / hook job for RRM Top2 display writer intent (no GET/worker/consumer wiring in this milestone).
+model MatchResultRrmTop2DisplayHookJob {
+  id                      String    @id @default(cuid())
+  matchResultId           String
+  viewerUserId            String
+  sourceVersion           String
+  status                  String
+  staticTop2Snapshot      Json
+  top2Fingerprint         String
+  rrmSourceType           String
+  rrmSourceId             String?
+  rrmSummarySourceVersion String?
+  guardrails              Json
+  noOpReasonCode          String?
+  attempts                Int       @default(0)
+  lastErrorCode           String?
+  lastErrorMessage        String?   @db.Text
+  lockedAt                DateTime?
+  processedAt             DateTime?
+  metaWriteResult         Json?
+  auditMeta               Json?
+  aiSimulationJobId       String?
+  pairwiseJobId           String?
+  poolId                  String?
+  batchId                 String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  matchResult MatchResult @relation(fields: [matchResultId], references: [id], onDelete: Cascade)
+  viewer      User        @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([matchResultId, top2Fingerprint, sourceVersion])
+  @@index([status, createdAt])
+  @@index([viewerUserId, status])
+  @@index([matchResultId])
+  @@index([rrmSourceType, rrmSourceId])
+  @@map("match_result_rrm_top2_display_hook_jobs")
 }
 
 /// Single submission of lightweight relationship questionnaire answers (latest submit replaces rows in P0).
@@ -308,8 +512,10 @@ model MatchResult {
 
   user      User       @relation("MatchResultViewer", fields: [userId], references: [id], onDelete: Cascade)
   candidate User       @relation("MatchResultCandidate", fields: [candidateUserId], references: [id], onDelete: Cascade)
-  batch     MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
+  batch                MatchBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  conversations        Conversation[]
+  rrmTop2DisplayMeta     MatchResultRrmTop2DisplayMeta?
+  rrmTop2DisplayHookJobs MatchResultRrmTop2DisplayHookJob[]
 
   @@map("match_results")
 }
@@ -553,4 +759,218 @@ model BehaviorSignal {
   @@index([userId, occurredAt])
   @@index([conversationId])
   @@map("behavior_signals")
+}
+
+/// P7.6-r8b: allowlist-only Route C apply sidecar (audit / rollback; not MatchResult / display / worker).
+model P76AllowlistApplyMeta {
+  id                              String    @id @default(cuid())
+  viewerUserId                    String
+  selectedCandidateId             String
+  sourcePipeline                  String    @default("p7.6_route_c")
+  schemaVersion                   String
+  sourceVersion                   String
+  routeCArtifactPath              String?
+  stage1SelectedCandidateIds      Json
+  stage2Top2CandidateIds          Json
+  selectedBy20DOnlyCandidateId    String?
+  selectedByRrmCandidateId        String?
+  finalShadowSelectedCandidateId  String
+  allowlistMatched                Boolean   @default(false)
+  pmSignoffStatus                 String    @default("pending")
+  opsSignoffStatus                String    @default("pending")
+  applied                         Boolean   @default(false)
+  appliedToPool                   Boolean   @default(false)
+  appliedToMatchResult            Boolean   @default(false)
+  appliedToFinalScore             Boolean   @default(false)
+  appliedToDisplay                Boolean   @default(false)
+  appliedToWorkerRanking          Boolean   @default(false)
+  dryRun                          Boolean   @default(true)
+  appliedAt                       DateTime?
+  appliedBy                       String?
+  rolledBack                      Boolean   @default(false)
+  rolledBackAt                    DateTime?
+  rolledBackBy                    String?
+  rollbackReason                  String?
+  rollbackToken                   String?
+  auditNotes                      Json?
+  createdAt                       DateTime  @default(now())
+  updatedAt                       DateTime  @updatedAt
+
+  viewer User @relation(fields: [viewerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerUserId, sourceVersion])
+  @@index([viewerUserId])
+  @@index([selectedCandidateId])
+  @@index([applied])
+  @@index([rolledBack])
+  @@index([createdAt])
+  @@index([sourceVersion])
+  @@map("p76_allowlist_apply_meta")
+}
+
+/// P7.10-r6e1: canonical writer rehearsal compare sidecar (dev/staging only; not GET/worker).
+model P76CanonicalWriterRehearsalMeta {
+  id String @id @default(cuid())
+
+  viewerUserId  String
+  matchResultId String
+
+  baselineCandidateUserId String?
+  proposedCandidateUserId String?
+
+  baselineFinalScore Float?
+  proposedScore      Float?
+  scoreVersion       String?
+
+  wouldChangeCandidate Boolean @default(false)
+  eligible             Boolean @default(false)
+  guardrailReason      String
+  scoreDeltaBand       String?
+
+  sourceType            String
+  sourceVersion         String
+  pipelineVersion       String
+  readPathSourceVersion String?
+
+  allowlistApplyMetaId String?
+
+  auditRunId    String
+  rehearsalMode String @default("sidecar_rehearsal")
+  environment   String @default("dev")
+
+  appliedToMatchResult Boolean @default(false)
+
+  shadowPayload Json
+  summary       Json?
+
+  generatedAt  DateTime  @default(now())
+  expiresAt    DateTime?
+  supersededAt DateTime?
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchResultId, auditRunId, pipelineVersion])
+  @@index([viewerUserId])
+  @@index([matchResultId])
+  @@index([sourceVersion])
+  @@index([readPathSourceVersion])
+  @@index([auditRunId])
+  @@index([eligible])
+  @@index([guardrailReason])
+  @@index([appliedToMatchResult])
+  @@index([supersededAt])
+  @@index([generatedAt])
+  @@index([environment, generatedAt])
+  @@map("p76_canonical_writer_rehearsal_meta")
+}
+
+/// P7.10-r3e: canonical match result sidecar (promotion source; not GET/worker; no MatchResult FK v1).
+model P76CanonicalMatchResultMeta {
+  id String @id @default(cuid())
+
+  auditRunId  String
+  environment String @default("dev")
+
+  viewerUserId        String
+  matchResultId       String?
+  selectedCandidateId String
+
+  sourceType    String
+  sourceVersion String
+  schemaVersion Int
+  mode          String
+
+  score         Float?
+  reasonSummary String?
+
+  stageSummary     Json?
+  safeFallbackMeta Json?
+  guardrails       Json?
+  dryRunPayload    Json?
+
+  appliedToMatchResult   Boolean @default(false)
+  appliedToFinalScore    Boolean @default(false)
+  appliedToWorkerRanking Boolean @default(false)
+
+  promotionStatus              String  @default("not_promoted")
+  promotionTargetMatchResultId String?
+  rollbackToken                String?
+  previousSnapshotHash         String?
+
+  pmSignoffStatus String @default("not_required")
+  opsSignoffStatus String @default("not_required")
+
+  rolledBack   Boolean   @default(false)
+  supersededAt DateTime?
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([auditRunId, viewerUserId, sourceVersion])
+  @@index([viewerUserId])
+  @@index([selectedCandidateId])
+  @@index([matchResultId])
+  @@index([sourceVersion])
+  @@index([mode])
+  @@index([promotionStatus])
+  @@index([appliedToMatchResult])
+  @@index([rolledBack])
+  @@index([createdAt])
+  @@index([supersededAt])
+  @@index([deletedAt])
+  @@index([environment, createdAt])
+  @@map("p76_canonical_match_result_meta")
+}
+
+/// P7.10-r8c: canonical apply rollback snapshot persistence (dev/staging; no MatchResult mutation from this table).
+model P76CanonicalApplyRollbackSnapshot {
+  id                             String   @id @default(cuid())
+  snapshotId                     String   @unique
+  sidecarId                      String
+  matchResultId                  String
+  viewerUserId                   String
+
+  beforeCandidateUserId          String
+  beforeFinalScore               Float
+  beforeReasonSummary            String?
+  beforeMatchInsightsChecksum    String?
+  beforeMatchInsightsSummaryJson Json?
+  beforeUpdatedAt                DateTime?
+  baselineFingerprint            String
+
+  proposedCandidateUserId        String
+  proposedFinalScore             Float
+  proposedReasonSummary          String?
+  proposedSourceVersion          String?
+
+  rollbackTokenHash              String?
+  rollbackExpiresAt              DateTime?
+  rollbackUsedAt                 DateTime?
+  rolledBack                     Boolean  @default(false)
+  rolledBackAt                   DateTime?
+  rollbackReason                 String?
+
+  applyAuditRunId                String?
+  appliedBy                      String?
+  approvedByPm                   String?
+  approvedByOps                  String?
+  approvedByEngineering          String?
+  promotionStatus                String   @default("snapshot_created")
+
+  sourceType                     String
+  sourceVersion                  String
+  environment                    String
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+
+  @@index([sidecarId])
+  @@index([matchResultId])
+  @@index([viewerUserId])
+  @@index([rollbackExpiresAt])
+  @@index([rolledBack])
+  @@index([promotionStatus])
+  @@map("p76_canonical_apply_rollback_snapshot")
 }

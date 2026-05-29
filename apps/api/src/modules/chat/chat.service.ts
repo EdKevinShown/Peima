@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { resolveMatchResultDisplay } from "../matching/matching-result-display";
 import { CreateConversationDto } from "./dto/create-conversation.dto";
 import { SendMessageDto } from "./dto/send-message.dto";
 import type { ConversationSummaryResponse } from "./dto/conversation-summary.response";
@@ -41,35 +43,61 @@ export class ChatService {
     return user;
   }
 
-  async createOrReuseConversation(userId: string) {
+  /**
+   * M5.5-Chat-R2A: when `matchResultId` is set, resolve display candidate with `resolveMatchResultDisplay`
+   * so chat aligns with `GET /matching/result` (e.g. RRM Top2 `displayCandidateUserId`).
+   */
+  async createOrReuseConversation(userId: string, matchResultId?: string) {
     await this.ensureUserExists(userId);
 
-    // Latest MatchResult where this user is the viewer.
-    const latest = await this.prisma.matchResult.findFirst({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, candidateUserId: true },
-    });
+    let effectiveCandidateId: string;
+    let resolvedMatchResultId: string;
 
-    if (!latest) {
-      throw new NotFoundException(`No match result for user ${userId}`);
+    if (matchResultId?.trim()) {
+      const mid = matchResultId.trim();
+      const matchRow = await this.prisma.matchResult.findUnique({
+        where: { id: mid },
+      });
+      if (!matchRow) {
+        throw new NotFoundException(`Match result ${mid} not found`);
+      }
+      if (matchRow.userId !== userId) {
+        throw new ForbiddenException("match result not accessible by this user");
+      }
+      const display = await resolveMatchResultDisplay(this.prisma, matchRow);
+      const resolved =
+        display.displayCandidateUserId?.trim() || matchRow.candidateUserId.trim();
+      effectiveCandidateId = resolved;
+      resolvedMatchResultId = matchRow.id;
+    } else {
+      const latest = await this.prisma.matchResult.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, candidateUserId: true },
+      });
+
+      if (!latest) {
+        throw new NotFoundException(`No match result for user ${userId}`);
+      }
+
+      effectiveCandidateId = latest.candidateUserId;
+      resolvedMatchResultId = latest.id;
     }
 
     const existing = await this.prisma.conversation.findFirst({
       where: {
         viewerUserId: userId,
-        candidateUserId: latest.candidateUserId,
+        candidateUserId: effectiveCandidateId,
         status: "active",
       },
       orderBy: { createdAt: "desc" },
     });
 
     if (existing) {
-      // Reuse: update matchResultId to latest.
       return this.prisma.conversation.update({
         where: { id: existing.id },
         data: {
-          matchResultId: latest.id,
+          matchResultId: resolvedMatchResultId,
           status: "active",
         },
       });
@@ -78,8 +106,8 @@ export class ChatService {
     return this.prisma.conversation.create({
       data: {
         viewerUserId: userId,
-        candidateUserId: latest.candidateUserId,
-        matchResultId: latest.id,
+        candidateUserId: effectiveCandidateId,
+        matchResultId: resolvedMatchResultId,
         status: "active",
       },
     });

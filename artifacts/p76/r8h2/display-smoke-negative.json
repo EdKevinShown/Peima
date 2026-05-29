@@ -1,0 +1,31 @@
+{
+  "mode": "negative",
+  "note": "Route C viewers lack match_results in dev DB (r7k2); resolver smoke uses synthetic MatchResult rows. GET /matching/result/:id requires a persisted row.",
+  "env": {
+    "PEIMA_P76_READ_PATH_ENABLED": "1",
+    "PEIMA_P76_READ_PATH_VIEWER_IDS": "cmr4hm001016z64demo00m05a,cmfemn00100016z64seed0001,cmr4hf000716z64demo00f04a,cmr4hf000916z64demo00f05a,cmr4r7j4050025z64stag0001",
+    "PEIMA_P76_READ_PATH_SOURCE_VERSION": "p7.6-r7j3-staging-cohort-v1"
+  },
+  "results": {
+    "cmo7ksq8s00006znosryc9k0n": {
+      "ok": true,
+      "path": "getLatestResultForUser",
+      "syntheticMatchResult": false,
+      "candidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "finalScore": 0.7563391454224787,
+      "displayCandidateUserId": "cmoc1gnil00006z64l9w2oa5t",
+      "displaySourceType": "static_fallback",
+      "p76ReadPathMeta": {
+        "enabled": true,
+        "fallbackUsed": true,
+        "fallbackReason": "not_allowlisted",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+https://grafana.prod.internal/d/p76-allowlist-read-path-v2
+# Redacted host per ops evidence policy (physical import verified by Ops).
+# UID: p76-allowlist-read-path-v2
+# Title: P7.6 Allowlist Read Path — Production (staging folder equivalent)
+# Ticket: PEIMA-OPS-P76-GRAFANA-v2
+# No API keys or secrets in this file.

@@ -1,0 +1,59 @@
+{
+  "status": "READY_FOR_R9_WRITER_SHUTDOWN_REVIEW_PENDING_HUMAN_SIGNOFF",
+  "generatedAt": "2026-05-19T20:00:00.000Z",
+  "task": "P7.10-r8i",
+  "humanSignoff": {
+    "pm": "pending",
+    "ops": "pending",
+    "eng": "pending",
+    "forgedSignatures": false
+  },
+  "milestones": {
+    "gate12": "PASS_GATE12_FOR_R8_CONTROLLED_IMPLEMENTATION",
+    "r8a": "PASS_R8A_CONTROLLED_IMPLEMENTATION_PREFLIGHT",
+    "r8b": "PASS_R8B_ROLLBACK_SNAPSHOT_MIGRATION_DESIGN",
+    "r8c": "PASS_R8C_ROLLBACK_SNAPSHOT_PERSISTENCE",
+    "r8c1": "PASS_R8C1_LOCAL_MIGRATION_AND_SNAPSHOT_PERSISTENCE_SMOKE",
+    "r8d": "PASS_R8D_CANONICAL_APPLY_SERVICE_HARD_DISABLED",
+    "r8e": "PASS_R8E_CANONICAL_ROLLBACK_SERVICE_TOKEN_GATED",
+    "r8f": "PASS_R8F_HIDDEN_ADMIN_APPLY_ROLLBACK_API_WIRING",
+    "r8g": "PASS_R8G_LOCAL_APPLY_ROLLBACK_SMOKE",
+    "r8h": "PASS_R8H_STAGING_APPLY_ROLLBACK_SMOKE"
+  },
+  "technicalGates": {
+    "applyServiceDefaultDisabled": true,
+    "rollbackServiceDefaultDisabled": true,
+    "hiddenRoutesDefaultDisabled": true,
+    "tokenPlaintextExposedInSmokes": false,
+    "tokenVerifiedInStagingSmoke": true,
+    "workerTriggeredInSmokes": false,
+    "percentMutatedInSmokes": false,
+    "legacyRemoved": false,
+    "productionTouchedInSmokes": false,
+    "localSmokeCleanupZero": true,
+    "stagingSmokeCleanupZero": true
+  },
+  "httpRouteSmoke": {
+    "stagingHttpApplyRollback": "NOT_RUN",
+    "reason": "service_path_used_in_r8h_r8f_unit_tests_cover_controller",
+    "blockerForProduction": "admin_jwt_rbac_staging_e2e_not_in_r8h_scope"
+  },
+  "goNoGo": {
+    "technicalGo": true,
+    "humanSignoffGo": false,
+    "productionGo": false,
+    "percentGo": false,
+    "legacyDeletionGo": false
+  },
+  "r9Readiness": {
+    "allowedMeaning": "writer_shutdown_review_only_not_legacy_deletion",
+    "requiresR8iHumanSignoff": true,
+    "rollbackMustRemainAvailable": true,
+    "finalMatchPageUnchanged": true
+  },
+  "artifactRefs": {
+    "r8g": "artifacts/p76/r8g/local-apply-rollback-smoke-result.json",
+    "r8h": "artifacts/p76/r8h/staging-apply-rollback-smoke-result.json",
+    "doc": "docs/P7/P7.10-r8i-pm-ops-apply-rollback-signoff.md"
+  }
+}

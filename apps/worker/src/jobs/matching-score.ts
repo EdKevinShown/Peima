@@ -258,3 +258,29 @@ export function formatReasonSummaryV1(c: ScoreComponentsV1): string {
   const f = (x: number) => Number(x.toFixed(6));
   return `Selected by finalScore v1 (previewPoolScore=${f(c.previewPoolScore)}, preferenceScore=${f(c.preferenceScore)}, styleScore=${f(c.styleScore)}, profileScore=${f(c.profileScore)}).`;
 }
+
+/** M6.0-E: persisted under `matchInsights.scoreShadow` (JSON); mirrors v1 final + profile only. */
+export const SCORING_VERSION_M60_SHADOW = "m6.0-profile-score-shadow-v1" as const;
+
+export type ScoreShadowM60 = {
+  finalScoreV1: number;
+  relationshipProfileScore: number;
+  scoringVersion: typeof SCORING_VERSION_M60_SHADOW;
+};
+
+function isUnitInterval01(x: number): boolean {
+  return Number.isFinite(x) && x >= 0 && x <= 1;
+}
+
+export function buildScoreShadowM60(c: ScoreComponentsV1): ScoreShadowM60 {
+  if (!isUnitInterval01(c.finalScore) || !isUnitInterval01(c.profileScore)) {
+    throw new Error(
+      `buildScoreShadowM60: expected finite scores in [0,1], got finalScore=${String(c.finalScore)} profileScore=${String(c.profileScore)}`,
+    );
+  }
+  return {
+    finalScoreV1: c.finalScore,
+    relationshipProfileScore: c.profileScore,
+    scoringVersion: SCORING_VERSION_M60_SHADOW,
+  };
+}

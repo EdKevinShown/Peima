@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-05-19T18:45:42.128Z",
+  "task": "P7.10-r8c1",
+  "decision": "PASS_R8C1_LOCAL_MIGRATION_AND_SNAPSHOT_PERSISTENCE_SMOKE",
+  "environment": "local-dev-only",
+  "databaseUrlRedacted": "postgresql://localhost:5432/peima",
+  "startedAt": "2026-05-19T18:45:41.973Z",
+  "migration": {
+    "tableExists": true,
+    "indexNames": [
+      "p76_canonical_apply_rollback_snapshot_pkey",
+      "p76_canonical_apply_rollback_snapshot_snapshotId_key",
+      "p76_canonical_apply_rollback_snapshot_sidecarId_idx",
+      "p76_canonical_apply_rollback_snapshot_matchResultId_idx",
+      "p76_canonical_apply_rollback_snapshot_viewerUserId_idx",
+      "p76_canonical_apply_rollback_snapshot_rollbackExpiresAt_idx",
+      "p76_canonical_apply_rollback_snapshot_rolledBack_idx",
+      "p76_canonical_apply_rollback_snapshot_promotionStatus_idx"
+    ],
+    "migrationApplied": true,
+    "matchResultColumnCount": 0
+  },
+  "insertedCount": 1,
+  "snapshotId": "snap-r8c1-local-smoke-20260519",
+  "applyAuditRunId": "r8c1-local-smoke-20260519",
+  "persistence": {
+    "ok": true,
+    "promotionStatus": "snapshot_created",
+    "rolledBack": false,
+    "rollbackTokenHashPresent": false,
+    "baselineFingerprint": "b0b0f3667e22437b47b0649fcbf8bd7c53eee7338aa9db9f396dc5ebd4a69a89",
+    "beforeCandidateUserId": "cand-before-r8c1",
+    "beforeFinalScore": 0.72,
+    "proposedCandidateUserId": "cand-proposed-r8c1",
+    "proposedFinalScore": 0.88,
+    "beforeMatchInsightsChecksum": "08d9790ce6e567959c532a4db9f71420cf69cece54ce2e8b21eb106f99252909",
+    "hasSummaryJson": true
+  },
+  "cleanup": {
+    "deletedCount": 1,
+    "finalRowsForAuditRunId": 0
+  },
+  "mutationSafety": {
+    "unchanged": true,
+    "before": {
+      "matchResultCount": 80,
+      "sidecarCount": 0,
+      "appliedToMatchResultTrueCount": 0,
+      "appliedToFinalScoreTrueCount": 0,
+      "appliedToWorkerRankingTrueCount": 0,
+      "matchResultSampleFingerprint": "d1c305fd2ff128db72f85ba2d4a940011e19410d47aa33d0d7eee2f0b6690ec9"
+    },
+    "after": {
+      "matchResultCount": 80,
+      "sidecarCount": 0,
+      "appliedToMatchResultTrueCount": 0,
+      "appliedToFinalScoreTrueCount": 0,
+      "appliedToWorkerRankingTrueCount": 0,
+      "matchResultSampleFingerprint": "d1c305fd2ff128db72f85ba2d4a940011e19410d47aa33d0d7eee2f0b6690ec9"
+    }
+  },
+  "workerTriggered": false
+}

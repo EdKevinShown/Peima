@@ -1,0 +1,35 @@
+{
+  "snapshotAt": "2026-05-18T16:03:20.895Z",
+  "environment": "local-docker-peima-postgres (production cutover rehearsal)",
+  "realProdWatchStatus": "pending",
+  "sourceArtifact": "artifacts/p76/r9d/r9d-execution-summary.json",
+  "p0": {
+    "finalScoreChangedCount": 0,
+    "matchResultChangedCount": 0,
+    "workerChangedCount": 0,
+    "nonAllowlistSidecarDisplayCount": 0,
+    "rolledBackSidecarDisplayCount": 0,
+    "violationRowDisplayCount": 0,
+    "percentEnabledWithoutSignoffCount": 0,
+    "productionReadPathWithoutAllowlistCount": 0,
+    "allZero": true
+  },
+  "p1": {
+    "exceptionFallbackSpike": false,
+    "exceptionFallbackCount": 0,
+    "fallbackLegacyAbnormalSpike": false,
+    "fallbackLegacyCount": 2,
+    "sidecarReadSuccessDrop": false,
+    "sidecarReadSuccessCount": 4,
+    "userReportAboveThreshold": false,
+    "userReportCount": 0,
+    "monitoringDataMissingOver15m": false
+  },
+  "violationSql": {
+    "violation_count": 0,
+    "applied_count": 4,
+    "rolled_back_count": 1
+  },
+  "percent": 0,
+  "rollbackExecuted": false
+}

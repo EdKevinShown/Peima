@@ -1,0 +1,121 @@
+{
+  "mode": "disabled",
+  "note": "Route C viewers lack match_results in dev DB (r7k2); resolver smoke uses synthetic MatchResult rows. GET /matching/result/:id requires a persisted row.",
+  "env": {
+    "PEIMA_P76_READ_PATH_ENABLED": "0",
+    "PEIMA_P76_READ_PATH_VIEWER_IDS": "",
+    "PEIMA_P76_READ_PATH_SOURCE_VERSION": ""
+  },
+  "results": {
+    "cmr4hm001016z64demo00m05a": {
+      "ok": true,
+      "path": "resolveMatchResultDisplay",
+      "syntheticMatchResult": true,
+      "expectedSidecarDisplay": "cmr4hf000916z64demo00f05a",
+      "legacyCandidateUserId": "cmr4hm001016z64demo00m05a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hm001016z64demo00m05a",
+      "displaySourceType": "match_result_original",
+      "p76ReadPathMeta": {
+        "enabled": false,
+        "fallbackUsed": true,
+        "fallbackReason": "env_disabled",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      },
+      "candidateUserIdUnchanged": "same as legacy baseline"
+    },
+    "cmfemn00100016z64seed0001": {
+      "ok": true,
+      "path": "resolveMatchResultDisplay",
+      "syntheticMatchResult": true,
+      "expectedSidecarDisplay": "cmr4hf000716z64demo00f04a",
+      "legacyCandidateUserId": "cmfemn00100016z64seed0001",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmfemn00100016z64seed0001",
+      "displaySourceType": "match_result_original",
+      "p76ReadPathMeta": {
+        "enabled": false,
+        "fallbackUsed": true,
+        "fallbackReason": "env_disabled",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      },
+      "candidateUserIdUnchanged": "same as legacy baseline"
+    },
+    "cmr4hf000716z64demo00f04a": {
+      "ok": true,
+      "path": "resolveMatchResultDisplay",
+      "syntheticMatchResult": true,
+      "expectedSidecarDisplay": "cmfemn00100016z64seed0001",
+      "legacyCandidateUserId": "cmr4hf000716z64demo00f04a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hf000716z64demo00f04a",
+      "displaySourceType": "match_result_original",
+      "p76ReadPathMeta": {
+        "enabled": false,
+        "fallbackUsed": true,
+        "fallbackReason": "env_disabled",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      },
+      "candidateUserIdUnchanged": "same as legacy baseline"
+    },
+    "cmr4hf000916z64demo00f05a": {
+      "ok": true,
+      "path": "resolveMatchResultDisplay",
+      "syntheticMatchResult": true,
+      "expectedSidecarDisplay": "cmr4hf000716z64demo00f04a",
+      "legacyCandidateUserId": "cmr4hf000916z64demo00f05a",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4hf000916z64demo00f05a",
+      "displaySourceType": "match_result_original",
+      "p76ReadPathMeta": {
+        "enabled": false,
+        "fallbackUsed": true,
+        "fallbackReason": "env_disabled",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      },
+      "candidateUserIdUnchanged": "same as legacy baseline"
+    },
+    "cmr4r7j4050025z64stag0001": {
+      "ok": true,
+      "path": "resolveMatchResultDisplay",
+      "syntheticMatchResult": true,
+      "expectedSidecarDisplay": "cmr4r7j4070025z64stag0003",
+      "legacyCandidateUserId": "cmr4r7j4050025z64stag0001",
+      "finalScore": 0.75,
+      "displayCandidateUserId": "cmr4r7j4050025z64stag0001",
+      "displaySourceType": "match_result_original",
+      "p76ReadPathMeta": {
+        "enabled": false,
+        "fallbackUsed": true,
+        "fallbackReason": "env_disabled",
+        "sidecarId": null,
+        "sourceVersion": "p7.6-r7j3-staging-cohort-v1",
+        "rolledBack": null,
+        "violationStatus": null,
+        "pmSignoffStatus": null,
+        "opsSignoffStatus": null
+      },
+      "candidateUserIdUnchanged": "same as legacy baseline"
+    }
+  }
+}

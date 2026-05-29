@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-05-19T00:20:39.320Z",
+  "task": "P7.6-r9e3c",
+  "environment": "production-like-staging",
+  "baseUrlHostRedacted": "peima-api-staging.onrender.com",
+  "noTokensRecorded": true,
+  "noViewerIdsRecorded": true,
+  "results": [
+    {
+      "caseLabel": "health-/health",
+      "endpointType": "health",
+      "path": "/health",
+      "statusCode": 404,
+      "outcome": "skipped",
+      "resultState": null,
+      "displaySourceType": null,
+      "hasCandidateUserId": null,
+      "hasFinalScore": null,
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": "HTTP 404"
+    },
+    {
+      "caseLabel": "health-/api/health",
+      "endpointType": "health",
+      "path": "/api/health",
+      "statusCode": 404,
+      "outcome": "skipped",
+      "resultState": null,
+      "displaySourceType": null,
+      "hasCandidateUserId": null,
+      "hasFinalScore": null,
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": "HTTP 404"
+    },
+    {
+      "caseLabel": "root-404-expected",
+      "endpointType": "root",
+      "path": "/",
+      "statusCode": 404,
+      "outcome": "pass",
+      "resultState": null,
+      "displaySourceType": null,
+      "hasCandidateUserId": null,
+      "hasFinalScore": null,
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "auth-me-no-token-401-expected",
+      "endpointType": "auth",
+      "path": "/auth/me",
+      "statusCode": 401,
+      "outcome": "pass",
+      "resultState": null,
+      "displaySourceType": null,
+      "hasCandidateUserId": null,
+      "hasFinalScore": null,
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": null
+    },
+    {
+      "caseLabel": "auth-me-with-token",
+      "endpointType": "auth",
+      "path": "/auth/me",
+      "statusCode": null,
+      "outcome": "skipped",
+      "errorRedacted": "PEIMA_ADMIN_SERVICE_TOKEN missing"
+    },
+    {
+      "caseLabel": "matching-result-viewer-cohort",
+      "endpointType": "matching_result",
+      "path": "/matching/result/:viewerUserId",
+      "statusCode": null,
+      "outcome": "skipped",
+      "errorRedacted": "viewer cohort and token missing"
+    },
+    {
+      "caseLabel": "admin-canonical-sidecar-list",
+      "endpointType": "admin_canonical_sidecar_list",
+      "path": "/admin/p76/canonical-sidecar",
+      "statusCode": 404,
+      "outcome": "skipped",
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": "HTTP 404 without admin token; feature gate likely off"
+    },
+    {
+      "caseLabel": "admin-canonical-sidecar-aggregate",
+      "endpointType": "admin_canonical_sidecar_aggregate",
+      "path": "/admin/p76/canonical-sidecar/aggregate",
+      "statusCode": 404,
+      "outcome": "skipped",
+      "featureEnabled": null,
+      "totalVisible": null,
+      "errorRedacted": "HTTP 404 without admin token; feature gate likely off"
+    }
+  ]
+}

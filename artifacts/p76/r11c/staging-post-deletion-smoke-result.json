@@ -1,0 +1,122 @@
+{
+  "status": "PASS_R11C_STAGING_POST_DELETION_FINAL_CLOSEOUT",
+  "task": "P7.10-r11c",
+  "generatedAt": "2026-05-19T20:17:18.444Z",
+  "startedAt": "2026-05-19T20:17:18.441Z",
+  "environmentKind": "production-like-staging",
+  "productionTouched": false,
+  "percent": 0,
+  "preflight": {
+    "pass": true,
+    "errors": [],
+    "nodeEnv": "staging",
+    "databaseHostRedacted": "aws-1-ap-southeast-2.pooler.supabase.com:5432",
+    "databaseHostFingerprint": "b6d1fc10ef48fafb",
+    "databaseClassifiedAs": "production-like-staging",
+    "databasePreflightReason": "supabase_pooler_with_explicit_staging_confirm",
+    "productionPercentEnabled": false,
+    "apiBaseHostRedacted": "(missing)"
+  },
+  "staticRepoChecks": {
+    "pass": true,
+    "checks": {
+      "previewPoolPageRedirects": true,
+      "onboardingPhotoPreviewRedirects": true,
+      "generatePreviewPoolUnavailable": true,
+      "previewPoolReadOnlyLatestPreserved": true,
+      "deletedFilesAbsent": true,
+      "noGeneratePreviewPoolInFinalMatch": true,
+      "aestheticNextStepQuestionnaire": true,
+      "noDanglingPreviewPoolPageImport": true,
+      "noDanglingOnboardingPhotoPreviewImport": true
+    }
+  },
+  "oldPhotoWriter": {
+    "shutdownEnabled": true,
+    "writerEnabled": false,
+    "formalMatchResultWriteBlocked": true,
+    "productionPercent": 0,
+    "percentEnabled": false
+  },
+  "deletedRoutes": {
+    "previewPoolPageRedirects": true,
+    "onboardingPhotoPreviewRedirects": true,
+    "generatePreviewPoolUnavailable": true,
+    "previewPoolReadOnlyLatestPreserved": true,
+    "deletedFilesAbsent": true,
+    "noGeneratePreviewPoolInFinalMatch": true,
+    "aestheticNextStepQuestionnaire": true,
+    "noDanglingPreviewPoolPageImport": true,
+    "noDanglingOnboardingPhotoPreviewImport": true
+  },
+  "onboarding": {
+    "aestheticNextStep": "questionnaire",
+    "photoUploadPreserved": true,
+    "cloudVisionPreserved": true
+  },
+  "matchingReadPath": {
+    "getMatchingResultPreserved": true,
+    "safeFallbackFinalPreserved": true,
+    "previewPoolFallbackWrite": false,
+    "workerTriggered": false,
+    "pendingHookJobsObserved": 0,
+    "existingMatchResultReadable": true
+  },
+  "canonicalSafety": {
+    "hiddenMutationApiDefaultOff": true,
+    "applyDefaultOff": true,
+    "rollbackDefaultOff": true,
+    "applyAllowDbWriteOff": true
+  },
+  "security": {
+    "secretsExposed": false,
+    "tokenPlaintextExposed": false,
+    "redactionPolicy": {
+      "noDatabaseUrl": true,
+      "noJwt": true,
+      "noRollbackToken": true,
+      "noViewerUserIds": true
+    }
+  },
+  "stagingHttp": {
+    "executed": false,
+    "generatePreviewPoolUnavailable": true,
+    "generateStatusCode": null,
+    "healthCheck": {
+      "attempted": false,
+      "statusCode": null
+    },
+    "adminReadonly": {
+      "attempted": false,
+      "passCount": 0,
+      "failedCount": 0
+    },
+    "reason": "PEIMA_STAGING_API_BASE_URL_or_VITE_API_BASE_URL_missing",
+    "note": "static_repo_and_controller_confirm_generate_removed; live_http_skipped_no_api_base_url"
+  },
+  "readonlyDb": {
+    "executed": true,
+    "connectionPass": true,
+    "matchResultRowCount": 6,
+    "previewPoolRowCount": 0,
+    "hookJobCount": 0,
+    "percentViolationRows": 0,
+    "errorRedacted": null
+  },
+  "stagingFileGates": {
+    "shutdownEnabled": true,
+    "writerEnabled": false,
+    "formalMatchResultWriteBlocked": true,
+    "productionPercent": 0,
+    "percentEnabled": false,
+    "hiddenMutationApiDefaultOff": true,
+    "applyDefaultOff": true,
+    "rollbackDefaultOff": true,
+    "applyAllowDbWriteOff": true,
+    "fromStagingFile": true
+  },
+  "humanSignoff": {
+    "r8iPmOpsEng": "pending",
+    "notFaked": true
+  }
+}

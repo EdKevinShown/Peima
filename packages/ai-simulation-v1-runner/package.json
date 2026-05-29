@@ -1,0 +1,23 @@
+{
+  "name": "@peima/ai-simulation-v1-runner",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./worker-consumer": "./dist/worker-consumer.js"
+  },
+  "scripts": {
+    "build": "node esbuild.bundle.mjs",
+    "build:worker": "pnpm run build"
+  },
+  "dependencies": {
+    "@peima/database": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "~5.7.2"
+  }
+}
