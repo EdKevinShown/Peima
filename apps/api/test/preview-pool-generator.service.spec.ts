@@ -6,8 +6,9 @@ describe("PreviewPoolGeneratorService", () => {
   let service: PreviewPoolGeneratorService;
   let prisma: {
     user: { findUnique: jest.Mock; findMany: jest.Mock; upsert: jest.Mock };
+    userPreference: { findUnique: jest.Mock };
     userProfile: { upsert: jest.Mock };
-    userImage: { findFirst: jest.Mock; create: jest.Mock };
+    userImage: { findFirst: jest.Mock; findMany: jest.Mock; create: jest.Mock };
     previewPool: {
       findFirst: jest.Mock;
       updateMany: jest.Mock;
@@ -24,9 +25,13 @@ describe("PreviewPoolGeneratorService", () => {
         findMany: jest.fn().mockResolvedValue([]),
         upsert: jest.fn(),
       },
+      userPreference: {
+        findUnique: jest.fn().mockResolvedValue({ styleTags: ["clean"] }),
+      },
       userProfile: { upsert: jest.fn().mockResolvedValue({}) },
       userImage: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn().mockResolvedValue({}),
       },
       previewPool: {
@@ -52,7 +57,16 @@ describe("PreviewPoolGeneratorService", () => {
     let synth = 0;
     prisma.user.upsert.mockImplementation(async () => {
       synth += 1;
-      return { id: `synth-${synth}` };
+      return {
+        id: `synth-${synth}`,
+        createdAt: new Date(2024, 0, synth),
+        age: 24 + synth,
+        city: "Shanghai",
+        height: 170,
+        education: "bachelor",
+        occupation: "product",
+        relationshipGoal: "long_term",
+      };
     });
   });
 
@@ -78,13 +92,17 @@ describe("PreviewPoolGeneratorService", () => {
 
     expect(result.created).toBe(true);
     expect(result.poolId).toBe("pool-1");
-    expect(prisma.previewPoolItem.createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.arrayContaining([
-          expect.objectContaining({ rankInPool: 1 }),
-          expect.objectContaining({ rankInPool: 6 }),
-        ]),
-      }),
-    );
+    const createArg = prisma.previewPoolItem.createMany.mock.calls[0]?.[0];
+    expect(createArg?.data).toHaveLength(6);
+    expect(createArg?.data[0]).toMatchObject({
+      rankInPool: 1,
+      candidateType: "aesthetic_fit",
+      displayMode: "clear",
+    });
+    expect(createArg?.data[5]).toMatchObject({
+      rankInPool: 6,
+      candidateType: "reflow",
+      displayMode: "hidden",
+    });
   });
 });

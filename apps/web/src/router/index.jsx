@@ -148,7 +148,7 @@ function HomePage() {
                 审美偏好
               </Link>
               {" · "}
-              <Link to={`/preview-pool${q}`} style={navLink}>
+              <Link to={`/onboarding/photo-preview${q}`} style={navLink}>
                 第一印象预览池
               </Link>
             </p>
@@ -179,7 +179,7 @@ function HomePage() {
           更多（页面索引与内部入口）
         </summary>
         <p style={{ margin: "0.65rem 0 0.5rem", color: "#94a3b8", fontSize: "0.78rem" }}>
-          以下含正式匹配候选池等，供开发排障；日常请用上方「第一印象预览池」。
+          以下含匹配链 Legacy 预览池等内部入口；日常「第一印象」请用上方 onboarding 链接。
         </p>
         <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.1rem", lineHeight: 1.65 }}>
           <li>
@@ -191,9 +191,14 @@ function HomePage() {
             {" · "}
             <Link to={`/onboarding/photo-preference${q}`}>审美偏好</Link>
             {" · "}
-            <Link to={`/preview-pool${q}`}>第一印象预览池</Link>
+            <Link to={`/onboarding/photo-preview${q}`}>第一印象预览池</Link>
             {" · "}
             <Link to="/my-activity">我的反馈与动态</Link>
+          </li>
+          <li>
+            <Link to={`/preview-pool${q}`} style={{ color: "#94a3b8" }}>
+              匹配预览池（Legacy · 排障）
+            </Link>
           </li>
           <li>
             <Link to={`/questionnaire${q}`}>关系画像问卷</Link>

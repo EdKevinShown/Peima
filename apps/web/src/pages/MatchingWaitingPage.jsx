@@ -913,7 +913,7 @@ export default function MatchingWaitingPage() {
               to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
               style={primaryBtn}
             >
-              去预览池创建匹配池
+              去匹配预览池（Legacy）
             </Link>
           </>
         ) : null}

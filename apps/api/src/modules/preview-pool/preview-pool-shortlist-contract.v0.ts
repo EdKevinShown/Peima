@@ -6,6 +6,7 @@ import {
   type ViewerPreferenceLike,
 } from "@peima/shared/matching/preference-score";
 import { computeG1rProfileScalarScore } from "../post-pool-deep-screen/post-pool-dimension-g1r";
+import { isPreviewPoolShortlistEligibleDisplayMode } from "./preview-pool-tier3121";
 
 /**
  * Preview Pool → ShortlistContract v0（只读派生；不改 worker / MatchResult）。
@@ -13,7 +14,7 @@ import { computeG1rProfileScalarScore } from "../post-pool-deep-screen/post-pool
  * --- 冻结规则（v0）---
  *
  * 1) eligible set
- *    - `PreviewPoolItem.displayMode === "full"`
+ *    - `displayMode` 为 `full`（legacy）或 `clear`（3+2+1 审美槽）
  *    - 且能在输入 maps 中找到该候选的 `UserProfile`（非 null）
  *
  * 2) 从 eligible 中选 2～3（固定）
@@ -158,11 +159,11 @@ export function buildPreviewPoolShortlistContractV0(params: {
     };
     staticEvidence[cid] = evidence;
 
-    if (item.displayMode !== "full") {
+    if (!isPreviewPoolShortlistEligibleDisplayMode(item.displayMode)) {
       exclusionReport.push({
         candidateUserId: cid,
         reasonCode: "NOT_ELIGIBLE_DISPLAY_MODE",
-        detail: `displayMode=${item.displayMode}（v0 仅 full 可入 shortlist）`,
+        detail: `displayMode=${item.displayMode}（v0 仅 full/clear 可入 shortlist；blurred/hidden 为风格/回流槽）`,
       });
       continue;
     }

@@ -168,8 +168,7 @@ export class OnboardingService {
     } else if (!aestheticDone) {
       nextStep = "photo_preference";
     } else if (!previewAck) {
-      /** P7.10-r11: legacy onboarding photo preview pool removed — skip to questionnaire. */
-      nextStep = "questionnaire";
+      nextStep = "photo_preview";
     } else {
       nextStep = "questionnaire";
     }

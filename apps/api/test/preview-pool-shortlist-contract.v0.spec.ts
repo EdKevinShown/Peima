@@ -61,7 +61,7 @@ function user(
 }
 
 describe("preview pool shortlist contract v0", () => {
-  it("picks top 3 among full slots and reports locked + truncated", () => {
+  it("picks top 3 among clear/full slots and reports blurred/hidden + truncated", () => {
     const viewerUserId = "viewer1";
     const poolId = "pool1";
 
@@ -71,8 +71,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c1",
-        candidateType: "visual",
-        displayMode: "full",
+        candidateType: "aesthetic_fit",
+        displayMode: "clear",
         rankInPool: 1,
         baseScore: 0.8,
         itemMeta: null,
@@ -84,8 +84,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c2",
-        candidateType: "visual",
-        displayMode: "full",
+        candidateType: "aesthetic_fit",
+        displayMode: "clear",
         rankInPool: 2,
         baseScore: 0.79,
         itemMeta: null,
@@ -97,8 +97,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c3",
-        candidateType: "preference",
-        displayMode: "full",
+        candidateType: "aesthetic_fit",
+        displayMode: "clear",
         rankInPool: 3,
         baseScore: 0.7,
         itemMeta: null,
@@ -110,8 +110,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c4",
-        candidateType: "preference",
-        displayMode: "full",
+        candidateType: "style_similar",
+        displayMode: "blurred",
         rankInPool: 4,
         baseScore: 0.69,
         itemMeta: null,
@@ -123,8 +123,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c5",
-        candidateType: "backup",
-        displayMode: "locked",
+        candidateType: "style_similar",
+        displayMode: "blurred",
         rankInPool: 5,
         baseScore: 0.6,
         itemMeta: null,
@@ -136,8 +136,8 @@ describe("preview pool shortlist contract v0", () => {
         previewPoolId: poolId,
         userId: viewerUserId,
         candidateUserId: "c6",
-        candidateType: "backup",
-        displayMode: "locked",
+        candidateType: "reflow",
+        displayMode: "hidden",
         rankInPool: 6,
         baseScore: 0.59,
         itemMeta: null,
@@ -205,14 +205,11 @@ describe("preview pool shortlist contract v0", () => {
 
     expect(out.schemaVersion).toBe("preview_pool_shortlist_contract_v0");
     expect(out.shortlist.size).toBe(3);
-    expect(out.shortlist.candidateUserIds).toEqual(["c3", "c4", "c1"]);
+    expect(out.shortlist.candidateUserIds).toEqual(["c3", "c1", "c2"]);
 
     const locked = out.exclusionReport.filter(
       (r) => r.reasonCode === "NOT_ELIGIBLE_DISPLAY_MODE",
     );
-    expect(locked.map((r) => r.candidateUserId).sort()).toEqual(["c5", "c6"]);
-
-    const truncated = out.exclusionReport.find((r) => r.candidateUserId === "c2");
-    expect(truncated?.reasonCode).toBe("TRUNCATED_BY_RANK_RULE");
+    expect(locked.map((r) => r.candidateUserId).sort()).toEqual(["c4", "c5", "c6"]);
   });
 });

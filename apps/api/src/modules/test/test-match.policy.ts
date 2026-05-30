@@ -80,6 +80,25 @@ export function canUserSeedTestPreviewPool(userId: string | undefined): boolean 
   return allow.has(userId);
 }
 
+export function isTestMatchResultWriterEnabled(): boolean {
+  return isTruthy(process.env.PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED);
+}
+
+export function isTestMatchResultWriterDisabled(): boolean {
+  return isTruthy(process.env.PEIMA_TEST_MATCH_RESULT_WRITER_DISABLED);
+}
+
+/** Mirrors worker allowlist gate for local batch-match MatchResult writes (audit / docs only). */
+export function canUserWriteMatchResultViaTestAllowlist(
+  userId: string | undefined,
+): boolean {
+  if (!userId || !isTestMatchResultWriterEnabled() || isTestMatchResultWriterDisabled()) {
+    return false;
+  }
+  const allow = parseIds(process.env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
+  return allow.has(userId);
+}
+
 export function assertCanSeedTestPreviewPool(
   userId: string | undefined,
 ): asserts userId is string {

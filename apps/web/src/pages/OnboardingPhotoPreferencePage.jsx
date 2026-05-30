@@ -10,7 +10,6 @@ import {
   getOnboardingPhotoStatus,
   postOnboardingPhotoPreferences,
 } from "../api/onboarding";
-import { getQuestionnaireProfile } from "../api/questionnaire";
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -118,12 +117,7 @@ export default function OnboardingPhotoPreferencePage() {
     setError(null);
     try {
       await postOnboardingPhotoPreferences(tags);
-      const profile = await getQuestionnaireProfile(userId);
-      if (profile?.profile?.userId === userId) {
-        navigate(`/matching-waiting?userId=${encodeURIComponent(userId)}`);
-      } else {
-        navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
-      }
+      navigate(`/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setError(
@@ -153,7 +147,7 @@ export default function OnboardingPhotoPreferencePage() {
           lineHeight: 1.5,
         }}
       >
-        保存后将生成第一印象预览池（legacy 路径，P7.10-r5a 已冻结增长；P7.6 将接管正式匹配）。
+        保存后进入 onboarding 第一印象预览池（3+2+1），确认后再填写问卷；不影响正式匹配主链。
       </p>
       <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1rem" }}>
         告诉我们你更容易被什么类型吸引。这个选择只用于第一印象预览池，不代表最终匹配结果。
@@ -170,7 +164,9 @@ export default function OnboardingPhotoPreferencePage() {
         {" · "}
         <Link to={`/onboarding/photo-upload${previewQs}`}>返回照片设置</Link>
         {" · "}
-        <Link to={`/questionnaire${previewQs}`}>继续填写问卷</Link>
+        <Link to={`/onboarding/photo-preview${previewQs}`}>第一印象预览池</Link>
+        {" · "}
+        <Link to={`/questionnaire${previewQs}`}>问卷（须先完成预览）</Link>
       </p>
 
       {loading && <LoadingState label="加载中…" />}

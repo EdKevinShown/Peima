@@ -111,6 +111,10 @@ export default function OnboardingPhotoUploadPage() {
         navigate(`/onboarding/photo-preference${q}`);
         return;
       }
+      if (status.nextStep === "photo_preview") {
+        navigate(`/onboarding/photo-preview${q}`);
+        return;
+      }
       if (status.nextStep === "questionnaire") {
         const profile = await getQuestionnaireProfile(userId);
         if (profile?.profile?.userId === userId) {
@@ -523,7 +527,7 @@ export default function OnboardingPhotoUploadPage() {
               继续选择审美偏好
             </button>
             <Link
-              to={`/questionnaire${previewQs}`}
+              to={`/onboarding/photo-preview${previewQs}`}
               style={{
                 display: "inline-flex",
                 alignItems: "center",

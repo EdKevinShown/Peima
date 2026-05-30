@@ -3,12 +3,27 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma, User, UserImage, UserPreference } from "@peima/database";
+import type { ViewerPreferenceLike } from "@peima/shared/matching/preference-score";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { previewPoolRowDisplaySourceKey } from "../onboarding/onboarding-photo-preview-display-image-key";
 import { isEligiblePreviewCandidate } from "../onboarding/onboarding-preview-candidate-eligibility";
+import {
+  extractUsableVisionFromDetectionScoreJson,
+  pickViewerPassingPhotoVision,
+  type UserImageVisionSourceRow,
+} from "../onboarding/vision/visual-ranking-shadow-vision-input";
+import type { ShadowCandidateInput } from "../onboarding/vision/visual-ranking-shadow-scoring";
 import { isPreviewPoolAutoEnsureSyntheticFallbackEnabled } from "./preview-pool-auto-ensure.policy";
+import {
+  assignPreviewPoolTier3121Slots,
+  PREVIEW_POOL_TIER3121_LAYOUT_VERSION,
+  type PreviewPoolTier3121Slot,
+} from "./preview-pool-tier3121";
 
 const POOL_STATUS_ACTIVE = "active";
 const POOL_SLOT_COUNT = 6;
+const MAX_CANDIDATE_SCAN = 200;
 
 export type PreviewPoolGenerateSource =
   | "auto_ensure"
@@ -26,21 +41,66 @@ function seededPhone(viewerUserId: string, n: number): string {
   return `preview-seed-${viewerUserId.slice(-10)}-${n}@peima.local`;
 }
 
-function slotMeta(source: PreviewPoolGenerateSource, rank: number) {
-  const tier =
-    rank <= 2 ? "visual" : rank <= 4 ? "preference" : "backup";
+function toViewerPreferenceLike(row: UserPreference | null): ViewerPreferenceLike {
+  if (!row) return null;
+  return {
+    minAge: row.minAge,
+    maxAge: row.maxAge,
+    preferredCities: row.preferredCities ?? [],
+    minHeight: row.minHeight,
+    maxHeight: row.maxHeight,
+    educationPreferences: row.educationPreferences ?? [],
+    occupationPreferences: row.occupationPreferences ?? [],
+    relationshipGoalPreferences: row.relationshipGoalPreferences ?? [],
+    styleTags: row.styleTags ?? [],
+  };
+}
+
+function slotItemMeta(
+  source: PreviewPoolGenerateSource,
+  slot: PreviewPoolTier3121Slot,
+): Record<string, unknown> {
   const shortHint =
     source === "test_preview_pool_seed"
-      ? "用于本地 smoke test，不写 MatchResult。"
-      : "首次访问时自动生成的预览池，候选不足时会补充本地占位用户。";
+      ? "本地测试预览池（3+2+1）"
+      : "自动预览池（3+2+1：审美契合×3 / 风格相似×2 / 回流×1）";
   return {
     source,
-    slotReason:
-      source === "test_preview_pool_seed"
-        ? `本地测试预览池候选 ${rank}`
-        : `自动预览池候选 ${rank}`,
+    layout: PREVIEW_POOL_TIER3121_LAYOUT_VERSION,
+    slotReason: slot.slotReason,
+    scoreReason: slot.scoreReason,
     shortHint,
-    tags: [source, tier],
+    tags: [source, slot.candidateType, slot.displayMode],
+  };
+}
+
+function userToShadowCandidate(
+  user: User,
+  firstImage: UserImage | null,
+): ShadowCandidateInput {
+  const vision = firstImage
+    ? extractUsableVisionFromDetectionScoreJson(
+        firstImage.detectionScoreJson,
+        firstImage.reviewStatus,
+      )
+    : null;
+  return {
+    userId: user.id,
+    createdAt: user.createdAt,
+    displaySourceKey: previewPoolRowDisplaySourceKey({
+      id: user.id,
+      firstImageUrl: firstImage?.imageUrl ?? null,
+    }),
+    styleTags: firstImage?.styleTags ?? [],
+    vision,
+    preferenceFields: {
+      age: user.age,
+      city: user.city,
+      height: user.height,
+      education: user.education,
+      occupation: user.occupation,
+      relationshipGoal: user.relationshipGoal,
+    },
   };
 }
 
@@ -70,10 +130,9 @@ export class PreviewPoolGeneratorService {
     return pool.id;
   }
 
-  private async listEligibleCandidateIds(
+  private async loadShadowCandidatePool(
     viewerUserId: string,
-    take: number,
-  ): Promise<string[]> {
+  ): Promise<ShadowCandidateInput[]> {
     const rows = await this.prisma.user.findMany({
       where: {
         id: { not: viewerUserId },
@@ -81,18 +140,59 @@ export class PreviewPoolGeneratorService {
         images: { some: {} },
       },
       orderBy: { createdAt: "desc" },
-      take,
-      select: { id: true },
+      take: MAX_CANDIDATE_SCAN,
+      include: {
+        images: { orderBy: { createdAt: "asc" }, take: 1 },
+      },
     });
-    return rows
-      .map((r) => r.id)
-      .filter((id) => isEligiblePreviewCandidate(id, viewerUserId));
+
+    const out: ShadowCandidateInput[] = [];
+    for (const row of rows) {
+      if (!isEligiblePreviewCandidate(row.id, viewerUserId)) continue;
+      out.push(userToShadowCandidate(row, row.images[0] ?? null));
+    }
+    return out;
+  }
+
+  private async loadViewerTier3121Context(viewerUserId: string): Promise<{
+    viewerPref: ViewerPreferenceLike;
+    viewerStyleTags: string[];
+    viewerPhotoVisualTags: string[] | null;
+    viewerVisionAvailable: boolean;
+  }> {
+    const [prefRow, viewerImages] = await Promise.all([
+      this.prisma.userPreference.findUnique({ where: { userId: viewerUserId } }),
+      this.prisma.userImage.findMany({
+        where: { userId: viewerUserId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true,
+          detectionScoreJson: true,
+          detectionStatus: true,
+          reviewStatus: true,
+        },
+      }),
+    ]);
+
+    const viewerPref = toViewerPreferenceLike(prefRow);
+    const viewerStyleTags = prefRow?.styleTags ?? [];
+    const viewerVision = pickViewerPassingPhotoVision(
+      viewerImages as UserImageVisionSourceRow[],
+    );
+    return {
+      viewerPref,
+      viewerStyleTags,
+      viewerPhotoVisualTags: viewerVision?.photoVisualTags ?? null,
+      viewerVisionAvailable: viewerVision != null,
+    };
   }
 
   private async ensureSyntheticCandidate(
     viewerUserId: string,
     n: number,
-  ): Promise<string> {
+  ): Promise<ShadowCandidateInput> {
     const phone = seededPhone(viewerUserId, n);
     const user = await this.prisma.user.upsert({
       where: { phone },
@@ -109,7 +209,6 @@ export class PreviewPoolGeneratorService {
         bio: "Auto-generated preview-pool candidate.",
       },
       update: {},
-      select: { id: true },
     });
 
     await this.prisma.userProfile.upsert({
@@ -127,12 +226,12 @@ export class PreviewPoolGeneratorService {
       update: {},
     });
 
-    const existingImage = await this.prisma.userImage.findFirst({
+    let firstImage = await this.prisma.userImage.findFirst({
       where: { userId: user.id },
-      select: { id: true },
+      orderBy: { createdAt: "asc" },
     });
-    if (!existingImage) {
-      await this.prisma.userImage.create({
+    if (!firstImage) {
+      firstImage = await this.prisma.userImage.create({
         data: {
           userId: user.id,
           imageUrl: `https://example.com/peima-preview-seed-${n}.jpg`,
@@ -144,31 +243,35 @@ export class PreviewPoolGeneratorService {
       });
     }
 
-    return user.id;
+    return userToShadowCandidate(user, firstImage);
   }
 
-  private async resolveCandidateIds(
+  private async resolveTier3121Slots(
     viewerUserId: string,
     allowSyntheticFallback: boolean,
-  ): Promise<string[]> {
-    const candidateIds = await this.listEligibleCandidateIds(
-      viewerUserId,
-      POOL_SLOT_COUNT * 2,
-    );
+  ): Promise<PreviewPoolTier3121Slot[]> {
+    const ctx = await this.loadViewerTier3121Context(viewerUserId);
+    let candidates = await this.loadShadowCandidatePool(viewerUserId);
+
+    let slots = assignPreviewPoolTier3121Slots({
+      candidates,
+      ...ctx,
+    });
 
     if (allowSyntheticFallback) {
-      for (let n = 1; candidateIds.length < POOL_SLOT_COUNT; n += 1) {
-        const id = await this.ensureSyntheticCandidate(viewerUserId, n);
-        if (
-          isEligiblePreviewCandidate(id, viewerUserId) &&
-          !candidateIds.includes(id)
-        ) {
-          candidateIds.push(id);
+      for (let n = 1; slots.length < POOL_SLOT_COUNT && n <= 12; n += 1) {
+        const synth = await this.ensureSyntheticCandidate(viewerUserId, n);
+        if (!candidates.some((c) => c.userId === synth.userId)) {
+          candidates = [...candidates, synth];
         }
+        slots = assignPreviewPoolTier3121Slots({
+          candidates,
+          ...ctx,
+        });
       }
     }
 
-    return candidateIds.slice(0, POOL_SLOT_COUNT);
+    return slots;
   }
 
   /**
@@ -193,14 +296,14 @@ export class PreviewPoolGeneratorService {
       options.allowSyntheticFallback ??
       isPreviewPoolAutoEnsureSyntheticFallbackEnabled();
 
-    const selected = await this.resolveCandidateIds(
+    const slots = await this.resolveTier3121Slots(
       viewerUserId,
       allowSynthetic,
     );
 
-    if (selected.length < POOL_SLOT_COUNT) {
+    if (slots.length < POOL_SLOT_COUNT) {
       throw new BadRequestException(
-        `Not enough preview candidates (${selected.length}/${POOL_SLOT_COUNT}). ` +
+        `Not enough preview candidates (${slots.length}/${POOL_SLOT_COUNT}). ` +
           "Add more users with profile + photo, or enable synthetic fallback.",
       );
     }
@@ -226,20 +329,16 @@ export class PreviewPoolGeneratorService {
       });
 
       await tx.previewPoolItem.createMany({
-        data: selected.map((candidateUserId, index) => {
-          const rank = index + 1;
-          return {
-            previewPoolId: pool.id,
-            userId: viewerUserId,
-            candidateUserId,
-            candidateType:
-              rank <= 2 ? "visual" : rank <= 4 ? "preference" : "backup",
-            displayMode: "full",
-            rankInPool: rank,
-            baseScore: 1 - index * 0.06,
-            itemMeta: slotMeta(options.source, rank),
-          };
-        }),
+        data: slots.map((slot) => ({
+          previewPoolId: pool.id,
+          userId: viewerUserId,
+          candidateUserId: slot.candidateUserId,
+          candidateType: slot.candidateType,
+          displayMode: slot.displayMode,
+          rankInPool: slot.rankInPool,
+          baseScore: slot.baseScore,
+          itemMeta: slotItemMeta(options.source, slot) as Prisma.InputJsonValue,
+        })),
       });
 
       return pool.id;

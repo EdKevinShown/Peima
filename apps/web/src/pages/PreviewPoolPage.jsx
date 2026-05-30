@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  acknowledgeOnboardingPhotoPreviewPool,
+  generateOnboardingPhotoPreviewPool,
+  getLatestOnboardingPhotoPreviewPool,
+} from "../api/onboardingPhotoPreviewPool";
 import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
 import { getTestMatchingCapabilities } from "../api/testMatch";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -48,10 +53,15 @@ function resolvePreviewImageUrl(raw) {
 }
 
 export default function PreviewPoolPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isOnboardingPool = location.pathname.includes("/onboarding/photo-preview");
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const [bundle, setBundle] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [acknowledging, setAcknowledging] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedAllowed, setSeedAllowed] = useState(false);
   const [error, setError] = useState("");
@@ -65,7 +75,9 @@ export default function PreviewPoolPage() {
     setLoading(true);
     setError("");
     try {
-      const next = await getLatestPreviewPool(userId);
+      const next = isOnboardingPool
+        ? await getLatestOnboardingPhotoPreviewPool()
+        : await getLatestPreviewPool(userId);
       setBundle(next);
     } catch (e) {
       setBundle(null);
@@ -73,7 +85,39 @@ export default function PreviewPoolPage() {
     } finally {
       setLoading(false);
     }
+  }, [userId, isOnboardingPool]);
+
+  const generateOnboardingPool = useCallback(async () => {
+    if (!userId) {
+      setError("缺少 userId：请先登录，或在 URL 里带上 ?userId=...");
+      return;
+    }
+    setGenerating(true);
+    setError("");
+    try {
+      const next = await generateOnboardingPhotoPreviewPool();
+      setBundle(next);
+    } catch (e) {
+      setBundle(null);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGenerating(false);
+    }
   }, [userId]);
+
+  const acknowledgeAndContinue = useCallback(async () => {
+    if (!userId) return;
+    setAcknowledging(true);
+    setError("");
+    try {
+      await acknowledgeOnboardingPhotoPreviewPool();
+      navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAcknowledging(false);
+    }
+  }, [userId, navigate]);
 
   useEffect(() => {
     void load();
@@ -124,9 +168,13 @@ export default function PreviewPoolPage() {
     <main style={{ maxWidth: 980, margin: "2rem auto", padding: "0 1rem 3rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ margin: 0, color: "#0f172a", fontSize: "1.55rem" }}>第一印象预览池</h1>
+          <h1 style={{ margin: 0, color: "#0f172a", fontSize: "1.55rem" }}>
+            {isOnboardingPool ? "第一印象预览池" : "匹配预览池（Legacy）"}
+          </h1>
           <p style={{ margin: "0.45rem 0 0", color: "#64748b", lineHeight: 1.6 }}>
-            只读查看 latest active preview pool。生成 / writer 路径仍保持下线，不会写 MatchResult。
+            {isOnboardingPool
+              ? "注册流程：3 审美契合 + 2 风格相似 + 1 回流（hidden 不展示图片）。确认后进入问卷。"
+              : "匹配链用 PreviewPool（batch-match 上游）；仅供排障，不是 onboarding 第一印象。"}
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -147,7 +195,45 @@ export default function PreviewPoolPage() {
           >
             {loading ? "刷新中…" : "刷新"}
           </button>
-          {seedAllowed ? (
+          {isOnboardingPool ? (
+            <button
+              type="button"
+              disabled={generating || !userId}
+              onClick={() => void generateOnboardingPool()}
+              style={{
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                padding: "0.6rem 1rem",
+                fontWeight: 600,
+                background: "#fff",
+                color: "#334155",
+                cursor: generating || !userId ? "not-allowed" : "pointer",
+                opacity: generating || !userId ? 0.72 : 1,
+              }}
+            >
+              {generating ? "生成中…" : "生成预览池"}
+            </button>
+          ) : null}
+          {isOnboardingPool && bundle ? (
+            <button
+              type="button"
+              disabled={acknowledging || !userId}
+              onClick={() => void acknowledgeAndContinue()}
+              style={{
+                border: "none",
+                borderRadius: 8,
+                padding: "0.6rem 1rem",
+                fontWeight: 600,
+                background: "#0f766e",
+                color: "#fff",
+                cursor: acknowledging || !userId ? "not-allowed" : "pointer",
+                opacity: acknowledging || !userId ? 0.72 : 1,
+              }}
+            >
+              {acknowledging ? "提交中…" : "确认并继续问卷"}
+            </button>
+          ) : null}
+          {!isOnboardingPool && seedAllowed ? (
             <button
               type="button"
               disabled={seeding || !userId}
@@ -176,7 +262,18 @@ export default function PreviewPoolPage() {
         <div style={{ color: "#475569", fontSize: "0.92rem", lineHeight: 1.7 }}>
           当前 userId：<code><UserIdWithName userId={userId} /></code>
           <br />
-          API：<code>GET /preview-pool/user/:userId/latest</code>
+          API：
+          <code>
+            {isOnboardingPool
+              ? "GET /onboarding/photo-preview-pool/me/latest"
+              : "GET /preview-pool/user/:userId/latest"}
+          </code>
+          {bundle?.previewPool?.sourceVersion ? (
+            <>
+              <br />
+              sourceVersion：<code>{bundle.previewPool.sourceVersion}</code>
+            </>
+          ) : null}
         </div>
       </section>
 
@@ -185,10 +282,19 @@ export default function PreviewPoolPage() {
           <h2 style={{ margin: "0 0 0.45rem", color: "#9a3412", fontSize: "1rem" }}>暂时没有可用预览池</h2>
           <p style={{ margin: 0, color: "#9a3412", lineHeight: 1.65 }}>{error}</p>
           <p style={{ margin: "0.7rem 0 0", color: "#7c2d12", fontSize: "0.86rem", lineHeight: 1.6 }}>
-            如果是 <code>No active preview pool</code>
-            {seedAllowed
-              ? "。正常情况下刷新页面会自动生成；也可点击「生成本地测试预览池」强制换一批测试数据（不写 MatchResult）。"
-              : "。请确认 API 已启动且 `PEIMA_PREVIEW_POOL_AUTO_ENSURE` 未关闭；刷新页面会尝试自动生成预览池。"}
+            {isOnboardingPool ? (
+              <>
+                如果是 <code>No active onboarding photo preview pool</code>，请先完成照片气质偏好，再点「生成
+                Onboarding 预览池」。
+              </>
+            ) : (
+              <>
+                如果是 <code>No active preview pool</code>
+                {seedAllowed
+                  ? "。也可点击「生成本地测试预览池」强制换一批测试数据（不写 MatchResult）。"
+                  : "。请确认 API 已启动且 `PEIMA_PREVIEW_POOL_AUTO_ENSURE` 未关闭。"}
+              </>
+            )}
           </p>
         </section>
       ) : null}
