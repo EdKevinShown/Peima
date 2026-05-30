@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
+import { useAdminAccess } from "../hooks/useAdminAccess";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import { getConversation } from "../api/chat";
@@ -22,6 +23,8 @@ export default function CopilotPage() {
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
   const expectedPeerUserId = useMemo(
     () => searchParams.get("finalMatchPeerUserId")?.trim() || null,
     [searchParams],
@@ -186,7 +189,7 @@ export default function CopilotPage() {
               沟通建议基于当前会话中的聊天对象生成。
             </p>
           )}
-          {isDebugMode && (expectedPeerUserId || actualConversationPeerUserId) ? (
+          {showDebug && (expectedPeerUserId || actualConversationPeerUserId) ? (
             <p
               style={{
                 margin: "0.4rem 0 0",

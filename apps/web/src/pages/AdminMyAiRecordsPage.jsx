@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import StandalonePage from "../components/layout/StandalonePage";
 import { getAdminMyAiRecords } from "../api/admin";
 import UserIdWithName from "../components/common/UserIdWithName";
 
@@ -35,19 +36,16 @@ export default function AdminMyAiRecordsPage() {
   }, [load]);
 
   return (
-    <main style={{ maxWidth: 980, margin: "1.2rem auto", padding: "0 1rem 2rem" }}>
-      <h1 style={{ margin: "0 0 0.6rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        管理员：我的 AI 记录
-      </h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.84rem", color: "#64748b", lineHeight: 1.6 }}>
-        本页用于查看当前管理员账号可追溯的 AI 相关持久化记录（摘要快照、画像建议、AI 模拟 job）。
-      </p>
-      <p style={{ margin: "0 0 0.85rem", fontSize: "0.8rem" }}>
-        <Link to="/">返回首页</Link>
-      </p>
-      <button type="button" onClick={() => void load()} disabled={loading}>
-        {loading ? "刷新中…" : "刷新"}
-      </button>
+    <StandalonePage
+      maxWidth="max-w-5xl"
+      title="管理员：我的 AI 记录"
+      subtitle="当前管理员账号可追溯的 AI 持久化记录（摘要、画像建议、模拟 job）。"
+      actions={
+        <button type="button" className="btn-ghost text-sm" onClick={() => void load()} disabled={loading}>
+          {loading ? "刷新中…" : "刷新"}
+        </button>
+      }
+    >
 
       {loading ? <LoadingState label="加载 AI 记录…" /> : null}
       {error ? (
@@ -156,7 +154,7 @@ export default function AdminMyAiRecordsPage() {
           </section>
         </>
       ) : null}
-    </main>
+    </StandalonePage>
   );
 }
 

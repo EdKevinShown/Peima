@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
+import { useAdminAccess } from "../hooks/useAdminAccess";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { getConversation, getConversationTimeline } from "../api/chat";
 import { resolveUserId } from "../utils/resolveUserId";
@@ -104,6 +105,8 @@ export default function RelationshipTimelinePage() {
   const conversationId = searchParams.get("conversationId")?.trim() || "";
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
   const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
   /** M6.6-C2：与 FinalMatchPage 跳转 query 对齐；不参与时间线拉取参数。 */
   const expectedTimelinePeerUserId = useMemo(
     () => searchParams.get("finalMatchPeerUserId")?.trim() || null,
@@ -331,12 +334,12 @@ export default function RelationshipTimelinePage() {
               当前时间线对象与最终匹配入口传入对象不一致，本页仍按当前时间线继续。
             </p>
           ) : null}
-          {isDebugMode && !expectedTimelinePeerUserId ? (
+          {showDebug && !expectedTimelinePeerUserId ? (
             <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
               调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
             </p>
           ) : null}
-          {isDebugMode &&
+          {showDebug &&
           expectedTimelinePeerUserId &&
           actualTimelinePeerUserId &&
           timelineHandoffMatched ? (
@@ -344,17 +347,17 @@ export default function RelationshipTimelinePage() {
               调试：最终匹配 handoff 已对齐。
             </p>
           ) : null}
-          {isDebugMode && expectedTimelinePeerUserId && peerLookup.status === "loading" ? (
+          {showDebug && expectedTimelinePeerUserId && peerLookup.status === "loading" ? (
             <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
               调试：正在加载会话以比对 handoff…
             </p>
           ) : null}
-          {isDebugMode && expectedTimelinePeerUserId && peerLookup.status === "failed" ? (
+          {showDebug && expectedTimelinePeerUserId && peerLookup.status === "failed" ? (
             <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
               调试：无法加载会话，无法比对 finalMatch handoff。
             </p>
           ) : null}
-          {isDebugMode &&
+          {showDebug &&
           expectedTimelinePeerUserId &&
           peerLookup.status === "ready" &&
           actualTimelinePeerUserId === null ? (
@@ -362,7 +365,7 @@ export default function RelationshipTimelinePage() {
               调试：会话已加载但 candidate 为空，无法比对 handoff。
             </p>
           ) : null}
-          {isDebugMode && timelineHandoffMismatch ? (
+          {showDebug && timelineHandoffMismatch ? (
             <p
               style={{
                 margin: "0.35rem 0 0",

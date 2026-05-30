@@ -1,6 +1,5 @@
 /**
- * Phase G v0.1 — 已登录用户主路径统一壳（问卷 / 画像 / 等待 / Final Match / Chat / 时间线 / Copilot / 我的活动）。
- * Login、首页、预览池、admin 诊断等不在此壳内。
+ * Logged-in app shell: questionnaire, matching, chat, copilot, activity.
  */
 import { Link, Outlet, useLocation } from "react-router-dom";
 
@@ -16,87 +15,42 @@ const pathTitle = (pathname) => {
   return "";
 };
 
-const shellWrap = {
-  minHeight: "100vh",
-  background: "#f1f5f9",
-  color: "#0f172a",
-  display: "flex",
-  flexDirection: "column",
-};
-
-const headerBar = {
-  flexShrink: 0,
-  borderBottom: "1px solid #e2e8f0",
-  background: "#fff",
-  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-};
-
-const headerInner = {
-  maxWidth: 1100,
-  margin: "0 auto",
-  padding: "0.65rem 1rem",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "1rem",
-  flexWrap: "wrap",
-};
-
-const brandStyle = {
-  fontWeight: 700,
-  fontSize: "1.05rem",
-  color: "#0f172a",
-  textDecoration: "none",
-};
-
-const pageTitleStyle = {
-  fontSize: "0.92rem",
-  color: "#475569",
-  fontWeight: 500,
-};
-
-const navMuted = {
-  fontSize: "0.82rem",
-  color: "#64748b",
-};
-
-const outletWrap = {
-  flex: 1,
-  padding: "0.5rem 0 2rem",
-};
-
 export default function MainAppShell() {
   const { pathname } = useLocation();
   const title = pathTitle(pathname);
 
   return (
-    <div style={shellWrap}>
-      <header style={headerBar}>
-        <div style={headerInner}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap" }}>
-            <Link to="/" style={brandStyle}>
+    <div className="min-h-dvh relative overflow-hidden flex flex-col">
+      <div className="orb orb-pink" aria-hidden />
+      <div className="orb orb-purple" aria-hidden />
+
+      <header className="relative z-20 flex-shrink-0 border-b border-white/10 glass">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+            <Link to="/home" className="text-base font-bold text-gradient no-underline">
               配吗
             </Link>
             {title ? (
               <>
-                <span style={{ color: "#cbd5e1" }} aria-hidden>
+                <span className="text-white/25" aria-hidden>
                   /
                 </span>
-                <span style={pageTitleStyle}>{title}</span>
+                <span className="text-sm text-white/55 font-medium truncate">{title}</span>
               </>
             ) : null}
           </div>
-          <nav style={{ display: "flex", alignItems: "center", gap: "0.75rem", ...navMuted }}>
-            <Link to="/" style={{ color: "#64748b" }}>
-              功能索引
+          <nav className="flex items-center gap-3 text-xs text-white/45">
+            <Link to="/home" className="hover:text-white/80 transition-colors no-underline text-inherit">
+              首页
             </Link>
-            <Link to="/login" style={{ color: "#64748b" }}>
-              登录
+            <Link to="/account" className="hover:text-white/80 transition-colors no-underline text-inherit">
+              账户
             </Link>
           </nav>
         </div>
       </header>
-      <div style={outletWrap}>
+
+      <div className="relative z-10 flex-1 pb-8">
         <Outlet />
       </div>
     </div>

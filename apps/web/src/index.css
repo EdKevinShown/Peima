@@ -18,14 +18,18 @@ body {
   min-height: 100dvh;
 }
 
-/* Upstream standalone pages use <main> as their root with inline light-theme
-   styles; give them a light page background so dark inline text is readable.
-   Custom dark-theme pages (landing/login/dashboard/onboarding/matchmaker)
-   intentionally use <div> wrappers and remain on the dark body. */
-main {
+/* Legacy light pages may add class `app-surface-light` on <main>. */
+main.app-surface-light {
   background: #f8fafc;
   color: #0f172a;
   min-height: 100dvh;
+}
+
+/* Default <main> inherits dark body; prefer AppDarkPage / MainAppShell. */
+main:not(.app-surface-light) {
+  min-height: 100dvh;
+  color: inherit;
+  background: transparent;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────── */
@@ -118,3 +122,54 @@ main {
 }
 .orb-pink  { background: #ff6b9d; width: 400px; height: 400px; top: -80px;  left: -100px; }
 .orb-purple{ background: #c44dff; width: 350px; height: 350px; bottom: -60px; right: -80px; }
+
+/* Legacy pages with inline light-theme colors inside dark shell */
+.app-themed-content {
+  color: rgba(255, 255, 255, 0.82);
+}
+.app-themed-content h1,
+.app-themed-content h2,
+.app-themed-content h3 {
+  color: #fff !important;
+}
+.app-themed-content p,
+.app-themed-content label,
+.app-themed-content li {
+  color: rgba(255, 255, 255, 0.62);
+}
+.app-themed-content a {
+  color: rgba(255, 255, 255, 0.78);
+}
+.app-themed-content code {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.app-themed-content section,
+.app-themed-content fieldset {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+.app-themed-content button[type="button"],
+.app-themed-content button[type="submit"] {
+  border-radius: 12px;
+}
+.app-themed-content input,
+.app-themed-content select,
+.app-themed-content textarea {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 12px;
+}
+.app-themed-content table {
+  color: rgba(255, 255, 255, 0.85);
+}
+.app-themed-content th {
+  color: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.app-themed-content td {
+  border-color: rgba(255, 255, 255, 0.08);
+}

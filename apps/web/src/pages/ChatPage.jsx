@@ -8,6 +8,7 @@ import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
 import { normalizeP6ReviewSummary } from "../components/profile/P6ReviewSummary.helpers.js";
 import P6ReviewSummary, { P6ProposedPatchDetails } from "../components/profile/P6ReviewSummary.jsx";
+import { useAdminAccess } from "../hooks/useAdminAccess";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getCopilotInsights } from "../api/copilot";
@@ -51,6 +52,8 @@ export default function ChatPage() {
   const fromFinalMatchHandoff = searchParams.get("fromFinalMatch") === "1";
   const rhythmRecommendedHandoff = searchParams.get("rhythmRecommended") === "1";
   const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
   /** M6.6-C1：与 FinalMatchPage handoff query 对齐；不参与发消息或改会话。 */
   const expectedPeerUserId = useMemo(
     () => searchParams.get("finalMatchPeerUserId")?.trim() || null,
@@ -951,7 +954,7 @@ export default function ChatPage() {
                 ? "最终匹配入口传入对象与当前会话对象不一致，沟通建议仍基于当前会话。"
                 : "沟通建议基于当前会话生成。"}
             </p>
-            {isDebugMode && (expectedPeerUserId || actualConversationPeerUserId) ? (
+            {showDebug && (expectedPeerUserId || actualConversationPeerUserId) ? (
               <p
                 style={{
                   margin: "0 0 0.45rem",
@@ -997,7 +1000,7 @@ export default function ChatPage() {
                 最终匹配入口对象与当前会话不一致；提交仍将写入当前聊天对象，不会写入另一用户。
               </p>
             ) : null}
-            {isDebugMode && (actualConversationPeerUserId || expectedPeerUserId) ? (
+            {showDebug && (actualConversationPeerUserId || expectedPeerUserId) ? (
               <p
                 style={{
                   margin: "0 0 0.5rem",
@@ -1290,12 +1293,12 @@ export default function ChatPage() {
                   当前聊天对象与最终匹配入口传入对象不一致，本页仍按当前会话继续。
                 </p>
               ) : null}
-              {isDebugMode && !expectedPeerUserId ? (
+              {showDebug && !expectedPeerUserId ? (
                 <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
                   调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
                 </p>
               ) : null}
-              {isDebugMode &&
+              {showDebug &&
               expectedPeerUserId &&
               actualConversationPeerUserId &&
               handoffPeerMatched ? (
@@ -1303,12 +1306,12 @@ export default function ChatPage() {
                   调试：最终匹配 handoff 已对齐。
                 </p>
               ) : null}
-              {isDebugMode && expectedPeerUserId && !actualConversationPeerUserId ? (
+              {showDebug && expectedPeerUserId && !actualConversationPeerUserId ? (
                 <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
                   调试：已带 handoff，会话 candidate 尚未加载完成，暂无法比对。
                 </p>
               ) : null}
-              {isDebugMode && handoffPeerMismatch ? (
+              {showDebug && handoffPeerMismatch ? (
                 <p
                   style={{
                     margin: "0.35rem 0 0",

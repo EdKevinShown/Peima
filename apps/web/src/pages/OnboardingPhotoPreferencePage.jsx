@@ -5,6 +5,7 @@ import {
   ONBOARDING_PHOTO_STYLE_TAG_POOL_SET,
 } from "@peima/shared/constants";
 import LoadingState from "../components/common/LoadingState";
+import StandalonePage from "../components/layout/StandalonePage";
 import {
   getOnboardingPhotoPreferencesMe,
   getOnboardingPhotoStatus,
@@ -131,10 +132,11 @@ export default function OnboardingPhotoPreferencePage() {
   }, [userId, selectedStyle, navigate]);
 
   return (
-    <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem", color: "#0f172a" }}>
-        审美偏好
-      </h1>
+    <StandalonePage
+      maxWidth="max-w-lg"
+      title="审美偏好"
+      subtitle="告诉我们你更容易被什么类型吸引。仅用于第一印象预览池，不代表最终匹配结果。"
+    >
       <p
         style={{
           marginBottom: "1rem",
@@ -237,6 +239,6 @@ export default function OnboardingPhotoPreferencePage() {
           </button>
         </>
       )}
-    </main>
+    </StandalonePage>
   );
 }

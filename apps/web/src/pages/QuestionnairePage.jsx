@@ -7,6 +7,7 @@ import {
 import { getToken } from "../api/auth";
 import { getOnboardingPhotoStatus } from "../api/onboarding";
 import LoadingState from "../components/common/LoadingState";
+import AppContent from "../components/layout/AppContent";
 import UserIdWithName from "../components/common/UserIdWithName";
 import { resolveUserId } from "../utils/resolveUserId";
 
@@ -157,20 +158,21 @@ export default function QuestionnairePage() {
   }, [userId, questions, answers, answeredCount, total]);
 
   return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem" }}>轻量画像问卷</h1>
-      <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        userId: <code><UserIdWithName userId={userId} /></code>
-        {version ? (
-          <>
-            {" "}
-            · 版本 <code>{version}</code>
-          </>
-        ) : null}
-      </p>
-      <p style={{ marginBottom: "1rem" }}>
-        <Link to="/home">首页</Link>
-      </p>
+    <AppContent
+      maxWidth="max-w-2xl"
+      title="轻量画像问卷"
+      subtitle={
+        <>
+          userId <code className="text-white/70"><UserIdWithName userId={userId} /></code>
+          {version ? (
+            <>
+              {" "}
+              · 版本 <code className="text-white/70">{version}</code>
+            </>
+          ) : null}
+        </>
+      }
+    >
 
       {!onboardingAllowed && <LoadingState label="校验入门流程…" />}
       {onboardingAllowed && loadLoading && <LoadingState label="加载题目…" />}
@@ -281,6 +283,6 @@ export default function QuestionnairePage() {
           </div>
         </>
       )}
-    </main>
+    </AppContent>
   );
 }

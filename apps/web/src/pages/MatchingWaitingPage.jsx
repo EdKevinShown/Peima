@@ -23,7 +23,11 @@ import {
   getTestMatchingCapabilities,
   runTestBatchMatchOnce,
 } from "../api/testMatch";
+import AdminOnly from "../components/admin/AdminOnly";
 import LoadingState from "../components/common/LoadingState";
+import AppContent from "../components/layout/AppContent";
+import AlertBanner from "../components/ui/AlertBanner";
+import GlassCard from "../components/ui/GlassCard";
 import {
   minimalPayloadFromOrchestrationEnvelope,
   storeFinalMatchConsumptionHintForJob,
@@ -816,23 +820,24 @@ export default function MatchingWaitingPage() {
           : null;
 
   return (
-    <main style={{ maxWidth: 520, margin: "0 auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem", color: "#0f172a" }}>匹配与说明</h1>
-      <p style={{ fontSize: "0.88rem", marginBottom: "0.65rem", color: "#64748b", lineHeight: 1.5 }}>
-        在这里查看<strong>排队与处理进度</strong>。结果就绪后，若你已有预览池，本页会自动准备编排并打开
-        <strong>最终结果</strong>页；关系节奏预测等说明在后台生成，可在最终结果页查看进度，无需在本页长时间等待。
-      </p>
+    <AppContent
+      maxWidth="max-w-xl"
+      title="匹配与说明"
+      subtitle={
+        <>
+          查看排队与处理进度。结果就绪后本页会自动准备编排并打开最终结果；关系节奏说明在后台生成。
+        </>
+      }
+    >
       {userId ? (
-        <p style={{ color: "#94a3b8", fontSize: "0.8rem", marginTop: 0, marginBottom: "0.35rem" }}>
-          当前流程已绑定到你的账号。
-        </p>
+        <p className="text-xs text-white/40 mb-3">当前流程已绑定到你的账号。</p>
       ) : null}
 
       {loading && <LoadingState />}
       {error && (
-        <p style={{ color: "#b00020" }} role="alert">
+        <AlertBanner variant="error" className="mb-4">
           {error.message}
-        </p>
+        </AlertBanner>
       )}
       {rematchReadyWaitError ? (
         <p style={{ color: "#b00020", marginTop: "0.5rem" }} role="alert">
@@ -845,11 +850,9 @@ export default function MatchingWaitingPage() {
         </p>
       ) : null}
 
-      {!loading && statusPayload && (
-        <p style={{ fontSize: "1.05rem", marginTop: "1rem" }}>
-          {primaryStatusLine}
-        </p>
-      )}
+      {!loading && statusPayload ? (
+        <p className="text-base text-white/90 mt-4">{primaryStatusLine}</p>
+      ) : null}
 
       {enqueueHint ? (
         <p style={{ color: "#0d6832", marginTop: "0.75rem" }} role="status">
@@ -962,92 +965,55 @@ export default function MatchingWaitingPage() {
         ) : null}
       </div>
 
-      {testBatchMatch ? (
-        <section
-          style={{
-            marginTop: "2rem",
-            padding: "1rem",
-            border: "1px solid #38bdf8",
-            borderRadius: 8,
-            background: "#f0f9ff",
-          }}
-        >
-          <h2 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#0369a1" }}>
-            测试专用
-          </h2>
-          <p style={{ fontSize: "0.8rem", color: "#0c4a6e", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
-            在 <code style={{ fontSize: "0.75rem" }}>.env</code> 中设置{" "}
-            <code style={{ fontSize: "0.75rem" }}>PEIMA_TEST_MATCH_ENABLED=1</code> 与{" "}
-            <code style={{ fontSize: "0.75rem" }}>PEIMA_TEST_MATCH_USER_IDS</code>（你的 userId）后可见。
-            与管理员功能相同：在 API 所在机器上执行一轮 batch-match。勿在生产开启给全员。
-          </p>
-          <button
-            type="button"
-            onClick={onTestRunBatchMatch}
-            disabled={testBatchRunning || adminBatchRunning}
-            style={{
-              background: "#0284c7",
-              color: "#fff",
-              border: "none",
-              padding: "0.45rem 0.75rem",
-              borderRadius: 6,
-            }}
-          >
-            {testBatchRunning ? "正在执行 batch-match…" : "立即做一次匹配（测试）"}
-          </button>
-          {testBatchHint ? (
-            <p style={{ marginTop: "0.65rem", fontSize: "0.85rem", color: "#166534" }} role="status">
-              {testBatchHint}
+      <AdminOnly>
+        <GlassCard className="mt-8 space-y-3">
+          <AlertBanner variant="admin" title="管理员 / 排障工具">
+            <p className="text-xs opacity-90">
+              在运行 API 的机器上执行 batch-match（等价于 worker CLI）。生产环境若无 worker 可能失败。
             </p>
+            {userId ? (
+              <p className="text-xs mt-2">
+                <Link
+                  to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
+                  className="text-amber-200 underline"
+                >
+                  匹配预览池（Legacy 编排）
+                </Link>
+              </p>
+            ) : null}
+          </AlertBanner>
+          {adminBatchMatch ? (
+            <button
+              type="button"
+              className="btn-primary text-sm py-2 px-4"
+              onClick={onAdminRunBatchMatch}
+              disabled={adminBatchRunning || testBatchRunning}
+            >
+              {adminBatchRunning ? "正在执行 batch-match…" : "立刻执行本轮 batch-match"}
+            </button>
           ) : null}
-        </section>
-      ) : null}
-
-      {adminBatchMatch ? (
-        <section
-          style={{
-            marginTop: "2rem",
-            padding: "1rem",
-            border: "1px solid #c9a227",
-            borderRadius: 8,
-            background: "#fffbeb",
-          }}
-        >
-          <h2 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", color: "#92400e" }}>
-            管理员专用
-          </h2>
-          <p style={{ fontSize: "0.8rem", color: "#78350f", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
-            以下操作会在<strong>运行 API 的机器</strong>上启动 worker，等价于命令行{" "}
-            <code style={{ fontSize: "0.75rem" }}>pnpm --filter @peima/worker run batch-match</code>
-            （若已 build 则优先用 <code>dist/main.js --batch-match</code>）。
-            生产环境若 API 容器内无 worker / pnpm，会失败——仅建议在本地或可控环境使用。
-          </p>
-          {userId ? (
-            <p style={{ fontSize: "0.78rem", color: "#78350f", margin: "0 0 0.65rem", lineHeight: 1.5 }}>
-              <Link
-                to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
-                style={{ color: "#1d4ed8", textDecoration: "underline" }}
-              >
-                Round 2 编排（内部）
-              </Link>
-              — 跳转预览池页，使用 admin 内部编排链（非 C 端正式功能）。
-            </p>
+          {testBatchMatch ? (
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              onClick={onTestRunBatchMatch}
+              disabled={testBatchRunning || adminBatchRunning}
+            >
+              {testBatchRunning ? "正在执行…" : "测试：执行一轮 batch-match"}
+            </button>
           ) : null}
-          <button
-            type="button"
-            onClick={onAdminRunBatchMatch}
-            disabled={adminBatchRunning || testBatchRunning}
-            style={{ background: "#b45309", color: "#fff", border: "none", padding: "0.45rem 0.75rem", borderRadius: 6 }}
-          >
-            {adminBatchRunning ? "正在执行 batch-match…" : "立刻执行本轮 batch-match"}
-          </button>
           {adminBatchHint ? (
-            <p style={{ marginTop: "0.65rem", fontSize: "0.85rem", color: "#166534" }} role="status">
+            <p className="text-xs text-emerald-200" role="status">
               {adminBatchHint}
             </p>
           ) : null}
-        </section>
-      ) : null}
-    </main>
+          {testBatchHint ? (
+            <p className="text-xs text-emerald-200" role="status">
+              {testBatchHint}
+            </p>
+          ) : null}
+        </GlassCard>
+      </AdminOnly>
+    </AppContent>
   );
 }

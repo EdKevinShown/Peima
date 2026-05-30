@@ -7,27 +7,15 @@ import {
 } from "../api/onboardingPhotoPreviewPool";
 import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
 import { getTestMatchingCapabilities } from "../api/testMatch";
+import AdminOnly from "../components/admin/AdminOnly";
+import AppDarkPage from "../components/layout/AppDarkPage";
+import AppContent from "../components/layout/AppContent";
+import AlertBanner from "../components/ui/AlertBanner";
+import DataTable from "../components/ui/DataTable";
+import GlassCard from "../components/ui/GlassCard";
+import { useAdminAccess } from "../hooks/useAdminAccess";
 import { resolveUserId } from "../utils/resolveUserId";
 import UserIdWithName from "../components/common/UserIdWithName";
-
-const card = {
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  background: "#fff",
-  padding: "1rem",
-  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-};
-
-const pill = {
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 999,
-  padding: "0.16rem 0.55rem",
-  fontSize: "0.76rem",
-  border: "1px solid #cbd5e1",
-  color: "#475569",
-  background: "#f8fafc",
-};
 
 function fmtScore(n) {
   return typeof n === "number" && Number.isFinite(n) ? n.toFixed(3) : "-";
@@ -58,6 +46,7 @@ export default function PreviewPoolPage() {
   const isOnboardingPool = location.pathname.includes("/onboarding/photo-preview");
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const { isAdmin } = useAdminAccess();
   const [bundle, setBundle] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -124,6 +113,10 @@ export default function PreviewPoolPage() {
   }, [load]);
 
   useEffect(() => {
+    if (!isAdmin) {
+      setSeedAllowed(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -132,15 +125,13 @@ export default function PreviewPoolPage() {
           setSeedAllowed(Boolean(capabilities.testPreviewPoolSeed));
         }
       } catch {
-        if (!cancelled) {
-          setSeedAllowed(false);
-        }
+        if (!cancelled) setSeedAllowed(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [isAdmin]);
 
   const seedForTest = useCallback(async () => {
     if (!userId) {
@@ -164,257 +155,210 @@ export default function PreviewPoolPage() {
   const shortlistIds = bundle?.shortlistContract?.shortlist?.candidateUserIds ?? [];
   const evidence = bundle?.shortlistContract?.staticEvidence ?? {};
 
+  const tableColumns = [
+    { key: "rank", label: "Rank", render: (item) => item.rankInPool },
+    {
+      key: "photo",
+      label: "照片",
+      render: (item) => {
+        const imageUrl = resolvePreviewImageUrl(item.itemMeta?.candidateImageUrl);
+        return imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            className="w-[52px] h-[52px] object-cover rounded-lg border border-white/15"
+          />
+        ) : (
+          <span className="text-white/35 text-xs">无图</span>
+        );
+      },
+    },
+    {
+      key: "candidate",
+      label: "Candidate",
+      render: (item) => {
+        const inShortlist = shortlistIds.includes(item.candidateUserId);
+        return (
+          <span className="text-xs">
+            <code className="text-white/80">
+              <UserIdWithName userId={item.candidateUserId} />
+            </code>
+            {inShortlist ? (
+              <span className="ml-1.5 badge-gradient text-[0.65rem] py-0 px-1.5">shortlist</span>
+            ) : null}
+          </span>
+        );
+      },
+    },
+    { key: "mode", label: "Mode", render: (item) => item.displayMode },
+    { key: "base", label: "Base", render: (item) => fmtScore(item.baseScore) },
+    {
+      key: "pref",
+      label: "Preference",
+      render: (item) => fmtScore(evidence[item.candidateUserId]?.preferenceScore),
+    },
+    {
+      key: "profile",
+      label: "Profile",
+      render: (item) => fmtScore(evidence[item.candidateUserId]?.profileScalar),
+    },
+    {
+      key: "style",
+      label: "Style",
+      render: (item) => fmtScore(evidence[item.candidateUserId]?.styleScore),
+    },
+    {
+      key: "meta",
+      label: "Meta",
+      className: "text-white/50",
+      render: (item) => item.itemMeta?.slotReason || item.itemMeta?.shortHint || "—",
+    },
+  ];
+
   return (
-    <main style={{ maxWidth: 980, margin: "2rem auto", padding: "0 1rem 3rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: 0, color: "#0f172a", fontSize: "1.55rem" }}>
-            {isOnboardingPool ? "第一印象预览池" : "匹配预览池（Legacy）"}
-          </h1>
-          <p style={{ margin: "0.45rem 0 0", color: "#64748b", lineHeight: 1.6 }}>
-            {isOnboardingPool
-              ? "注册流程：3 审美契合 + 2 风格相似 + 1 回流（hidden 不展示图片）。确认后进入问卷。"
-              : "匹配链用 PreviewPool（batch-match 上游）；仅供排障，不是 onboarding 第一印象。"}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            disabled={loading || !userId}
-            onClick={() => void load()}
-            style={{
-              border: "none",
-              borderRadius: 8,
-              padding: "0.6rem 1rem",
-              fontWeight: 600,
-              background: "#1e293b",
-              color: "#fff",
-              cursor: loading || !userId ? "not-allowed" : "pointer",
-              opacity: loading || !userId ? 0.72 : 1,
-            }}
-          >
-            {loading ? "刷新中…" : "刷新"}
-          </button>
-          {isOnboardingPool ? (
-            <button
-              type="button"
-              disabled={generating || !userId}
-              onClick={() => void generateOnboardingPool()}
-              style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: "0.6rem 1rem",
-                fontWeight: 600,
-                background: "#fff",
-                color: "#334155",
-                cursor: generating || !userId ? "not-allowed" : "pointer",
-                opacity: generating || !userId ? 0.72 : 1,
-              }}
-            >
-              {generating ? "生成中…" : "生成预览池"}
+    <AppDarkPage maxWidth="max-w-5xl">
+      <AppContent
+        title={isOnboardingPool ? "第一印象预览池" : "匹配预览池（Legacy）"}
+        subtitle={
+          isOnboardingPool
+            ? "注册流程：3 审美契合 + 2 风格相似 + 1 回流（hidden 不展示图片）。确认后进入问卷。"
+            : "匹配链 PreviewPool（batch-match 上游）；仅供管理员排障，不是 onboarding 第一印象。"
+        }
+        actions={
+          <>
+            <button type="button" className="btn-ghost text-sm" disabled={loading || !userId} onClick={() => void load()}>
+              {loading ? "刷新中…" : "刷新"}
             </button>
-          ) : null}
-          {isOnboardingPool && bundle ? (
-            <button
-              type="button"
-              disabled={acknowledging || !userId}
-              onClick={() => void acknowledgeAndContinue()}
-              style={{
-                border: "none",
-                borderRadius: 8,
-                padding: "0.6rem 1rem",
-                fontWeight: 600,
-                background: "#0f766e",
-                color: "#fff",
-                cursor: acknowledging || !userId ? "not-allowed" : "pointer",
-                opacity: acknowledging || !userId ? 0.72 : 1,
-              }}
-            >
-              {acknowledging ? "提交中…" : "确认并继续问卷"}
-            </button>
-          ) : null}
-          {!isOnboardingPool && seedAllowed ? (
-            <button
-              type="button"
-              disabled={seeding || !userId}
-              onClick={() => void seedForTest()}
-              style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: "0.6rem 1rem",
-                fontWeight: 600,
-                background: "#fff",
-                color: "#334155",
-                cursor: seeding || !userId ? "not-allowed" : "pointer",
-                opacity: seeding || !userId ? 0.72 : 1,
-              }}
-            >
-              {seeding ? "生成中…" : "生成本地测试预览池"}
-            </button>
-          ) : null}
-          <Link to={`/matching-waiting${q}`} style={{ color: "#475569", fontWeight: 600 }}>
-            去匹配等待
-          </Link>
-        </div>
-      </div>
-
-      <section style={{ ...card, marginTop: "1rem", background: "#f8fafc" }}>
-        <div style={{ color: "#475569", fontSize: "0.92rem", lineHeight: 1.7 }}>
-          当前 userId：<code><UserIdWithName userId={userId} /></code>
-          <br />
-          API：
-          <code>
-            {isOnboardingPool
-              ? "GET /onboarding/photo-preview-pool/me/latest"
-              : "GET /preview-pool/user/:userId/latest"}
-          </code>
-          {bundle?.previewPool?.sourceVersion ? (
-            <>
-              <br />
-              sourceVersion：<code>{bundle.previewPool.sourceVersion}</code>
-            </>
-          ) : null}
-        </div>
-      </section>
-
-      {error ? (
-        <section style={{ ...card, marginTop: "1rem", borderColor: "#fecaca", background: "#fff7ed" }}>
-          <h2 style={{ margin: "0 0 0.45rem", color: "#9a3412", fontSize: "1rem" }}>暂时没有可用预览池</h2>
-          <p style={{ margin: 0, color: "#9a3412", lineHeight: 1.65 }}>{error}</p>
-          <p style={{ margin: "0.7rem 0 0", color: "#7c2d12", fontSize: "0.86rem", lineHeight: 1.6 }}>
             {isOnboardingPool ? (
-              <>
-                如果是 <code>No active onboarding photo preview pool</code>，请先完成照片气质偏好，再点「生成
-                Onboarding 预览池」。
-              </>
-            ) : (
-              <>
-                如果是 <code>No active preview pool</code>
-                {seedAllowed
-                  ? "。也可点击「生成本地测试预览池」强制换一批测试数据（不写 MatchResult）。"
-                  : "。请确认 API 已启动且 `PEIMA_PREVIEW_POOL_AUTO_ENSURE` 未关闭。"}
-              </>
-            )}
+              <button
+                type="button"
+                className="btn-ghost text-sm"
+                disabled={generating || !userId}
+                onClick={() => void generateOnboardingPool()}
+              >
+                {generating ? "生成中…" : "生成预览池"}
+              </button>
+            ) : null}
+            {isOnboardingPool && bundle ? (
+              <button
+                type="button"
+                className="btn-primary text-sm py-2 px-4"
+                disabled={acknowledging || !userId}
+                onClick={() => void acknowledgeAndContinue()}
+              >
+                {acknowledging ? "提交中…" : "确认并继续问卷"}
+              </button>
+            ) : null}
+            <AdminOnly>
+              {!isOnboardingPool && seedAllowed ? (
+                <button
+                  type="button"
+                  className="btn-ghost text-sm border-amber-400/40 text-amber-100"
+                  disabled={seeding || !userId}
+                  onClick={() => void seedForTest()}
+                >
+                  {seeding ? "生成中…" : "生成本地测试池"}
+                </button>
+              ) : null}
+            </AdminOnly>
+            <Link to={`/matching-waiting${q}`} className="btn-ghost text-sm no-underline">
+              匹配等待
+            </Link>
+          </>
+        }
+      >
+        <GlassCard className="mb-4 text-sm text-white/60 leading-relaxed">
+          <p>
+            userId：<code className="text-white/80"><UserIdWithName userId={userId} /></code>
           </p>
-        </section>
-      ) : null}
-
-      {bundle ? (
-        <>
-          <section style={{ ...card, marginTop: "1rem" }}>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
-              <span style={pill}>status: {bundle.previewPool.status}</span>
-              <span style={pill}>poolId: {bundle.previewPool.id}</span>
-              <span style={pill}>items: {bundle.items.length}</span>
-              <span style={pill}>shortlist: {shortlistIds.length}</span>
-            </div>
-            <p style={{ margin: "0.75rem 0 0", color: "#64748b", fontSize: "0.86rem" }}>
-              createdAt: {bundle.previewPool.createdAt} · updatedAt: {bundle.previewPool.updatedAt}
+          <p className="mt-1">
+            API{" "}
+            <code className="text-white/75 text-xs">
+              {isOnboardingPool
+                ? "GET /onboarding/photo-preview-pool/me/latest"
+                : "GET /preview-pool/user/:userId/latest"}
+            </code>
+          </p>
+          {bundle?.previewPool?.sourceVersion ? (
+            <p className="mt-1">
+              sourceVersion <code className="text-white/75">{bundle.previewPool.sourceVersion}</code>
             </p>
-          </section>
+          ) : null}
+        </GlassCard>
 
-          <section style={{ ...card, marginTop: "1rem" }}>
-            <h2 style={{ margin: "0 0 0.75rem", color: "#0f172a", fontSize: "1.05rem" }}>
-              Shortlist Contract v0
-            </h2>
+        {error ? (
+          <AlertBanner variant="error" title="暂时没有可用预览池" className="mb-4">
+            <p>{error}</p>
+            <p className="mt-2 text-xs opacity-90">
+              {isOnboardingPool ? (
+                <>
+                  请先完成审美偏好，再点「生成预览池」。若仍失败，检查 API 与候选人数量（需 ≥6）。
+                </>
+              ) : (
+                <>
+                  请确认 API 已启动。管理员可在服务端开启测试 seed 后使用「生成本地测试池」。
+                </>
+              )}
+            </p>
+          </AlertBanner>
+        ) : null}
+
+        {bundle ? (
+          <>
+            <GlassCard className="mb-4">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="badge-gradient">status: {bundle.previewPool.status}</span>
+                <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
+                  items: {bundle.items.length}
+                </span>
+                <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
+                  shortlist: {shortlistIds.length}
+                </span>
+              </div>
+              <p className="mt-3 text-xs text-white/45">
+                {bundle.previewPool.createdAt} · {bundle.previewPool.updatedAt}
+              </p>
+            </GlassCard>
+
             {bundle.shortlistContract ? (
-              <>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+              <GlassCard className="mb-4">
+                <h2 className="text-base font-semibold text-white mb-3">Shortlist</h2>
+                <div className="flex flex-wrap gap-2 mb-3">
                   {shortlistIds.map((id) => (
-                    <span key={id} style={{ ...pill, borderColor: "#86efac", background: "#f0fdf4", color: "#166534" }}>
+                    <span key={id} className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100 border border-emerald-400/30">
                       {id}
                     </span>
                   ))}
                 </div>
                 {bundle.shortlistContract.exclusionReport.length > 0 ? (
-                  <details>
-                    <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 600 }}>
-                      未入 shortlist 原因（{bundle.shortlistContract.exclusionReport.length}）
+                  <details className="text-sm text-white/55">
+                    <summary className="cursor-pointer font-medium text-white/70">
+                      未入 shortlist（{bundle.shortlistContract.exclusionReport.length}）
                     </summary>
-                    <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.1rem", color: "#64748b", lineHeight: 1.6 }}>
+                    <ul className="mt-2 pl-4 space-y-1 list-disc">
                       {bundle.shortlistContract.exclusionReport.map((row) => (
                         <li key={`${row.candidateUserId}:${row.reasonCode}`}>
-                          <code>
-                            <UserIdWithName userId={row.candidateUserId} />
-                          </code>{" "}
-                          · {row.reasonCode} · {row.detail}
+                          <UserIdWithName userId={row.candidateUserId} /> · {row.reasonCode}
                         </li>
                       ))}
                     </ul>
                   </details>
                 ) : null}
-              </>
-            ) : (
-              <p style={{ margin: 0, color: "#64748b" }}>当前池无法派生 shortlistContract。</p>
-            )}
-          </section>
+              </GlassCard>
+            ) : null}
 
-          <section style={{ ...card, marginTop: "1rem" }}>
-            <h2 style={{ margin: "0 0 0.75rem", color: "#0f172a", fontSize: "1.05rem" }}>候选列表</h2>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={{ padding: "0.5rem" }}>Rank</th>
-                    <th style={{ padding: "0.5rem" }}>照片</th>
-                    <th style={{ padding: "0.5rem" }}>Candidate</th>
-                    <th style={{ padding: "0.5rem" }}>Mode</th>
-                    <th style={{ padding: "0.5rem" }}>Base</th>
-                    <th style={{ padding: "0.5rem" }}>Preference</th>
-                    <th style={{ padding: "0.5rem" }}>Profile</th>
-                    <th style={{ padding: "0.5rem" }}>Style</th>
-                    <th style={{ padding: "0.5rem" }}>Meta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bundle.items.map((item) => {
-                    const ev = evidence[item.candidateUserId];
-                    const inShortlist = shortlistIds.includes(item.candidateUserId);
-                    const imageUrl = resolvePreviewImageUrl(item.itemMeta?.candidateImageUrl);
-                    return (
-                      <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9", background: inShortlist ? "#f0fdf4" : "#fff" }}>
-                        <td style={{ padding: "0.55rem" }}>{item.rankInPool}</td>
-                        <td style={{ padding: "0.55rem" }}>
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt=""
-                              style={{
-                                width: 52,
-                                height: 52,
-                                objectFit: "cover",
-                                borderRadius: 8,
-                                border: "1px solid #e2e8f0",
-                                background: "#f8fafc",
-                              }}
-                            />
-                          ) : (
-                            <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>无图</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "0.55rem" }}>
-                          <code>
-                            <UserIdWithName userId={item.candidateUserId} />
-                          </code>
-                          {inShortlist ? <span style={{ marginLeft: 6, ...pill }}>shortlist</span> : null}
-                        </td>
-                        <td style={{ padding: "0.55rem" }}>{item.displayMode}</td>
-                        <td style={{ padding: "0.55rem" }}>{fmtScore(item.baseScore)}</td>
-                        <td style={{ padding: "0.55rem" }}>{fmtScore(ev?.preferenceScore)}</td>
-                        <td style={{ padding: "0.55rem" }}>{fmtScore(ev?.profileScalar)}</td>
-                        <td style={{ padding: "0.55rem" }}>{fmtScore(ev?.styleScore)}</td>
-                        <td style={{ padding: "0.55rem", color: "#64748b" }}>
-                          {item.itemMeta?.slotReason || item.itemMeta?.shortHint || "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      ) : null}
-    </main>
+            <GlassCard>
+              <h2 className="text-base font-semibold text-white mb-3">候选列表</h2>
+              <DataTable
+                columns={tableColumns}
+                rows={bundle.items}
+                rowKey="id"
+                highlightRow={(item) => shortlistIds.includes(item.candidateUserId)}
+              />
+            </GlassCard>
+          </>
+        ) : null}
+      </AppContent>
+    </AppDarkPage>
   );
 }

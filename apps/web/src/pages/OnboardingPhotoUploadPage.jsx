@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import StandalonePage from "../components/layout/StandalonePage";
 import {
   deleteUserImage,
   listUserImages,
@@ -304,13 +305,11 @@ export default function OnboardingPhotoUploadPage() {
   ]);
 
   return (
-    <main style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.35rem", marginBottom: "0.5rem", color: "#0f172a" }}>
-        上传一张清晰本人照片
-      </h1>
-      <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "0.75rem" }}>
-        这张照片会用于生成你的第一印象预览池。我们不会进行 AI 美化，也不会生成虚假头像。
-      </p>
+    <StandalonePage
+      maxWidth="max-w-lg"
+      title="上传一张清晰本人照片"
+      subtitle="用于生成第一印象预览池。我们不会 AI 美化，也不会生成虚假头像。"
+    >
       <p
         style={{
           marginBottom: "1.25rem",
@@ -557,6 +556,6 @@ export default function OnboardingPhotoUploadPage() {
           )}
         </section>
       )}
-    </main>
+    </StandalonePage>
   );
 }

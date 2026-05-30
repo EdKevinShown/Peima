@@ -8,6 +8,7 @@ import { postMatchReviewAi } from "../api/match-review-ai";
 import { getViewerAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
 import AiSimulationSidecarV0 from "../components/review/AiSimulationSidecarV0";
+import { useAdminAccess } from "../hooks/useAdminAccess";
 import { resolveUserId } from "../utils/resolveUserId";
 import { readValidatedFinalMatchConsumptionHint } from "../utils/finalMatchConsumptionHintStorage";
 import { createConversation } from "../api/chat";
@@ -453,6 +454,8 @@ export default function FinalMatchPage() {
   const aiSimJobId = useMemo(() => (searchParams.get("aiSimJobId") || "").trim(), [searchParams]);
   /** M4.3-M1: show A/B tables, ids, internal tools only when `?debug=1`. */
   const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
 
   const [consumptionHint, setConsumptionHint] = useState(null);
 
@@ -941,7 +944,7 @@ export default function FinalMatchPage() {
 
   return (
     <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>
-      {userId && isDebugMode ? (
+      {userId && showDebug ? (
         <>
         <details
           style={{
@@ -1994,7 +1997,7 @@ export default function FinalMatchPage() {
             />
           </details>
 
-          {isDebugMode ? (
+          {showDebug ? (
             <details
               style={{
                 marginTop: "1rem",
