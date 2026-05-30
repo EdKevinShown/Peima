@@ -3,7 +3,7 @@ import { Link, Navigate, Route, Routes, useNavigate, useSearchParams } from "rea
 import {
   FileText, Sparkles, Heart, MessageCircle,
   User, Image as ImageIcon, BarChart3, Users,
-  Bot, Calendar,
+  Bot, Calendar, ShieldCheck, Database, Activity,
 } from "lucide-react";
 import LandingPage from "../pages/LandingPage";
 import FinalMatchPage from "../pages/FinalMatchPage";
@@ -30,6 +30,7 @@ import PersonalizedMatchmakerPage from "../pages/PersonalizedMatchmakerPage";
 import MainAppShell from "../components/layout/MainAppShell";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getMe } from "../api/auth";
+import { getAdminCapabilities } from "../api/admin";
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("peimaToken");
@@ -81,6 +82,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [nickname, setNickname] = useState("");
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("peimaToken");
@@ -89,6 +91,9 @@ function DashboardPage() {
     if (stored) setNickname(stored);
     getMe()
       .then((me) => setNeedsOnboarding(isProfileIncomplete(me)))
+      .catch(() => {});
+    getAdminCapabilities()
+      .then((c) => setIsAdmin(Boolean(c?.batchMatchTrigger)))
       .catch(() => {});
   }, [navigate]);
 
@@ -189,6 +194,19 @@ function DashboardPage() {
               <NavCard to="/chat/timeline" Icon={Calendar} title="关系时间线"  desc="你们的故事" />
             </div>
           </div>
+          {isAdmin && (
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 ml-1">管理员</p>
+              <div className="grid grid-cols-2 gap-3">
+                <NavCard to="/admin/photo-review"             Icon={ShieldCheck} title="照片审核"     desc="审核上传照片" />
+                <NavCard to="/admin/p76/canonical-sidecar"    Icon={Database}    title="P76 Sidecar"  desc="规范侧车列表" />
+                <NavCard to="/admin/p76/canonical-rehearsal"  Icon={Database}    title="P76 演练"     desc="规范写入演练" />
+                <NavCard to="/admin/p76/allowlist-apply-meta" Icon={Database}    title="P76 灰度应用"  desc="灰度应用记录" />
+                <NavCard to="/admin/ai-sim-job-triage"        Icon={Activity}    title="AI Sim 分诊"  desc="AI 模拟任务分诊" />
+                <NavCard to="/admin/ai-sim-job-diagnostic"    Icon={Activity}    title="AI Sim 诊断"  desc="任务诊断详情" />
+              </div>
+            </div>
+          )}
         </div>
 
         <p className="text-center text-white/20 text-xs mt-10">Peima</p>

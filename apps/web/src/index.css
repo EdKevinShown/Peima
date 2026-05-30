@@ -18,6 +18,16 @@ body {
   min-height: 100dvh;
 }
 
+/* Upstream standalone pages use <main> as their root with inline light-theme
+   styles; give them a light page background so dark inline text is readable.
+   Custom dark-theme pages (landing/login/dashboard/onboarding/matchmaker)
+   intentionally use <div> wrappers and remain on the dark body. */
+main {
+  background: #f8fafc;
+  color: #0f172a;
+  min-height: 100dvh;
+}
+
 /* ── Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }

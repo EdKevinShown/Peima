@@ -325,7 +325,7 @@ export default function LandingPage() {
             </nav>
 
             {/* ── Hero ─────────────────────────────────────────────── */}
-            <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
               {/* Main headline */}
               <h1 className="font-serif text-white leading-tight mb-6 animate-slide-up"
                   style={{ fontSize: 'clamp(2.8rem, 8vw, 5.5rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -364,7 +364,7 @@ export default function LandingPage() {
                   已有账号，登录
                 </Link>
               </div>
-            </main>
+            </div>
         </section>
 
         {/* ── How It Works ─────────────────────────────────────── */}
