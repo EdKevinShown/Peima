@@ -108,7 +108,7 @@ export default function MyActivityPage() {
         userId: <code><UserIdWithName userId={userId} /></code>
       </p>
       <p style={{ marginBottom: "1rem", fontSize: "0.85rem" }}>
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         {" · "}
         <Link to={`/account?userId=${encodeURIComponent(userId || "")}`}>
           账号与偏好

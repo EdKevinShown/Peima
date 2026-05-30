@@ -19,6 +19,7 @@ const pathTitle = (pathname) => {
 const shellWrap = {
   minHeight: "100vh",
   background: "#f1f5f9",
+  color: "#0f172a",
   display: "flex",
   flexDirection: "column",
 };

@@ -169,7 +169,7 @@ export default function QuestionnairePage() {
         ) : null}
       </p>
       <p style={{ marginBottom: "1rem" }}>
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
       </p>
 
       {!onboardingAllowed && <LoadingState label="校验入门流程…" />}

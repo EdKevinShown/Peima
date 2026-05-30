@@ -62,6 +62,12 @@ m13-calibration-report*.json
 # API local image uploads (see UPLOAD_DIR)
 **/uploads/
 
+# Claude Code workspace
+.claude/
+
+# Stray screenshots at repo root
+/image.png
+
 # Stray local outputs (do not commit)
 /ai-simulation-invalid-json-items.json
 /packages/ai-simulation-v1-runner/src/index.js

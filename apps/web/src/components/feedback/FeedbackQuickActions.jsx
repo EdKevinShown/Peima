@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ThumbsUp, ThumbsDown, Meh } from "lucide-react";
 import { submitFeedback } from "../../api/feedback";
 
 const SOURCE_TYPE = "rule_based";
@@ -47,27 +48,31 @@ export default function FeedbackQuickActions({
         type="button"
         disabled={busy || disabled}
         onClick={() => fire(5, "quick_thumbs_up")}
-        style={{ marginRight: "0.35rem" }}
+        style={{ marginRight: "0.35rem", display: "inline-flex", alignItems: "center", gap: 4 }}
         title="满意"
+        aria-label="满意"
       >
-        👍
+        <ThumbsUp size={16} />
       </button>
       <button
         type="button"
         disabled={busy || disabled}
         onClick={() => fire(3, "quick_neutral")}
-        style={{ marginRight: "0.35rem" }}
+        style={{ marginRight: "0.35rem", display: "inline-flex", alignItems: "center", gap: 4 }}
         title="一般"
+        aria-label="一般"
       >
-        😐
+        <Meh size={16} />
       </button>
       <button
         type="button"
         disabled={busy || disabled}
         onClick={() => fire(1, "quick_thumbs_down")}
+        style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
         title="不满意"
+        aria-label="不满意"
       >
-        👎
+        <ThumbsDown size={16} />
       </button>
       {hint ? (
         <span
