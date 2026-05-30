@@ -21,6 +21,12 @@ describe("buildOpenAiCompatibleChatCompletionsUrl", () => {
       ),
     ).toBe("https://api.openai.com/v1/chat/completions");
   });
+
+  it("appends /v1/chat/completions for Moonshot (Kimi) root base URL", () => {
+    expect(
+      buildOpenAiCompatibleChatCompletionsUrl("https://api.moonshot.cn"),
+    ).toBe("https://api.moonshot.cn/v1/chat/completions");
+  });
 });
 
 describe("buildAiSimulationV1ChatCompletionsUrl", () => {

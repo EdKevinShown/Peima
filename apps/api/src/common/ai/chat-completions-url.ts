@@ -9,8 +9,21 @@ export function buildOpenAiCompatibleChatCompletionsUrl(baseUrl: string): string
   if (!trimmed) {
     return "/chat/completions";
   }
-  if (trimmed.toLowerCase().endsWith("/chat/completions")) {
+  const lower = trimmed.toLowerCase();
+  if (lower.endsWith("/chat/completions")) {
     return trimmed;
+  }
+  if (lower.endsWith("/v1")) {
+    return `${trimmed}/chat/completions`;
+  }
+  try {
+    const host = new URL(trimmed).hostname.toLowerCase();
+    // Kimi / Moonshot: root `https://api.moonshot.cn` → `/v1/chat/completions` (see README).
+    if (host.includes("moonshot.cn")) {
+      return `${trimmed}/v1/chat/completions`;
+    }
+  } catch {
+    /* ignore */
   }
   return `${trimmed}/chat/completions`;
 }
