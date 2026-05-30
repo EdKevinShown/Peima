@@ -6,6 +6,7 @@ import { useAdminAccess } from "../hooks/useAdminAccess";
 import { useEnsureConversationInUrl } from "../hooks/useEnsureConversationInUrl";
 import { getConversation, getConversationTimeline } from "../api/chat";
 import { resolveUserId } from "../utils/resolveUserId";
+import { toFriendlyUserMessage } from "../utils/friendlyErrors";
 
 const TIMELINE_MESSAGE_LIMIT = 20;
 
@@ -27,12 +28,40 @@ const TYPE_LABELS = {
 };
 
 const TYPE_STYLES = {
-  conversation_opened: { badgeBg: "#e0f2fe", badgeColor: "#075985", dot: "#0ea5e9" },
-  message_sent: { badgeBg: "#eef2ff", badgeColor: "#3730a3", dot: "#6366f1" },
-  summary_snapshot: { badgeBg: "#fef3c7", badgeColor: "#92400e", dot: "#f59e0b" },
-  behavior_signal: { badgeBg: "#dcfce7", badgeColor: "#166534", dot: "#22c55e" },
-  feedback_on_conversation: { badgeBg: "#fce7f3", badgeColor: "#9d174d", dot: "#ec4899" },
+  conversation_opened: { badgeBg: "rgba(14,165,233,0.2)", badgeColor: "#7dd3fc", dot: "#0ea5e9" },
+  message_sent: { badgeBg: "rgba(99,102,241,0.22)", badgeColor: "#c7d2fe", dot: "#6366f1" },
+  summary_snapshot: { badgeBg: "rgba(245,158,11,0.2)", badgeColor: "#fcd34d", dot: "#f59e0b" },
+  behavior_signal: { badgeBg: "rgba(34,197,94,0.18)", badgeColor: "#86efac", dot: "#22c55e" },
+  feedback_on_conversation: { badgeBg: "rgba(236,72,153,0.2)", badgeColor: "#f9a8d4", dot: "#ec4899" },
 };
+
+const TECH_DETAIL_RE = /规则生成|非大模型|viewer\s*侧|说明由规则/i;
+
+function timelineTitleForDisplay(item, showDebug) {
+  if (showDebug) return item.title;
+  if (item.type === "summary_snapshot") return "沟通摘要已更新";
+  return item.title;
+}
+
+function timelineDetailForDisplay(item, showDebug) {
+  const detail = item.detail?.trim();
+  if (!detail) return null;
+  if (showDebug) return detail;
+  if (item.type === "summary_snapshot" || item.type === "behavior_signal") return null;
+  if (TECH_DETAIL_RE.test(detail)) return null;
+  return detail;
+}
+
+/** 普通用户时间线仅展示可理解的互动事件 */
+function filterTimelineItemsForViewer(items, showDebug) {
+  if (showDebug) return items;
+  return items.filter(
+    (i) =>
+      i.type === "conversation_opened" ||
+      i.type === "message_sent" ||
+      i.type === "feedback_on_conversation",
+  );
+}
 
 function formatTime(iso) {
   try {
@@ -154,9 +183,6 @@ export default function RelationshipTimelinePage() {
     if (!userId) return "/my-activity";
     return `/my-activity?userId=${encodeURIComponent(userId)}`;
   }, [userId]);
-
-  const freshnessHint =
-    "聊天页有新消息、摘要或反馈变化后，建议回到当前页手动刷新查看最新关系进展。";
 
   useEffect(() => {
     if (!conversationId) {
@@ -280,6 +306,10 @@ export default function RelationshipTimelinePage() {
   );
 
   const items = mergedItems;
+  const visibleItems = useMemo(
+    () => filterTimelineItemsForViewer(items, showDebug),
+    [items, showDebug],
+  );
   const timelineSummary = useMemo(() => buildTimelineSummary(items), [items]);
   const relationshipStage = useMemo(
     () => inferRelationshipStage(items),
@@ -287,11 +317,10 @@ export default function RelationshipTimelinePage() {
   );
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem" }}>关系时间线</h1>
-      <p style={{ color: "#666", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-        关系进展回顾（只读）
-      </p>
+    <div className="app-themed-content relationship-timeline-page">
+      <h1 className="text-lg font-semibold text-white mb-1">关系时间线</h1>
+      <p className="relationship-timeline-page__lead">看看你们从开始聊天到现在，大致走到了哪一步</p>
+
       <ConversationContextBar
         pageKey="timeline"
         conversationId={conversationId}
@@ -301,105 +330,27 @@ export default function RelationshipTimelinePage() {
         timelineHref={timelineSelfHref}
         activityHref={myActivityHref}
         navVariant="phaseG_subtle"
-        freshnessHint={freshnessHint}
+        theme="dark"
+        navOnly
+        showIdentifierDetails={showDebug}
+        showFreshnessMeta={showDebug}
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}
       />
-
-      {conversationId ? (
-        <section
-          style={{
-            marginBottom: "0.75rem",
-            padding: "0.65rem 0.8rem",
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-            background: "#f8fafc",
-          }}
-          aria-label="本页关系时间线"
-        >
-          <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a", marginBottom: "0.35rem" }}>
-            本页关系时间线
-          </div>
-          {timelineHandoffMismatch ? (
-            <p
-              role="status"
-              style={{
-                margin: 0,
-                fontSize: "0.84rem",
-                color: "#a16207",
-                lineHeight: 1.55,
-                maxWidth: 520,
-              }}
-            >
-              当前时间线对象与最终匹配入口传入对象不一致，本页仍按当前时间线继续。
-            </p>
-          ) : null}
-          {showDebug && !expectedTimelinePeerUserId ? (
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-              调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
-            </p>
-          ) : null}
-          {showDebug &&
-          expectedTimelinePeerUserId &&
-          actualTimelinePeerUserId &&
-          timelineHandoffMatched ? (
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#15803d", lineHeight: 1.45 }}>
-              调试：最终匹配 handoff 已对齐。
-            </p>
-          ) : null}
-          {showDebug && expectedTimelinePeerUserId && peerLookup.status === "loading" ? (
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-              调试：正在加载会话以比对 handoff…
-            </p>
-          ) : null}
-          {showDebug && expectedTimelinePeerUserId && peerLookup.status === "failed" ? (
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-              调试：无法加载会话，无法比对 finalMatch handoff。
-            </p>
-          ) : null}
-          {showDebug &&
-          expectedTimelinePeerUserId &&
-          peerLookup.status === "ready" &&
-          actualTimelinePeerUserId === null ? (
-            <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-              调试：会话已加载但 candidate 为空，无法比对 handoff。
-            </p>
-          ) : null}
-          {showDebug && timelineHandoffMismatch ? (
-            <p
-              style={{
-                margin: "0.35rem 0 0",
-                fontSize: "0.76rem",
-                color: "#64748b",
-                lineHeight: 1.45,
-                fontFamily: "ui-monospace, monospace",
-              }}
-            >
-              调试：handoff expected（脱敏）{maskPeerIdForDebug(expectedTimelinePeerUserId)} · 会话 actual（脱敏）
-              {maskPeerIdForDebug(actualTimelinePeerUserId)}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
 
       {shouldHoldForConversationBootstrap ? (
         <LoadingState label="正在准备会话…" />
       ) : null}
       {!conversationId && !shouldHoldForConversationBootstrap ? (
-        <p style={{ color: "#666" }} role="status">
+        <p role="status">
           {ensureConversationError ? (
             <>
-              无法创建会话：{ensureConversationError.message}
+              {toFriendlyUserMessage(ensureConversationError.message)}
               <br />
-              请确认已登录且存在匹配结果，或从 <Link to="/chat">聊天页</Link> 携带{" "}
-              <code>?conversationId=…</code> 进入。
+              请从 <Link to="/chat">聊天页</Link> 选择好友后再打开时间线。
             </>
           ) : (
-            <>
-              缺少 conversationId。请从 <Link to="/chat">聊天页</Link> 进入会话后再查看时间线，或使用{" "}
-              <code>?conversationId=…</code>
-              （建议同时带上 <code>userId=…</code> 以保持回跳状态一致）。
-            </>
+            <>请先从 <Link to="/chat">聊天页</Link> 进入一段对话，再查看关系时间线。</>
           )}
         </p>
       ) : null}
@@ -409,160 +360,146 @@ export default function RelationshipTimelinePage() {
       ) : null}
 
       {conversationId && error ? (
-        <p style={{ color: "#b00020" }} role="alert">
+        <p className="text-rose-300/90" role="alert">
           时间线加载失败：{error.message}
         </p>
       ) : null}
 
-      {conversationId && !loading && !error && items.length === 0 ? (
-        <p style={{ color: "#666" }} role="status">
-          当前暂无可展示的时间线事件。先回到聊天页发送消息，再回来查看关系进展。
-        </p>
+      {conversationId && !loading && !error && visibleItems.length === 0 ? (
+        <p role="status">还没有可回顾的记录。去聊几句，再回来看看你们的进展吧。</p>
       ) : null}
 
-      {conversationId && !loading && !error && items.length > 0 ? (
+      {conversationId && !loading && !error && visibleItems.length > 0 ? (
         <>
           <section
-            style={{
-              marginBottom: "0.85rem",
-              padding: "0.7rem 0.8rem",
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              background: "#fcfcfc",
-            }}
+            className="onboarding-soft-panel relationship-timeline-overview"
             aria-label="关系进展概览"
           >
-            <div style={{ fontWeight: 600, marginBottom: "0.35rem", color: "#111827" }}>
-              关系进展概览
-            </div>
-            <p style={{ margin: "0 0 0.45rem", fontSize: "0.85rem", color: "#4b5563" }}>
-              当前阶段：{relationshipStage}
+            <div className="relationship-timeline-overview__title">关系进展概览</div>
+            {showDebug && timelineHandoffMismatch ? (
+              <p className="relationship-timeline-overview__warn" role="status">
+                handoff 与当前会话不一致（管理员调试）
+              </p>
+            ) : null}
+            <p className="relationship-timeline-overview__stage">当前阶段：{relationshipStage}</p>
+            <p className="relationship-timeline-overview__note">
+              {showDebug
+                ? "调试模式：展示全部事件类型与明细。"
+                : "记录的是你和 TA 之间值得留意的互动节点。"}
             </p>
-            <p style={{ margin: "0 0 0.55rem", fontSize: "0.8rem", color: "#6b7280" }}>
-              时间线基于当前已写入事件生成。
-            </p>
-            <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "0.8rem", color: "#374151", background: "#eef2ff", borderRadius: 999, padding: "0.08rem 0.45rem" }}>
-                消息 {timelineSummary.message_sent}
+            <div className="relationship-timeline-stats">
+              <span className="relationship-timeline-stat relationship-timeline-stat--message">
+                往来 {timelineSummary.message_sent} 条
               </span>
-              <span style={{ fontSize: "0.8rem", color: "#374151", background: "#fef3c7", borderRadius: 999, padding: "0.08rem 0.45rem" }}>
-                摘要 {timelineSummary.summary_snapshot}
-              </span>
-              <span style={{ fontSize: "0.8rem", color: "#374151", background: "#fce7f3", borderRadius: 999, padding: "0.08rem 0.45rem" }}>
-                反馈 {timelineSummary.feedback_on_conversation}
-              </span>
-              <span style={{ fontSize: "0.8rem", color: "#374151", background: "#dcfce7", borderRadius: 999, padding: "0.08rem 0.45rem" }}>
-                信号 {timelineSummary.behavior_signal}
-              </span>
+              {timelineSummary.feedback_on_conversation > 0 ? (
+                <span className="relationship-timeline-stat relationship-timeline-stat--feedback">
+                  你的反馈 {timelineSummary.feedback_on_conversation} 次
+                </span>
+              ) : null}
+              {showDebug && timelineSummary.summary_snapshot > 0 ? (
+                <span className="relationship-timeline-stat relationship-timeline-stat--summary">
+                  摘要 {timelineSummary.summary_snapshot}
+                </span>
+              ) : null}
+              {showDebug && timelineSummary.behavior_signal > 0 ? (
+                <span className="relationship-timeline-stat relationship-timeline-stat--signal">
+                  信号 {timelineSummary.behavior_signal}
+                </span>
+              ) : null}
             </div>
           </section>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.65rem",
-            }}
-          >
-            {items.map((item, idx) => {
+
+          <ul className="relationship-timeline-list">
+            {visibleItems.map((item) => {
               const typeStyle = getTypeStyle(item.type);
-              const isLast = idx === items.length - 1;
+              const detail = timelineDetailForDisplay(item, showDebug);
               return (
-              <li
-                key={item.id}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.65rem 0.75rem",
-                  background: "#fff",
-                  fontSize: "0.88rem",
-                  lineHeight: 1.45,
-                  position: "relative",
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    left: -14,
-                    top: 16,
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: typeStyle.dot,
-                  }}
-                />
-                {!isLast ? (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      left: -10.5,
-                      top: 24,
-                      width: 1,
-                      height: "calc(100% + 10px)",
-                      background: "#e5e7eb",
-                    }}
-                  />
-                ) : null}
-                <div style={{ fontSize: "0.78rem", color: "#6b7280", marginBottom: 4 }}>
-                  {formatTime(item.occurredAt)}
-                  {" · "}
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "0.08rem 0.35rem",
-                      borderRadius: 4,
-                      background: typeStyle.badgeBg,
-                      color: typeStyle.badgeColor,
-                      fontWeight: 600,
-                      fontSize: "0.72rem",
-                    }}
-                  >
-                    {typeLabelWithActorRole(item, userId)}
-                  </span>
-                </div>
-                <div style={{ fontWeight: 600, color: "#111827" }}>{item.title}</div>
-                {item.detail ? (
-                  <div
-                    style={{
-                      marginTop: "0.35rem",
-                      color: "#374151",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {item.detail}
+                <li
+                  key={item.id}
+                  className="relationship-timeline-item"
+                  style={{ "--timeline-dot": typeStyle.dot }}
+                >
+                  <div className="relationship-timeline-item__meta">
+                    {formatTime(item.occurredAt)}
+                    {" · "}
+                    <span
+                      className="relationship-timeline-item__badge"
+                      style={{
+                        background: typeStyle.badgeBg,
+                        color: typeStyle.badgeColor,
+                      }}
+                    >
+                      {typeLabelWithActorRole(item, userId)}
+                    </span>
                   </div>
-                ) : null}
-              </li>
-            );
+                  <div className="relationship-timeline-item__title">
+                    {timelineTitleForDisplay(item, showDebug)}
+                  </div>
+                  {detail ? (
+                    <div className="relationship-timeline-item__detail">{detail}</div>
+                  ) : null}
+                </li>
+              );
             })}
           </ul>
+
           {showLoadMore ? (
-            <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-              <button type="button" onClick={onLoadMoreMessages} disabled={loadingMore}>
+            <div className="relationship-timeline-load-more">
+              <button
+                type="button"
+                className="btn-ghost text-sm py-2 px-4"
+                onClick={onLoadMoreMessages}
+                disabled={loadingMore}
+              >
                 {loadingMore ? "加载中…" : "继续查看更早消息"}
               </button>
-              <span style={{ color: "#6b7280", fontSize: "0.82rem" }}>
-                按时间顺序补充历史消息节点
+              <span className="relationship-timeline-foot" style={{ marginTop: 0 }}>
+                按时间顺序补充历史消息
               </span>
             </div>
           ) : null}
           {loadingMore ? (
-            <p style={{ color: "#666", fontSize: "0.88rem", marginTop: "0.75rem" }} role="status">
+            <p className="relationship-timeline-foot" role="status">
               正在加载更早消息…
             </p>
           ) : null}
           {!showLoadMore && !loadingMore && messagePagination?.hasMore === false ? (
-            <p style={{ color: "#6b7280", fontSize: "0.82rem", marginTop: "0.75rem" }} role="status">
-              已展示全部可加载消息节点。
+            <p className="relationship-timeline-foot" role="status">
+              更早的消息已全部加载。
             </p>
+          ) : null}
+
+          {showDebug ? (
+            <div className="relationship-timeline-debug" aria-label="时间线调试信息">
+              {!expectedTimelinePeerUserId ? (
+                <p style={{ margin: 0 }}>无最终匹配 handoff（未带 finalMatchPeerUserId）。</p>
+              ) : null}
+              {expectedTimelinePeerUserId &&
+              actualTimelinePeerUserId &&
+              timelineHandoffMatched ? (
+                <p style={{ margin: 0 }}>最终匹配 handoff 已对齐。</p>
+              ) : null}
+              {expectedTimelinePeerUserId && peerLookup.status === "loading" ? (
+                <p style={{ margin: 0 }}>正在加载会话以比对 handoff…</p>
+              ) : null}
+              {expectedTimelinePeerUserId && peerLookup.status === "failed" ? (
+                <p style={{ margin: 0 }}>无法加载会话，无法比对 finalMatch handoff。</p>
+              ) : null}
+              {expectedTimelinePeerUserId &&
+              peerLookup.status === "ready" &&
+              actualTimelinePeerUserId === null ? (
+                <p style={{ margin: 0 }}>会话已加载但 candidate 为空，无法比对 handoff。</p>
+              ) : null}
+              {timelineHandoffMismatch ? (
+                <p style={{ margin: 0 }}>
+                  handoff expected（脱敏）{maskPeerIdForDebug(expectedTimelinePeerUserId)} · 会话 actual（脱敏）
+                  {maskPeerIdForDebug(actualTimelinePeerUserId)}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </>
       ) : null}
-    </main>
+    </div>
   );
 }

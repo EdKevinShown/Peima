@@ -25,7 +25,12 @@ async function loadNickname(userId) {
   return p;
 }
 
-export default function UserIdWithName({ userId }) {
+/**
+ * @param {{ userId?: string, variant?: "idWithName" | "nameOnly" }} props
+ * - idWithName: 昵称（userId）或仅 userId
+ * - nameOnly: 仅昵称，无昵称时显示「未设置昵称」
+ */
+export default function UserIdWithName({ userId, variant = "idWithName" }) {
   const id = (userId || "").trim();
   const [nickname, setNickname] = useState(() =>
     id && nicknameCache.has(id) ? nicknameCache.get(id) || "" : "",
@@ -50,6 +55,9 @@ export default function UserIdWithName({ userId }) {
   }, [id]);
 
   if (!id) return <>（未设置）</>;
+  if (variant === "nameOnly") {
+    return <>{nickname || "未设置昵称"}</>;
+  }
   if (!nickname) return <>{id}</>;
   return (
     <>

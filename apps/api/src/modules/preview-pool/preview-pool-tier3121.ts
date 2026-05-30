@@ -26,6 +26,8 @@ export type PreviewPoolTier3121Slot = {
   baseScore: number;
   slotReason: string;
   scoreReason: string;
+  /** Overlapping photo/style tags shown to the viewer (Chinese taxonomy). */
+  overlapStyleTags: string[];
 };
 
 export type AssignPreviewPoolTier3121Input = {
@@ -49,6 +51,7 @@ function pushPick(
     score: number;
     tier: PreviewPoolTier3121Type;
     scoreReason: string;
+    overlapStyleTags: string[];
   },
 ): void {
   picks.push({
@@ -59,6 +62,7 @@ function pushPick(
     baseScore: pick.score,
     slotReason: `tier=${pick.tier}`,
     scoreReason: pick.scoreReason,
+    overlapStyleTags: pick.overlapStyleTags,
   });
 }
 
@@ -114,6 +118,7 @@ function fillRemainingSlots(
       score: p.score,
       tier,
       scoreReason: `${p.reason}:fill`,
+      overlapStyleTags: p.reasonTags,
     });
     usedIds.add(p.candidate.userId);
     usedKeys.add(p.candidate.displaySourceKey);
@@ -151,6 +156,7 @@ export function assignPreviewPoolTier3121Slots(
       score: p.score,
       tier: "aesthetic_fit",
       scoreReason: p.reason,
+      overlapStyleTags: p.reasonTags,
     });
     usedUserIds.add(p.candidate.userId);
     usedSourceKeys.add(p.candidate.displaySourceKey);
@@ -175,6 +181,7 @@ export function assignPreviewPoolTier3121Slots(
       score: p.score,
       tier: "style_similar",
       scoreReason: p.reason,
+      overlapStyleTags: p.reasonTags,
     });
     usedUserIds.add(p.candidate.userId);
     usedSourceKeys.add(p.candidate.displaySourceKey);
@@ -187,6 +194,7 @@ export function assignPreviewPoolTier3121Slots(
       score: reflow.score,
       tier: "reflow",
       scoreReason: reflow.reason,
+      overlapStyleTags: reflow.reasonTags,
     });
     usedUserIds.add(reflow.candidate.userId);
     usedSourceKeys.add(reflow.candidate.displaySourceKey);

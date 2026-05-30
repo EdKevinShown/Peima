@@ -28,26 +28,13 @@ import LoadingState from "../components/common/LoadingState";
 import AppContent from "../components/layout/AppContent";
 import AlertBanner from "../components/ui/AlertBanner";
 import GlassCard from "../components/ui/GlassCard";
+import { useAdminAccess } from "../hooks/useAdminAccess";
+import { matchingWaitProgressLine, toFriendlyUserMessage } from "../utils/friendlyErrors";
 import {
   minimalPayloadFromOrchestrationEnvelope,
   storeFinalMatchConsumptionHintForJob,
 } from "../utils/finalMatchConsumptionHintStorage";
 import { resolveUserId } from "../utils/resolveUserId";
-
-const primaryBtn = {
-  display: "inline-block",
-  marginTop: "0.75rem",
-  padding: "0.65rem 1.25rem",
-  fontSize: "0.95rem",
-  fontWeight: 600,
-  border: "none",
-  borderRadius: 8,
-  background: "#1e293b",
-  color: "#fff",
-  cursor: "pointer",
-  textAlign: "center",
-  textDecoration: "none",
-};
 
 /** 与 PreviewPool 页一致：编排后是否串联 `POST .../jobs/:id/run`。 */
 const PREVIEW_POOL_ORCH_CHAIN_RUN_JOB = import.meta.env.VITE_PREVIEW_POOL_ORCH_CHAIN_RUN_JOB === "1";
@@ -123,6 +110,9 @@ export default function MatchingWaitingPage() {
     () => searchParams.get("rematch") === "1" && baselineResultId.length > 0,
     [searchParams, baselineResultId],
   );
+  const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
 
   const [statusPayload, setStatusPayload] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -772,15 +762,15 @@ export default function MatchingWaitingPage() {
   const messageForStatus = (s) => {
     switch (s) {
       case "waiting":
-        return "正在等待本轮匹配";
+        return "已收到你的匹配请求，排队中…";
       case "processing":
-        return "系统正在处理中";
+        return "正在为你筛选合适的人选…";
       case "ready":
-        return "匹配已完成，正在为你准备查看结果";
+        return null;
       case "not_queued":
-        return "你还没有进入匹配队列";
+        return "还没有开始匹配，点下面按钮即可加入";
       default:
-        return `未知状态：${s}`;
+        return showDebug ? `未知状态：${s}` : "正在处理，请稍候";
     }
   };
 
@@ -790,72 +780,78 @@ export default function MatchingWaitingPage() {
       ? "上一轮结果仍显示为「已完成」；正在等待本轮新匹配写入…"
       : messageForStatus(st);
 
-  const pairwisePrimaryLine =
-    pairwiseStatus === "idle" || pairwiseStatus === "skipped"
-      ? null
-      : pairwiseStatus === "creating"
-        ? "正在创建 AI 关系模拟任务…"
-        : pairwiseStatus === "queued" || pairwiseStatus === "running"
-          ? "正在进行最后一轮 AI 关系模拟，通常 1 分钟内完成。"
-          : pairwiseStatus === "succeeded"
-            ? "AI 关系模拟已完成，正在准备最终匹配结果。"
-            : pairwiseStatus === "failed"
-              ? "AI 关系模拟暂时不可用，系统将基于关系画像生成结果。"
-              : pairwiseStatus === "timeout"
-                ? "AI 关系模拟仍在后台处理中，本次先基于关系画像生成结果。"
-                : null;
+  const pairwisePrimaryLine = matchingWaitProgressLine(pairwiseStatus);
 
-  const pairwiseSecondaryLine =
-    pairwiseStatus === "creating" || pairwiseStatus === "queued" || pairwiseStatus === "running"
-      ? "系统会在两位高匹配候选中进行关系节奏判断，你无需手动选择。"
-      : null;
+  const readyCanViewResults =
+    Boolean(userId && statusPayload && st === "ready" && !readyPoolLoading && !readyPoolMissing);
 
-  const pairwiseFinalizeLine =
-    pairwiseFinalizeStatus === "finalizing"
-      ? "正在确认最终匹配来源…"
-      : pairwiseFinalizeStatus === "finalized" || pairwiseFinalizeStatus === "already_frozen"
-        ? "最终匹配来源已确认。"
-        : pairwiseFinalizeStatus === "failed"
-          ? "最终匹配来源确认暂时不可用，系统将继续使用关系画像结果。"
-          : null;
+  const showPairwiseProgress =
+    readyCanViewResults &&
+    !readyAiFallback &&
+    (pairwiseStatus === "creating" || pairwiseStatus === "queued" || pairwiseStatus === "running");
+
+  const showReadyHero = readyCanViewResults && readyAiFallback;
 
   return (
     <AppContent
       maxWidth="max-w-xl"
-      title="匹配与说明"
+      title="匹配结果"
       subtitle={
-        <>
-          查看排队与处理进度。结果就绪后本页会自动准备编排并打开最终结果；关系节奏说明在后台生成。
-        </>
+        showReadyHero
+          ? "人选已就绪，马上带你查看。"
+          : st === "ready"
+            ? "正在打开结果页，请稍候…"
+            : "完成后会自动进入下一步。"
       }
     >
-      {userId ? (
-        <p className="text-xs text-white/40 mb-3">当前流程已绑定到你的账号。</p>
-      ) : null}
-
       {loading && <LoadingState />}
       {error && (
         <AlertBanner variant="error" className="mb-4">
-          {error.message}
+          {toFriendlyUserMessage(error.message)}
         </AlertBanner>
       )}
       {rematchReadyWaitError ? (
-        <p style={{ color: "#b00020", marginTop: "0.5rem" }} role="alert">
-          {rematchReadyWaitError}
+        <p className="chat-status-err mt-2" role="alert">
+          {toFriendlyUserMessage(rematchReadyWaitError)}
         </p>
       ) : null}
       {isRematchMode && rematchAwaitingNewRow && !rematchReadyWaitError ? (
-        <p style={{ color: "#475569", fontSize: "0.88rem", marginTop: "0.5rem", lineHeight: 1.55 }} role="status">
-          已发起重新匹配：当前服务端仍为上一轮结果，正在等待新匹配写入后再进入最终结果页（请勿关闭本页）。
+        <p className="text-sm text-white/55 mt-2 leading-relaxed" role="status">
+          新一轮匹配进行中，请稍候，准备好后会自动进入结果页。
         </p>
       ) : null}
 
-      {!loading && statusPayload ? (
+      {!loading && statusPayload && primaryStatusLine && !showReadyHero ? (
         <p className="text-base text-white/90 mt-4">{primaryStatusLine}</p>
       ) : null}
 
+      {showPairwiseProgress && pairwisePrimaryLine ? (
+        <p className="matching-waiting-inline-progress mt-4" role="status">
+          <span className="matching-waiting-spinner" aria-hidden />
+          {pairwisePrimaryLine}
+        </p>
+      ) : null}
+
+      {showReadyHero ? (
+        <section className="matching-waiting-ready mt-5" aria-live="polite">
+          <p className="matching-waiting-ready__emoji" aria-hidden>
+            ✓
+          </p>
+          <p className="matching-waiting-ready__title">已经为你匹配好了</p>
+          <p className="matching-waiting-ready__hint">
+            若没有自动跳转，点下面按钮即可查看。
+          </p>
+          <Link
+            to={`/final-match?userId=${encodeURIComponent(userId)}`}
+            className="btn-primary inline-block text-sm py-3 px-6 no-underline mt-4"
+          >
+            去看匹配结果
+          </Link>
+        </section>
+      ) : null}
+
       {enqueueHint ? (
-        <p style={{ color: "#0d6832", marginTop: "0.75rem" }} role="status">
+        <p className="chat-status-ok mt-3" role="status">
           {enqueueHint}
         </p>
       ) : null}
@@ -865,82 +861,37 @@ export default function MatchingWaitingPage() {
           <LoadingState label="正在加载匹配池并准备说明…" />
         ) : null}
 
-        {userId &&
-        statusPayload &&
-        st === "ready" &&
-        !readyPoolLoading &&
-        !readyPoolMissing &&
-        pairwisePrimaryLine ? (
+        {showDebug && readyCanViewResults ? (
           <section
-            aria-live="polite"
-            data-m38-pairwise-panel="1"
+            className="matching-waiting-note__tech mt-3 p-3 rounded-xl"
             data-m38-pairwise-status={pairwiseStatus}
-            data-m38-pairwise-proposal-ready={pairwiseProposalReady ? "1" : "0"}
-            data-m38-pairwise-has-job={pairwiseJobId ? "1" : "0"}
-            data-m38-pairwise-started-at={pairwiseStartedAt != null ? String(pairwiseStartedAt) : ""}
             data-m38-pairwise-finalize-status={pairwiseFinalizeStatus}
-            data-m38-pairwise-finalize-has-error={pairwiseFinalizeErrorMessage ? "1" : "0"}
-            style={{
-              marginTop: "1rem",
-              padding: "0.85rem 1rem",
-              borderRadius: 8,
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-            }}
           >
-            <p style={{ fontSize: "0.92rem", color: "#0f172a", margin: 0, lineHeight: 1.55 }}>{pairwisePrimaryLine}</p>
-            {pairwiseSecondaryLine ? (
-              <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "0.45rem 0 0", lineHeight: 1.5 }}>
-                {pairwiseSecondaryLine}
-              </p>
-            ) : null}
-            {pairwiseStatus === "failed" && pairwiseErrorMessage ? (
-              <p style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "0.35rem 0 0" }} role="note">
-                {pairwiseErrorMessage}
-              </p>
-            ) : null}
-            {pairwiseFinalizeLine ? (
-              <p style={{ fontSize: "0.8rem", color: "#475569", margin: "0.5rem 0 0", lineHeight: 1.5 }} role="status">
-                {pairwiseFinalizeLine}
-              </p>
-            ) : null}
+            pairwise: {pairwiseStatus}
+            {pairwiseErrorMessage ? ` · ${pairwiseErrorMessage}` : ""}
           </section>
         ) : null}
 
         {userId && statusPayload && st === "ready" && !readyPoolLoading && readyPoolMissing ? (
           <>
-            <p style={{ fontSize: "0.88rem", color: "#64748b", marginTop: 0, marginBottom: "0.5rem", lineHeight: 1.5 }}>
-              要生成<strong>匹配说明</strong>，需要先有<strong>预览池</strong>。请到预览池页<strong>手动创建一次</strong>（本页不会自动创建）；完成后返回本页即可继续。
+            <p className="text-sm text-white/55 mb-3 leading-relaxed">
+              还需要一步预览准备。请先到预览页确认人选，再返回本页继续。
             </p>
             <Link
               to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
-              style={primaryBtn}
+              className="btn-primary inline-block text-sm py-2.5 px-5 no-underline mt-2"
             >
-              去匹配预览池（Legacy）
+              前往预览
             </Link>
           </>
         ) : null}
 
-        {userId && statusPayload && st === "ready" && !readyPoolLoading && !readyPoolMissing && readyAiFallback ? (
-          <>
-            {readyAiError ? (
-              <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: 0, marginBottom: "0.5rem" }}>
-                {readyAiError}
-              </p>
-            ) : null}
-            <Link to={`/final-match?userId=${encodeURIComponent(userId)}`} style={primaryBtn}>
-              查看匹配结果
-            </Link>
-          </>
+        {showDebug && readyAiError ? (
+          <p className="text-xs text-white/45 mt-2">{readyAiError}</p>
         ) : null}
 
-        {userId &&
-        statusPayload &&
-        st === "ready" &&
-        !readyPoolLoading &&
-        !readyPoolMissing &&
-        !readyAiFallback ? (
-          <LoadingState label="正在准备匹配说明…" />
+        {readyCanViewResults && !readyAiFallback && !showReadyHero ? (
+          <LoadingState label="正在打开结果页…" />
         ) : null}
 
         {userId && statusPayload && st === "not_queued" ? (
@@ -948,23 +899,24 @@ export default function MatchingWaitingPage() {
             type="button"
             onClick={onEnqueue}
             disabled={enqueueing || !userId}
-            style={primaryBtn}
+            className="btn-primary text-sm py-2.5 px-5 mt-3"
           >
-            {enqueueing ? "入队中…" : "加入匹配队列"}
+            {enqueueing ? "入队中…" : "开始匹配"}
           </button>
         ) : null}
         {userId && statusPayload && st !== "ready" && st !== "not_queued" ? (
           <button
             type="button"
+            className="btn-ghost text-sm py-2 px-4 mt-3"
             onClick={() => void load()}
             disabled={loading || !userId}
-            style={primaryBtn}
           >
-            {loading ? "刷新中…" : "刷新匹配进度"}
+            {loading ? "刷新中…" : "刷新一下"}
           </button>
         ) : null}
       </div>
 
+      {showDebug ? (
       <AdminOnly>
         <GlassCard className="mt-8 space-y-3">
           <AlertBanner variant="admin" title="管理员 / 排障工具">
@@ -1014,6 +966,7 @@ export default function MatchingWaitingPage() {
           ) : null}
         </GlassCard>
       </AdminOnly>
+      ) : null}
     </AppContent>
   );
 }

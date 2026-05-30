@@ -7,7 +7,7 @@ const pathTitle = (pathname) => {
   if (pathname.startsWith("/chat/timeline")) return "关系时间线";
   if (pathname.startsWith("/chat")) return "聊天";
   if (pathname.startsWith("/copilot")) return "沟通洞察";
-  if (pathname.startsWith("/questionnaire-profile")) return "问卷画像";
+  if (pathname.startsWith("/questionnaire-profile")) return "关系画像";
   if (pathname.startsWith("/questionnaire")) return "问卷";
   if (pathname.startsWith("/matching-waiting")) return "匹配等待";
   if (pathname.startsWith("/final-match")) return "最终匹配";

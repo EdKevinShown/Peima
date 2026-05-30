@@ -25,6 +25,8 @@ import {
   heightOptionsCmInclusive,
 } from "@peima/shared/constants";
 import { mapAccountApiErrorMessage } from "../utils/accountApiErrorMap";
+import { useAdminAccess } from "../hooks/useAdminAccess";
+import { toFriendlyUserMessage } from "../utils/friendlyErrors";
 
 const AGES = ageOptionsInclusive();
 const HEIGHTS = heightOptionsCmInclusive();
@@ -44,10 +46,10 @@ function validatePreferenceAgeHeightInputs({
     if (!s) return null;
     const n = preferenceIntOrNull(raw);
     if (n == null) {
-      return "年龄请选择有效下拉值，不要使用非法数字。";
+      return "请从列表中选择年龄。";
     }
     if (n < ACCOUNT_MIN_AGE || n > ACCOUNT_MAX_AGE) {
-      return `年龄须在 ${ACCOUNT_MIN_AGE}–${ACCOUNT_MAX_AGE} 岁之间。`;
+      return `年龄请在 ${ACCOUNT_MIN_AGE}–${ACCOUNT_MAX_AGE} 岁之间选择。`;
     }
     return null;
   };
@@ -56,10 +58,10 @@ function validatePreferenceAgeHeightInputs({
     if (!s) return null;
     const n = preferenceIntOrNull(raw);
     if (n == null) {
-      return "身高请选择有效下拉值，不要使用非法数字。";
+      return "请从列表中选择身高。";
     }
     if (n < ACCOUNT_MIN_HEIGHT_CM || n > ACCOUNT_MAX_HEIGHT_CM) {
-      return `身高须在 ${ACCOUNT_MIN_HEIGHT_CM}–${ACCOUNT_MAX_HEIGHT_CM} cm 之间。`;
+      return `身高请在 ${ACCOUNT_MIN_HEIGHT_CM}–${ACCOUNT_MAX_HEIGHT_CM} cm 之间选择。`;
     }
     return null;
   };
@@ -73,41 +75,95 @@ function validatePreferenceAgeHeightInputs({
   );
 }
 
-/** Scoped to this page only; avoids global CSS file. */
+/** Scoped to this page only. */
 const ACCOUNT_PAGE_SCOPED_CSS = `
+.account-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2.5rem;
+}
+.account-page__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 0.35rem;
+}
+.account-page__lead {
+  margin: 0 0 1rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.52);
+}
+.account-page__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+}
+.account-page__nav a {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+}
+.account-page__nav a:hover {
+  color: #fff;
+}
+.account-page__section {
+  margin-bottom: 1.75rem;
+  padding: 1.1rem 1rem 1.2rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.02) 55%,
+    rgba(0, 0, 0, 0.08) 100%
+  );
+}
+.account-page__section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+}
+.account-page__section-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.48);
+}
 .account-page .account-field-label {
   display: block;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
   font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.78);
 }
 .account-page .account-field-control-slot {
-  margin-top: 4px;
+  margin-top: 0.35rem;
   width: 100%;
   display: block;
 }
-.account-page .account-input {
+.account-page .account-input,
+.account-page .account-textarea,
+.account-page .account-select {
   box-sizing: border-box;
   display: block;
   width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+.account-page .account-input,
+.account-page .account-select {
   height: 44px;
   padding: 0 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: normal;
-  background-color: #fff;
 }
 .account-page .account-textarea {
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
   min-height: 88px;
   padding: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
   line-height: 1.45;
-  background-color: #fff;
   resize: vertical;
 }
 .account-page .account-select-wrap {
@@ -115,20 +171,13 @@ const ACCOUNT_PAGE_SCOPED_CSS = `
   width: 100%;
 }
 .account-page .account-select {
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
-  height: 44px;
-  padding: 0 40px 0 12px;
-  margin: 0;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: normal;
-  background-color: #fff;
+  padding-right: 2.25rem;
   appearance: none;
   -webkit-appearance: none;
-  -moz-appearance: none;
+}
+.account-page .account-select option {
+  background: #1e1b3a;
+  color: #fff;
 }
 .account-page .account-select-wrap::after {
   content: "";
@@ -137,10 +186,117 @@ const ACCOUNT_PAGE_SCOPED_CSS = `
   top: 50%;
   width: 8px;
   height: 8px;
-  border-right: 1.5px solid #6b7280;
-  border-bottom: 1.5px solid #6b7280;
+  border-right: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.45);
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
+}
+.account-page .account-gender-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.account-page .account-gender-btn {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.account-page .account-gender-btn--on {
+  border-color: rgba(255, 107, 157, 0.45);
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.32), rgba(196, 77, 255, 0.28));
+  color: #fff;
+}
+.account-page .account-range-block {
+  margin-bottom: 0.85rem;
+}
+.account-page .account-range-block__title {
+  margin: 0 0 0.25rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+.account-page .account-range-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.45rem;
+  align-items: end;
+}
+.account-page .account-range-sep {
+  padding-bottom: 0.65rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+.account-page .account-range-row .account-field-label {
+  margin-bottom: 0;
+}
+.account-page .account-chip-group__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+.account-page .account-chip-group__hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.45;
+}
+.account-page .account-chip-group {
+  margin-bottom: 0.85rem;
+}
+.account-page .account-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.account-page .account-chip {
+  padding: 0.4rem 0.7rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.account-page .account-chip--on {
+  border-color: rgba(255, 107, 157, 0.45);
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.32), rgba(196, 77, 255, 0.28));
+  color: #fff;
+}
+.account-page .account-regions-details {
+  margin-bottom: 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
+}
+.account-page .account-regions-details > summary {
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.72);
+  list-style: none;
+}
+.account-page .account-regions-details > summary::-webkit-details-marker {
+  display: none;
+}
+.account-page .account-regions-details__body {
+  padding: 0 0.75rem 0.75rem;
+}
+.account-page .account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+}
+.account-page .account-tech-id {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.38);
+  font-family: ui-monospace, monospace;
 }
 `;
 
@@ -159,46 +315,21 @@ function AccountSelect({ label, value, onChange, children }) {
   );
 }
 
-const chipBase = {
-  margin: "4px 6px 0 0",
-  padding: "0.35rem 0.55rem",
-  borderRadius: 999,
-  border: "1px solid #bbb",
-  background: "#f5f5f5",
-  cursor: "pointer",
-  fontSize: "0.82rem",
-};
-
 function MultiChipGroup({ label, hint, options, selected, toggle }) {
   return (
-    <div style={{ marginBottom: "0.85rem", fontSize: "0.88rem" }}>
-      <span>{label}</span>
-      {hint ? (
-        <p
-          style={{
-            margin: "0.35rem 0 0",
-            fontSize: "0.8rem",
-            color: "#666",
-            lineHeight: 1.45,
-          }}
-        >
-          {hint}
-        </p>
-      ) : null}
-      <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap" }}>
+    <div className="account-chip-group">
+      {label ? <span className="account-chip-group__label">{label}</span> : null}
+      {hint ? <p className="account-chip-group__hint">{hint}</p> : null}
+      <div className="account-chips">
         {options.map((tag) => {
           const on = selected.includes(tag);
           return (
             <button
               key={tag}
               type="button"
+              className={`account-chip${on ? " account-chip--on" : ""}`}
+              aria-pressed={on}
               onClick={() => toggle(tag)}
-              style={{
-                ...chipBase,
-                borderColor: on ? "#1976d2" : "#bbb",
-                background: on ? "#e3f2fd" : "#f5f5f5",
-                fontWeight: on ? 600 : 400,
-              }}
             >
               {tag}
             </button>
@@ -209,9 +340,42 @@ function MultiChipGroup({ label, hint, options, selected, toggle }) {
   );
 }
 
+function AccountRangeRow({ title, minValue, maxValue, onMinChange, onMaxChange, options, unit = "" }) {
+  const suffix = unit ? ` ${unit}` : "";
+  return (
+    <div className="account-range-block">
+      <p className="account-range-block__title">{title}</p>
+      <div className="account-range-row">
+        <AccountSelect label="从" value={minValue} onChange={onMinChange}>
+          <option value="">不限</option>
+          {options.map((n) => (
+            <option key={n} value={String(n)}>
+              {n}
+              {suffix}
+            </option>
+          ))}
+        </AccountSelect>
+        <span className="account-range-sep">至</span>
+        <AccountSelect label="到" value={maxValue} onChange={onMaxChange}>
+          <option value="">不限</option>
+          {options.map((n) => (
+            <option key={n} value={String(n)}>
+              {n}
+              {suffix}
+            </option>
+          ))}
+        </AccountSelect>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
+  const { isAdmin } = useAdminAccess();
+  const showDebug = isDebugMode && isAdmin;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -343,13 +507,13 @@ export default function AccountPage() {
     setOkHint("");
     setProfileFieldError("");
     if (!gender) {
-      setProfileFieldError("请选择性别后再保存资料（必选：男或女）。");
+      setProfileFieldError("请先选择性别。");
       setSavingProfile(false);
       return;
     }
     const nick = nickname.trim();
     if (nick.length > 0 && (nick.length < 2 || nick.length > 20)) {
-      setProfileFieldError("昵称长度为 2–20 字。");
+      setProfileFieldError("昵称请填写 2–20 个字。");
       setSavingProfile(false);
       return;
     }
@@ -371,7 +535,7 @@ export default function AccountPage() {
         ...(bio.trim() ? { bio: bio.trim() } : {}),
       };
       await updateUser(userId, payload);
-      setOkHint("资料已保存。");
+      setOkHint("资料已保存");
     } catch (e) {
       setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
@@ -400,14 +564,14 @@ export default function AccountPage() {
     const ma = preferenceIntOrNull(minAge);
     const xa = preferenceIntOrNull(maxAge);
     if (ma != null && xa != null && ma > xa) {
-      setPrefRangeError("年龄下限不能大于年龄上限");
+      setPrefRangeError("年龄「从」不能大于「到」。");
       setSavingPref(false);
       return;
     }
     const mh = preferenceIntOrNull(minHeight);
     const xh = preferenceIntOrNull(maxHeight);
     if (mh != null && xh != null && mh > xh) {
-      setPrefRangeError("身高下限不能大于身高上限");
+      setPrefRangeError("身高「从」不能大于「到」。");
       setSavingPref(false);
       return;
     }
@@ -435,7 +599,7 @@ export default function AccountPage() {
         occupationPreferences,
         relationshipGoalPreferences,
       });
-      setOkHint("匹配偏好已保存。");
+      setOkHint("偏好已保存");
     } catch (e) {
       setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
@@ -454,52 +618,45 @@ export default function AccountPage() {
   ]);
 
   return (
-    <main className="account-page" style={{ maxWidth: 560, margin: "2rem auto", padding: "0 1rem" }}>
+    <main className="app-themed-content account-page">
       <style>{ACCOUNT_PAGE_SCOPED_CSS}</style>
-      <h1 style={{ fontSize: "1.25rem" }}>账号与偏好</h1>
-      <p style={{ color: "#666", fontSize: "0.9rem" }}>
-        userId: <code><UserIdWithName userId={userId} /></code>
-      </p>
-      <p style={{ marginBottom: "1rem", fontSize: "0.85rem" }}>
+      <h1 className="account-page__title">我的资料</h1>
+      <p className="account-page__lead">完善资料后，匹配和预览会更准。偏好条件都可以留空，表示不限制。</p>
+      {showDebug ? (
+        <p className="account-tech-id">
+          userId: <UserIdWithName userId={userId} />
+        </p>
+      ) : null}
+      <nav className="account-page__nav" aria-label="快捷入口">
         <Link to="/">首页</Link>
-        {" · "}
-        <Link
-          to={`/onboarding/photo-upload?userId=${encodeURIComponent(userId || "")}`}
-        >
+        <span aria-hidden>·</span>
+        <Link to={`/onboarding/photo-upload?userId=${encodeURIComponent(userId || "")}`}>
           上传照片
         </Link>
-        {" · "}
-        <Link to={`/my-activity?userId=${encodeURIComponent(userId || "")}`}>
-          P2 活动与统计
-        </Link>
-      </p>
+        <span aria-hidden>·</span>
+        <Link to={`/my-activity?userId=${encodeURIComponent(userId || "")}`}>我的动态</Link>
+      </nav>
 
       {loading && <LoadingState label="加载中…" />}
       {error && (
-        <p style={{ color: "#b00020" }} role="alert">
-          {error.message}
+        <p className="chat-status-err" role="alert">
+          {toFriendlyUserMessage(error.message)}
         </p>
       )}
       {okHint ? (
-        <p style={{ color: "#0d6832" }} role="status">
+        <p className="chat-status-ok mb-3" role="status">
           {okHint}
         </p>
       ) : null}
 
       {!loading && userId ? (
         <>
-          <section style={{ marginBottom: "1.75rem" }}>
-            <h2 style={{ fontSize: "1.05rem" }}>基本资料</h2>
-            <p style={{ fontSize: "0.8rem", color: "#666" }}>
-              与 <code>PATCH /users/:id</code> 对齐；性别为<strong>必选</strong>
-              （<code>male</code> / <code>female</code>），用于匹配与第一印象预览池过滤。
-            </p>
-            <p style={{ fontSize: "0.78rem", color: "#555" }}>
-              若生成预览池提示「请先完善性别信息后再生成预览池」，请在此选择性别并保存。
-            </p>
+          <section className="account-page__section">
+            <h2>关于你</h2>
+            <p className="account-page__section-hint">性别需要选择一项，其余可按需填写。</p>
 
             <label className="account-field-label">
-              昵称（2–20 字，可空不修改）
+              昵称
               <div className="account-field-control-slot">
                 <input
                   type="text"
@@ -511,34 +668,25 @@ export default function AccountPage() {
               </div>
             </label>
 
-            <fieldset
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: "0.75rem",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <legend style={{ fontSize: "0.88rem" }}>性别（必选）</legend>
-              {ACCOUNT_GENDER_VALUES.map((v) => (
-                <label
-                  key={v}
-                  style={{ marginRight: "1rem", fontSize: "0.88rem", cursor: "pointer" }}
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={v}
-                    checked={gender === v}
-                    onChange={() => setGender(v)}
-                  />{" "}
-                  {ACCOUNT_DISPLAY_GENDER[v]}（{v}）
-                </label>
-              ))}
-            </fieldset>
+            <div className="account-field-label" style={{ marginBottom: "0.5rem" }}>
+              性别
+              <div className="account-gender-row" role="group" aria-label="性别">
+                {ACCOUNT_GENDER_VALUES.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={`account-gender-btn${gender === v ? " account-gender-btn--on" : ""}`}
+                    aria-pressed={gender === v}
+                    onClick={() => setGender(v)}
+                  >
+                    {ACCOUNT_DISPLAY_GENDER[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <AccountSelect label="年龄" value={age} onChange={(e) => setAge(e.target.value)}>
-              <option value="">请选择</option>
+              <option value="">选填</option>
               {AGES.map((a) => (
                 <option key={a} value={String(a)}>
                   {a}
@@ -546,8 +694,8 @@ export default function AccountPage() {
               ))}
             </AccountSelect>
 
-            <AccountSelect label="所在地（省/直辖市）" value={city} onChange={(e) => setCity(e.target.value)}>
-              <option value="">请选择</option>
+            <AccountSelect label="所在城市" value={city} onChange={(e) => setCity(e.target.value)}>
+              <option value="">选填</option>
               {ACCOUNT_CITY_VALUES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -556,7 +704,7 @@ export default function AccountPage() {
             </AccountSelect>
 
             <AccountSelect label="身高（cm）" value={height} onChange={(e) => setHeight(e.target.value)}>
-              <option value="">请选择</option>
+              <option value="">选填</option>
               {HEIGHTS.map((h) => (
                 <option key={h} value={String(h)}>
                   {h} cm
@@ -569,7 +717,7 @@ export default function AccountPage() {
               value={education}
               onChange={(e) => setEducation(e.target.value)}
             >
-              <option value="">请选择</option>
+              <option value="">选填</option>
               {ACCOUNT_EDUCATION_VALUES.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -582,7 +730,7 @@ export default function AccountPage() {
               value={occupation}
               onChange={(e) => setOccupation(e.target.value)}
             >
-              <option value="">请选择</option>
+              <option value="">选填</option>
               {ACCOUNT_OCCUPATION_CATEGORY_VALUES.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -591,11 +739,11 @@ export default function AccountPage() {
             </AccountSelect>
 
             <AccountSelect
-              label="关系目标"
+              label="关系期待"
               value={relationshipGoal}
               onChange={(e) => setRelationshipGoal(e.target.value)}
             >
-              <option value="">请选择</option>
+              <option value="">选填</option>
               {ACCOUNT_RELATIONSHIP_GOAL_VALUES.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -604,7 +752,7 @@ export default function AccountPage() {
             </AccountSelect>
 
             <label className="account-field-label">
-              简介（非筛选主字段，最多 200 字）
+              一句话介绍自己（选填，最多 200 字）
               <div className="account-field-control-slot">
                 <textarea
                   className="account-textarea"
@@ -612,123 +760,115 @@ export default function AccountPage() {
                   onChange={(e) => setBio(e.target.value)}
                   rows={3}
                   maxLength={200}
+                  placeholder="例如：喜欢户外，周末常去爬山…"
                 />
               </div>
             </label>
 
             {profileFieldError ? (
-              <p style={{ color: "#b00020", fontSize: "0.85rem" }} role="alert">
+              <p className="chat-status-err" style={{ fontSize: "0.85rem" }} role="alert">
                 {profileFieldError}
               </p>
             ) : null}
 
-            <button type="button" onClick={onSaveProfile} disabled={savingProfile}>
-              {savingProfile ? "保存中…" : "保存资料"}
-            </button>
+            <div className="account-actions">
+              <button
+                type="button"
+                className="btn-primary text-sm py-2.5 px-5"
+                onClick={onSaveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? "保存中…" : "保存资料"}
+              </button>
+            </div>
           </section>
 
-          <section>
-            <h2 style={{ fontSize: "1.05rem" }}>匹配偏好</h2>
-            <p style={{ fontSize: "0.8rem", color: "#666" }}>
-              <code>PUT /preferences/:userId</code>；选项与资料字段同一套词表，便于硬门槛过滤。
-            </p>
-            <p style={{ fontSize: "0.78rem", color: "#555", marginTop: "-0.25rem" }}>
-              以下均为<strong>可选</strong>：不选表示<strong>不限制</strong>；可只填年龄或身高的一侧（例如仅下限）。
+          <section className="account-page__section">
+            <h2>希望认识怎样的人</h2>
+            <p className="account-page__section-hint">
+              以下都可不选；年龄和身高可以只填「从」或只填「到」。
             </p>
 
-            <AccountSelect
-              label="年龄下限"
-              value={minAge}
-              onChange={(e) => setMinAge(e.target.value)}
-            >
-              <option value="">请选择</option>
-              {AGES.map((a) => (
-                <option key={a} value={String(a)}>
-                  {a}
-                </option>
-              ))}
-            </AccountSelect>
-            <AccountSelect
-              label="年龄上限"
-              value={maxAge}
-              onChange={(e) => setMaxAge(e.target.value)}
-            >
-              <option value="">请选择</option>
-              {AGES.map((a) => (
-                <option key={a} value={String(a)}>
-                  {a}
-                </option>
-              ))}
-            </AccountSelect>
-
-            <AccountSelect
-              label="身高下限（cm）"
-              value={minHeight}
-              onChange={(e) => setMinHeight(e.target.value)}
-            >
-              <option value="">请选择</option>
-              {HEIGHTS.map((h) => (
-                <option key={h} value={String(h)}>
-                  {h}
-                </option>
-              ))}
-            </AccountSelect>
-            <AccountSelect
-              label="身高上限（cm）"
-              value={maxHeight}
-              onChange={(e) => setMaxHeight(e.target.value)}
-            >
-              <option value="">请选择</option>
-              {HEIGHTS.map((h) => (
-                <option key={h} value={String(h)}>
-                  {h}
-                </option>
-              ))}
-            </AccountSelect>
+            <AccountRangeRow
+              title="年龄"
+              minValue={minAge}
+              maxValue={maxAge}
+              onMinChange={(e) => setMinAge(e.target.value)}
+              onMaxChange={(e) => setMaxAge(e.target.value)}
+              options={AGES}
+            />
+            <AccountRangeRow
+              title="身高（cm）"
+              minValue={minHeight}
+              maxValue={maxHeight}
+              onMinChange={(e) => setMinHeight(e.target.value)}
+              onMaxChange={(e) => setMaxHeight(e.target.value)}
+              options={HEIGHTS}
+            />
 
             {prefRangeError ? (
-              <p style={{ color: "#b00020", fontSize: "0.85rem" }} role="alert">
+              <p className="chat-status-err" style={{ fontSize: "0.85rem" }} role="alert">
                 {prefRangeError}
               </p>
             ) : null}
 
+            <details className="account-regions-details">
+              <summary>
+                偏好地区（已选 {preferredCities.length} 个，不选表示不限）
+              </summary>
+              <div className="account-regions-details__body">
+                <MultiChipGroup
+                  label=""
+                  options={[...ACCOUNT_CITY_VALUES]}
+                  selected={preferredCities}
+                  toggle={toggleInList(setPreferredCities)}
+                />
+              </div>
+            </details>
+
             <MultiChipGroup
-              label="偏好地区（省/直辖市）（多选）"
-              options={[...ACCOUNT_CITY_VALUES]}
-              selected={preferredCities}
-              toggle={toggleInList(setPreferredCities)}
-            />
-            <MultiChipGroup
-              label="学历偏好（多选）"
+              label="学历"
+              hint="可多选，不选表示不限"
               options={[...ACCOUNT_EDUCATION_VALUES]}
               selected={educationPreferences}
               toggle={toggleInList(setEducationPreferences)}
             />
             <MultiChipGroup
-              label="职业偏好（多选）"
+              label="职业"
+              hint="可多选，不选表示不限"
               options={[...ACCOUNT_OCCUPATION_CATEGORY_VALUES]}
               selected={occupationPreferences}
               toggle={toggleInList(setOccupationPreferences)}
             />
             <MultiChipGroup
-              label="关系目标偏好（多选）"
+              label="关系期待"
+              hint="可多选，不选表示不限"
               options={[...ACCOUNT_RELATIONSHIP_GOAL_VALUES]}
               selected={relationshipGoalPreferences}
               toggle={toggleInList(setRelationshipGoalPreferences)}
             />
 
-            <button type="button" onClick={onSavePreferences} disabled={savingPref}>
-              {savingPref ? "保存中…" : "保存偏好"}
-            </button>
+            <div className="account-actions">
+              <button
+                type="button"
+                className="btn-primary text-sm py-2.5 px-5"
+                onClick={onSavePreferences}
+                disabled={savingPref}
+              >
+                {savingPref ? "保存中…" : "保存偏好"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-sm py-2 px-4"
+                onClick={load}
+                disabled={loading || !userId}
+              >
+                重新加载
+              </button>
+            </div>
           </section>
         </>
       ) : null}
-
-      <div style={{ marginTop: "1.25rem" }}>
-        <button type="button" onClick={load} disabled={loading || !userId}>
-          重新加载
-        </button>
-      </div>
     </main>
   );
 }

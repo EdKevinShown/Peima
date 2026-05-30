@@ -4,6 +4,7 @@ import { listMyFriends } from "../api/friends";
 import LoadingState from "../components/common/LoadingState";
 import ConversationContextBar from "../components/common/ConversationContextBar";
 import ChatSummaryCard from "../components/chat/ChatSummaryCard";
+import ChatSessionFeedback from "../components/chat/ChatSessionFeedback";
 import CopilotInsightCard from "../components/copilot/CopilotInsightCard";
 import ProfileSuggestionCard from "../components/profile/ProfileSuggestionCard";
 import { normalizeP6ReviewSummary } from "../components/profile/P6ReviewSummary.helpers.js";
@@ -27,6 +28,7 @@ import {
   sendMessage,
 } from "../api/chat";
 import { getSummaryAi } from "../api/summary-ai";
+import { toFriendlyUserMessage } from "../utils/friendlyErrors";
 
 /** P6.8 chat 生成落库的 sourceVersion（与后端一致）。 */
 const P6_8_PROFILE_COMPLETION_CHAT_GENERATE_SOURCE_VERSION =
@@ -218,7 +220,7 @@ export default function ChatPage() {
         setRefreshSource("unknown");
         return;
       }
-      setError(new Error("缺少 conversationId。请先从聊天入口进入会话后再进行跨页查看。"));
+      setError(new Error("请先从聊天页选择一位好友，再查看本页内容。"));
       setConversation(null);
       setLastRefreshedAt(null);
       setRefreshSource("unknown");
@@ -349,7 +351,7 @@ export default function ChatPage() {
 
   const onSend = useCallback(async () => {
     if (!conversationId || !userId) {
-      setError(new Error("缺少 userId 或 conversationId。请确认当前会话参数完整。"));
+      setError(new Error("会话信息不完整，请从聊天页重新进入。"));
       return;
     }
     const text = content.trim();
@@ -472,10 +474,10 @@ export default function ChatPage() {
   );
 
   const profileCompletionContextLine = useMemo(() => {
-    if (!conversationId) return "需先进入会话";
-    if (profileCompletionSuggestBusy) return "正在生成画像建议";
-    if (hasP6ChatPendingForThisConversation) return "已有待处理建议，请先审阅";
-    if (profileCompletionNoMessagesBlock) return "建议先发送几条消息再试";
+    if (!conversationId) return "请先开始一段对话";
+    if (profileCompletionSuggestBusy) return "正在根据聊天整理建议…";
+    if (hasP6ChatPendingForThisConversation) return "你还有一条建议待确认，处理完再生成新的";
+    if (profileCompletionNoMessagesBlock) return "先聊几句再生成建议，效果会更好";
     return null;
   }, [
     conversationId,
@@ -535,12 +537,24 @@ export default function ChatPage() {
     ],
   );
 
-  const onSubmitFeedback = useCallback(async () => {
+  const onSubmitFeedback = useCallback(async (dims) => {
     if (!conversationId || !userId || feedbackSubmitting) return;
     setFeedbackError(null);
     setFeedbackResult(null);
     setFeedbackSubmitting(true);
     try {
+      const derived = dims ?? {
+        continueIntent: feedbackContinueIntent,
+        comfortLevel: feedbackComfortLevel,
+        replyQuality: feedbackReplyQuality,
+        safetyFeeling: feedbackSafetyFeeling,
+        awkwardness: feedbackAwkwardness,
+      };
+      setFeedbackContinueIntent(derived.continueIntent);
+      setFeedbackComfortLevel(derived.comfortLevel);
+      setFeedbackReplyQuality(derived.replyQuality);
+      setFeedbackSafetyFeeling(derived.safetyFeeling);
+      setFeedbackAwkwardness(derived.awkwardness);
       /** M6.6-C3：归因始终为当前会话对象（= actual peer）；handoff mismatch 时不写入 expected。 */
       const feedbackAttributionTargetUserId = actualConversationPeerUserId || undefined;
       const structuredPayload = {
@@ -548,11 +562,11 @@ export default function ChatPage() {
         kind: "p6.12_conversation_v0",
         conversationId,
         overallRating: feedbackRating,
-        continueIntent: feedbackContinueIntent,
-        comfortLevel: feedbackComfortLevel,
-        replyQuality: feedbackReplyQuality,
-        safetyFeeling: feedbackSafetyFeeling,
-        awkwardness: feedbackAwkwardness,
+        continueIntent: derived.continueIntent,
+        comfortLevel: derived.comfortLevel,
+        replyQuality: derived.replyQuality,
+        safetyFeeling: derived.safetyFeeling,
+        awkwardness: derived.awkwardness,
         ...(matchResultIdParam ? { matchResultId: matchResultIdParam } : {}),
         ...(feedbackAttributionTargetUserId ? { targetUserId: feedbackAttributionTargetUserId } : {}),
       };
@@ -567,7 +581,7 @@ export default function ChatPage() {
         sourceVersion: P612_FEEDBACK_SOURCE_VERSION,
         structuredPayload,
       });
-      setFeedbackResult("反馈已提交");
+      setFeedbackResult("谢谢你的反馈，已记录");
       setFeedbackComment("");
       window.setTimeout(() => setFeedbackResult(null), 3200);
     } catch (e) {
@@ -709,11 +723,20 @@ export default function ChatPage() {
   const freshnessHint =
     "在其他页面查看洞察或时间线后，回到此处发消息前可手动刷新，以同步最新摘要。";
 
+  const peerDisplayName = useMemo(() => {
+    if (!conversation || !userId) return null;
+    const peerId =
+      conversation.viewerUserId === userId
+        ? conversation.candidateUserId
+        : conversation.viewerUserId;
+    return getUserDisplayName(peerId);
+  }, [conversation, userId]);
+
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
-      <h1 style={{ fontSize: "1.25rem", marginBottom: "0.25rem", color: "#0f172a" }}>聊天</h1>
-      <p style={{ margin: "0 0 0.65rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.45 }}>
-        主操作为输入内容后点<strong>发送</strong>。上方为可选工具入口。
+    <div className="app-themed-content chat-page">
+      <h1 className="chat-page__title">聊天</h1>
+      <p className="chat-page__lead">
+        先选好友或直接发消息；想回顾聊天、看建议或留个反馈，可展开下方「聊天助手」。
       </p>
       <ConversationContextBar
         pageKey="chat"
@@ -724,35 +747,29 @@ export default function ChatPage() {
         timelineHref={timelineHref}
         activityHref={myActivityHref}
         navVariant="phaseG_subtle"
+        theme="dark"
+        navOnly
+        showIdentifierDetails={showDebug}
+        showFreshnessMeta={showDebug}
         freshnessHint={freshnessHint}
         lastRefreshedAt={lastRefreshedAt}
         refreshSource={refreshSource}
       />
 
       {showFriendPicker ? (
-        <section
-          style={{
-            marginBottom: "1.25rem",
-            padding: "1rem",
-            border: "1px solid #e2e8f0",
-            borderRadius: 12,
-            background: "#fff",
-          }}
-        >
-          <h2 style={{ margin: "0 0 0.5rem", fontSize: "1rem", color: "#0f172a" }}>
-            选择好友聊天
-          </h2>
-          <p style={{ margin: "0 0 0.75rem", fontSize: "0.86rem", color: "#64748b", lineHeight: 1.5 }}>
+        <section className="chat-panel" aria-label="选择好友">
+          <h2 className="chat-panel__title">选择好友聊天</h2>
+          <p className="chat-panel__hint">
             匹配成功后会自动加为好友。从列表选一位即可进入同一条会话（双方消息互通）。
           </p>
           {friendsLoading ? <LoadingState label="加载好友…" /> : null}
           {friendsError ? (
-            <p style={{ color: "#b00020", margin: "0 0 0.5rem" }} role="alert">
+            <p className="chat-status-err" style={{ margin: "0 0 0.5rem" }} role="alert">
               {friendsError.message}
             </p>
           ) : null}
           {!friendsLoading && !friendsError && friends.length === 0 ? (
-            <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>
               暂无好友。完成一次匹配后会出现在这里；也可从
               {" "}
               <Link to={`/final-match?userId=${encodeURIComponent(userId || "")}`}>最终结果</Link>
@@ -763,26 +780,10 @@ export default function ChatPage() {
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {friends.map((f) => (
               <li key={f.friendUserId}>
-                <button
-                  type="button"
-                  onClick={() => openChatWithFriend(f.friendUserId)}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 10,
-                    padding: "0.65rem 0.85rem",
-                    background: "#f8fafc",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    color: "#0f172a",
-                  }}
-                >
+                <button type="button" className="chat-friend-btn" onClick={() => openChatWithFriend(f.friendUserId)}>
                   {f.nickname || f.friendUserId}
                   {f.source === "match_auto" ? (
-                    <span style={{ marginLeft: 8, fontSize: "0.76rem", color: "#64748b", fontWeight: 500 }}>
-                      匹配好友
-                    </span>
+                    <span className="chat-friend-btn__tag">匹配好友</span>
                   ) : null}
                 </button>
               </li>
@@ -795,74 +796,145 @@ export default function ChatPage() {
         <LoadingState label="正在准备会话…" />
       )}
       {ensureConversationError ? (
-        <p style={{ color: "#b00020" }} role="alert">
+        <p className="chat-status-err" role="alert">
           {ensureConversationError.message}
         </p>
       ) : null}
       {loading && <LoadingState label="加载对话…" />}
       {error && (
-        <p style={{ color: "#b00020" }} role="alert">
-          {error.message}
+        <p className="chat-status-err" role="alert">
+          {toFriendlyUserMessage(error.message)}
         </p>
       )}
 
-      {conversationId ? (
-        <section
-          style={{
-            marginBottom: "1.25rem",
-            padding: "0.75rem 0.85rem",
-            border: "1px dashed #cbd5e1",
-            borderRadius: 10,
-            background: "#f8fafc",
-          }}
-          aria-label="聊天后的可选延伸"
-        >
-          <h2 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem", fontWeight: 600 }}>
-            可选：摘要与建议
-          </h2>
-          <p style={{ margin: "0 0 0.65rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-            本区为摘要、洞察与资料建议等<strong>可选</strong>能力；时间线、沟通洞察与反馈入口在上方。
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: "0.4rem",
-              marginBottom: "0.75rem",
-            }}
-          >
-            {workflowSteps.map((step) => (
-              <div
-                key={step.key}
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: "0.45rem 0.55rem",
-                  background: "#fff",
-                  fontSize: "0.8rem",
-                }}
+      {!loading && !error && conversation ? (
+        <section className="chat-thread-panel">
+          {fromFinalMatchHandoff && rhythmRecommendedHandoff && !rhythmHandoffDismissed ? (
+            <div className="chat-rhythm-banner" aria-label="聊天节奏建议">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                <h2>开场小提示</h2>
+                <button
+                  type="button"
+                  className="btn-ghost text-xs py-1 px-2"
+                  onClick={() => setRhythmHandoffDismissed(true)}
+                >
+                  收起
+                </button>
+              </div>
+              <p style={{ margin: "0.45rem 0 0.55rem", fontSize: "0.86rem", color: "rgba(255,255,255,0.65)", lineHeight: 1.55 }}>
+                从轻松话题开始就好，感受对方回应是否自然，再慢慢深入。
+              </p>
+              <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", fontWeight: 600, color: "rgba(255,255,255,0.55)" }}>
+                点一下填入输入框（不会自动发送）
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {["同城周末通常怎么安排？", "最近一件让你开心的小事？", "你平时更喜欢怎样的聊天节奏？"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className="chat-topic-chip"
+                    onClick={() => setContent((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <div className="chat-thread-header">
+            {peerDisplayName ? (
+              <p className="chat-thread-header__who">
+                正在与 <strong>{peerDisplayName}</strong> 聊天
+              </p>
+            ) : null}
+            {showDebug && handoffPeerMismatch ? (
+              <p className="relationship-timeline-debug" style={{ marginTop: "0.5rem" }}>
+                handoff 与当前会话不一致（仅管理员调试可见）
+              </p>
+            ) : null}
+          </div>
+          <div className="chat-messages">
+            {messages.length === 0 ? (
+              <p style={{ margin: 0, color: "rgba(255,255,255,0.45)" }}>还没有消息，发一句打个招呼吧</p>
+            ) : (
+              messages.map((m) => {
+                const mine = m.senderUserId === userId;
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: mine ? "flex-end" : "flex-start",
+                    }}
+                  >
+                    <div className={`chat-bubble ${mine ? "chat-bubble--mine" : "chat-bubble--theirs"}`}>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="chat-composer">
+            <textarea
+              className="input-glass"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={3}
+              placeholder="输入消息…"
+            />
+            <div className="chat-composer__actions">
+              <button
+                type="button"
+                className="btn-primary text-sm py-2.5 px-5"
+                onClick={onSend}
+                disabled={sending || !userId || !conversationId || content.trim().length === 0}
               >
-                <div style={{ fontWeight: 600, marginBottom: 2, color: "#111827" }}>{step.label}</div>
+                {sending ? "发送中…" : "发送"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-sm py-2 px-4"
+                onClick={() => load("manual")}
+                disabled={loading}
+              >
+                刷新消息
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {conversationId ? (
+        <details className="chat-more-tools">
+          <summary>聊天助手：摘要、建议与反馈</summary>
+          <div className="chat-more-tools__body">
+          {showDebug ? (
+          <div className="chat-workflow-grid">
+            {workflowSteps.map((step) => (
+              <div key={step.key} className="chat-workflow-step">
+                <div className="chat-workflow-step__label">{step.label}</div>
                 <div
-                  style={{
-                    color: "#4b5563",
-                    display: "inline-block",
-                    padding: "0.05rem 0.35rem",
-                    borderRadius: 999,
-                    background:
-                      step.status === "失败"
-                        ? "#fee2e2"
-                        : step.status === "已就绪" || step.status === "已提交" || step.status === "已处理"
-                          ? "#dcfce7"
-                          : "#f3f4f6",
-                  }}
+                  className={`chat-workflow-step__status${
+                    step.status === "失败"
+                      ? " chat-workflow-step__status--err"
+                      : step.status === "已就绪" ||
+                          step.status === "已提交" ||
+                          step.status === "已处理"
+                        ? " chat-workflow-step__status--ok"
+                        : ""
+                  }`}
                 >
                   {step.status}
                 </div>
               </div>
             ))}
           </div>
+          ) : null}
           <div style={{ marginBottom: "0.85rem" }}>
+            <p style={{ margin: "0 0 0.5rem", fontSize: "0.82rem", color: "rgba(255,255,255,0.55)" }}>
+              聊了一会儿后，可以看看系统整理的对话摘要（仅自己可见）。
+            </p>
             <div
               style={{
                 display: "flex",
@@ -875,263 +947,133 @@ export default function ChatPage() {
             >
               <button
                 type="button"
+                className="btn-ghost text-sm py-2 px-3"
                 onClick={onGenerateSummary}
                 disabled={summaryGenerating}
               >
-                {summaryGenerating ? "更新中…" : "更新摘要"}
+                {summaryGenerating ? "整理中…" : "更新对话摘要"}
               </button>
               <button
                 type="button"
+                className="btn-ghost text-sm py-2 px-3"
                 onClick={() => setSummaryRetryNonce((n) => n + 1)}
                 disabled={summaryGenerating}
               >
-                重新加载摘要
+                刷新
               </button>
               {summaryActionOk ? (
-                <span style={{ color: "#0d6832" }} role="status">
+                <span className="chat-status-ok" role="status">
                   {summaryActionOk}
                 </span>
               ) : null}
               {summaryActionError ? (
-                <span style={{ color: "#b00020" }} role="alert">
+                <span className="chat-status-err" role="alert">
                   {summaryActionError}
                 </span>
               ) : null}
             </div>
             {summaryLoadError ? (
-              <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+              <p className="chat-status-err" style={{ fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
                 会话摘要加载失败：{summaryLoadError}
               </p>
             ) : null}
-            <ChatSummaryCard summary={conversationSummary} />
-            <div
-              style={{
-                marginTop: "0.75rem",
-                paddingTop: "0.65rem",
-                borderTop: "1px dashed #e5e7eb",
-              }}
-            >
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
-                <button type="button" onClick={onFetchSummaryAi} disabled={summaryAiLoading}>
-                  {summaryAiLoading ? "拉取中…" : "拉取 AI 摘要（试点）"}
-                </button>
-                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                  独立接口，不写入聊天摘要持久化；失败不影响发消息与沟通洞察。
-                </span>
+            <ChatSummaryCard
+              summary={conversationSummary}
+              variant="dark"
+              showTechnicalMeta={showDebug}
+            />
+            {showDebug ? (
+              <div className="chat-divider">
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                  <button type="button" className="btn-ghost text-sm py-2 px-3" onClick={onFetchSummaryAi} disabled={summaryAiLoading}>
+                    {summaryAiLoading ? "拉取中…" : "拉取 AI 摘要（试点）"}
+                  </button>
+                  <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.45)" }}>
+                    调试：独立接口，不写入持久化。
+                  </span>
+                </div>
+                {summaryAiError ? (
+                  <p className="chat-status-err" style={{ fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                    AI 摘要请求失败：{summaryAiError}
+                  </p>
+                ) : null}
+                {summaryAiResult ? (
+                  <ChatSummaryCard
+                    summary={{
+                      ...summaryAiResult,
+                      persisted: false,
+                    }}
+                    variant="dark"
+                    footerNote="P6.5 AI 摘要试点（调试可见）。"
+                  />
+                ) : null}
               </div>
-              {summaryAiError ? (
-                <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
-                  AI 摘要请求失败：{summaryAiError}
-                </p>
-              ) : null}
-              {summaryAiResult ? (
-                <ChatSummaryCard
-                  summary={{
-                    ...summaryAiResult,
-                    persisted: false,
-                  }}
-                  footerNote="P6.5 AI 摘要试点：成功时为模型输出；失败时为规则占位。不写入持久化、不代发消息。"
-                />
-              ) : null}
-            </div>
+            ) : null}
           </div>
           <div style={{ marginBottom: "0.85rem" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
               <button
                 type="button"
+                className="btn-ghost text-sm py-2 px-3"
                 onClick={() => setCopilotRetryNonce((n) => n + 1)}
               >
-                重新加载沟通洞察
+                刷新建议
               </button>
             </div>
             {copilotLoadError ? (
-              <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
-                沟通洞察加载失败：{copilotLoadError}
+              <p className="chat-status-err" style={{ fontSize: "0.85rem", margin: "0 0 0.5rem" }} role="alert">
+                暂时无法加载聊天建议，稍后再试
               </p>
             ) : null}
-            <p style={{ margin: "0 0 0.45rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
-              {handoffPeerMismatch
-                ? "最终匹配入口传入对象与当前会话对象不一致，沟通建议仍基于当前会话。"
-                : "沟通建议基于当前会话生成。"}
+            <p style={{ margin: "0 0 0.45rem", fontSize: "0.78rem", lineHeight: 1.5, color: "rgba(255,255,255,0.5)" }}>
+              根据你们目前的聊天记录生成，不会代替你发消息。
             </p>
-            {showDebug && (expectedPeerUserId || actualConversationPeerUserId) ? (
-              <p
-                style={{
-                  margin: "0 0 0.45rem",
-                  fontSize: "0.72rem",
-                  color: "#94a3b8",
-                  lineHeight: 1.45,
-                  fontFamily: "ui-monospace, monospace",
-                }}
-              >
-                调试：copilot 归因 = 当前会话 peer（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)} ·
-                handoff expected（脱敏）{maskPeerIdForDebug(expectedPeerUserId)}
-              </p>
-            ) : null}
-            <CopilotInsightCard insights={copilotInsights} />
+            <CopilotInsightCard
+              insights={copilotInsights}
+              variant="dark"
+              showTechnicalMeta={showDebug}
+            />
           </div>
           <div
             data-m65-feedback-target-user-id={actualConversationPeerUserId || undefined}
-            style={{
-              borderTop: "1px dashed #ddd",
-              paddingTop: "0.65rem",
-              marginBottom: "0.7rem",
-            }}
-            aria-label="会话反馈"
+            className="chat-feedback-form"
           >
-            <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.4rem" }}>记录本次会话反馈</h3>
-            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.5rem" }}>
-              仅用于改进体验（P6.12 结构化），对方不会看到；与匹配分、排序无关。
-            </p>
-            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: "0 0 0.45rem", lineHeight: 1.5 }}>
-              本页反馈按当前会话对象归因。
-            </p>
-            {handoffPeerMismatch ? (
-              <p
-                role="note"
-                style={{
-                  margin: "0 0 0.5rem",
-                  fontSize: "0.78rem",
-                  color: "#a16207",
-                  lineHeight: 1.5,
-                  maxWidth: 520,
-                }}
-              >
-                最终匹配入口对象与当前会话不一致；提交仍将写入当前聊天对象，不会写入另一用户。
-              </p>
-            ) : null}
-            {showDebug && (actualConversationPeerUserId || expectedPeerUserId) ? (
-              <p
-                style={{
-                  margin: "0 0 0.5rem",
-                  fontSize: "0.72rem",
-                  color: "#94a3b8",
-                  lineHeight: 1.45,
-                  fontFamily: "ui-monospace, monospace",
-                }}
-              >
-                调试：P6.12 targetUserId（脱敏）{maskPeerIdForDebug(actualConversationPeerUserId)}
-                {expectedPeerUserId
-                  ? ` · handoff expected（脱敏）${maskPeerIdForDebug(expectedPeerUserId)}`
-                  : ""}
-              </p>
-            ) : null}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.45rem" }}>
-              <label htmlFor="p4-feedback-rating">总评</label>
-              <select
-                id="p4-feedback-rating"
-                value={feedbackRating}
-                onChange={(e) => setFeedbackRating(Number(e.target.value))}
-                disabled={feedbackSubmitting}
-              >
-                <option value={5}>5 - 很满意</option>
-                <option value={4}>4 - 满意</option>
-                <option value={3}>3 - 一般</option>
-                <option value={2}>2 - 不满意</option>
-                <option value={1}>1 - 很不满意</option>
-              </select>
-            </div>
-            {[
-              ["续聊意愿", "p612-fi", feedbackContinueIntent, setFeedbackContinueIntent],
-              ["舒适度", "p612-cm", feedbackComfortLevel, setFeedbackComfortLevel],
-              ["对方回复", "p612-rq", feedbackReplyQuality, setFeedbackReplyQuality],
-              ["安全感", "p612-sf", feedbackSafetyFeeling, setFeedbackSafetyFeeling],
-              ["尴尬/不自然（越高越尴尬）", "p612-aw", feedbackAwkwardness, setFeedbackAwkwardness],
-            ].map(([label, id, value, setVal]) => (
-              <div
-                key={id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  marginBottom: "0.35rem",
-                }}
-              >
-                <label htmlFor={id} style={{ minWidth: "9.5rem", fontSize: "0.8rem" }}>
-                  {label}
-                </label>
-                <select
-                  id={id}
-                  value={value}
-                  onChange={(e) => setVal(Number(e.target.value))}
-                  disabled={feedbackSubmitting}
-                >
-                  {[5, 4, 3, 2, 1].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-            <textarea
-              rows={2}
-              value={feedbackComment}
-              onChange={(e) => setFeedbackComment(e.target.value)}
-              placeholder="可选：补充本次会话的主观评价"
-              style={{ width: "100%", resize: "vertical", marginBottom: "0.45rem" }}
-              disabled={feedbackSubmitting}
+            <ChatSessionFeedback
+              overallRating={feedbackRating}
+              onOverallRatingChange={setFeedbackRating}
+              continueIntent={feedbackContinueIntent}
+              onContinueIntentChange={setFeedbackContinueIntent}
+              comment={feedbackComment}
+              onCommentChange={setFeedbackComment}
+              submitting={feedbackSubmitting}
+              resultMessage={feedbackResult}
+              errorMessage={feedbackError}
+              onSubmit={onSubmitFeedback}
+              showAdvanced={showDebug}
             />
-            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap" }}>
-              <button type="button" onClick={onSubmitFeedback} disabled={feedbackSubmitting}>
-                {feedbackSubmitting ? "提交中…" : "提交反馈"}
-              </button>
-              {feedbackResult ? <span style={{ color: "#0d6832" }}>{feedbackResult}</span> : null}
-              {feedbackError ? <span style={{ color: "#b00020" }}>{feedbackError}</span> : null}
-            </div>
           </div>
-          <div
-            style={{
-              borderTop: "1px dashed #ddd",
-              paddingTop: "0.65rem",
-            }}
-          >
-            <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.35rem" }}>
-              处理最新画像建议（最小动作）
+          <div className="chat-divider">
+            <h3 style={{ fontSize: "0.88rem", margin: "0 0 0.35rem", color: "#fff" }}>
+              完善我的资料（可选）
             </h3>
-            <p
-              style={{
-                margin: "0 0 0.35rem",
-                fontSize: "0.75rem",
-                color: "#666",
-              }}
-            >
-              生成的是待审阅的问卷维度分支建议，不是人格标签结论。
+            <p style={{ margin: "0 0 0.35rem", fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>
+              根据聊天内容生成问卷补充建议，需要你确认后才会写入资料。
             </p>
             {profileCompletionContextLine ? (
-              <p
-                style={{
-                  margin: "0 0 0.4rem",
-                  fontSize: "0.75rem",
-                  color: "#7a4a00",
-                }}
-              >
+              <p className="chat-status-warn" style={{ margin: "0 0 0.4rem", fontSize: "0.75rem" }}>
                 {profileCompletionContextLine}
               </p>
             ) : null}
             {pendingP6ForThisConversation ? (
               <div style={{ margin: "0 0 0.5rem" }}>
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#1e293b",
-                    marginBottom: 6,
-                  }}
-                >
-                  本会话画像建议摘要
+                <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#fff", marginBottom: 6 }}>
+                  待你确认的建议
                 </div>
                 {pendingP6ReviewModel ? (
                   <P6ReviewSummary model={pendingP6ReviewModel} compact />
                 ) : (
-                  <p
-                    style={{
-                      margin: "0 0 0.35rem",
-                      fontSize: "0.78rem",
-                      color: "#64748b",
-                    }}
-                  >
-                    本建议暂无结构化审阅摘要；请展开下方查看原始补丁。
+                  <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>
+                    展开下方可查看具体建议内容。
                   </p>
                 )}
                 <P6ProposedPatchDetails
@@ -1151,288 +1093,72 @@ export default function ChatPage() {
             >
               <button
                 type="button"
+                className="btn-ghost text-sm py-2 px-3"
                 onClick={onGenerateProfileCompletionSuggestion}
                 disabled={profileCompletionButtonDisabled}
               >
                 {profileCompletionSuggestBusy
                   ? "生成中…"
-                  : "根据本轮对话生成画像建议"}
+                  : "根据聊天生成资料建议"}
               </button>
               {profileCompletionSuggestOk ? (
-                <span style={{ color: "#0d6832", fontSize: "0.8rem" }}>
+                <span className="chat-status-ok" style={{ fontSize: "0.8rem" }}>
                   {profileCompletionSuggestOk}
                 </span>
               ) : null}
               {profileCompletionSuggestErr ? (
-                <span style={{ color: "#b00020", fontSize: "0.8rem" }} role="alert">
+                <span className="chat-status-err" style={{ fontSize: "0.8rem" }} role="alert">
                   {profileCompletionSuggestErr}
                 </span>
               ) : null}
             </div>
             {latestPendingSuggestion ? (
               <>
-                <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "#555" }}>
-                  当前待处理建议：<code>{latestPendingSuggestion.id}</code>
-                </p>
+                {showDebug ? (
+                  <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }}>
+                    当前待处理建议：<code>{latestPendingSuggestion.id}</code>
+                  </p>
+                ) : null}
                 <div style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
+                    className="btn-ghost text-sm py-2 px-3"
                     disabled={suggestionActionBusy}
                     onClick={() => onHandleLatestSuggestion("accept")}
                   >
-                    {suggestionActionBusy ? "处理中…" : "接受最新建议"}
+                    {suggestionActionBusy ? "处理中…" : "采纳"}
                   </button>
                   <button
                     type="button"
+                    className="btn-ghost text-sm py-2 px-3"
                     disabled={suggestionActionBusy}
                     onClick={() => onHandleLatestSuggestion("dismiss")}
                   >
-                    {suggestionActionBusy ? "处理中…" : "忽略最新建议"}
+                    {suggestionActionBusy ? "处理中…" : "暂不采纳"}
                   </button>
                   {suggestionActionResult ? (
-                    <span style={{ color: "#0d6832" }}>{suggestionActionResult}</span>
+                    <span className="chat-status-ok">{suggestionActionResult}</span>
                   ) : null}
                   {suggestionActionError ? (
-                    <span style={{ color: "#b00020" }}>{suggestionActionError}</span>
+                    <span className="chat-status-err">{suggestionActionError}</span>
                   ) : null}
                 </div>
               </>
             ) : (
-              <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "#555" }}>
-                当前无待处理建议，可在下方查看完整建议列表。
+              <p style={{ margin: "0 0 0.45rem", fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }}>
+                暂无待处理建议；完整列表见下方。
               </p>
             )}
           </div>
-        </section>
+          <ProfileSuggestionCard
+            suggestions={profileSuggestions}
+            loadError={profileSuggestionsError}
+            onRefresh={loadProfileSuggestions}
+            variant="dark"
+          />
+          </div>
+        </details>
       ) : null}
-      {conversationId ? (
-        <ProfileSuggestionCard
-          suggestions={profileSuggestions}
-          loadError={profileSuggestionsError}
-          onRefresh={loadProfileSuggestions}
-        />
-      ) : null}
-
-      {!loading && !error && conversation && (
-        <section style={{ border: "1px solid #ddd", borderRadius: 8 }}>
-          {fromFinalMatchHandoff && rhythmRecommendedHandoff && !rhythmHandoffDismissed ? (
-            <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderBottom: "1px solid #e2e8f0",
-                background: "#f8fafc",
-              }}
-              aria-label="聊天节奏建议"
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                <h2 style={{ fontSize: "0.95rem", margin: 0, fontWeight: 600, color: "#0f172a" }}>聊天节奏建议</h2>
-                <button
-                  type="button"
-                  onClick={() => setRhythmHandoffDismissed(true)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "#64748b",
-                    cursor: "pointer",
-                    fontSize: "0.82rem",
-                    padding: "0.1rem 0.25rem",
-                  }}
-                >
-                  收起
-                </button>
-              </div>
-              <p style={{ margin: "0.45rem 0 0.55rem", fontSize: "0.86rem", color: "#334155", lineHeight: 1.55 }}>
-                这次推荐已经结合了基础适配和相处节奏。建议先从轻松话题开始，观察双方回应是否自然，再慢慢深入。
-              </p>
-              <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", fontWeight: 600, color: "#475569" }}>快捷话题（仅填入输入框，不会自动发送）</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                {["同城周末通常怎么安排？", "最近一件让你开心的小事？", "你平时更喜欢怎样的聊天节奏？"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setContent((prev) => (prev.trim() ? `${prev.trim()}\n${t}` : t))}
-                    style={{
-                      fontSize: "0.8rem",
-                      padding: "0.35rem 0.55rem",
-                      borderRadius: 999,
-                      border: "1px solid #cbd5e1",
-                      background: "#fff",
-                      color: "#334155",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div style={{ padding: "0.75rem 1rem", background: "#fafafa" }}>
-            <div
-              style={{
-                marginBottom: "0.55rem",
-                paddingBottom: "0.55rem",
-                borderBottom: "1px solid #e5e7eb",
-              }}
-              aria-label="本页聊天"
-            >
-              <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a", marginBottom: "0.35rem" }}>
-                本页聊天
-              </div>
-              {handoffPeerMismatch ? (
-                <p
-                  role="status"
-                  style={{
-                    margin: 0,
-                    fontSize: "0.84rem",
-                    color: "#a16207",
-                    lineHeight: 1.55,
-                    maxWidth: 520,
-                  }}
-                >
-                  当前聊天对象与最终匹配入口传入对象不一致，本页仍按当前会话继续。
-                </p>
-              ) : null}
-              {showDebug && !expectedPeerUserId ? (
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-                  调试：无最终匹配 handoff（未带 finalMatchPeerUserId）。
-                </p>
-              ) : null}
-              {showDebug &&
-              expectedPeerUserId &&
-              actualConversationPeerUserId &&
-              handoffPeerMatched ? (
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#15803d", lineHeight: 1.45 }}>
-                  调试：最终匹配 handoff 已对齐。
-                </p>
-              ) : null}
-              {showDebug && expectedPeerUserId && !actualConversationPeerUserId ? (
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.45 }}>
-                  调试：已带 handoff，会话 candidate 尚未加载完成，暂无法比对。
-                </p>
-              ) : null}
-              {showDebug && handoffPeerMismatch ? (
-                <p
-                  style={{
-                    margin: "0.35rem 0 0",
-                    fontSize: "0.76rem",
-                    color: "#64748b",
-                    lineHeight: 1.45,
-                    fontFamily: "ui-monospace, monospace",
-                  }}
-                >
-                  调试：handoff expected（脱敏）{maskPeerIdForDebug(expectedPeerUserId)} · 会话 actual（脱敏）
-                  {maskPeerIdForDebug(actualConversationPeerUserId)}
-                </p>
-              ) : null}
-            </div>
-            <div style={{ fontSize: "0.95rem", color: "#333" }}>
-              viewer: <code>{getUserDisplayName(conversation.viewerUserId)}</code>
-            </div>
-            <div style={{ fontSize: "0.95rem", color: "#333" }}>
-              candidate:{" "}
-              <code>{getUserDisplayName(conversation.candidateUserId)}</code>
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: "1rem",
-              maxHeight: 420,
-              overflow: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.6rem",
-              background: "#fff",
-            }}
-          >
-            {messages.length === 0 ? (
-              <p style={{ color: "#666", margin: 0 }}>暂无消息</p>
-            ) : (
-              messages.map((m) => {
-                const mine = m.senderUserId === userId;
-                return (
-                  <div
-                    key={m.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: mine ? "flex-end" : "flex-start",
-                    }}
-                  >
-                    <div
-                      style={{
-                        maxWidth: "70%",
-                        border: "1px solid #eee",
-                        borderRadius: 10,
-                        padding: "0.55rem 0.7rem",
-                        background: mine ? "#e6f3ff" : "#f4f4f4",
-                      }}
-                    >
-                      <div style={{ fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>
-                        {m.content}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "#666", marginTop: 4 }}>
-                        sender: {getUserDisplayName(m.senderUserId)}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div
-            style={{
-              padding: "0.75rem 1rem",
-              borderTop: "1px solid #eee",
-              background: "#fafafa",
-            }}
-          >
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={3}
-              style={{ width: "100%", resize: "vertical" }}
-              placeholder="输入消息…"
-            />
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={onSend}
-                disabled={sending || !userId || !conversationId || content.trim().length === 0}
-                style={{
-                  padding: "0.65rem 1.35rem",
-                  fontSize: "0.95rem",
-                  fontWeight: 600,
-                  border: "none",
-                  borderRadius: 8,
-                  background: "#1e293b",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                {sending ? "发送中…" : "发送"}
-              </button>
-              <button
-                type="button"
-                onClick={() => load("manual")}
-                disabled={loading}
-                style={{
-                  padding: "0.5rem 0.85rem",
-                  fontSize: "0.86rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 8,
-                  background: "#fff",
-                  color: "#475569",
-                  cursor: "pointer",
-                }}
-              >
-                刷新对话
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-    </main>
+    </div>
   );
 }

@@ -1,9 +1,23 @@
-function ListBlock({ title, items }) {
+function ListBlock({ title, items, dark }) {
   if (!items?.length) return null;
   return (
     <div style={{ marginTop: "0.5rem" }}>
-      <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#333" }}>{title}</div>
-      <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.1rem", color: "#444" }}>
+      <div
+        style={{
+          fontWeight: 600,
+          fontSize: "0.85rem",
+          color: dark ? "rgba(255,255,255,0.88)" : "#333",
+        }}
+      >
+        {title}
+      </div>
+      <ul
+        style={{
+          margin: "0.25rem 0 0",
+          paddingLeft: "1.1rem",
+          color: dark ? "rgba(255,255,255,0.68)" : "#444",
+        }}
+      >
         {items.map((t, i) => (
           <li key={i} style={{ marginBottom: "0.2rem" }}>
             {t}
@@ -15,11 +29,12 @@ function ListBlock({ title, items }) {
 }
 
 /** P6.2: one-line hint; does not change layout structure. */
-function CopilotSourceHint({ sourceType }) {
+function CopilotSourceHint({ sourceType, dark }) {
   if (!sourceType) return null;
+  const hintColor = dark ? "rgba(255,255,255,0.45)" : "#64748b";
   if (sourceType === "rule_based") {
     return (
-      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
+      <div style={{ fontSize: "0.78rem", color: hintColor, marginTop: "0.35rem" }}>
         来源：规则建议（未开 AI_COPILOT、缺 API Key，或 Kimi/模型请求失败时已回退，内容仍可用作参考）
       </div>
     );
@@ -37,7 +52,7 @@ function CopilotSourceHint({ sourceType }) {
     };
     const label = labels[slug] || slug.replace(/_/g, " ");
     return (
-      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem" }}>
+      <div style={{ fontSize: "0.78rem", color: hintColor, marginTop: "0.35rem" }}>
         来源：模型建议（{label}，OpenAI 兼容协议）
       </div>
     );
@@ -45,7 +60,7 @@ function CopilotSourceHint({ sourceType }) {
   return null;
 }
 
-function BasedOnLine({ basedOn }) {
+function BasedOnLine({ basedOn, dark }) {
   if (!basedOn || typeof basedOn !== "object") return null;
   const parts = [];
   if (basedOn.summary) parts.push("会话摘要");
@@ -54,7 +69,13 @@ function BasedOnLine({ basedOn }) {
   if (basedOn.pendingProfileSuggestions) parts.push("待处理画像建议");
   if (parts.length === 0) return null;
   return (
-    <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "0.45rem" }}>
+    <div
+      style={{
+        fontSize: "0.78rem",
+        color: dark ? "rgba(255,255,255,0.5)" : "#555",
+        marginTop: "0.45rem",
+      }}
+    >
       <span style={{ fontWeight: 600 }}>依据</span>（摘要来源）：{parts.join(" · ")}
     </div>
   );
@@ -64,8 +85,46 @@ function BasedOnLine({ basedOn }) {
  * Rule-based Copilot strip — not auto-chat; parent hides on failure / empty.
  * @param {{ showBasedOn?: boolean }} [opts]
  */
-export default function CopilotInsightCard({ insights, showBasedOn = false }) {
+export default function CopilotInsightCard({
+  insights,
+  showBasedOn = false,
+  variant = "light",
+  showTechnicalMeta = false,
+}) {
   if (!insights?.conversationId) return null;
+
+  const isDark = variant === "dark";
+  const metaColor = isDark ? "rgba(255,255,255,0.55)" : "#555";
+  const footColor = isDark ? "rgba(255,255,255,0.4)" : "#666";
+
+  if (isDark) {
+    return (
+      <aside className="chat-embedded-card chat-embedded-card--insight" aria-label="沟通建议">
+        <div className="chat-embedded-card__title">沟通建议</div>
+        {showTechnicalMeta ? (
+          <div style={{ fontSize: "0.82rem", color: metaColor }}>
+            状态：{insights.relationshipState}
+            {insights.sourceType ? ` · ${insights.sourceType}` : ""}
+          </div>
+        ) : null}
+        {showTechnicalMeta ? <CopilotSourceHint sourceType={insights.sourceType} dark /> : null}
+        <ListBlock title="可以试着" items={insights.communicationAdvice} dark />
+        <ListBlock title="留意一下" items={insights.riskHints} dark />
+        <ListBlock title="话题参考" items={insights.suggestedTopics} dark />
+        {showBasedOn && showTechnicalMeta ? <BasedOnLine basedOn={insights.basedOn} dark /> : null}
+        <div style={{ fontSize: "0.75rem", color: footColor, marginTop: "0.5rem" }}>
+          仅供参考，需要你亲自发送 ·{" "}
+          {(() => {
+            try {
+              return new Date(insights.generatedAt).toLocaleString();
+            } catch {
+              return insights.generatedAt;
+            }
+          })()}
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

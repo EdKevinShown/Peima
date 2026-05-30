@@ -6,6 +6,7 @@ import {
 } from "@peima/shared/constants";
 import LoadingState from "../components/common/LoadingState";
 import StandalonePage from "../components/layout/StandalonePage";
+import AlertBanner from "../components/ui/AlertBanner";
 import {
   getOnboardingPhotoPreferencesMe,
   getOnboardingPhotoStatus,
@@ -16,21 +17,6 @@ import { resolveUserId } from "../utils/resolveUserId";
 
 const MAX_STYLE_TAGS = 8;
 const MAX_FOCUS_TAGS = 8;
-
-const groupBox = {
-  marginBottom: "1.35rem",
-  padding: "1rem",
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-};
-
-const groupTitle = {
-  fontSize: "0.95rem",
-  fontWeight: 700,
-  color: "#0f172a",
-  marginBottom: "0.65rem",
-};
 
 export default function OnboardingPhotoPreferencePage() {
   const navigate = useNavigate();
@@ -137,58 +123,41 @@ export default function OnboardingPhotoPreferencePage() {
       title="审美偏好"
       subtitle="告诉我们你更容易被什么类型吸引。仅用于第一印象预览池，不代表最终匹配结果。"
     >
-      <p
-        style={{
-          marginBottom: "1rem",
-          padding: "0.55rem 0.75rem",
-          borderRadius: 8,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-          color: "#64748b",
-          fontSize: "0.82rem",
-          lineHeight: 1.5,
-        }}
-      >
-        保存后进入 onboarding 第一印象预览池（3+2+1），确认后再填写问卷；不影响正式匹配主链。
-      </p>
-      <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6, marginBottom: "1rem" }}>
-        告诉我们你更容易被什么类型吸引。这个选择只用于第一印象预览池，不代表最终匹配结果。
-      </p>
-      <p style={{ marginBottom: "1rem", fontSize: "0.88rem", color: "#64748b" }}>
-        「整体气质」与「照片感觉」与账户页「照片风格偏好」为同一组标签，会一并保存；至少选 1 项，这两组合计最多{" "}
-        {MAX_STYLE_TAGS} 项。
-      </p>
-      <p style={{ marginBottom: "1rem", fontSize: "0.88rem", color: "#64748b" }}>
-        「优先关注」为照片浏览时的关注维度（如笑容、穿搭），当前仅在本页记录体验，不会写入账户风格标签或匹配偏好。
-      </p>
-      <p style={{ marginBottom: "1.25rem", fontSize: "0.88rem" }}>
-        <Link to="/">首页</Link>
-        {" · "}
-        <Link to={`/onboarding/photo-upload${previewQs}`}>返回照片设置</Link>
-        {" · "}
-        <Link to={`/onboarding/photo-preview${previewQs}`}>第一印象预览池</Link>
-        {" · "}
-        <Link to={`/questionnaire${previewQs}`}>问卷（须先完成预览）</Link>
-      </p>
+      {loading ? <LoadingState label="加载中…" /> : null}
 
-      {loading && <LoadingState label="加载中…" />}
-      {error && (
-        <p style={{ color: "#b00020" }} role="alert">
+      {error ? (
+        <AlertBanner variant="error" className="mb-4">
           {error.message}
-        </p>
-      )}
-      {!loading && userId && (
-        <>
-          {ONBOARDING_PHOTO_PREFERENCE_UI_GROUPS.map((group) => (
-            <section key={group.title} style={groupBox}>
-              <div style={groupTitle}>{group.title}</div>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "0.5rem",
-                }}
-              >
+        </AlertBanner>
+      ) : null}
+
+      {!loading && userId ? (
+        <div className="onboarding-soft-panel">
+          <p className="text-sm text-white/55 leading-relaxed pb-4 mb-4 border-b border-white/[0.07]">
+            保存后进入第一印象预览池（3+2+1），确认后再填写问卷；不影响正式匹配主链。
+          </p>
+
+          <div className="space-y-1 text-xs text-white/45 leading-relaxed mb-5">
+            <p>
+              「整体气质」与「照片感觉」与账户页「照片风格偏好」为同一组标签，至少选 1 项，合计最多{" "}
+              {MAX_STYLE_TAGS} 项。
+            </p>
+            <p>
+              「优先关注」为浏览时的关注维度，当前仅在本页记录体验，不会写入账户风格标签。
+            </p>
+          </div>
+
+          {ONBOARDING_PHOTO_PREFERENCE_UI_GROUPS.map((group, index) => (
+            <div
+              key={group.title}
+              className={
+                index < ONBOARDING_PHOTO_PREFERENCE_UI_GROUPS.length - 1
+                  ? "pb-5 mb-5 border-b border-white/[0.07]"
+                  : "pb-1"
+              }
+            >
+              <h2 className="text-sm font-semibold text-white/85 mb-3">{group.title}</h2>
+              <div className="flex flex-wrap gap-2">
                 {group.tags.map((tag) => {
                   const on = group.submitsToStyleTags
                     ? selectedStyle.has(tag)
@@ -197,48 +166,50 @@ export default function OnboardingPhotoPreferencePage() {
                     <button
                       key={tag}
                       type="button"
+                      className={`onboarding-tag-chip ${on ? "onboarding-tag-chip--on" : ""}`}
                       onClick={() =>
                         group.submitsToStyleTags
                           ? toggleStyleTag(tag)
                           : toggleFocusTag(tag)
                       }
-                      style={{
-                        padding: "0.45rem 0.75rem",
-                        borderRadius: 999,
-                        border: on ? "2px solid #1e293b" : "1px solid #cbd5e1",
-                        background: on ? "#1e293b" : "#f8fafc",
-                        color: on ? "#fff" : "#334155",
-                        cursor: "pointer",
-                        fontSize: "0.88rem",
-                      }}
+                      disabled={submitting}
                     >
                       {tag}
                     </button>
                   );
                 })}
               </div>
-            </section>
+            </div>
           ))}
+
           <button
             type="button"
-            onClick={onSubmit}
+            className="btn-primary text-sm py-2.5 px-5 mt-5 w-full sm:w-auto"
+            onClick={() => void onSubmit()}
             disabled={submitting || selectedStyle.size < 1}
-            style={{
-              padding: "0.65rem 1.25rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              border: "none",
-              borderRadius: 8,
-              background: "#1e293b",
-              color: "#fff",
-              cursor: submitting || selectedStyle.size < 1 ? "not-allowed" : "pointer",
-              opacity: submitting || selectedStyle.size < 1 ? 0.65 : 1,
-            }}
           >
             {submitting ? "保存中…" : "保存并生成预览池"}
           </button>
-        </>
-      )}
+
+          <p className="mt-5 pt-4 border-t border-white/[0.07] text-xs text-white/40 flex flex-wrap gap-x-2 gap-y-1">
+            <Link
+              to={`/onboarding/photo-upload${previewQs}`}
+              className="hover:text-white/65 transition-colors"
+            >
+              返回照片设置
+            </Link>
+            <span className="text-white/20" aria-hidden>
+              ·
+            </span>
+            <Link
+              to={`/onboarding/photo-preview${previewQs}`}
+              className="hover:text-white/65 transition-colors"
+            >
+              第一印象预览池
+            </Link>
+          </p>
+        </div>
+      ) : null}
     </StandalonePage>
   );
 }

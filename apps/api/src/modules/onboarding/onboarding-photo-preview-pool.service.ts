@@ -179,7 +179,11 @@ export class OnboardingPhotoPreviewPoolService {
           displayMode: slot.displayMode,
           rankInPool: slot.rankInPool,
           score: slot.baseScore,
-          reasonTags: [slot.scoreReason, PREVIEW_POOL_TIER3121_LAYOUT_VERSION],
+          reasonTags: [
+            ...slot.overlapStyleTags,
+            slot.scoreReason,
+            PREVIEW_POOL_TIER3121_LAYOUT_VERSION,
+          ],
         })),
       });
 
@@ -270,15 +274,25 @@ export class OnboardingPhotoPreviewPoolService {
           it.displayMode !== "hidden" &&
           isEligiblePreviewCandidate(it.candidateUserId, pool.userId)
         ) {
-          const img = await this.prisma.userImage.findFirst({
+          const passing = await this.prisma.userImage.findFirst({
             where: {
               userId: it.candidateUserId,
-              NOT: { userId: pool.userId },
+              OR: [
+                { detectionStatus: "passed" },
+                { reviewStatus: { in: ["approved", "not_required"] } },
+              ],
             },
             orderBy: { createdAt: "asc" },
             select: { imageUrl: true },
           });
-          candidateImageUrl = img?.imageUrl ?? undefined;
+          const fallback = passing
+            ? null
+            : await this.prisma.userImage.findFirst({
+                where: { userId: it.candidateUserId },
+                orderBy: { createdAt: "asc" },
+                select: { imageUrl: true },
+              });
+          candidateImageUrl = (passing ?? fallback)?.imageUrl ?? undefined;
         }
 
         return {

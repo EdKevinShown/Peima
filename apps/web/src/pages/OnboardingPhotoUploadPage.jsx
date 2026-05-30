@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import StandalonePage from "../components/layout/StandalonePage";
+import AlertBanner from "../components/ui/AlertBanner";
 import {
   deleteUserImage,
   listUserImages,
@@ -27,14 +28,6 @@ import {
   MULTIPLE_FACES_WARNING_DETAIL,
   MULTIPLE_FACES_WARNING_MAIN,
 } from "../utils/onboardingPhotoValidation";
-
-const bannerBase = {
-  borderRadius: 10,
-  padding: "0.75rem 0.9rem",
-  fontSize: "0.9rem",
-  lineHeight: 1.55,
-  marginBottom: "1rem",
-};
 
 export default function OnboardingPhotoUploadPage() {
   const navigate = useNavigate();
@@ -310,196 +303,90 @@ export default function OnboardingPhotoUploadPage() {
       title="上传一张清晰本人照片"
       subtitle="用于生成第一印象预览池。我们不会 AI 美化，也不会生成虚假头像。"
     >
-      <p
-        style={{
-          marginBottom: "1.25rem",
-          padding: "0.75rem 0.9rem",
-          borderRadius: 10,
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          color: "#475569",
-          fontSize: "0.88rem",
-          lineHeight: 1.55,
-        }}
-      >
-        请上传 JPG、PNG 或 WebP 格式，大小不超过 5MB。建议选择清晰、正面、单人照片。
-      </p>
-      <p style={{ marginBottom: "1rem", fontSize: "0.88rem" }}>
-        <Link to="/">首页</Link>
-        {" · "}
-        <Link to="/login">登录</Link>
-      </p>
-
-      {loading && !uploading && <LoadingState label="加载中…" />}
-      {uploading && <LoadingState label="上传中…" />}
+      {loading && !uploading ? <LoadingState label="加载中…" /> : null}
+      {uploading ? <LoadingState label="上传中…" /> : null}
 
       {blockedBanner ? (
-        <div
-          role="alert"
-          style={{
-            ...bannerBase,
-            color: "#991b1b",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 600 }}>{blockedBanner.main}</p>
-          {blockedBanner.detail ? (
-            <p style={{ margin: "0.45rem 0 0", fontWeight: 400 }}>{blockedBanner.detail}</p>
-          ) : null}
-        </div>
+        <AlertBanner variant="error" title={blockedBanner.main} className="mb-4">
+          {blockedBanner.detail}
+        </AlertBanner>
       ) : null}
 
       {!blockedBanner && underReviewMessage ? (
-        <div
-          role="status"
-          style={{
-            ...bannerBase,
-            color: "#92400e",
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-          }}
-        >
+        <AlertBanner variant="warn" className="mb-4">
           {underReviewMessage}
-        </div>
+        </AlertBanner>
       ) : null}
 
       {!blockedBanner && partialBlockedHint ? (
-        <div
-          role="status"
-          style={{
-            ...bannerBase,
-            color: "#475569",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-          }}
-        >
+        <AlertBanner variant="info" className="mb-4">
           {partialBlockedHint}
-        </div>
+        </AlertBanner>
       ) : null}
 
-      {error && (
-        <p style={{ color: "#b00020" }} role="alert">
+      {error ? (
+        <AlertBanner variant="error" className="mb-4">
           {error.message}
-        </p>
-      )}
-      {photoWarning && (
-        <div
-          role="status"
-          style={{
-            ...bannerBase,
-            color: "#92400e",
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 600 }}>{photoWarning.main}</p>
-          <p style={{ margin: "0.45rem 0 0", fontWeight: 400 }}>{photoWarning.detail}</p>
-        </div>
-      )}
+        </AlertBanner>
+      ) : null}
 
-      {!loading && userId && (
-        <section style={{ opacity: uploading ? 0.65 : 1 }}>
+      {photoWarning ? (
+        <AlertBanner variant="warn" title={photoWarning.main} className="mb-4">
+          {photoWarning.detail}
+        </AlertBanner>
+      ) : null}
+
+      {!loading && userId ? (
+        <div
+          className={`onboarding-soft-panel ${uploading ? "opacity-60 pointer-events-none" : ""}`}
+        >
+          <p className="text-sm text-white/55 leading-relaxed pb-4 mb-4 border-b border-white/[0.07]">
+            请上传 JPG、PNG 或 WebP，大小不超过 5MB。建议清晰、正面、单人照片。
+          </p>
+
           {hasPhoto ? (
-            <div style={{ marginBottom: "1.25rem" }}>
-              <div
-                style={{
-                  marginBottom: "0.5rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.6rem",
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 600,
-                    color: "#334155",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  当前照片
-                </div>
+            <div className="mb-5">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h2 className="text-sm font-medium text-white/80">当前照片</h2>
                 <button
                   type="button"
+                  className="text-xs text-red-300/90 hover:text-red-200 disabled:opacity-40 transition-colors"
                   onClick={() => void onDeleteAllImages()}
                   disabled={uploading || deletingImageId !== "" || deletingAll}
-                  style={{
-                    border: "1px solid #fecaca",
-                    background: "#fff1f2",
-                    color: "#b91c1c",
-                    borderRadius: 999,
-                    fontSize: "0.75rem",
-                    lineHeight: 1,
-                    padding: "0.3rem 0.55rem",
-                    cursor:
-                      uploading || deletingImageId !== "" || deletingAll
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
                 >
                   {deletingAll ? "删除中…" : "删除全部"}
                 </button>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem" }}>
+              <div className="flex flex-wrap gap-3">
                 {existingImages.map((row) => (
                   <div
                     key={row.id}
-                    style={{
-                      width: 112,
-                      height: 112,
-                      borderRadius: 10,
-                      overflow: "hidden",
-                      border: "1px solid #e2e8f0",
-                      background: "#f8fafc",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    className="relative w-28 h-28 rounded-xl overflow-hidden ring-1 ring-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
                   >
-                    <div style={{ width: "100%", height: "100%", position: "relative" }}>
-                      {brokenImageIds.has(row.id) ? (
-                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", padding: "0.35rem", textAlign: "center" }}>
-                          图片暂时无法显示，请稍后重试或重新上传
-                        </span>
-                      ) : (
-                        <img
-                          src={resolveUserImageUrl(row.imageUrl)}
-                          alt=""
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={() => {
-                            setBrokenImageIds((prev) => new Set(prev).add(row.id));
-                          }}
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void onDeleteImage(row.id)}
-                        disabled={
-                          uploading || deletingAll || deletingImageId === row.id
-                        }
-                        style={{
-                          position: "absolute",
-                          top: 6,
-                          right: 6,
-                          border: "1px solid #fecaca",
-                          background: "#fff1f2",
-                          color: "#b91c1c",
-                          borderRadius: 999,
-                          fontSize: "0.72rem",
-                          lineHeight: 1,
-                          padding: "0.2rem 0.45rem",
-                          cursor:
-                            uploading || deletingImageId === row.id
-                              ? "not-allowed"
-                              : "pointer",
+                    {brokenImageIds.has(row.id) ? (
+                      <span className="absolute inset-0 flex items-center justify-center p-2 text-center text-[10px] text-white/45 leading-snug">
+                        暂时无法显示
+                      </span>
+                    ) : (
+                      <img
+                        src={resolveUserImageUrl(row.imageUrl)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={() => {
+                          setBrokenImageIds((prev) => new Set(prev).add(row.id));
                         }}
-                        title="删除照片"
-                        aria-label="删除照片"
-                      >
-                        {deletingImageId === row.id ? "…" : "删除"}
-                      </button>
-                    </div>
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="absolute top-1.5 right-1.5 rounded-full bg-black/50 backdrop-blur-sm text-[10px] py-0.5 px-2 text-white/90 hover:bg-black/65"
+                      onClick={() => void onDeleteImage(row.id)}
+                      disabled={uploading || deletingAll || deletingImageId === row.id}
+                      title="删除照片"
+                      aria-label="删除照片"
+                    >
+                      {deletingImageId === row.id ? "…" : "删除"}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -511,51 +398,59 @@ export default function OnboardingPhotoUploadPage() {
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={onPickFile}
-            style={{ display: "none" }}
+            className="hidden"
             aria-hidden
           />
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem", marginBottom: "1rem" }}>
-            <button type="button" onClick={openFilePicker} disabled={uploading} style={{ cursor: uploading ? "not-allowed" : "pointer" }}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap mb-3">
+            <button
+              type="button"
+              className="btn-ghost text-sm py-2.5 px-4"
+              onClick={openFilePicker}
+              disabled={uploading}
+            >
               选择照片
             </button>
-            <button type="button" onClick={() => void onUpload()} disabled={uploading || !pickedFile}>
+            <button
+              type="button"
+              className="btn-primary text-sm py-2.5 px-4"
+              onClick={() => void onUpload()}
+              disabled={uploading || !pickedFile}
+            >
               {uploading ? "上传中…" : "上传并继续"}
             </button>
-            <button type="button" onClick={() => void onContinuePreference()} disabled={!hasPassingPhoto || uploading}>
+            <button
+              type="button"
+              className="btn-ghost text-sm py-2.5 px-4"
+              onClick={() => void onContinuePreference()}
+              disabled={!hasPassingPhoto || uploading}
+            >
               继续选择审美偏好
             </button>
-            <Link
-              to={`/onboarding/photo-preview${previewQs}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "0.35rem 0.75rem",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                color: "#334155",
-                textDecoration: "none",
-                fontSize: "0.92rem",
-                pointerEvents: uploading ? "none" : "auto",
-                opacity: uploading ? 0.6 : 1,
-              }}
-            >
-              查看第一印象预览池
-            </Link>
           </div>
+
+          <Link
+            to={`/onboarding/photo-preview${previewQs}`}
+            className={`btn-ghost text-sm py-2.5 px-4 inline-flex justify-center mb-3 ${
+              uploading ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            查看第一印象预览池
+          </Link>
+
           {pickedFile ? (
-            <p style={{ color: "#0f766e", fontSize: "0.86rem", marginBottom: "0.75rem" }}>
+            <p className="text-sm text-emerald-300/90 mb-2">
               已选择：{pickedFile.name}（{(pickedFile.size / 1024).toFixed(0)} KB）
             </p>
           ) : (
-            <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: "0.75rem" }}>
+            <p className="text-xs text-white/40 leading-relaxed pt-1">
               {hasPhoto
                 ? "可选中新照片后点击「上传并继续」，校验通过并成功上传后将根据审核状态继续流程。"
                 : "请先选择一张照片，校验通过并成功上传后将根据审核状态继续流程。"}
             </p>
           )}
-        </section>
-      )}
+        </div>
+      ) : null}
     </StandalonePage>
   );
 }

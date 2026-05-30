@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   acknowledgeOnboardingPhotoPreviewPool,
   generateOnboardingPhotoPreviewPool,
@@ -8,12 +8,15 @@ import {
 import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
 import { getTestMatchingCapabilities } from "../api/testMatch";
 import AdminOnly from "../components/admin/AdminOnly";
+import OnboardingPreviewPoolGallery from "../components/onboarding/OnboardingPreviewPoolGallery";
+import QuestionnairePanel from "../components/questionnaire/QuestionnairePanel";
 import AppDarkPage from "../components/layout/AppDarkPage";
 import AppContent from "../components/layout/AppContent";
 import AlertBanner from "../components/ui/AlertBanner";
 import DataTable from "../components/ui/DataTable";
 import GlassCard from "../components/ui/GlassCard";
 import { useAdminAccess } from "../hooks/useAdminAccess";
+import { resolveUserImageUrl } from "../api/images";
 import { resolveUserId } from "../utils/resolveUserId";
 import UserIdWithName from "../components/common/UserIdWithName";
 
@@ -21,27 +24,7 @@ function fmtScore(n) {
   return typeof n === "number" && Number.isFinite(n) ? n.toFixed(3) : "-";
 }
 
-function resolvePreviewImageUrl(raw) {
-  if (!raw) return "";
-  try {
-    const u = new URL(raw, window.location.origin);
-    const imageHost = u.hostname.toLowerCase();
-    const pageHost = window.location.hostname.toLowerCase();
-    const imageIsLoopback = imageHost === "localhost" || imageHost === "127.0.0.1";
-    const pageIsLoopback = pageHost === "localhost" || pageHost === "127.0.0.1";
-    if (imageIsLoopback && !pageIsLoopback) {
-      const api = new URL(import.meta.env.VITE_API_BASE_URL || "http://localhost:3000");
-      u.protocol = api.protocol;
-      u.host = api.host;
-    }
-    return u.toString();
-  } catch {
-    return raw;
-  }
-}
-
 export default function PreviewPoolPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const isOnboardingPool = location.pathname.includes("/onboarding/photo-preview");
   const [searchParams] = useSearchParams();
@@ -54,11 +37,12 @@ export default function PreviewPoolPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedAllowed, setSeedAllowed] = useState(false);
   const [error, setError] = useState("");
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) {
       setBundle(null);
-      setError("缺少 userId：请先登录，或在 URL 里带上 ?userId=...");
+      setError("请先登录后再查看预览池。");
       return;
     }
     setLoading(true);
@@ -70,7 +54,12 @@ export default function PreviewPoolPage() {
       setBundle(next);
     } catch (e) {
       setBundle(null);
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (isOnboardingPool && /No active onboarding/i.test(msg)) {
+        setError("还没有生成预览池。若已完成审美偏好，请点击下方「生成预览」。");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -78,7 +67,7 @@ export default function PreviewPoolPage() {
 
   const generateOnboardingPool = useCallback(async () => {
     if (!userId) {
-      setError("缺少 userId：请先登录，或在 URL 里带上 ?userId=...");
+      setError("请先登录。");
       return;
     }
     setGenerating(true);
@@ -100,20 +89,20 @@ export default function PreviewPoolPage() {
     setError("");
     try {
       await acknowledgeOnboardingPhotoPreviewPool();
-      navigate(`/questionnaire?userId=${encodeURIComponent(userId)}`);
+      setShowQuestionnaire(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setAcknowledging(false);
     }
-  }, [userId, navigate]);
+  }, [userId]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin || isOnboardingPool) {
       setSeedAllowed(false);
       return;
     }
@@ -131,13 +120,10 @@ export default function PreviewPoolPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, isOnboardingPool]);
 
   const seedForTest = useCallback(async () => {
-    if (!userId) {
-      setError("缺少 userId：请先登录，或在 URL 里带上 ?userId=...");
-      return;
-    }
+    if (!userId) return;
     setSeeding(true);
     setError("");
     try {
@@ -151,17 +137,16 @@ export default function PreviewPoolPage() {
     }
   }, [userId]);
 
-  const q = userId ? `?userId=${encodeURIComponent(userId)}` : "";
   const shortlistIds = bundle?.shortlistContract?.shortlist?.candidateUserIds ?? [];
   const evidence = bundle?.shortlistContract?.staticEvidence ?? {};
 
-  const tableColumns = [
+  const legacyTableColumns = [
     { key: "rank", label: "Rank", render: (item) => item.rankInPool },
     {
       key: "photo",
       label: "照片",
       render: (item) => {
-        const imageUrl = resolvePreviewImageUrl(item.itemMeta?.candidateImageUrl);
+        const imageUrl = resolveUserImageUrl(item.itemMeta?.candidateImageUrl ?? "");
         return imageUrl ? (
           <img
             src={imageUrl}
@@ -176,19 +161,11 @@ export default function PreviewPoolPage() {
     {
       key: "candidate",
       label: "Candidate",
-      render: (item) => {
-        const inShortlist = shortlistIds.includes(item.candidateUserId);
-        return (
-          <span className="text-xs">
-            <code className="text-white/80">
-              <UserIdWithName userId={item.candidateUserId} />
-            </code>
-            {inShortlist ? (
-              <span className="ml-1.5 badge-gradient text-[0.65rem] py-0 px-1.5">shortlist</span>
-            ) : null}
-          </span>
-        );
-      },
+      render: (item) => (
+        <code className="text-white/80 text-xs">
+          <UserIdWithName userId={item.candidateUserId} />
+        </code>
+      ),
     },
     { key: "mode", label: "Mode", render: (item) => item.displayMode },
     { key: "base", label: "Base", render: (item) => fmtScore(item.baseScore) },
@@ -215,42 +192,108 @@ export default function PreviewPoolPage() {
     },
   ];
 
+  if (isOnboardingPool) {
+    return (
+      <AppDarkPage
+        maxWidth="max-w-lg sm:max-w-xl"
+        showHomeLink
+        dense
+        className={
+          showQuestionnaire
+            ? "min-h-dvh overflow-y-auto"
+            : "h-dvh max-h-dvh overflow-hidden"
+        }
+      >
+        <AppContent
+          dense
+          maxWidth="max-w-none"
+          title={showQuestionnaire ? "填写问卷" : "第一印象预览"}
+          subtitle={
+            showQuestionnaire
+              ? "请完成以下题目，提交后继续匹配流程。"
+              : "前几张清晰，越往后越朦胧；仅供参考。"
+          }
+          actions={
+            showQuestionnaire ? null : (
+              <>
+                {!bundle ? (
+                  <button
+                    type="button"
+                    className="btn-primary text-sm py-2 px-4"
+                    disabled={generating || loading || !userId}
+                    onClick={() => void generateOnboardingPool()}
+                  >
+                    {generating ? "生成中…" : "生成预览"}
+                  </button>
+                ) : null}
+                {bundle ? (
+                  <button
+                    type="button"
+                    className="btn-primary text-sm py-2 px-5"
+                    disabled={acknowledging || !userId}
+                    onClick={() => void acknowledgeAndContinue()}
+                  >
+                    {acknowledging ? "请稍候…" : "看完了，继续问卷"}
+                  </button>
+                ) : null}
+              </>
+            )
+          }
+        >
+          {loading && !showQuestionnaire ? (
+            <p className="text-center text-xs text-white/50 py-6">加载中…</p>
+          ) : null}
+
+          {error ? (
+            <AlertBanner variant="warn" className="mb-2 text-sm">
+              {error}
+            </AlertBanner>
+          ) : null}
+
+          {showQuestionnaire && userId ? (
+            <div className="glass rounded-2xl p-4 sm:p-5 mt-1">
+              <QuestionnairePanel
+                userId={userId}
+                embedded
+                skipOnboardingRedirect
+              />
+            </div>
+          ) : null}
+
+          {!showQuestionnaire && bundle?.items?.length ? (
+            <OnboardingPreviewPoolGallery
+              items={bundle.items}
+              resolveImageUrl={resolveUserImageUrl}
+            />
+          ) : null}
+
+          {!showQuestionnaire ? (
+            <p className="text-center text-[10px] text-white/30 mt-1.5 leading-snug">
+              不会代你联系对方
+            </p>
+          ) : null}
+        </AppContent>
+      </AppDarkPage>
+    );
+  }
+
   return (
     <AppDarkPage maxWidth="max-w-5xl">
       <AppContent
-        title={isOnboardingPool ? "第一印象预览池" : "匹配预览池（Legacy）"}
-        subtitle={
-          isOnboardingPool
-            ? "注册流程：3 审美契合 + 2 风格相似 + 1 回流（hidden 不展示图片）。确认后进入问卷。"
-            : "匹配链 PreviewPool（batch-match 上游）；仅供管理员排障，不是 onboarding 第一印象。"
-        }
+        title="匹配预览池（Legacy）"
+        subtitle="管理员排障用 · batch-match 上游数据"
         actions={
           <>
-            <button type="button" className="btn-ghost text-sm" disabled={loading || !userId} onClick={() => void load()}>
+            <button
+              type="button"
+              className="btn-ghost text-sm"
+              disabled={loading || !userId}
+              onClick={() => void load()}
+            >
               {loading ? "刷新中…" : "刷新"}
             </button>
-            {isOnboardingPool ? (
-              <button
-                type="button"
-                className="btn-ghost text-sm"
-                disabled={generating || !userId}
-                onClick={() => void generateOnboardingPool()}
-              >
-                {generating ? "生成中…" : "生成预览池"}
-              </button>
-            ) : null}
-            {isOnboardingPool && bundle ? (
-              <button
-                type="button"
-                className="btn-primary text-sm py-2 px-4"
-                disabled={acknowledging || !userId}
-                onClick={() => void acknowledgeAndContinue()}
-              >
-                {acknowledging ? "提交中…" : "确认并继续问卷"}
-              </button>
-            ) : null}
             <AdminOnly>
-              {!isOnboardingPool && seedAllowed ? (
+              {seedAllowed ? (
                 <button
                   type="button"
                   className="btn-ghost text-sm border-amber-400/40 text-amber-100"
@@ -261,9 +304,6 @@ export default function PreviewPoolPage() {
                 </button>
               ) : null}
             </AdminOnly>
-            <Link to={`/matching-waiting${q}`} className="btn-ghost text-sm no-underline">
-              匹配等待
-            </Link>
           </>
         }
       >
@@ -271,35 +311,11 @@ export default function PreviewPoolPage() {
           <p>
             userId：<code className="text-white/80"><UserIdWithName userId={userId} /></code>
           </p>
-          <p className="mt-1">
-            API{" "}
-            <code className="text-white/75 text-xs">
-              {isOnboardingPool
-                ? "GET /onboarding/photo-preview-pool/me/latest"
-                : "GET /preview-pool/user/:userId/latest"}
-            </code>
-          </p>
-          {bundle?.previewPool?.sourceVersion ? (
-            <p className="mt-1">
-              sourceVersion <code className="text-white/75">{bundle.previewPool.sourceVersion}</code>
-            </p>
-          ) : null}
         </GlassCard>
 
         {error ? (
           <AlertBanner variant="error" title="暂时没有可用预览池" className="mb-4">
             <p>{error}</p>
-            <p className="mt-2 text-xs opacity-90">
-              {isOnboardingPool ? (
-                <>
-                  请先完成审美偏好，再点「生成预览池」。若仍失败，检查 API 与候选人数量（需 ≥6）。
-                </>
-              ) : (
-                <>
-                  请确认 API 已启动。管理员可在服务端开启测试 seed 后使用「生成本地测试池」。
-                </>
-              )}
-            </p>
           </AlertBanner>
         ) : null}
 
@@ -311,46 +327,13 @@ export default function PreviewPoolPage() {
                 <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
                   items: {bundle.items.length}
                 </span>
-                <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
-                  shortlist: {shortlistIds.length}
-                </span>
               </div>
-              <p className="mt-3 text-xs text-white/45">
-                {bundle.previewPool.createdAt} · {bundle.previewPool.updatedAt}
-              </p>
             </GlassCard>
-
-            {bundle.shortlistContract ? (
-              <GlassCard className="mb-4">
-                <h2 className="text-base font-semibold text-white mb-3">Shortlist</h2>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {shortlistIds.map((id) => (
-                    <span key={id} className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100 border border-emerald-400/30">
-                      {id}
-                    </span>
-                  ))}
-                </div>
-                {bundle.shortlistContract.exclusionReport.length > 0 ? (
-                  <details className="text-sm text-white/55">
-                    <summary className="cursor-pointer font-medium text-white/70">
-                      未入 shortlist（{bundle.shortlistContract.exclusionReport.length}）
-                    </summary>
-                    <ul className="mt-2 pl-4 space-y-1 list-disc">
-                      {bundle.shortlistContract.exclusionReport.map((row) => (
-                        <li key={`${row.candidateUserId}:${row.reasonCode}`}>
-                          <UserIdWithName userId={row.candidateUserId} /> · {row.reasonCode}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
-              </GlassCard>
-            ) : null}
 
             <GlassCard>
               <h2 className="text-base font-semibold text-white mb-3">候选列表</h2>
               <DataTable
-                columns={tableColumns}
+                columns={legacyTableColumns}
                 rows={bundle.items}
                 rowKey="id"
                 highlightRow={(item) => shortlistIds.includes(item.candidateUserId)}

@@ -19,24 +19,14 @@ function JsonBlock({ value, maxHeight = 320 }) {
     text = String(value);
   }
   return (
-    <pre
-      style={{
-        margin: "0.35rem 0 0",
-        padding: "0.45rem 0.55rem",
-        background: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: 6,
-        fontSize: "0.72rem",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-        color: "#334155",
-        maxHeight,
-        overflow: "auto",
-      }}
-    >
+    <pre className="final-match-json-block" style={{ maxHeight }}>
       {text}
     </pre>
   );
+}
+
+function TechLabel({ children }) {
+  return <p className="mt-2 mb-0.5 font-semibold text-white/50 text-xs">{children}</p>;
 }
 
 /**
@@ -86,8 +76,8 @@ export function FinalMatchTechnicalDetailsContent({
   const bullets = Array.isArray(readoutFusion?.bulletsZh) ? readoutFusion.bulletsZh : [];
 
   return (
-    <div style={{ marginTop: "0.55rem", lineHeight: 1.55 }}>
-      <p style={{ margin: "0.2rem 0" }}>
+    <div className="final-match-tech mt-2">
+      <p className="my-0.5">
         展示来源类型：<code>{displaySourceType || "—"}</code>
       </p>
       {typeof displayResolverFallbackUsed === "boolean" ? (
@@ -345,7 +335,9 @@ export function FinalMatchTechnicalDetailsContent({
         </details>
       ) : null}
 
-      {footerPanels ? <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid #e2e8f0" }}>{footerPanels}</div> : null}
+      {footerPanels ? (
+        <div className="mt-4 pt-4 border-t border-white/[0.08] final-match-tech">{footerPanels}</div>
+      ) : null}
     </div>
   );
 }

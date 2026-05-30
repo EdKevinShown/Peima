@@ -10,9 +10,10 @@ const PAGE_LABELS = {
  * Phase G v0.3：phaseG_subtle 下跨页次级链接顺序（当前页不重复）。
  * Chat：时间线 → 洞察 → 反馈；Copilot：聊天 → 时间线 → 反馈；时间线：聊天 → 洞察 → 反馈。
  */
-function PhaseGSubtleNavRow({ pageKey, chatHref, copilotHref, timelineHref, activityHref, linkStyle }) {
+function PhaseGSubtleNavRow({ pageKey, chatHref, copilotHref, timelineHref, activityHref, linkStyle, isDark }) {
+  const sepColor = isDark ? "rgba(255,255,255,0.25)" : "#cbd5e1";
   const sep = (k) => (
-    <span key={k} style={{ color: "#cbd5e1", userSelect: "none" }} aria-hidden>
+    <span key={k} style={{ color: sepColor, userSelect: "none" }} aria-hidden>
       {" "}
       ·{" "}
     </span>
@@ -61,6 +62,12 @@ function PhaseGSubtleNavRow({ pageKey, chatHref, copilotHref, timelineHref, acti
   );
 }
 
+const PHASE_G_SUBTLE_HINTS = {
+  chat: "需要时可看看时间线、沟通建议或反馈记录，主界面仍是发消息。",
+  copilot: "这里是聊天参考，不会代替你发消息；想继续聊请回到聊天页。",
+  timeline: "回顾你们聊过什么；有新消息时重新打开本页即可更新。",
+};
+
 export default function ConversationContextBar({
   pageKey,
   conversationId,
@@ -76,6 +83,12 @@ export default function ConversationContextBar({
   showFreshnessMeta = true,
   /** `phaseG_subtle`：弱化非聊天主路径链接（时间线 / 洞察 / 反馈） */
   navVariant = "default",
+  /** 是否在 subtle 模式下展示 conversationId / userId（建议仅 debug 开启） */
+  showIdentifierDetails = false,
+  /** `dark`：玻璃面板，适配 MainAppShell 深色背景 */
+  theme = "light",
+  /** 仅展示跨页导航，不重复「本页」标题与说明 */
+  navOnly = false,
 }) {
   const pageLabel = PAGE_LABELS[pageKey] ?? pageKey;
   const convoText = conversationId || "（未设置）";
@@ -95,38 +108,66 @@ export default function ConversationContextBar({
     return d.toLocaleTimeString();
   })();
 
-  const subtleLink = { color: "#64748b", textDecoration: "none", fontWeight: 500 };
+  const isDark = theme === "dark";
+  const subtleLink = isDark
+    ? { color: "rgba(255,255,255,0.62)", textDecoration: "none", fontWeight: 500 }
+    : { color: "#64748b", textDecoration: "none", fontWeight: 500 };
+  const sectionClass = [
+    "conversation-context-bar",
+    navVariant === "phaseG_subtle" ? "conversation-context-bar--subtle" : "",
+    isDark ? "conversation-context-bar--dark" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  return (
-    <section
-      style={{
-        marginBottom: "1rem",
-        padding: "0.7rem 0.8rem",
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        background: navVariant === "phaseG_subtle" ? "#f8fafc" : "#fcfcfc",
-      }}
-      aria-label="会话上下文栏"
-    >
-      <div style={{ fontWeight: 600, color: "#111827", marginBottom: "0.3rem" }}>
-        {navVariant === "phaseG_subtle" ? "本页" : "当前页面："}
-        {navVariant === "phaseG_subtle" ? "" : " "}
-        {pageLabel}
-      </div>
-      {navVariant === "phaseG_subtle" ? (
-        <>
-          <p style={{ margin: "0 0 0.45rem", color: "#64748b", fontSize: "0.8rem", lineHeight: 1.45 }}>
-            以下为<strong>可选</strong>工具，不影响下方主操作「发送」。
-          </p>
-          <details style={{ marginBottom: "0.45rem", fontSize: "0.78rem", color: "#94a3b8" }}>
-            <summary style={{ cursor: "pointer", color: "#64748b" }}>查看会话与账号标识</summary>
-            <p style={{ margin: "0.35rem 0 0" }}>
+  if (navOnly && navVariant === "phaseG_subtle") {
+    return (
+      <nav className={`${sectionClass} conversation-context-bar--nav-only`} aria-label="相关页面">
+        <PhaseGSubtleNavRow
+          pageKey={pageKey}
+          chatHref={chatHref}
+          copilotHref={copilotHref}
+          timelineHref={timelineHref}
+          activityHref={activityHref}
+          linkStyle={subtleLink}
+          isDark={isDark}
+        />
+        {showIdentifierDetails ? (
+          <details className="conversation-context-bar__ids" style={{ marginTop: "0.45rem" }}>
+            <summary>技术标识（管理员）</summary>
+            <p>
               conversationId：<code>{convoText}</code>
             </p>
-            <p style={{ margin: "0.25rem 0 0" }}>
+            <p>
               userId：<code>{userText}</code>
             </p>
           </details>
+        ) : null}
+      </nav>
+    );
+  }
+
+  return (
+    <section className={sectionClass} aria-label="会话上下文栏">
+      {navVariant !== "phaseG_subtle" ? (
+        <div className="conversation-context-bar__title">当前页面：{pageLabel}</div>
+      ) : null}
+      {navVariant === "phaseG_subtle" ? (
+        <>
+          <p className="conversation-context-bar__hint">
+            {PHASE_G_SUBTLE_HINTS[pageKey] ?? PHASE_G_SUBTLE_HINTS.chat}
+          </p>
+          {showIdentifierDetails ? (
+            <details className="conversation-context-bar__ids">
+              <summary>技术标识（管理员）</summary>
+              <p>
+                conversationId：<code>{convoText}</code>
+              </p>
+              <p>
+                userId：<code>{userText}</code>
+              </p>
+            </details>
+          ) : null}
         </>
       ) : (
         <p style={{ margin: "0 0 0.4rem", color: "#4b5563", fontSize: "0.86rem" }}>
@@ -143,6 +184,7 @@ export default function ConversationContextBar({
           timelineHref={timelineHref}
           activityHref={activityHref}
           linkStyle={subtleLink}
+          isDark={isDark}
         />
       ) : (
         <div
@@ -172,13 +214,11 @@ export default function ConversationContextBar({
           ) : null}
         </div>
       )}
-      <p style={{ margin: "0.5rem 0 0", color: "#6b7280", fontSize: "0.82rem" }}>
-        {navVariant === "phaseG_subtle"
-          ? "在其他工具里看过内容后，回到本页发消息前可手动刷新摘要。"
-          : freshnessHint}
-      </p>
+      {navVariant !== "phaseG_subtle" ? (
+        <p className="conversation-context-bar__hint">{freshnessHint}</p>
+      ) : null}
       {showFreshnessMeta ? (
-        <p style={{ margin: "0.3rem 0 0", color: "#6b7280", fontSize: "0.8rem" }}>
+        <p className="conversation-context-bar__meta">
           最后刷新：<strong>{refreshedTimeLabel}</strong>
           {" · "}
           刷新来源：<strong>{refreshSourceLabel}</strong>

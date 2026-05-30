@@ -23,9 +23,15 @@ export type UserImageRow = {
  * rewrite to the configured API base host so browser can reach the file.
  */
 export function resolveUserImageUrl(raw: string): string {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "";
+
   try {
-    const image = new URL(raw, window.location.origin);
     const api = new URL(baseUrl);
+    const image = trimmed.startsWith("/")
+      ? new URL(trimmed, api)
+      : new URL(trimmed, window.location.origin);
+
     const imageHost = image.hostname.toLowerCase();
     const pageHost = window.location.hostname.toLowerCase();
     const imageIsLoopback =
@@ -34,11 +40,16 @@ export function resolveUserImageUrl(raw: string): string {
     if (imageIsLoopback && !pageIsLoopback) {
       image.protocol = api.protocol;
       image.host = api.host;
-      return image.toString();
+    } else if (
+      trimmed.startsWith("/") &&
+      (imageHost === pageHost || imageHost === "localhost" || imageHost === "127.0.0.1")
+    ) {
+      image.protocol = api.protocol;
+      image.host = api.host;
     }
     return image.toString();
   } catch {
-    return raw;
+    return trimmed;
   }
 }
 

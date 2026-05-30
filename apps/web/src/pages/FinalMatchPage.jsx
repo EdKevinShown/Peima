@@ -7,7 +7,10 @@ import { getMatchReadoutFusion } from "../api/match-readout-fusion";
 import { postMatchReviewAi } from "../api/match-review-ai";
 import { getViewerAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
+import AdminOnly from "../components/admin/AdminOnly";
 import AiSimulationSidecarV0 from "../components/review/AiSimulationSidecarV0";
+import StandalonePage from "../components/layout/StandalonePage";
+import AlertBanner from "../components/ui/AlertBanner";
 import { useAdminAccess } from "../hooks/useAdminAccess";
 import { resolveUserId } from "../utils/resolveUserId";
 import { readValidatedFinalMatchConsumptionHint } from "../utils/finalMatchConsumptionHintStorage";
@@ -943,7 +946,7 @@ export default function FinalMatchPage() {
   }, [userId, navigate, result?.id, isRrmDisplay, timelineTargetUserId]);
 
   return (
-    <main style={{ maxWidth: 600, margin: "0 auto", padding: "1rem 1rem 2.5rem" }}>
+    <StandalonePage maxWidth="max-w-lg sm:max-w-xl" showHomeLink>
       {userId && showDebug ? (
         <>
         <details
@@ -1396,58 +1399,41 @@ export default function FinalMatchPage() {
       </details>
         </>
       ) : null}
-      {loading && <LoadingState label="加载匹配结果" />}
-      {error && (
-        <p style={{ color: "#b00020" }} role="alert">
+      {loading ? <LoadingState label="加载匹配结果" /> : null}
+      {error ? (
+        <AlertBanner variant="error" className="mb-4">
           {error.message}
-        </p>
-      )}
+        </AlertBanner>
+      ) : null}
 
-      {!loading && !error && result && (
-        <article>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: "0.65rem",
-              marginBottom: "0.5rem",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => void onRematchEnqueue()}
-              disabled={rematchLoading || !userId}
-              style={{
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                padding: "0.35rem 0.75rem",
-                borderRadius: 6,
-                border: "1px solid #cbd5e1",
-                background: "#fff",
-                color: "#0f172a",
-                cursor: rematchLoading || !userId ? "not-allowed" : "pointer",
-                opacity: rematchLoading || !userId ? 0.65 : 1,
-              }}
-            >
-              {rematchPreparingPool
-                ? "正在重新准备候选池并发起匹配"
-                : rematchLoading
-                  ? "处理中"
-                  : "重新匹配"}
-            </button>
+      {!loading && !error && result ? (
+        <div className="onboarding-soft-panel">
+          <div className="flex flex-wrap justify-end items-center gap-2 mb-4">
+            <AdminOnly>
+              <button
+                type="button"
+                className="btn-ghost text-xs py-1.5 px-3"
+                onClick={() => void onRematchEnqueue()}
+                disabled={rematchLoading || !userId}
+              >
+                {rematchPreparingPool
+                  ? "正在重新准备候选池并发起匹配"
+                  : rematchLoading
+                    ? "处理中"
+                    : "重新匹配"}
+              </button>
+            </AdminOnly>
             <Link
               to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
-              style={{ fontSize: "0.82rem", color: "#64748b", whiteSpace: "nowrap" }}
+              className="text-xs text-white/50 hover:text-white/75 whitespace-nowrap transition-colors"
             >
               返回等待页
             </Link>
           </div>
           {rematchError ? (
-            <p style={{ color: "#b00020", fontSize: "0.85rem", marginBottom: "0.75rem" }} role="alert">
+            <AlertBanner variant="error" className="mb-4">
               {rematchError}
-            </p>
+            </AlertBanner>
           ) : null}
           <FinalMatchHero
             isRrmDisplay={isRrmDisplay}
@@ -1457,88 +1443,42 @@ export default function FinalMatchPage() {
             formatDateShort={formatDateShort}
             primaryResolution={primaryResolution}
           />
-          {result.scoreProjectionFallbackUsed === true ? (
-            <p
-              role="status"
-              style={{
-                marginTop: "0.65rem",
-                fontSize: "0.84rem",
-                color: "#92400e",
-                lineHeight: 1.55,
-                maxWidth: 560,
-              }}
-            >
+          {showDebug && result.scoreProjectionFallbackUsed === true ? (
+            <AlertBanner variant="warn" className="mt-3 mb-1">
               当前分数暂时回退到基线分数（{resolveScoreProjectionFallbackHint(result.scoreProjectionFallbackReason)}）。
-            </p>
-          ) : result.resolvedScoreSourceType === "top2_score_snapshot" ? (
-            <p
-              role="status"
-              style={{
-                marginTop: "0.65rem",
-                fontSize: "0.84rem",
-                color: "#166534",
-                lineHeight: 1.55,
-                maxWidth: 560,
-              }}
-            >
+            </AlertBanner>
+          ) : null}
+          {showDebug && result.resolvedScoreSourceType === "top2_score_snapshot" ? (
+            <AlertBanner variant="info" className="mt-3 mb-1">
               当前分数已按最终展示对象计算（来源：Top2 分数快照）。
-            </p>
+            </AlertBanner>
           ) : null}
           {Array.isArray(result.consistencyWarnings) && result.consistencyWarnings.length > 0 ? (
-            <div
-              role="region"
-              aria-label="一致性提示"
-              style={{
-                marginTop: "0.75rem",
-                padding: "0.55rem 0.75rem",
-                borderRadius: 8,
-                border: "1px solid #e2e8f0",
-                background: "#fafafa",
-                fontSize: "0.84rem",
-                lineHeight: 1.55,
-                maxWidth: 560,
-              }}
-            >
+            <div className="mt-3 space-y-2" role="region" aria-label="一致性提示">
               {result.consistencyWarnings.map((w, idx) => {
                 const sev = w.severity === "blocking" ? "blocking" : w.severity === "warning" ? "warning" : "info";
-                const color = sev === "blocking" ? "#991b1b" : sev === "warning" ? "#a16207" : "#475569";
-                const border = sev === "blocking" ? "#fecaca" : sev === "warning" ? "#fde047" : "#cbd5e1";
+                const variant =
+                  sev === "blocking" ? "error" : sev === "warning" ? "warn" : "info";
                 const label = sev === "blocking" ? "重要" : sev === "warning" ? "提醒" : "说明";
                 return (
-                  <p
-                    key={`${w.code}-${idx}`}
-                    style={{
-                      margin: idx === 0 ? 0 : "0.5rem 0 0",
-                      color,
-                      borderLeft: `3px solid ${border}`,
-                      paddingLeft: "0.45rem",
-                    }}
-                  >
-                    <strong style={{ fontSize: "0.78rem" }}>{label}</strong>：{w.message}
-                  </p>
+                  <AlertBanner key={`${w.code}-${idx}`} variant={variant}>
+                    <strong>{label}</strong>：{w.message}
+                  </AlertBanner>
                 );
               })}
             </div>
           ) : null}
-          {result.fallbackUsed &&
+          {showDebug &&
+          result.fallbackUsed &&
           (result.fallbackReason === "display_resolver_failed" || result.fallbackReason === "display_missing") ? (
-            <p
-              role="status"
-              style={{
-                marginTop: "0.55rem",
-                fontSize: "0.82rem",
-                color: "#475569",
-                lineHeight: 1.55,
-                maxWidth: 520,
-              }}
-            >
+            <AlertBanner variant="info" className="mt-3">
               本次结果已回退到稳定基线展示。
               {result.fallbackReason ? (
-                <span style={{ color: "#64748b" }}>（{String(result.fallbackReason)}）</span>
+                <span className="text-white/45">（{String(result.fallbackReason)}）</span>
               ) : null}
-            </p>
+            </AlertBanner>
           ) : null}
-          {(() => {
+          {showDebug ? (() => {
             const dst = result.displaySourceType;
             const fb = typeof result.fallbackUsed === "boolean" ? result.fallbackUsed : null;
             const baselineOriginal = !dst || dst === "match_result_original";
@@ -1623,45 +1563,27 @@ export default function FinalMatchPage() {
               );
             }
             return null;
-          })()}
-          {primaryResolution.kind === "legacy_fallback" && primaryResolution.reason === "invalid" ? (
-            <p
-              role="status"
-              style={{
-                marginTop: "0.65rem",
-                fontSize: "0.85rem",
-                color: "#92400e",
-                lineHeight: 1.55,
-                maxWidth: 520,
-              }}
-            >
+          })() : null}
+          {showDebug && primaryResolution.kind === "legacy_fallback" && primaryResolution.reason === "invalid" ? (
+            <AlertBanner variant="warn" className="mt-3">
               V2 shadow 数据异常，已使用旧版匹配指数。
-            </p>
+            </AlertBanner>
           ) : null}
 
-          {showExplanationOwnerMainHint ? (
-            <p
-              role="note"
-              style={{
-                marginTop: "1rem",
-                fontSize: "0.85rem",
-                color: "#92400e",
-                lineHeight: 1.55,
-                maxWidth: 520,
-              }}
-            >
+          {showDebug && showExplanationOwnerMainHint ? (
+            <AlertBanner variant="warn" className="mt-3">
               当前说明内容仍按稳定基线对象生成，后续阶段会进一步统一说明归属。
-            </p>
+            </AlertBanner>
           ) : null}
 
           {!isValidMatchInsights(result.matchInsights) ? (
-            <p style={{ marginTop: "1rem", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.55 }}>
-              结构化匹配解读暂不可用。你可以在页面底部展开「技术来源说明」，查看系统侧保存的原始字段与读数摘要。
+            <p className="mt-4 text-sm text-white/50 leading-relaxed">
+              结构化匹配解读暂不可用，你仍可进入聊天进一步了解对方。
             </p>
           ) : null}
 
           {isValidMatchInsights(result.matchInsights) ? (
-            <div style={{ marginTop: "1.1rem" }}>
+            <div className="mt-4">
               <FinalMatchExplanationSections
                 isRrmDisplay={isRrmDisplay}
                 insights={result.matchInsights}
@@ -1678,29 +1600,21 @@ export default function FinalMatchPage() {
             </div>
           ) : null}
 
-          {/* —— 主流程底部行动区 —— */}
-          {/* M6.5-C3: 反馈 POST 若在子组件落地，应优先读取本 footer 的 data-m65-feedback-target-user-id（= feedbackTargetUserId 链）。 */}
           <footer
             data-m65-feedback-target-user-id={feedbackTargetUserId || undefined}
-            style={{
-              marginTop: "1.5rem",
-              paddingTop: "1.15rem",
-              borderTop: "1px solid #e5e7eb",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.75rem",
-              alignItems: "flex-start",
-            }}
+            className="mt-6 pt-4 border-t border-white/[0.08] flex flex-col gap-3 items-start"
           >
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569", lineHeight: 1.5, maxWidth: 440 }}>
-              <strong>下一步：</strong>准备好后点击「进入聊天」。如需核对模拟侧车、补充说明或原始技术字段，请展开页面底部的「技术来源说明」。
+            <p className="m-0 text-sm text-white/60 leading-relaxed max-w-md">
+              准备好后点击「进入聊天」，开始真实对话。
             </p>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5, maxWidth: 440 }}>
-              结构化反馈请在聊天页提交；本页 footer 的 data-m65-feedback-target-user-id 与 API 的 feedback 目标链一致，供自动化读取。
-            </p>
+            {showDebug ? (
+              <p className="m-0 text-xs text-white/40 leading-relaxed max-w-md">
+                结构化反馈请在聊天页提交；footer data-m65-feedback-target-user-id 与 API feedback 链一致（自动化读取）。
+              </p>
+            ) : null}
             <button
               type="button"
-              style={{ ...btnPrimary, minWidth: "min(100%, 240px)" }}
+              className="btn-primary text-sm py-2.5 px-6 w-full sm:w-auto min-w-[240px]"
               onClick={onEnterChat}
               disabled={!userId || !chatTargetUserId || actionsBlockedByConsistency}
             >
@@ -1708,43 +1622,35 @@ export default function FinalMatchPage() {
             </button>
             <button
               type="button"
+              className="text-sm text-white/55 hover:text-white/80 underline-offset-2 hover:underline disabled:opacity-40"
               onClick={onViewTimeline}
               disabled={!userId || !timelineTargetUserId || actionsBlockedByConsistency}
-              style={{
-                ...btnTertiary,
-                marginTop: 0,
-                fontSize: "0.8rem",
-                padding: "0.35rem 0",
-              }}
             >
               查看关系时间线（可选回顾）
             </button>
-            <button type="button" style={btnTertiary} onClick={load} disabled={loading || !userId}>
-              刷新匹配结果
-            </button>
+            {showDebug ? (
+              <button
+                type="button"
+                className="btn-ghost text-xs py-1.5 px-3"
+                onClick={load}
+                disabled={loading || !userId}
+              >
+                刷新匹配结果
+              </button>
+            ) : null}
             {actionsBlockedByConsistency ? (
-              <p role="status" style={{ margin: 0, fontSize: "0.8rem", color: "#991b1b", lineHeight: 1.5, maxWidth: 440 }}>
-                存在「重要」级一致性提示时，本页暂不开放进入聊天与时间线；请查看上方说明或技术来源。
-              </p>
+              <AlertBanner variant="error" className="w-full">
+                存在「重要」级一致性提示时，本页暂不开放进入聊天与时间线；请查看上方说明。
+              </AlertBanner>
             ) : null}
           </footer>
 
-          <details
-            style={{
-              marginTop: "1.35rem",
-              padding: "0.75rem 0.9rem",
-              background: "#f1f5f9",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              fontSize: "0.8rem",
-              color: "#475569",
-            }}
-            aria-label="匹配分数构成"
-          >
-            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
-              匹配分数构成
-            </summary>
-            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+          {showDebug ? (
+          <>
+          <p className="mt-6 mb-2 text-xs text-amber-200/70">管理员排障区（URL 加 ?debug=1）</p>
+          <details className="final-match-details" aria-label="匹配分数构成">
+            <summary>匹配分数构成</summary>
+            <div className="final-match-tech mt-2 space-y-1">
               <p style={{ margin: "0 0 0.35rem" }}>
                 <strong>候选池基础分：</strong>
                 {formatScoreBreakdownPercent(result.scoreBreakdown?.previewPoolScore)}
@@ -1762,50 +1668,14 @@ export default function FinalMatchPage() {
                 {formatScoreBreakdownPercent(result.scoreBreakdown?.profileScore)}
               </p>
             </div>
-            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
-              当前匹配指数由多项信号综合而来。候选池基础分和偏好命中分较高时，总分可能保持在较高区间；问卷画像分反映双方
-              20 维关系画像的相似度。
+            <p className="mt-2 text-xs text-white/45 leading-relaxed">
+              当前匹配指数由多项信号综合而来（仅排障可见）。
             </p>
-            {isRrmDisplay ? (
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
-                关系节奏推荐会影响本轮展示对象，但不会改写这里的基础分数。
-              </p>
-            ) : isRrmV2ReadonlyDisplay ? (
-              <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
-                当前候选人展示可能已与批次主排序略有差异；下方分项仍反映批次主算法口径，未随只读展示辅助路径改写。
-              </p>
-            ) : null}
-            {showScoreOwnerMainHint ? (
-              <p
-                role="note"
-                style={{
-                  margin: "0.45rem 0 0",
-                  fontSize: "0.78rem",
-                  color: "#92400e",
-                  lineHeight: 1.55,
-                }}
-              >
-                当前匹配分数仍按稳定基线对象计算，未重新计算为展示对象专属分数。
-              </p>
-            ) : null}
           </details>
 
-          <details
-            style={{
-              marginTop: "1.35rem",
-              padding: "0.75rem 0.9rem",
-              background: "#f0fdf4",
-              borderRadius: 10,
-              border: "1px solid #bbf7d0",
-              fontSize: "0.8rem",
-              color: "#475569",
-            }}
-            aria-label="V2 关系画像适配度实验"
-          >
-            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#14532d", userSelect: "none", fontSize: "0.92rem" }}>
-              V2 关系画像适配度（实验）
-            </summary>
-            <div style={{ marginTop: "0.65rem", lineHeight: 1.65 }}>
+          <details className="final-match-details" aria-label="V2 关系画像适配度实验">
+            <summary>V2 关系画像适配度（实验）</summary>
+            <div className="final-match-tech mt-2 space-y-1">
               {(() => {
                 const v2 = result.relationshipProfileScoreV2;
                 const src = v2?.source;
@@ -1871,28 +1741,15 @@ export default function FinalMatchPage() {
                 return <p style={{ margin: 0 }}>暂无 V2 shadow。</p>;
               })()}
             </div>
-            <p style={{ margin: "0.55rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.55 }}>
+            <p className="mt-2 text-xs text-white/45 leading-relaxed">
               {readV2PrimaryScoreFlag() && primaryResolution.kind === "v2"
-                ? "以下为 V2 shadow 明细；主视觉已在灰度中使用 V2 展示分。legacy 匹配指数仍在「匹配分数构成」与技术区保留。"
-                : "以下为 V2 关系画像适配分实验明细与审计字段，不改变最终匹配对象或 legacy 匹配指数。"}
+                ? "V2 shadow 明细；主视觉展示分见页顶。"
+                : "V2 实验明细，不改变主推荐对象。"}
             </p>
           </details>
 
-          <details
-            style={{
-              marginTop: "1.35rem",
-              padding: "0.75rem 0.9rem",
-              background: "#f8fafc",
-              borderRadius: 10,
-              border: "1px solid #e2e8f0",
-              fontSize: "0.8rem",
-              color: "#475569",
-            }}
-            aria-label="技术来源说明"
-          >
-            <summary style={{ cursor: "pointer", fontWeight: 600, color: "#334155", userSelect: "none", fontSize: "0.92rem" }}>
-              技术来源说明
-            </summary>
+          <details className="final-match-details" aria-label="技术来源说明">
+            <summary>技术来源说明</summary>
             <FinalMatchTechnicalDetailsContent
               displaySourceType={result.displaySourceType}
               displayResolverFallbackUsed={
@@ -1935,9 +1792,9 @@ export default function FinalMatchPage() {
               interactionSimFull={interactionSim}
               footerPanels={
                 <>
-                  <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.5rem", color: "#0f172a" }}>模拟侧车</h3>
-                  <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
-                    以下为基于对话模拟的只读参考，与主推荐结论相互独立。
+                  <h3 className="text-sm font-semibold text-white/85 mb-2">模拟侧车</h3>
+                  <p className="mb-2 text-xs text-white/45 leading-relaxed">
+                    基于对话模拟的只读参考，与主推荐结论相互独立。
                   </p>
                   {aiSimJobId &&
                   effectiveDisplayCandidateId &&
@@ -1954,39 +1811,31 @@ export default function FinalMatchPage() {
                       />
                     </div>
                   ) : (
-                    <p style={{ margin: "0 0 0.85rem", fontSize: "0.78rem", color: "#94a3b8" }}>
-                      当前链接未携带可用的模拟任务编号，或任务尚未加载。主推荐不依赖本区域。
+                    <p className="mb-3 text-xs text-white/40">
+                      当前链接未携带模拟任务编号，或任务尚未加载。
                     </p>
                   )}
-                  <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
-                    <h3 style={{ fontWeight: 600, fontSize: "0.92rem", margin: "0 0 0.45rem", color: "#0f172a" }}>补充解读</h3>
-                    <p style={{ margin: "0 0 0.55rem", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.5 }}>
-                      基于当前匹配结果生成的可选文字说明（仅供技术或复盘查看）。
+                  <div className="pt-4 border-t border-white/[0.08]">
+                    <h3 className="text-sm font-semibold text-white/85 mb-2">补充解读</h3>
+                    <p className="mb-2 text-xs text-white/45 leading-relaxed">
+                      可选文字说明（仅供复盘）。
                     </p>
                     <button
                       type="button"
-                      style={btnSecondary}
+                      className="btn-ghost text-sm py-2 px-4"
                       onClick={onFetchAiExplanation}
                       disabled={aiExplanationLoading || !result.id}
                     >
                       {aiExplanationLoading ? "正在生成补充解读" : "生成补充解读"}
                     </button>
                     {aiExplanationError ? (
-                      <p style={{ color: "#b00020", fontSize: "0.85rem", margin: "0.55rem 0 0" }} role="alert">
+                      <p className="mt-2 text-sm text-pink-300/90" role="alert">
                         暂时无法生成补充解读，请稍后再试。
                       </p>
                     ) : null}
                     {aiExplanation ? (
-                      <div
-                        style={{
-                          marginTop: "0.65rem",
-                          padding: "0.75rem 0.85rem",
-                          borderRadius: 8,
-                          border: "1px solid #e2e8f0",
-                          background: "#fff",
-                        }}
-                      >
-                        <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "#334155", fontSize: "0.82rem" }}>
+                      <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
+                        <p className="m-0 text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
                           {aiExplanation.explanationText}
                         </p>
                       </div>
@@ -1996,92 +1845,14 @@ export default function FinalMatchPage() {
               }
             />
           </details>
-
-          {showDebug ? (
-            <details
-              style={{
-                marginTop: "1rem",
-                padding: "0.65rem 0.85rem",
-                background: "#fff7ed",
-                borderRadius: 8,
-                border: "1px solid #fed7aa",
-                fontSize: "0.78rem",
-                color: "#64748b",
-              }}
-            >
-              <summary style={{ cursor: "pointer", fontWeight: 600, color: "#9a3412" }}>
-                开发者调试信息（含 ID 与系统原文）
-              </summary>
-              <p style={{ margin: "0.5rem 0 0.25rem" }}>
-                当前账号 userId（URL / 本地）：<code style={{ fontSize: "0.74rem" }}>{userId || "—"}</code>
-              </p>
-              <p style={{ margin: "0.25rem 0" }}>
-                系统匹配对象 ID（MatchResult.candidateUserId）：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{result.candidateUserId}</code>
-              </p>
-              <p style={{ margin: "0.25rem 0" }}>
-                当前展示对象 ID（displayCandidateUserId · {result.displaySourceType || "—"}）：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{effectiveDisplayCandidateId}</code>
-              </p>
-              <p style={{ margin: "0.25rem 0", fontWeight: 600, color: "#64748b" }}>M6.5-C3 · 动作锚点（resolveTargetId 链）</p>
-              <p style={{ margin: "0.15rem 0" }}>
-                chatTargetUserId：<code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{chatTargetUserId || "—"}</code>
-              </p>
-              <p style={{ margin: "0.15rem 0" }}>
-                timelineTargetUserId：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{timelineTargetUserId || "—"}</code>
-              </p>
-              <p style={{ margin: "0.15rem 0" }}>
-                feedbackTargetUserId：
-                <code style={{ fontSize: "0.74rem", wordBreak: "break-all" }}>{feedbackTargetUserId || "—"}</code>
-              </p>
-              <p style={{ margin: "0.25rem 0" }}>
-                结果时间（createdAt 原文）：<code style={{ fontSize: "0.74rem" }}>{formatDate(result.createdAt)}</code>
-              </p>
-              <p style={{ margin: "0.45rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>reasonSummary（系统原文）</p>
-              <pre
-                style={{
-                  margin: "0.25rem 0 0",
-                  padding: "0.5rem 0.6rem",
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 6,
-                  fontSize: "0.72rem",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  color: "#334155",
-                }}
-              >
-                {result.reasonSummary ?? "（无）"}
-              </pre>
-              {matchReview?.debug ? (
-                <>
-                  <p style={{ margin: "0.65rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>复审接口 debug</p>
-                  <p style={{ margin: "0.15rem 0" }}>
-                    sourceType：<code>{matchReview.debug.sourceType}</code> · fallbackUsed：
-                    <code>{String(matchReview.debug.fallbackUsed)}</code>
-                  </p>
-                </>
-              ) : null}
-              {aiExplanation ? (
-                <>
-                  <p style={{ margin: "0.65rem 0 0.25rem", fontWeight: 600, color: "#64748b" }}>补充解读 · 来源</p>
-                  <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
-                    sourceType：<code>{aiExplanation.sourceType}</code>
-                  </p>
-                  <p style={{ margin: "0.15rem 0", wordBreak: "break-all" }}>
-                    sourceVersion：<code>{aiExplanation.sourceVersion}</code>
-                  </p>
-                </>
-              ) : null}
-            </details>
+          </>
           ) : null}
-        </article>
-      )}
+        </div>
+      ) : null}
 
-      {!loading && !error && !result && userId && (
-        <p style={{ color: "#64748b", fontSize: "0.9rem" }}>暂无结果数据。</p>
-      )}
-    </main>
+      {!loading && !error && !result && userId ? (
+        <p className="text-sm text-white/50">暂无结果数据。</p>
+      ) : null}
+    </StandalonePage>
   );
 }

@@ -31,7 +31,9 @@ export default function ProfileSuggestionCard({
   suggestions,
   loadError,
   onRefresh,
+  variant = "light",
 }) {
+  const isDark = variant === "dark";
   const list = useMemo(
     () => (Array.isArray(suggestions) ? suggestions : []),
     [suggestions],
@@ -81,6 +83,129 @@ export default function ProfileSuggestionCard({
     },
     [onRefresh],
   );
+
+  if (isDark) {
+    return (
+      <aside className="chat-embedded-card chat-embedded-card--profile" aria-label="画像更新建议">
+        <div className="chat-embedded-card__title">画像更新建议</div>
+        <p style={{ margin: "0 0 0.5rem", fontSize: "0.8rem", color: "rgba(255,255,255,0.55)" }}>
+          {processed.length > 0
+            ? "待处理可在此确认；已处理记录默认折叠，点击展开查看。"
+            : "待处理可在此接受或忽略。不会向对方推送。"}
+        </p>
+        {loadError ? (
+          <p className="chat-status-err" style={{ margin: "0 0 0.5rem" }} role="alert">
+            加载建议列表失败：{loadError}
+          </p>
+        ) : null}
+        {actionError ? (
+          <p className="chat-status-err" style={{ margin: "0 0 0.5rem" }} role="alert">
+            {actionError}
+          </p>
+        ) : null}
+        <div style={{ marginBottom: processed.length > 0 ? "0.65rem" : 0 }}>
+          <div
+            style={{
+              fontSize: "0.82rem",
+              color: "rgba(255,255,255,0.72)",
+              marginBottom: "0.4rem",
+              fontWeight: 600,
+            }}
+          >
+            待处理
+            {pending.length > 0 ? `（${pending.length}）` : ""}
+          </div>
+          {pending.length > 0 ? (
+            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+              {pending.map((s) => {
+                const busy = pendingActionId === s.id;
+                const p6Model = normalizeP6ReviewSummary(s);
+                return (
+                  <li key={s.id} className="chat-profile-pending-item">
+                    {p6Model ? (
+                      <P6ReviewSummary model={p6Model} compact />
+                    ) : (
+                      <p style={{ margin: "0 0 0.35rem", fontSize: "0.78rem", color: "rgba(255,255,255,0.5)" }}>
+                        本建议暂无结构化审阅摘要；请展开下方查看原始补丁。
+                      </p>
+                    )}
+                    <P6ProposedPatchDetails proposedPatch={s.proposedPatch} id={s.id} />
+                    <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", marginTop: "0.45rem" }}>
+                      <button
+                        type="button"
+                        className="btn-ghost text-sm py-1.5 px-3"
+                        disabled={busy || pendingActionId != null}
+                        onClick={() => runAction(s.id, acceptProfileSuggestion)}
+                      >
+                        {busy ? "处理中…" : "接受"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-ghost text-sm py-1.5 px-3"
+                        disabled={busy || pendingActionId != null}
+                        onClick={() => runAction(s.id, dismissProfileSuggestion)}
+                      >
+                        {busy ? "处理中…" : "忽略"}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p style={{ margin: 0, color: "rgba(255,255,255,0.5)", fontSize: "0.82rem" }}>
+              当前没有待处理的画像建议。
+            </p>
+          )}
+        </div>
+        {processed.length > 0 ? (
+          <div className="chat-divider">
+            <button
+              type="button"
+              className="btn-ghost w-full text-sm py-2 justify-between"
+              onClick={() => setProcessedOpen((o) => !o)}
+              aria-expanded={processedOpen}
+            >
+              <span>
+                <strong>已处理</strong>
+                <span style={{ color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>
+                  {" "}
+                  · 共 {processed.length} 条（已接受 {processedAccepted} · 已忽略 {processedDismissed}）
+                </span>
+              </span>
+              <span>{processedOpen ? "收起" : "展开"}</span>
+            </button>
+            {processedOpen ? (
+              <ul style={{ margin: "0.45rem 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {processed.map((s) => (
+                  <li
+                    key={s.id}
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "rgba(255,255,255,0.62)",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.45rem",
+                      flexWrap: "wrap",
+                      padding: "0.35rem 0.45rem",
+                      background: "rgba(0,0,0,0.15)",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <StatusBadge status={s.status} />
+                    <span style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      {s.resolvedAt ? new Date(s.resolvedAt).toLocaleString() : "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </aside>
+    );
+  }
 
   return (
     <aside

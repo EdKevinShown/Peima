@@ -6,25 +6,8 @@ import {
   reviewStaticScoreBand,
 } from "./finalMatchPlainLanguage";
 
-const card = {
-  borderRadius: 12,
-  padding: "1.1rem 1.15rem",
-  border: "1px solid #e2e8f0",
-  background: "#ffffff",
-  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-};
-
-const h2 = { margin: "0 0 0.55rem", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" };
-
-const subHeading = {
-  margin: "0 0 0.4rem",
-  fontSize: "0.82rem",
-  fontWeight: 600,
-  color: "#64748b",
-};
-
 /**
- * M5.5-UI-R3: plain-language sections; no raw API copy, no ellipsis truncation, no internal terms on the main path.
+ * Plain-language sections (dark theme).
  */
 export default function FinalMatchExplanationSections({
   isRrmDisplay,
@@ -43,7 +26,6 @@ export default function FinalMatchExplanationSections({
   const coexist = useMemo(() => buildPlainCoexistence(insights, matchReview), [insights, matchReview]);
 
   const topics = Array.isArray(openingTopics) ? openingTopics.filter((t) => typeof t === "string" && t.trim()) : [];
-  /** 仅在一次成功的 lite 请求后展示，避免与「可以先问」下的开场话题混淆。 */
   const generatedChatBullets = useMemo(() => {
     if (interactionSim == null || typeof interactionSim !== "object") return [];
     return buildPlainChatPredictionBullets(interactionSim, topics).slice(0, 4);
@@ -54,141 +36,103 @@ export default function FinalMatchExplanationSections({
   const band = hasReview ? reviewStaticScoreBand(reviewScore) : "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <section style={card} aria-labelledby="why-recommend-heading">
-        <h2 id="why-recommend-heading" style={h2}>
+    <div className="flex flex-col gap-3">
+      <section className="final-match-section" aria-labelledby="why-recommend-heading">
+        <h2 id="why-recommend-heading" className="text-base font-semibold text-white mb-2">
           为什么推荐
         </h2>
         {isRrmDisplay ? (
-          <div
-            style={{
-              marginBottom: "0.65rem",
-              padding: "0.5rem 0.7rem",
-              borderRadius: 8,
-              background: "#f1f5f9",
-              fontSize: "0.86rem",
-              color: "#334155",
-              lineHeight: 1.55,
-            }}
-          >
-            <div style={{ fontWeight: 700, color: "#0f172a" }}>关系节奏推荐已启用</div>
-            <div style={{ marginTop: "0.35rem" }}>
-              系统在基础适配候选中，参考相处节奏来决定本轮展示对象。
-            </div>
+          <div className="mb-3 rounded-xl bg-white/[0.05] border border-white/8 px-3 py-2 text-sm text-white/70 leading-relaxed">
+            <div className="font-semibold text-white/90">关系节奏推荐已启用</div>
+            <div className="mt-1">系统在基础适配候选中，参考相处节奏来决定本轮展示对象。</div>
           </div>
         ) : null}
-        <ul style={{ margin: 0, paddingLeft: "1.15rem", color: "#334155", lineHeight: 1.55, fontSize: "0.95rem" }}>
+        <ul className="m-0 pl-5 text-sm text-white/70 leading-relaxed space-y-1.5">
           {whyLines.map((line, i) => (
-            <li key={i} style={{ marginBottom: "0.35rem" }}>
-              {line}
-            </li>
+            <li key={i}>{line}</li>
           ))}
         </ul>
       </section>
 
-      <section style={card} aria-labelledby="coexist-heading">
-        <h2 id="coexist-heading" style={h2}>
+      <section className="final-match-section" aria-labelledby="coexist-heading">
+        <h2 id="coexist-heading" className="text-base font-semibold text-white mb-2">
           相处建议
         </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", fontSize: "0.92rem", color: "#334155", lineHeight: 1.55 }}>
+        <div className="flex flex-col gap-2 text-sm text-white/70 leading-relaxed">
           <div>
-            <strong style={{ color: "#0f172a" }}>建议节奏：</strong>
+            <strong className="text-white/90">建议节奏：</strong>
             {coexist.rhythm}
           </div>
           <div>
-            <strong style={{ color: "#0f172a" }}>需要留意：</strong>
+            <strong className="text-white/90">需要留意：</strong>
             {coexist.caution}
           </div>
           <div>
-            <strong style={{ color: "#0f172a" }}>聊天方式：</strong>
+            <strong className="text-white/90">聊天方式：</strong>
             {coexist.chat}
           </div>
         </div>
-        <div style={{ marginTop: "0.85rem", paddingTop: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
+        <div className="mt-4 pt-3 border-t border-white/[0.08]">
           <button
             type="button"
             onClick={onRequestMatchReview}
             disabled={matchReviewLoading}
-            style={{
-              borderRadius: 999,
-              border: "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#0f172a",
-              padding: "0.45rem 0.95rem",
-              fontSize: "0.88rem",
-              cursor: matchReviewLoading ? "wait" : "pointer",
-            }}
+            className="btn-ghost text-sm py-2 px-4"
           >
             {matchReviewLoading ? "正在获取相处参考" : hasReview ? "刷新相处参考" : "获取相处参考"}
           </button>
           {matchReviewError ? (
-            <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c" }}>暂时无法生成相处参考，请稍后再试。</p>
+            <p className="mt-2 text-sm text-pink-300/90">暂时无法生成相处参考，请稍后再试。</p>
           ) : null}
           {hasReview ? (
-            <div style={{ margin: "0.55rem 0 0", fontSize: "0.84rem", color: "#475569", lineHeight: 1.55 }}>
-              <div>
-                <span style={{ color: "#334155", fontWeight: 600 }}>相处参考：{band}</span>
-                {typeof reviewScore === "number" ? (
-                  <span style={{ marginLeft: "0.35rem" }}>
-                    （相处参考分：{Math.round(reviewScore)} / 100，仅供参考）
-                  </span>
-                ) : null}
-              </div>
-              <p style={{ margin: "0.45rem 0 0", color: "#64748b", fontSize: "0.82rem" }}>
-                这只是根据问卷相似度给出的参考，不会改变本轮推荐结果。
-              </p>
+            <div className="mt-2 text-xs text-white/50 leading-relaxed">
+              <span className="text-white/75 font-medium">相处参考：{band}</span>
+              {typeof reviewScore === "number" ? (
+                <span className="ml-1">（{Math.round(reviewScore)} / 100，仅供参考）</span>
+              ) : null}
+              <p className="mt-1">不会改变本轮推荐结果。</p>
             </div>
           ) : null}
         </div>
       </section>
 
-      <section style={card} aria-labelledby="first-chat-heading">
-        <h2 id="first-chat-heading" style={h2}>
+      <section className="final-match-section" aria-labelledby="first-chat-heading">
+        <h2 id="first-chat-heading" className="text-base font-semibold text-white mb-2">
           第一次可以这样聊
         </h2>
         {topics.length ? (
           <>
-            <p style={subHeading}>可以先问：</p>
-            <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.15rem", color: "#334155", lineHeight: 1.55, fontSize: "0.95rem" }}>
+            <p className="text-xs font-medium text-white/45 mb-1.5">可以先问：</p>
+            <ul className="m-0 mb-3 pl-5 text-sm text-white/70 leading-relaxed space-y-1">
               {topics.slice(0, 3).map((t, i) => (
                 <li key={i}>{t.trim()}</li>
               ))}
             </ul>
           </>
         ) : (
-          <p style={{ margin: "0 0 0.75rem", color: "#64748b", fontSize: "0.9rem" }}>可以从周末安排、最近开心的小事、平时的生活节奏这类轻松话题开始。</p>
+          <p className="mb-3 text-sm text-white/50">
+            可以从周末安排、最近开心的小事、平时的生活节奏这类轻松话题开始。
+          </p>
         )}
         <button
           type="button"
           onClick={onFetchInteractionSim}
           disabled={interactionSimLoading}
-          style={{
-            marginTop: "0.35rem",
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-            background: "#f8fafc",
-            color: "#0f172a",
-            padding: "0.5rem 1rem",
-            fontSize: "0.88rem",
-            fontWeight: 500,
-            cursor: interactionSimLoading ? "wait" : "pointer",
-          }}
+          className="btn-ghost text-sm py-2 px-4"
         >
           {interactionSimLoading ? "正在生成聊天预判" : "生成初次聊天预判"}
         </button>
         {interactionSimError ? (
-          <p style={{ margin: "0.55rem 0 0", fontSize: "0.88rem", color: "#b91c1c", lineHeight: 1.55 }}>
+          <p className="mt-2 text-sm text-pink-300/90 leading-relaxed">
             暂时无法生成聊天预判，请稍后再试。你也可以先从轻松话题开始聊天。
           </p>
         ) : null}
         {generatedChatBullets.length > 0 ? (
           <>
-            <p style={{ ...subHeading, marginTop: "0.75rem" }}>生成后的聊天建议：</p>
-            <ul style={{ margin: 0, paddingLeft: "1.15rem", color: "#475569", lineHeight: 1.55, fontSize: "0.9rem" }}>
+            <p className="text-xs font-medium text-white/45 mt-3 mb-1.5">生成后的聊天建议：</p>
+            <ul className="m-0 pl-5 text-sm text-white/60 leading-relaxed space-y-1">
               {generatedChatBullets.map((tip, i) => (
-                <li key={i} style={{ marginBottom: "0.3rem" }}>
-                  {tip}
-                </li>
+                <li key={i}>{tip}</li>
               ))}
             </ul>
           </>

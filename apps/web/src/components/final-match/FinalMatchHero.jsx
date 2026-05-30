@@ -1,16 +1,7 @@
 import { pickHeroMainIntro } from "./finalMatchNarrative";
 
-const heroStyle = {
-  borderRadius: 12,
-  padding: "1.35rem 1.25rem 1.25rem",
-  background: "linear-gradient(165deg, #f0f7ff 0%, #ffffff 55%, #fafbff 100%)",
-  border: "1px solid #dbeafe",
-  boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
-};
-
 /**
- * M5.5-UI-R4: top hero — RRM 时区分「展示对象」与「基础适配分数」语义，不暗示分数含关系节奏。
- * M6.0-H2: optional V2 primary score (`primaryResolution.kind === "v2"`).
+ * Top hero — score + short intro (dark theme).
  */
 export default function FinalMatchHero({
   isRrmDisplay,
@@ -24,108 +15,51 @@ export default function FinalMatchHero({
   const pr = primaryResolution ?? { kind: "legacy", finalScore };
   const isV2Primary = pr.kind === "v2";
   const scoreLabel = isRrmDisplay ? "基础适配指数" : "匹配指数";
-  const scoreHintInline = "这个分数表示资料与问卷的综合适配程度，可以帮助你理解本轮排序的参考。";
 
   return (
-    <header style={heroStyle}>
-      <h1 style={{ fontSize: "1.45rem", margin: "0 0 0.65rem", color: "#0f172a", fontWeight: 700 }}>本轮匹配说明</h1>
-      <p
-        style={{
-          margin: "0 0 1rem",
-          color: "#1e293b",
-          fontSize: "1.02rem",
-          lineHeight: 1.6,
-          fontWeight: 500,
-        }}
-      >
-        {intro}
-      </p>
-      <div style={{ marginTop: "0.85rem", paddingTop: "1rem", borderTop: "1px solid rgba(148,163,184,0.35)" }}>
+    <header className="pb-4 mb-4 border-b border-white/[0.07]">
+      <h1 className="text-lg font-bold text-white mb-2">本轮匹配说明</h1>
+      <p className="text-sm text-white/75 leading-relaxed font-medium mb-4">{intro}</p>
+
+      <div className="pt-1">
         {isV2Primary ? (
           <>
-            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
-              {pr.title}
-            </p>
-            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>
-              <span>{pr.scoreText}</span>
-              <span style={{ fontSize: "1.15rem", fontWeight: 700, color: "#3b82f6", marginLeft: "0.15rem" }}>
-                {pr.suffix}
-              </span>
+            <p className="text-xs text-white/45 tracking-wide mb-1">{pr.title}</p>
+            <p className="text-4xl font-extrabold leading-none">
+              <span className="text-gradient">{pr.scoreText}</span>
+              <span className="text-xl font-bold text-white/80 ml-1">{pr.suffix}</span>
             </p>
             {pr.subtitle ? (
-              <p
-                style={{
-                  margin: "0.45rem 0 0",
-                  fontSize: "0.95rem",
-                  fontWeight: 600,
-                  color: "#334155",
-                }}
-              >
-                {pr.subtitle}
-              </p>
+              <p className="mt-2 text-sm font-semibold text-white/85">{pr.subtitle}</p>
             ) : null}
             {pr.footnote ? (
-              <p
-                style={{
-                  margin: "0.5rem 0 0",
-                  fontSize: "0.82rem",
-                  color: "#475569",
-                  lineHeight: 1.55,
-                }}
-              >
-                {pr.footnote}
-              </p>
-            ) : null}
-            {isRrmDisplay ? (
-              <p
-                style={{
-                  margin: "0.55rem 0 0",
-                  fontSize: "0.82rem",
-                  color: "#475569",
-                  lineHeight: 1.55,
-                }}
-              >
-                当前展示对象还结合了相处节奏判断；上方为关系画像适配度（V2），与 legacy 匹配指数不同，详见下方技术区。
-              </p>
+              <p className="mt-2 text-xs text-white/50 leading-relaxed">{pr.footnote}</p>
             ) : null}
           </>
         ) : isRrmDisplay ? (
           <>
-            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>{scoreLabel}</p>
-            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
-            <p
-              style={{
-                margin: "0.55rem 0 0",
-                fontSize: "0.82rem",
-                color: "#475569",
-                lineHeight: 1.55,
-              }}
-            >
-              这个分数来自基础资料和问卷适配度，用来帮助你理解基础匹配情况；当前展示对象还结合了相处节奏判断。
+            <p className="text-xs text-white/45 mb-1">{scoreLabel}</p>
+            <p className="text-4xl font-extrabold text-gradient leading-none">
+              {formatScoreDisplay(finalScore)}
+            </p>
+            <p className="mt-2 text-xs text-white/50 leading-relaxed">
+              分数来自基础资料与问卷适配度；展示对象还结合了相处节奏判断。
             </p>
           </>
         ) : (
           <>
-            <p style={{ margin: "0 0 0.2rem", fontSize: "0.8rem", color: "#64748b", letterSpacing: "0.02em" }}>
-              {scoreLabel}（{scoreHintInline}）
+            <p className="text-xs text-white/45 mb-1">{scoreLabel}</p>
+            <p className="text-4xl font-extrabold text-gradient leading-none">
+              {formatScoreDisplay(finalScore)}
             </p>
-            <p style={{ margin: 0, fontSize: "2.35rem", fontWeight: 800, color: "#1d4ed8", lineHeight: 1.1 }}>{formatScoreDisplay(finalScore)}</p>
           </>
         )}
         {pr.kind === "legacy_fallback" && pr.heroHint ? (
-          <p
-            style={{
-              margin: "0.55rem 0 0",
-              fontSize: "0.82rem",
-              color: "#64748b",
-              lineHeight: 1.55,
-            }}
-            role="status"
-          >
+          <p className="mt-2 text-xs text-amber-200/80 leading-relaxed" role="status">
             {pr.heroHint}
           </p>
         ) : null}
-        <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>结果更新于 {formatDateShort(createdAt)}</p>
+        <p className="mt-2 text-xs text-white/35">结果更新于 {formatDateShort(createdAt)}</p>
       </div>
     </header>
   );
