@@ -9,10 +9,23 @@ const pathTitle = (pathname) => {
   if (pathname.startsWith("/chat")) return "聊天";
   if (pathname.startsWith("/copilot")) return "沟通洞察";
   if (pathname.startsWith("/questionnaire-profile")) return "关系画像";
+  if (pathname.startsWith("/questionnaire-intro")) return "填写问卷";
   if (pathname.startsWith("/questionnaire")) return "问卷";
   if (pathname.startsWith("/matching-waiting")) return "匹配等待";
   if (pathname.startsWith("/final-match")) return "最终匹配";
   if (pathname.startsWith("/my-activity")) return "我的反馈与动态";
+  if (pathname.startsWith("/account")) return "账户";
+  if (pathname.startsWith("/onboarding/photo-upload")) return "照片上传";
+  if (pathname.startsWith("/onboarding/photo-preference")) return "审美偏好";
+  if (pathname.startsWith("/onboarding/photo-preview")) return "第一印象预览";
+  if (pathname.startsWith("/preview-pool")) return "预览池";
+  if (pathname.startsWith("/admin/photo-review")) return "照片审核";
+  if (pathname.startsWith("/admin/my-ai-records")) return "我的 AI 记录";
+  if (pathname.startsWith("/admin/ai-sim-job-diagnostic")) return "AI Sim 诊断";
+  if (pathname.startsWith("/admin/ai-sim-job-triage")) return "AI Sim 分诊";
+  if (pathname.startsWith("/admin/p76/allowlist-apply-meta")) return "P76 灰度应用";
+  if (pathname.startsWith("/admin/p76/canonical-rehearsal")) return "P76 演练";
+  if (pathname.startsWith("/admin/p76/canonical-sidecar")) return "P76 Sidecar";
   return "";
 };
 

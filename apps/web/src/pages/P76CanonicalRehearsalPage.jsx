@@ -505,10 +505,6 @@ export default function P76CanonicalRehearsalPage() {
         <Link to="/admin/p76/allowlist-apply-meta" style={{ color: "#b45309" }}>
           Allowlist Apply Meta
         </Link>
-        {" · "}
-        <Link to="/" style={{ color: "#b45309" }}>
-          返回首页
-        </Link>
       </div>
 
       <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>

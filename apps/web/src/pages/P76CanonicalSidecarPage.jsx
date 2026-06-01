@@ -489,10 +489,6 @@ export default function P76CanonicalSidecarPage() {
         <Link to="/admin/p76/canonical-rehearsal" style={{ color: "#b45309" }}>
           Canonical Rehearsal
         </Link>
-        {" · "}
-        <Link to="/" style={{ color: "#b45309" }}>
-          返回首页
-        </Link>
       </div>
 
       <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>

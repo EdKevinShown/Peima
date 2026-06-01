@@ -10,7 +10,6 @@ import { getTestMatchingCapabilities } from "../api/testMatch";
 import AdminOnly from "../components/admin/AdminOnly";
 import OnboardingPreviewPoolGallery from "../components/onboarding/OnboardingPreviewPoolGallery";
 import QuestionnairePanel from "../components/questionnaire/QuestionnairePanel";
-import AppDarkPage from "../components/layout/AppDarkPage";
 import AppContent from "../components/layout/AppContent";
 import AlertBanner from "../components/ui/AlertBanner";
 import DataTable from "../components/ui/DataTable";
@@ -194,16 +193,7 @@ export default function PreviewPoolPage() {
 
   if (isOnboardingPool) {
     return (
-      <AppDarkPage
-        maxWidth="max-w-lg sm:max-w-xl"
-        showHomeLink
-        dense
-        className={
-          showQuestionnaire
-            ? "min-h-dvh overflow-y-auto"
-            : "h-dvh max-h-dvh overflow-hidden"
-        }
-      >
+      <div className="mx-auto w-full max-w-lg sm:max-w-xl px-4 py-3 sm:py-4">
         <AppContent
           dense
           maxWidth="max-w-none"
@@ -273,12 +263,12 @@ export default function PreviewPoolPage() {
             </p>
           ) : null}
         </AppContent>
-      </AppDarkPage>
+      </div>
     );
   }
 
   return (
-    <AppDarkPage maxWidth="max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl px-4 py-8">
       <AppContent
         title="匹配预览池（Legacy）"
         subtitle="管理员排障用 · batch-match 上游数据"
@@ -342,6 +332,6 @@ export default function PreviewPoolPage() {
           </>
         ) : null}
       </AppContent>
-    </AppDarkPage>
+    </div>
   );
 }

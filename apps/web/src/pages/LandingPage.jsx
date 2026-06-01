@@ -371,7 +371,6 @@ export default function LandingPage() {
         <section className="min-h-dvh flex items-center px-6 py-20">
           <div className="relative z-10 w-full max-w-5xl mx-auto">
             <div className="text-center mb-14">
-              <p className="text-xs text-white/30 uppercase tracking-[0.22em] mb-4">How it works</p>
               <h2 className="font-serif text-white"
                   style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 从陌生到<span style={{ color: '#ff6b9d', fontStyle: 'italic' }}> 刚好合适</span>

@@ -270,10 +270,6 @@ export default function AdminPhotoReviewPage() {
         }}
       >
         <strong>内部 / Admin</strong> — 仅运营与管理员；普通用户页面不展示 reviewNote。
-        {" "}
-        <Link to="/" style={{ color: "#b45309" }}>
-          返回首页
-        </Link>
       </div>
 
       <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>照片审核</h1>

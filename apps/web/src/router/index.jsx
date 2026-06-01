@@ -10,6 +10,7 @@ import FinalMatchPage from "../pages/FinalMatchPage";
 import MatchingWaitingPage from "../pages/MatchingWaitingPage";
 import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
+import QuestionnaireIntroPage from "../pages/QuestionnaireIntroPage";
 import QuestionnaireProfilePage from "../pages/QuestionnaireProfilePage";
 import ChatPage from "../pages/ChatPage";
 import ChatFeedbackPage from "../pages/ChatFeedbackPage";
@@ -204,7 +205,7 @@ function DashboardPage() {
           <div className="space-y-2">
             {[
               {
-                to: "/questionnaire",
+                to: "/questionnaire-intro",
                 Icon: FileText,
                 title: "1. 填写问卷",
                 desc: "让我们了解你的性格与偏好",
@@ -373,45 +374,41 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/matchmaker" element={<PersonalizedMatchmakerPage />} />
 
-      {/* Logged-in dashboard + onboarding */}
+      {/* Logged-in dashboard + custom onboarding */}
       <Route path="/home" element={<RequireAuth><DashboardPage /></RequireAuth>} />
       <Route path="/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
 
-      {/* Photo onboarding sub-flow (P7.2) */}
-      <Route path="/onboarding/photo-upload" element={<OnboardingPhotoUploadPage />} />
-      <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
-      <Route path="/onboarding/photo-preview" element={<PreviewPoolPage />} />
-
-      {/* Legacy paths */}
-      <Route path="/preview-pool" element={<PreviewPoolPage />} />
+      {/* Legacy redirects */}
       <Route path="/my-images" element={<LegacyMyImagesRedirect />} />
 
-      <Route path="/account" element={<AccountPage />} />
-
-      {/* Admin diagnostics */}
-      <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
-      <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
-      <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
-      <Route path="/admin/my-ai-records" element={<AdminMyAiRecordsPage />} />
-      <Route path="/admin/p76/allowlist-apply-meta" element={<P76AllowlistApplyMetaPage />} />
-      <Route path="/admin/p76/canonical-rehearsal" element={<P76CanonicalRehearsalPage />} />
-      <Route path="/admin/p76/canonical-sidecar" element={<P76CanonicalSidecarPage />} />
-      <Route
-        path="/admin/p76/canonical-sidecar/:id/apply-review"
-        element={<P76CanonicalSidecarApplyReviewPage />}
-      />
-
-      {/* App pages wrapped in MainAppShell layout */}
+      {/* All logged-in subpages share the MainAppShell top bar */}
       <Route element={<MainAppShell />}>
-        <Route path="questionnaire" element={<QuestionnairePage />} />
-        <Route path="questionnaire-profile" element={<QuestionnaireProfilePage />} />
-        <Route path="matching-waiting" element={<MatchingWaitingPage />} />
-        <Route path="final-match" element={<FinalMatchPage />} />
-        <Route path="chat/feedback" element={<ChatFeedbackPage />} />
-        <Route path="chat/timeline" element={<RelationshipTimelinePage />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="copilot" element={<CopilotPage />} />
-        <Route path="my-activity" element={<MyActivityPage />} />
+        <Route path="/questionnaire-intro" element={<QuestionnaireIntroPage />} />
+        <Route path="/questionnaire" element={<QuestionnairePage />} />
+        <Route path="/questionnaire-profile" element={<QuestionnaireProfilePage />} />
+        <Route path="/matching-waiting" element={<MatchingWaitingPage />} />
+        <Route path="/final-match" element={<FinalMatchPage />} />
+        <Route path="/chat/feedback" element={<ChatFeedbackPage />} />
+        <Route path="/chat/timeline" element={<RelationshipTimelinePage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/copilot" element={<CopilotPage />} />
+        <Route path="/my-activity" element={<MyActivityPage />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/onboarding/photo-upload" element={<OnboardingPhotoUploadPage />} />
+        <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
+        <Route path="/onboarding/photo-preview" element={<PreviewPoolPage />} />
+        <Route path="/preview-pool" element={<PreviewPoolPage />} />
+        <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
+        <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
+        <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
+        <Route path="/admin/my-ai-records" element={<AdminMyAiRecordsPage />} />
+        <Route path="/admin/p76/allowlist-apply-meta" element={<P76AllowlistApplyMetaPage />} />
+        <Route path="/admin/p76/canonical-rehearsal" element={<P76CanonicalRehearsalPage />} />
+        <Route path="/admin/p76/canonical-sidecar" element={<P76CanonicalSidecarPage />} />
+        <Route
+          path="/admin/p76/canonical-sidecar/:id/apply-review"
+          element={<P76CanonicalSidecarApplyReviewPage />}
+        />
       </Route>
 
       <Route path="*" element={<SmartFallback />} />

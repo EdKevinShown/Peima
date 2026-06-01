@@ -344,10 +344,6 @@ export default function P76AllowlistApplyMetaPage() {
         <strong>内部 / Admin</strong> — P76 Allowlist Apply Meta（只读）；
         权限 VIEW_P76_ALLOWLIST_APPLY_META。
         {" "}
-        <Link to="/" style={{ color: "#b45309" }}>
-          返回首页
-        </Link>
-        {" · "}
         <Link to="/admin/photo-review" style={{ color: "#b45309" }}>
           照片审核
         </Link>
