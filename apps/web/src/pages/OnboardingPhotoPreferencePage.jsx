@@ -26,6 +26,7 @@ export default function OnboardingPhotoPreferencePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [needsPhotoFirst, setNeedsPhotoFirst] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState(() => new Set());
   const [selectedFocus, setSelectedFocus] = useState(() => new Set());
 
@@ -65,13 +66,12 @@ export default function OnboardingPhotoPreferencePage() {
     }
     setLoading(true);
     setError(null);
+    setNeedsPhotoFirst(false);
     try {
       await getMe();
       const status = await getOnboardingPhotoStatus();
       if (status.nextStep === "photo_upload") {
-        navigate(`/onboarding/photo-upload?userId=${encodeURIComponent(userId)}`, {
-          replace: true,
-        });
+        setNeedsPhotoFirst(true);
         return;
       }
       const me = await getOnboardingPhotoPreferencesMe();
@@ -131,7 +131,33 @@ export default function OnboardingPhotoPreferencePage() {
         </AlertBanner>
       ) : null}
 
-      {!loading && userId ? (
+      {!loading && needsPhotoFirst ? (
+        <div className="onboarding-soft-panel space-y-4">
+          <AlertBanner variant="warn" className="mb-0">
+            你还没有上传照片。
+          </AlertBanner>
+          <p className="text-sm text-white/65 leading-relaxed">
+            「审美偏好」需要先看到你的照片，再帮你生成 <span className="text-white font-semibold">第一印象预览池</span>。
+            请先完成上传照片这一步，再回来设置偏好。
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link
+              to={`/onboarding/photo-upload${previewQs}`}
+              className="btn-primary inline-flex items-center justify-center text-sm py-2 px-5"
+            >
+              去上传照片 →
+            </Link>
+            <Link
+              to="/home"
+              className="btn-ghost inline-flex items-center justify-center text-sm py-2 px-5"
+            >
+              稍后再来
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {!loading && !needsPhotoFirst && userId ? (
         <div className="onboarding-soft-panel">
           <p className="text-sm text-white/55 leading-relaxed pb-4 mb-4 border-b border-white/[0.07]">
             保存后进入第一印象预览池（3+2+1），确认后再填写问卷；不影响正式匹配主链。

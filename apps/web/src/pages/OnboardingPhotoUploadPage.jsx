@@ -112,7 +112,10 @@ export default function OnboardingPhotoUploadPage() {
       if (status.nextStep === "questionnaire") {
         const profile = await getQuestionnaireProfile(userId);
         if (profile?.profile?.userId === userId) {
-          navigate(`/matching-waiting${q}`);
+          // Photo flow + questionnaire already done. Return to the dashboard
+          // so the user explicitly chooses the next step (matching, profile,
+          // etc.) rather than getting auto-jumped into the matching queue.
+          navigate("/home");
           return;
         }
         navigate(`/questionnaire${q}`);
@@ -301,7 +304,7 @@ export default function OnboardingPhotoUploadPage() {
     <StandalonePage
       maxWidth="max-w-lg"
       title="上传一张清晰本人照片"
-      subtitle="用于生成第一印象预览池。我们不会 AI 美化，也不会生成虚假头像。"
+      subtitle="用于生成第一印象预览池。我们不会泄漏个人信息。"
     >
       {loading && !uploading ? <LoadingState label="加载中…" /> : null}
       {uploading ? <LoadingState label="上传中…" /> : null}
