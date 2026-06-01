@@ -27,6 +27,7 @@ import {
 import { mapAccountApiErrorMessage } from "../utils/accountApiErrorMap";
 import { useAdminAccess } from "../hooks/useAdminAccess";
 import { toFriendlyUserMessage } from "../utils/friendlyErrors";
+import AccountProfileSuggestionsSection from "../components/profile/AccountProfileSuggestionsSection";
 
 const AGES = ageOptionsInclusive();
 const HEIGHTS = heightOptionsCmInclusive();
@@ -373,6 +374,10 @@ function AccountRangeRow({ title, minValue, maxValue, onMinChange, onMaxChange, 
 export default function AccountPage() {
   const [searchParams] = useSearchParams();
   const userId = useMemo(() => resolveUserId(searchParams), [searchParams]);
+  const conversationIdFromUrl = useMemo(
+    () => searchParams.get("conversationId")?.trim() || "",
+    [searchParams],
+  );
   const isDebugMode = useMemo(() => searchParams.get("debug") === "1", [searchParams]);
   const { isAdmin } = useAdminAccess();
   const showDebug = isDebugMode && isAdmin;
@@ -867,6 +872,11 @@ export default function AccountPage() {
               </button>
             </div>
           </section>
+
+          <AccountProfileSuggestionsSection
+            userId={userId}
+            conversationId={conversationIdFromUrl}
+          />
         </>
       ) : null}
     </main>

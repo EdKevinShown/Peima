@@ -548,8 +548,16 @@ export default function MyActivityPage() {
       {!loading && userId ? (
         <section className="my-activity-page__section">
           <h2>我的反馈</h2>
+          <p className="my-activity-page__section-hint" style={{ marginTop: 0 }}>
+            提交反馈：进入
+            {" "}
+            <Link to={userId ? `/chat?userId=${encodeURIComponent(userId)}` : "/chat"}>
+              聊天
+            </Link>
+            ，选好对话对象后，在输入框下方或顶栏点「聊后反馈」。
+          </p>
           {feedbacks.length === 0 ? (
-            <p className="my-activity-empty">还没有反馈记录。聊完天可以在对话页留下感受。</p>
+            <p className="my-activity-empty">还没有反馈记录。</p>
           ) : (
             <div className="my-activity-list">
               {feedbacks.map((fb) => (

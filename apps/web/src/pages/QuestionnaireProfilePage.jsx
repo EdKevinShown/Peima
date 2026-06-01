@@ -6,58 +6,19 @@ import { getQuestionnaireProfile } from "../api/questionnaire";
 import { resolveUserId } from "../utils/resolveUserId";
 import { useAdminAccess } from "../hooks/useAdminAccess";
 import { toFriendlyUserMessage } from "../utils/friendlyErrors";
+import DimensionVisualRow, {
+  DimensionGroupSummary,
+} from "../components/questionnaire/DimensionVisualRow";
+import { getBranchCopyLine } from "../utils/questionnaireProfileCopy";
 import {
-  getBranchCopyLine,
-  summarizeMatchedAxes,
-} from "../utils/questionnaireProfileCopy";
-
-const G1R_AXIS_KEYS = [
-  "attachmentStyle",
-  "emotionalExpression",
-  "communicationStyle",
-  "conflictHandling",
-  "loveLanguage",
-  "securityNeed",
-  "controlNeed",
-  "independence",
-  "loyaltyView",
-  "jealousyTendency",
-  "moneyAttitude",
-  "careerPriority",
-  "lifePace",
-  "socialNeed",
-  "emotionalStability",
-  "sexualValues",
-  "familyView",
-  "marriageExpectation",
-  "childrenIntent",
-  "riskPreference",
-];
+  AXIS_LABELS,
+  G1R_AXIS_KEYS,
+  buildDimensionRows,
+  groupDimensionRows,
+  pickNotableRows,
+} from "../utils/questionnaireProfileDisplay";
 
 const BRANCH_LETTERS = ["A", "B", "C", "D", "E"];
-
-const AXIS_LABELS = {
-  attachmentStyle: "依恋风格",
-  emotionalExpression: "情绪表达",
-  communicationStyle: "沟通风格",
-  conflictHandling: "冲突处理",
-  loveLanguage: "爱的语言",
-  securityNeed: "安全感需求",
-  controlNeed: "控制需求",
-  independence: "独立性",
-  loyaltyView: "忠诚观",
-  jealousyTendency: "嫉妒倾向",
-  moneyAttitude: "金钱观",
-  careerPriority: "事业优先级",
-  lifePace: "生活节奏",
-  socialNeed: "社交需求",
-  emotionalStability: "情绪稳定性",
-  sexualValues: "性价值观",
-  familyView: "家庭观",
-  marriageExpectation: "婚姻期待",
-  childrenIntent: "生育意愿",
-  riskPreference: "风险偏好",
-};
 
 const QP_SCOPED_CSS = `
 .qp-page {
@@ -66,16 +27,17 @@ const QP_SCOPED_CSS = `
   padding: 1.5rem 1rem 2.5rem;
 }
 .qp-page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #fff;
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.02em;
 }
 .qp-page__lead {
   margin: 0 0 1rem;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
 }
 .qp-page__nav {
   display: flex;
@@ -85,8 +47,9 @@ const QP_SCOPED_CSS = `
   font-size: 0.85rem;
 }
 .qp-page__nav a {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
+  font-weight: 500;
 }
 .qp-page__nav a:hover {
   color: #fff;
@@ -104,34 +67,35 @@ const QP_SCOPED_CSS = `
   );
 }
 .qp-section h2 {
-  margin: 0 0 0.65rem;
-  font-size: 1.05rem;
-  font-weight: 600;
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 700;
   color: #fff;
 }
 .qp-hero-name {
-  margin: 0 0 0.35rem;
-  font-size: 1.35rem;
-  font-weight: 700;
+  margin: 0 0 0.4rem;
+  font-size: 1.65rem;
+  font-weight: 800;
   color: #fff;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 .qp-hero-sub {
-  margin: 0 0 0.75rem;
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.48);
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
 }
 .qp-explain-title {
-  margin: 0 0 0.45rem;
-  font-size: 1rem;
-  font-weight: 600;
+  margin: 0 0 0.5rem;
+  font-size: 1.08rem;
+  font-weight: 700;
   color: #fff;
 }
 .qp-explain-body {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.78);
+  font-size: 1rem;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.92);
 }
 .qp-confidence {
   margin: 0;
@@ -145,12 +109,13 @@ const QP_SCOPED_CSS = `
   margin-top: 0.5rem;
 }
 .qp-chip {
-  padding: 0.35rem 0.7rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
 }
 .qp-candidate-list {
   margin: 0.65rem 0 0;
@@ -188,107 +153,192 @@ const QP_SCOPED_CSS = `
 .qp-candidate-item__evidence li + li {
   margin-top: 0.15rem;
 }
-.qp-dim-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-.qp-dim-card {
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.14);
-}
-.qp-dim-card--linked {
-  border-color: rgba(255, 107, 157, 0.28);
-  box-shadow: inset 0 0 0 1px rgba(255, 107, 157, 0.12);
-}
-.qp-dim-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
-}
-.qp-dim-card__name {
+.qp-hero-meta {
+  margin: 0 0 0.85rem;
   font-size: 0.9rem;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.62);
 }
-.qp-dim-card__badge {
-  flex-shrink: 0;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.06);
+.qp-shadow-line {
+  margin: 0.65rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.75);
 }
-.qp-dim-card__badge--clear {
-  border-color: rgba(255, 107, 157, 0.35);
-  color: #ffd4e8;
-  background: rgba(255, 107, 157, 0.15);
-}
-.qp-dim-card__badge--open {
-  color: rgba(255, 255, 255, 0.5);
-}
-.qp-dim-card__summary {
-  margin: 0 0 0.55rem;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.68);
-}
-.qp-dim-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.qp-dim-bar-row {
-  display: grid;
-  grid-template-columns: 1.25rem 1fr 2.25rem;
-  gap: 0.4rem;
-  align-items: center;
-}
-.qp-dim-bar-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
-  text-align: center;
-}
-.qp-dim-bar-label--on {
-  color: #ffd4e8;
-}
-.qp-dim-bar-track {
-  height: 6px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
+.qp-dim-group {
+  margin-bottom: 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
-.qp-dim-bar-fill {
-  height: 100%;
+.qp-dim-group--highlight {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+.qp-dim-group__title {
+  margin: 0;
+  padding: 0.65rem 0.85rem 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+}
+.qp-dim-group > summary {
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+.qp-dim-group > summary::-webkit-details-marker {
+  display: none;
+}
+.qp-dim-group__summary-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+}
+.qp-dim-group__summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+  flex-shrink: 0;
+}
+.qp-dim-group__summary-text {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+.qp-dim-group__summary-count {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+.qp-dim-group__body {
+  padding: 0 0.85rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.qp-dim-row--visual {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.8rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.qp-dim-row--linked {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.qp-dim-row__icon-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.qp-dim-row__icon {
+  color: rgba(255, 255, 255, 0.95);
+}
+.qp-dim-row__content {
+  flex: 1;
+  min-width: 0;
+}
+.qp-dim-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.qp-dim-row__name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+.qp-dim-row__badge {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.22);
-  min-width: 2px;
-  transition: width 0.2s ease;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
 }
-.qp-dim-bar-fill--dominant {
-  background: linear-gradient(90deg, rgba(255, 107, 157, 0.85), rgba(196, 77, 255, 0.75));
+.qp-dim-row__badge--open {
+  border-style: dashed;
+  color: rgba(255, 255, 255, 0.65);
 }
-.qp-dim-bar-fill--linked {
-  background: linear-gradient(90deg, rgba(255, 180, 120, 0.75), rgba(255, 107, 157, 0.65));
+.qp-strength-meter {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.45rem;
+  align-items: flex-end;
+  height: 1.35rem;
+  max-width: 8.5rem;
 }
-.qp-dim-bar-pct {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.42);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+.qp-strength-meter__bar {
+  flex: 1;
+  width: 0.55rem;
+  min-height: 0.28rem;
+  border-radius: 0.2rem 0.2rem 0.1rem 0.1rem;
+  background: rgba(255, 255, 255, 0.14);
+}
+.qp-strength-meter__bar:nth-child(1) { height: 28%; }
+.qp-strength-meter__bar:nth-child(2) { height: 46%; }
+.qp-strength-meter__bar:nth-child(3) { height: 64%; }
+.qp-strength-meter__bar:nth-child(4) { height: 82%; }
+.qp-strength-meter__bar:nth-child(5) { height: 100%; }
+.qp-strength-meter__bar--on {
+  background: rgba(255, 255, 255, 0.88);
+}
+.qp-strength-meter--uncertain .qp-strength-meter__bar--on {
+  background: rgba(255, 255, 255, 0.45);
+}
+.qp-strength-meter--uncertain .qp-strength-meter__bar:nth-child(n + 3) {
+  background: rgba(255, 255, 255, 0.2);
+}
+.qp-dim-row__text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+}
+.qp-dim-expand {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.qp-dim-expand:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
 }
 .qp-section-hint {
-  margin: -0.35rem 0 0.75rem;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.45);
+  margin: -0.35rem 0 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.58);
 }
 .qp-tech-id {
   margin: 0 0 0.75rem;
@@ -408,21 +458,6 @@ function otherCandidatesThanPrimary(displayPrimary, candidates) {
   return (candidates ?? []).filter((c) => c.id !== displayPrimary.id);
 }
 
-function matchedAxesFingerprint(axes) {
-  return (axes ?? [])
-    .map((m) => `${m.axisId}:${m.branch}`)
-    .sort()
-    .join("|");
-}
-
-function axesEvidenceSameAsPrimary(candidate, displayPrimary) {
-  if (!displayPrimary?.matchedAxes?.length) return false;
-  return (
-    matchedAxesFingerprint(candidate.matchedAxes) ===
-    matchedAxesFingerprint(displayPrimary.matchedAxes)
-  );
-}
-
 function buildMatchedAxisHighlightSet(labels, displayPrimary) {
   const s = new Set();
   if (!labels) return s;
@@ -447,90 +482,42 @@ function axisDimensionSummary(axisId, prof, uncertain) {
   const dom = prof?.dominantBranch ?? null;
   const unc = uncertain ?? prof?.uncertainBranches ?? [];
   if (dom) {
-    return {
-      badge: `倾向 ${dom}`,
-      badgeKind: "clear",
-      summary: getBranchCopyLine(axisId, dom),
-    };
+    return { summary: getBranchCopyLine(axisId, dom) };
   }
   if (unc.length) {
     const parts = unc.map((b) => getBranchCopyLine(axisId, b));
     return {
-      badge: "尚在权衡",
-      badgeKind: "open",
       summary:
         parts.length === 1
           ? parts[0]
-          : `你在这一维上呈现多种可能：${parts.join("；")}`,
+          : `多种可能并存：${parts.join("；")}`,
     };
   }
-  return {
-    badge: "待补充",
-    badgeKind: "open",
-    summary: "这一维的题目覆盖还不够，暂时无法给出明确倾向。",
-  };
+  return { summary: "题目覆盖不足，暂时无法判断。" };
 }
 
-function DimensionCard({ axisId, axisKey, prof, uncertain, highlightSet }) {
-  const summary = axisDimensionSummary(axisId, prof, uncertain);
-  const dom = prof?.dominantBranch ?? null;
-  const linked = BRANCH_LETTERS.some((L) => highlightSet.has(`${axisId}:${L}`));
-
-  const barRows = BRANCH_LETTERS.map((L) => {
-    const branch = prof?.branches?.[L];
-    const opp = branch?.opportunities ?? 0;
-    if (opp <= 0) return null;
-    const rate = branch?.rate ?? 0;
-    const pct = Math.round(Math.max(0, Math.min(1, rate)) * 100);
-    const isDom = dom === L;
-    const isLinked = highlightSet.has(`${axisId}:${L}`);
-    let fillClass = "qp-dim-bar-fill";
-    if (isDom) fillClass += " qp-dim-bar-fill--dominant";
-    else if (isLinked) fillClass += " qp-dim-bar-fill--linked";
-    return { L, pct, fillClass, isDom, isLinked };
-  }).filter(Boolean);
-
-  const maxPct = Math.max(1, ...barRows.map((r) => r.pct));
-
-  return (
-    <article className={`qp-dim-card${linked ? " qp-dim-card--linked" : ""}`}>
-      <div className="qp-dim-card__head">
-        <span className="qp-dim-card__name">{AXIS_LABELS[axisKey]}</span>
-        <span
-          className={`qp-dim-card__badge${summary.badgeKind === "clear" ? " qp-dim-card__badge--clear" : " qp-dim-card__badge--open"}`}
-        >
-          {summary.badge}
-        </span>
-      </div>
-      <p className="qp-dim-card__summary">{summary.summary}</p>
-      {barRows.length > 0 ? (
-        <div className="qp-dim-bars" aria-label={`${AXIS_LABELS[axisKey]} 各倾向强度`}>
-          {barRows.map(({ L, pct, fillClass, isDom, isLinked }) => (
-            <div key={L} className="qp-dim-bar-row">
-              <span
-                className={`qp-dim-bar-label${isDom || isLinked ? " qp-dim-bar-label--on" : ""}`}
-              >
-                {L}
-              </span>
-              <div className="qp-dim-bar-track">
-                <div
-                  className={fillClass}
-                  style={{ width: `${(pct / maxPct) * 100}%` }}
-                />
-              </div>
-              <span className="qp-dim-bar-pct">{pct}%</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </article>
-  );
+function DimensionRowVisual({ row }) {
+  const summary = axisDimensionSummary(row.axisId, row.prof, row.uncertain);
+  return <DimensionVisualRow row={row} summary={summary} />;
 }
 
-function LabelsSection({ displayPrimary, labels, showDebug }) {
+function ProfileHeroSection({
+  displayPrimary,
+  labels,
+  overallExplanation,
+  confidencePct,
+  showDebug,
+}) {
   const styles = labels?.styleLabels ?? [];
   const candidates = labels?.candidates ?? [];
   const otherCandidates = otherCandidatesThanPrimary(displayPrimary, candidates);
+  const explainPara = overallExplanation?.paragraph?.trim() || null;
+  const explainTitle = overallExplanation?.title?.trim() || null;
+  const showExplainTitle =
+    explainTitle &&
+    displayPrimary?.name &&
+    explainTitle !== displayPrimary.name &&
+    !explainTitle.includes(displayPrimary.name);
 
   return (
     <section className="qp-section">
@@ -544,68 +531,30 @@ function LabelsSection({ displayPrimary, labels, showDebug }) {
           </p>
         </>
       ) : null}
-
-      {displayPrimary?.matchedAxes?.length ? (
-        <>
-          <p className="qp-section-hint" style={{ marginTop: "0.5rem", marginBottom: "0.35rem" }}>
-            主要依据
-          </p>
-          <ul className="qp-candidate-item__evidence" style={{ marginBottom: "0.65rem" }}>
-            {summarizeMatchedAxes(displayPrimary.matchedAxes).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </>
+      {confidencePct != null ? (
+        <p className="qp-hero-meta">问卷完成度 {confidencePct}</p>
       ) : null}
-
+      {showExplainTitle ? (
+        <p className="qp-explain-title" style={{ marginTop: "0.65rem" }}>
+          {explainTitle}
+        </p>
+      ) : null}
+      {explainPara ? <p className="qp-explain-body">{explainPara}</p> : null}
       {otherCandidates.length > 0 ? (
-        <>
-          <p className="qp-section-hint" style={{ marginTop: 0 }}>
-            {displayPrimary?.source === "primary"
-              ? "你的回答里也能看到这些类型的影子："
-              : "此外，这些类型也与你有部分重合："}
-          </p>
-          <ul className="qp-candidate-list">
-            {otherCandidates.map((c) => {
-              const sameEvidence = axesEvidenceSameAsPrimary(c, displayPrimary);
-              return (
-                <li key={c.id} className="qp-candidate-item">
-                  <p className="qp-candidate-item__name">{c.name}</p>
-                  <p className="qp-candidate-item__meta">
-                    契合度 {fmtRatio(c.matchRatio) ?? "—"}
-                    {showDebug ? ` · ${c.id}` : ""}
-                  </p>
-                  {sameEvidence ? (
-                    <p className="qp-candidate-item__meta" style={{ marginTop: "0.25rem" }}>
-                      依据维度与上方主类型相近
-                    </p>
-                  ) : c.matchedAxes?.length ? (
-                    <ul className="qp-candidate-item__evidence">
-                      {summarizeMatchedAxes(c.matchedAxes).map((line) => (
-                        <li key={`${c.id}-${line}`}>{line}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </>
+        <p className="qp-shadow-line">
+          也有点像：
+          {otherCandidates.map((c) => c.name).join("、")}
+        </p>
       ) : null}
-
       {styles.length > 0 ? (
-        <>
-          <p className="qp-section-hint">相处风格侧写</p>
-          <div className="qp-chip-row" aria-label="风格侧写">
-            {styles.map((s) => (
-              <span key={s.id} className="qp-chip" title={showDebug ? s.id : undefined}>
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </>
+        <div className="qp-chip-row" aria-label="相处风格">
+          {styles.map((s) => (
+            <span key={s.id} className="qp-chip" title={showDebug ? s.id : undefined}>
+              {s.name}
+            </span>
+          ))}
+        </div>
       ) : null}
-
       {showDebug && labels?.primary ? (
         <details className="qp-admin-details">
           <summary>强主标签（调试）</summary>
@@ -614,6 +563,91 @@ function LabelsSection({ displayPrimary, labels, showDebug }) {
           </div>
         </details>
       ) : null}
+    </section>
+  );
+}
+
+function DimensionsOverviewSection({
+  dimProfiles,
+  uncertainByAxis,
+  highlightSet,
+  displayPrimaryName,
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const rows = useMemo(
+    () => buildDimensionRows({ dimProfiles, uncertainByAxis, highlightSet }),
+    [dimProfiles, uncertainByAxis, highlightSet],
+  );
+  const notable = useMemo(() => pickNotableRows(rows, { max: 8 }), [rows]);
+  const grouped = useMemo(() => groupDimensionRows(rows), [rows]);
+  const linkedNotable = notable.filter((r) => r.linked);
+  const otherNotable = notable.filter((r) => !r.linked);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="qp-section">
+      <h2>关键倾向</h2>
+      <p className="qp-section-hint">
+        左侧图标代表主题，下方五格表示强度（满格 = 较明显）。
+      </p>
+
+      {!showAll ? (
+        <>
+          {displayPrimaryName && linkedNotable.length > 0 ? (
+            <div className="qp-dim-group qp-dim-group--highlight">
+              <p className="qp-dim-group__title">和「{displayPrimaryName}」最呼应</p>
+              <div className="qp-dim-group__body">
+                {linkedNotable.map((row) => (
+                  <DimensionRowVisual key={row.axisKey} row={row} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {otherNotable.length > 0 ? (
+            <div className="qp-dim-group__body" style={{ marginBottom: "0.5rem" }}>
+              {otherNotable.map((row) => (
+                <DimensionRowVisual key={row.axisKey} row={row} />
+              ))}
+            </div>
+          ) : null}
+          {rows.length > notable.length ? (
+            <button
+              type="button"
+              className="qp-dim-expand"
+              onClick={() => setShowAll(true)}
+            >
+              查看全部分组（共 {rows.length} 项）
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {grouped.map((g) => (
+            <details key={g.id} className="qp-dim-group" open>
+              <summary>
+                <DimensionGroupSummary
+                  groupId={g.id}
+                  title={g.title}
+                  count={g.items.length}
+                />
+              </summary>
+              <div className="qp-dim-group__body">
+                {g.items.map((row) => (
+                  <DimensionRowVisual key={row.axisKey} row={row} />
+                ))}
+              </div>
+            </details>
+          ))}
+          <button
+            type="button"
+            className="qp-dim-expand"
+            onClick={() => setShowAll(false)}
+          >
+            收起，只看要点
+          </button>
+        </>
+      )}
     </section>
   );
 }
@@ -778,49 +812,20 @@ export default function QuestionnaireProfilePage() {
 
       {userId && !loading && !error && profile && payload ? (
         <>
-          {overallExplanation ? (
-            <section className="qp-section">
-              <h2>整体解读</h2>
-              <p className="qp-explain-title">{overallExplanation.title}</p>
-              <p className="qp-explain-body">{overallExplanation.paragraph}</p>
-            </section>
-          ) : null}
-
-          {confidencePct != null ? (
-            <section className="qp-section">
-              <h2>问卷完成度</h2>
-              <p className="qp-confidence">已覆盖 {confidencePct} 的正式题目</p>
-            </section>
-          ) : null}
-
-          <LabelsSection
+          <ProfileHeroSection
             displayPrimary={displayPrimary}
             labels={labels}
+            overallExplanation={overallExplanation}
+            confidencePct={confidencePct}
             showDebug={showDebug}
           />
 
-          <section className="qp-section">
-            <h2>二十个维度</h2>
-            <p className="qp-section-hint">
-              每一行代表问卷中的一个主题。条形表示该倾向在你答案中的相对强度；高亮卡片与上方画像标签相关。
-            </p>
-            <div className="qp-dim-list">
-              {G1R_AXIS_KEYS.map((key, idx) => {
-                const axisId = idx + 1;
-                const sk = String(axisId);
-                return (
-                  <DimensionCard
-                    key={key}
-                    axisId={axisId}
-                    axisKey={key}
-                    prof={dimProfiles?.[sk]}
-                    uncertain={uncertainByAxis?.[sk]}
-                    highlightSet={highlightSet}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          <DimensionsOverviewSection
+            dimProfiles={dimProfiles}
+            uncertainByAxis={uncertainByAxis}
+            highlightSet={highlightSet}
+            displayPrimaryName={displayPrimary?.name ?? null}
+          />
 
           {showDebug ? (
             <>

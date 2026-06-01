@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { getMe, login, register } from "../api/auth";
-import { getOnboardingPhotoStatus } from "../api/onboarding";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -37,18 +36,7 @@ export default function LoginPage() {
       localStorage.setItem("peimaUserId", res.user.id);
       localStorage.setItem("peimaUserNickname", res.user.nickname || "");
       await getMe();
-
-      const uid = encodeURIComponent(res.user.id);
-      const status = await getOnboardingPhotoStatus();
-      if (status.nextStep === "photo_upload") {
-        navigate(`/onboarding/photo-upload?userId=${uid}`, { replace: true });
-      } else if (status.nextStep === "photo_preference") {
-        navigate(`/onboarding/photo-preference?userId=${uid}`, { replace: true });
-      } else if (status.nextStep === "photo_preview") {
-        navigate(`/onboarding/photo-preview?userId=${uid}`, { replace: true });
-      } else {
-        navigate(`/questionnaire?userId=${uid}`, { replace: true });
-      }
+      navigate("/home", { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

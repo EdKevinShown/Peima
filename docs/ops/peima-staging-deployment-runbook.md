@@ -19,6 +19,7 @@
 | r9e3 reverify | [staging-r9e3-reverify-checklist.md](../../artifacts/p76/r9e4/staging-r9e3-reverify-checklist.md) |
 | Migration job | [peima-staging-migration-job.md](./peima-staging-migration-job.md) |
 | Compose example | [docker-compose.staging.example.yml](../../docker-compose.staging.example.yml) |
+| **Beta（无域名 · IP 内测）** | [beta-au-ip-deploy.md](./beta-au-ip-deploy.md) · [docker-compose.beta.yml](../../docker-compose.beta.yml) |
 
 ---
 

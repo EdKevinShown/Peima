@@ -12,6 +12,8 @@ import PreviewPoolPage from "../pages/PreviewPoolPage";
 import QuestionnairePage from "../pages/QuestionnairePage";
 import QuestionnaireProfilePage from "../pages/QuestionnaireProfilePage";
 import ChatPage from "../pages/ChatPage";
+import ChatFeedbackPage from "../pages/ChatFeedbackPage";
+import AdminMatchTools from "../components/matching/AdminMatchTools";
 import CopilotPage from "../pages/CopilotPage";
 import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
 import LoginPage from "../pages/LoginPage";
@@ -256,6 +258,12 @@ function DashboardPage() {
           </div>
         </div>
 
+        {isAdmin ? (
+          <div className="mb-8 glass rounded-2xl p-4">
+            <AdminMatchTools userId={userId} compact />
+          </div>
+        ) : null}
+
         <div className="space-y-6">
           <div>
             <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3 ml-1">
@@ -399,6 +407,7 @@ export default function AppRoutes() {
         <Route path="questionnaire-profile" element={<QuestionnaireProfilePage />} />
         <Route path="matching-waiting" element={<MatchingWaitingPage />} />
         <Route path="final-match" element={<FinalMatchPage />} />
+        <Route path="chat/feedback" element={<ChatFeedbackPage />} />
         <Route path="chat/timeline" element={<RelationshipTimelinePage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="copilot" element={<CopilotPage />} />

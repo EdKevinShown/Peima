@@ -4,6 +4,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 const pathTitle = (pathname) => {
+  if (pathname.startsWith("/chat/feedback")) return "聊后反馈";
   if (pathname.startsWith("/chat/timeline")) return "关系时间线";
   if (pathname.startsWith("/chat")) return "聊天";
   if (pathname.startsWith("/copilot")) return "沟通洞察";

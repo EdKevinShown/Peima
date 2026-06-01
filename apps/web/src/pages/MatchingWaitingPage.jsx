@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  getAdminCapabilities,
-  runAdminBatchMatchOnce,
-  runAdminPostPoolOrchestrationMvp,
-} from "../api/admin";
+import { runAdminPostPoolOrchestrationMvp } from "../api/admin";
 import {
   createPairwiseDecisionJob,
   getPairwiseDecisionJob,
@@ -19,11 +15,7 @@ import {
   getMatchingStatus,
 } from "../api/matching";
 import { getLatestPreviewPool } from "../api/previewPool";
-import {
-  getTestMatchingCapabilities,
-  runTestBatchMatchOnce,
-} from "../api/testMatch";
-import AdminOnly from "../components/admin/AdminOnly";
+import AdminMatchTools from "../components/matching/AdminMatchTools";
 import LoadingState from "../components/common/LoadingState";
 import AppContent from "../components/layout/AppContent";
 import AlertBanner from "../components/ui/AlertBanner";
@@ -119,13 +111,6 @@ export default function MatchingWaitingPage() {
   const [error, setError] = useState(null);
   const [enqueueing, setEnqueueing] = useState(false);
   const [enqueueHint, setEnqueueHint] = useState("");
-  const [adminBatchMatch, setAdminBatchMatch] = useState(false);
-  const [adminBatchRunning, setAdminBatchRunning] = useState(false);
-  const [adminBatchHint, setAdminBatchHint] = useState("");
-  const [testBatchMatch, setTestBatchMatch] = useState(false);
-  const [testBatchRunning, setTestBatchRunning] = useState(false);
-  const [testBatchHint, setTestBatchHint] = useState("");
-
   /** Phase G v0.2：ready 分支下预览池与 AI 衔接 UI */
   const [readyPoolLoading, setReadyPoolLoading] = useState(false);
   const [readyPoolMissing, setReadyPoolMissing] = useState(false);
@@ -186,30 +171,6 @@ export default function MatchingWaitingPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [adminCap, testCap] = await Promise.all([
-          getAdminCapabilities(),
-          getTestMatchingCapabilities(),
-        ]);
-        if (!cancelled) {
-          setAdminBatchMatch(Boolean(adminCap.batchMatchTrigger));
-          setTestBatchMatch(Boolean(testCap.testBatchMatchTrigger));
-        }
-      } catch {
-        if (!cancelled) {
-          setAdminBatchMatch(false);
-          setTestBatchMatch(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
 
   const tryAutoRunJobOnce = useCallback((jobId) => {
     const id = String(jobId).trim();
@@ -694,54 +655,6 @@ export default function MatchingWaitingPage() {
     };
   }, [userId, readyPoolId, readyPoolMissing, readyPoolLoading, pairwiseJobId, pairwiseStatus]);
 
-  const onAdminRunBatchMatch = useCallback(async () => {
-    if (
-      !window.confirm(
-        "【管理员】将立刻在本机/服务器上执行一轮 worker batch-match（处理所有 waiting 队列）。确定？",
-      )
-    ) {
-      return;
-    }
-    setAdminBatchRunning(true);
-    setAdminBatchHint("");
-    setError(null);
-    try {
-      await runAdminBatchMatchOnce();
-      setAdminBatchHint("batch-match 已执行，正在刷新状态…");
-      await load();
-      setAdminBatchHint("batch-match 已完成，状态已刷新");
-      window.setTimeout(() => setAdminBatchHint(""), 5000);
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
-    } finally {
-      setAdminBatchRunning(false);
-    }
-  }, [load]);
-
-  const onTestRunBatchMatch = useCallback(async () => {
-    if (
-      !window.confirm(
-        "【测试】将立刻执行一轮 batch-match（与管理员操作相同，处理当前 waiting 队列）。确定？",
-      )
-    ) {
-      return;
-    }
-    setTestBatchRunning(true);
-    setTestBatchHint("");
-    setError(null);
-    try {
-      await runTestBatchMatchOnce();
-      setTestBatchHint("batch-match 已执行，正在刷新状态…");
-      await load();
-      setTestBatchHint("batch-match 已完成，状态已刷新");
-      window.setTimeout(() => setTestBatchHint(""), 5000);
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
-    } finally {
-      setTestBatchRunning(false);
-    }
-  }, [load]);
-
   const onEnqueue = useCallback(async () => {
     if (!userId) return;
     setEnqueueing(true);
@@ -916,56 +829,23 @@ export default function MatchingWaitingPage() {
         ) : null}
       </div>
 
-      {showDebug ? (
-      <AdminOnly>
-        <GlassCard className="mt-8 space-y-3">
-          <AlertBanner variant="admin" title="管理员 / 排障工具">
-            <p className="text-xs opacity-90">
-              在运行 API 的机器上执行 batch-match（等价于 worker CLI）。生产环境若无 worker 可能失败。
-            </p>
-            {userId ? (
-              <p className="text-xs mt-2">
-                <Link
-                  to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
-                  className="text-amber-200 underline"
-                >
-                  匹配预览池（Legacy 编排）
-                </Link>
-              </p>
-            ) : null}
-          </AlertBanner>
-          {adminBatchMatch ? (
-            <button
-              type="button"
-              className="btn-primary text-sm py-2 px-4"
-              onClick={onAdminRunBatchMatch}
-              disabled={adminBatchRunning || testBatchRunning}
-            >
-              {adminBatchRunning ? "正在执行 batch-match…" : "立刻执行本轮 batch-match"}
-            </button>
-          ) : null}
-          {testBatchMatch ? (
-            <button
-              type="button"
-              className="btn-ghost text-sm"
-              onClick={onTestRunBatchMatch}
-              disabled={testBatchRunning || adminBatchRunning}
-            >
-              {testBatchRunning ? "正在执行…" : "测试：执行一轮 batch-match"}
-            </button>
-          ) : null}
-          {adminBatchHint ? (
-            <p className="text-xs text-emerald-200" role="status">
-              {adminBatchHint}
-            </p>
-          ) : null}
-          {testBatchHint ? (
-            <p className="text-xs text-emerald-200" role="status">
-              {testBatchHint}
-            </p>
-          ) : null}
+      {isAdmin ? (
+        <GlassCard className="mt-8 p-4">
+          <AdminMatchTools userId={userId} />
         </GlassCard>
-      </AdminOnly>
+      ) : null}
+
+      {showDebug && userId ? (
+        <GlassCard className="mt-4 p-4">
+          <AlertBanner variant="admin" title="调试">
+            <Link
+              to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
+              className="text-amber-200 underline text-xs"
+            >
+              匹配预览池（Legacy）
+            </Link>
+          </AlertBanner>
+        </GlassCard>
       ) : null}
     </AppContent>
   );
