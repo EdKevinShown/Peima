@@ -5,6 +5,24 @@ import {
   getP76AllowlistApplyMetaDetail,
   listP76AllowlistApplyMeta,
 } from "../api/p76AdminAllowlistApplyMeta";
+import AdminFilterPanel from "../components/admin/AdminFilterPanel";
+import AdminKpiGrid from "../components/admin/AdminKpiGrid";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import {
+  adminBadgeToneClass,
+  adminBtnSecondary,
+  adminInput,
+  adminLabel,
+  adminLink,
+  adminModalOverlay,
+  adminModalPanel,
+  adminMuted,
+  adminSectionTitle,
+  adminSelect,
+  adminTd,
+  adminTh,
+} from "../components/admin/adminTheme";
 import LoadingState from "../components/common/LoadingState";
 import UserIdWithName from "../components/common/UserIdWithName";
 import {
@@ -40,48 +58,12 @@ function formatIdArray(value) {
   return value.filter((x) => typeof x === "string").join(", ");
 }
 
-const th = {
-  textAlign: "left",
-  borderBottom: "1px solid #e2e8f0",
-  padding: "0.35rem 0.4rem",
-  whiteSpace: "nowrap",
-  fontSize: "0.72rem",
-};
-const td = {
-  padding: "0.35rem 0.4rem",
-  borderBottom: "1px solid #f1f5f9",
-  verticalAlign: "top",
-  fontSize: "0.72rem",
-};
-const btnSecondary = {
-  padding: "0.3rem 0.55rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#334155",
-  fontSize: "0.75rem",
-  cursor: "pointer",
-};
-
 function ViolationBadge({ status }) {
   const tone = violationTone(status);
-  const bg =
-    tone === "p0" ? "#fef2f2" : tone === "warning" ? "#fffbeb" : "#f8fafc";
-  const color =
-    tone === "p0" ? "#b91c1c" : tone === "warning" ? "#b45309" : "#475569";
-  const border =
-    tone === "p0" ? "#fecaca" : tone === "warning" ? "#fde68a" : "#e2e8f0";
+  const key = tone === "p0" ? "p0" : tone === "warning" ? "warning" : "muted";
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: bg,
-        color,
-        border: `1px solid ${border}`,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${adminBadgeToneClass[key]}`}
     >
       {labelViolationStatus(status)}
     </span>
@@ -98,117 +80,63 @@ function AggregateCards({ aggregate, loading }) {
   const mainChainP0 = aggregate.mainChainViolationCount > 0;
   const rolledBackWarn = aggregate.rolledBackRows > 0;
 
-  const cards = [
-    { label: "Total sidecar rows", value: aggregate.totalSidecarRows },
-    { label: "Written rows", value: aggregate.writtenRows },
-    { label: "Dry-run rows", value: aggregate.dryRunRows },
+  const items = [
+    { key: "totalSidecarRows", label: "Total sidecar rows", value: aggregate.totalSidecarRows },
+    { key: "writtenRows", label: "Written rows", value: aggregate.writtenRows },
+    { key: "dryRunRows", label: "Dry-run rows", value: aggregate.dryRunRows },
     {
+      key: "rolledBackRows",
       label: "Rolled back rows",
       value: aggregate.rolledBackRows,
-      warn: rolledBackWarn,
     },
     {
+      key: "violationCount",
       label: "Violation count",
       value: aggregate.violationCount,
-      alert: violationAlert,
+      p0: violationAlert,
     },
     {
+      key: "mainChainViolationCount",
       label: "Main-chain violation count",
       value: aggregate.mainChainViolationCount,
       p0: mainChainP0,
     },
     {
+      key: "appliedToMatchResultTrueCount",
       label: "appliedToMatchResult=true",
       value: aggregate.appliedToMatchResultTrueCount,
     },
     {
+      key: "appliedToFinalScoreTrueCount",
       label: "appliedToFinalScore=true",
       value: aggregate.appliedToFinalScoreTrueCount,
     },
     {
+      key: "appliedToWorkerRankingTrueCount",
       label: "appliedToWorkerRanking=true",
       value: aggregate.appliedToWorkerRankingTrueCount,
     },
     {
+      key: "appliedToDisplayTrueCount",
       label: "appliedToDisplay=true",
       value: aggregate.appliedToDisplayTrueCount,
     },
   ];
 
   return (
-    <section style={{ marginBottom: "0.85rem" }}>
+    <>
       {mainChainP0 ? (
-        <p
-          role="alert"
-          style={{
-            margin: "0 0 0.5rem",
-            padding: "0.45rem 0.65rem",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 6,
-            color: "#b91c1c",
-            fontSize: "0.82rem",
-            fontWeight: 600,
-          }}
-        >
+        <AdminNotice variant="p0">
           P0 warning: main-chain violation count &gt; 0
-        </p>
+        </AdminNotice>
       ) : null}
       {rolledBackWarn && !mainChainP0 ? (
-        <p
-          style={{
-            margin: "0 0 0.5rem",
-            padding: "0.45rem 0.65rem",
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-            borderRadius: 6,
-            color: "#b45309",
-            fontSize: "0.82rem",
-          }}
-        >
+        <AdminNotice variant="warning">
           Warning: rolled-back rows present (not P0)
-        </p>
+        </AdminNotice>
       ) : null}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          gap: "0.45rem",
-        }}
-      >
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            style={{
-              border: `1px solid ${c.alert || c.p0 ? "#fecaca" : c.warn ? "#fde68a" : "#e2e8f0"}`,
-              borderRadius: 8,
-              padding: "0.45rem 0.55rem",
-              background:
-                c.alert || c.p0 ? "#fef2f2" : c.warn ? "#fffbeb" : "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.65rem",
-                color: "#64748b",
-                marginBottom: "0.15rem",
-              }}
-            >
-              {c.label}
-            </div>
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                color: c.alert || c.p0 ? "#b91c1c" : "#0f172a",
-              }}
-            >
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+      <AdminKpiGrid items={items} />
+    </>
   );
 }
 
@@ -305,142 +233,91 @@ export default function P76AllowlistApplyMetaPage() {
   const row = detail?.row;
 
   return (
-    <main
-      style={{
-        maxWidth: 1400,
-        margin: "1.1rem auto",
-        padding: "0 1rem",
-        color: "#334155",
-      }}
+    <AdminPageShell
+      title="P76 Allowlist Apply Meta"
+      subtitle="查询 sidecar 审计元数据。Sidecar written ≠ product-applied；不写 sidecar、不 rollback。"
+      maxWidth="max-w-[1400px]"
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "#eff6ff",
-          border: "1px solid #93c5fd",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.8rem",
-          color: "#1e3a8a",
-        }}
-      >
-        <strong>Audit only.</strong> {AUDIT_BANNER}
-      </div>
+      <AdminNotice variant="info" sticky title="Audit only.">
+        {AUDIT_BANNER}
+      </AdminNotice>
 
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
+      <AdminNotice variant="internal">
         <strong>内部 / Admin</strong> — P76 Allowlist Apply Meta（只读）；
         权限 VIEW_P76_ALLOWLIST_APPLY_META。
         {" "}
-        <Link to="/admin/photo-review" style={{ color: "#b45309" }}>
+        <Link to="/admin/photo-review" className={adminLink}>
           照片审核
         </Link>
-      </div>
-
-      <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        P76 Allowlist Apply Meta
-      </h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#64748b" }}>
-        查询 sidecar 审计元数据。Sidecar written ≠ product-applied；不写 sidecar、不 rollback。
-      </p>
+      </AdminNotice>
 
       <AggregateCards aggregate={aggregate} loading={aggLoading} />
 
-      <section
-        style={{
-          border: "1px solid #e2e8f0",
-          borderRadius: 8,
-          background: "#f8fafc",
-          padding: "0.65rem 0.75rem",
-          marginBottom: "0.75rem",
-        }}
-      >
-        <h2 style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>Filters</h2>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.5rem 0.75rem",
-            alignItems: "flex-end",
-            fontSize: "0.78rem",
-          }}
-        >
-          <label>
+      <AdminFilterPanel title="Filters">
+          <label className={adminLabel}>
             viewerUserId
             <input
               type="text"
+              className={`${adminInput} block mt-0.5 w-[200px]`}
               value={filters.viewerUserId}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, viewerUserId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 200 }}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             applied
             <select
+              className={`${adminSelect} block mt-0.5`}
               value={filters.applied}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, applied: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
             >
               <option value="">any</option>
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             rolledBack
             <select
+              className={`${adminSelect} block mt-0.5`}
               value={filters.rolledBack}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, rolledBack: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
             >
               <option value="">any</option>
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             sourceVersion
             <input
               type="text"
+              className={`${adminInput} block mt-0.5 w-[220px]`}
               value={filters.sourceVersion}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, sourceVersion: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 220 }}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             limit
             <input
               type="number"
               min={1}
               max={100}
+              className={`${adminInput} block mt-0.5 w-[72px]`}
               value={filters.limit}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, limit: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 72 }}
             />
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <label className={`${adminLabel} items-center`}>
             <input
               type="checkbox"
               checked={filters.violationOnly}
@@ -452,7 +329,7 @@ export default function P76AllowlistApplyMetaPage() {
           </label>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => setAppliedFilters({ ...filters })}
           >
@@ -460,7 +337,7 @@ export default function P76AllowlistApplyMetaPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => {
               setFilters({ ...DEFAULT_FILTERS });
@@ -469,87 +346,84 @@ export default function P76AllowlistApplyMetaPage() {
           >
             Reset
           </button>
-        </div>
-        <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
-          Default: limit=50 · createdAt desc
-        </p>
-      </section>
+      </AdminFilterPanel>
+      <p className={`${adminMuted} mt-2`}>
+        Default: limit=50 · createdAt desc
+      </p>
 
       {listLoading && rows.length === 0 ? (
         <LoadingState label="加载列表…" />
       ) : null}
       {listError ? (
-        <p style={{ color: "#b91c1c", fontSize: "0.85rem" }} role="alert">
-          {listError}
-        </p>
+        <AdminNotice variant="p0">{listError}</AdminNotice>
       ) : null}
 
       {!listError ? (
-        <section style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <section className="admin-table-wrap overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th style={th}>viewerUserId</th>
-                <th style={th}>selectedCandidateId</th>
-                <th style={th}>sidecarStatus</th>
-                <th style={th}>productApplyStatus</th>
-                <th style={th}>mainChainApplyStatus</th>
-                <th style={th}>violationStatus</th>
-                <th style={th}>pmSignoff</th>
-                <th style={th}>opsSignoff</th>
-                <th style={th}>allowlist</th>
-                <th style={th}>dryRun</th>
-                <th style={th}>rolledBack</th>
-                <th style={th}>sourceVersion</th>
-                <th style={th}>createdAt</th>
-                <th style={th}>updatedAt</th>
-                <th style={th}>action</th>
+                <th className={adminTh}>viewerUserId</th>
+                <th className={adminTh}>selectedCandidateId</th>
+                <th className={adminTh}>sidecarStatus</th>
+                <th className={adminTh}>productApplyStatus</th>
+                <th className={adminTh}>mainChainApplyStatus</th>
+                <th className={adminTh}>violationStatus</th>
+                <th className={adminTh}>pmSignoff</th>
+                <th className={adminTh}>opsSignoff</th>
+                <th className={adminTh}>allowlist</th>
+                <th className={adminTh}>dryRun</th>
+                <th className={adminTh}>rolledBack</th>
+                <th className={adminTh}>sourceVersion</th>
+                <th className={adminTh}>createdAt</th>
+                <th className={adminTh}>updatedAt</th>
+                <th className={adminTh}>action</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr
                   key={r.id}
-                  style={
+                  className={
                     hasMainChainP0(r) || hasNonAllowlistP0(r)
-                      ? { background: "#fef2f2" }
+                      ? "bg-red-500/10"
                       : r.rolledBack
-                        ? { background: "#fffbeb" }
+                        ? "bg-amber-500/10"
                         : undefined
                   }
                 >
-                  <td style={td}>
+                  <td className={adminTd}>
                     <UserIdWithName userId={r.viewerUserId} />
                   </td>
-                  <td style={td}>
+                  <td className={adminTd}>
                     <UserIdWithName userId={r.selectedCandidateId} />
                   </td>
-                  <td style={td}>{labelSidecarStatus(r.sidecarStatus)}</td>
-                  <td style={td}>
+                  <td className={adminTd}>{labelSidecarStatus(r.sidecarStatus)}</td>
+                  <td className={adminTd}>
                     {labelProductApplyStatus(r.productApplyStatus)}
                   </td>
-                  <td style={td}>
+                  <td className={adminTd}>
                     {labelMainChainApplyStatus(r.mainChainApplyStatus)}
                   </td>
-                  <td style={td}>
+                  <td className={adminTd}>
                     <ViolationBadge status={r.violationStatus} />
                   </td>
-                  <td style={td}>{r.pmSignoffStatus}</td>
-                  <td style={td}>{r.opsSignoffStatus}</td>
-                  <td style={td}>
+                  <td className={adminTd}>{r.pmSignoffStatus}</td>
+                  <td className={adminTd}>{r.opsSignoffStatus}</td>
+                  <td className={adminTd}>
                     {r.allowlistMatched ? "yes" : (
-                      <span style={{ color: "#b91c1c", fontWeight: 600 }}>no (P0)</span>
+                      <span className="text-red-200 font-semibold">no (P0)</span>
                     )}
                   </td>
-                  <td style={td}>{r.dryRun ? "yes" : "no"}</td>
-                  <td style={td}>{r.rolledBack ? "yes" : "no"}</td>
-                  <td style={td}>{r.sourceVersion}</td>
-                  <td style={td}>{formatDt(r.createdAt)}</td>
-                  <td style={td}>{formatDt(r.updatedAt)}</td>
-                  <td style={td}>
+                  <td className={adminTd}>{r.dryRun ? "yes" : "no"}</td>
+                  <td className={adminTd}>{r.rolledBack ? "yes" : "no"}</td>
+                  <td className={adminTd}>{r.sourceVersion}</td>
+                  <td className={adminTd}>{formatDt(r.createdAt)}</td>
+                  <td className={adminTd}>{formatDt(r.updatedAt)}</td>
+                  <td className={adminTd}>
                     <button
                       type="button"
-                      style={btnSecondary}
+                      className={adminBtnSecondary}
                       onClick={() => void openDetail(r.id)}
                     >
                       View detail
@@ -560,14 +434,14 @@ export default function P76AllowlistApplyMetaPage() {
             </tbody>
           </table>
           {rows.length === 0 && !listLoading ? (
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+            <p className={`${adminMuted} mt-2`}>
               无记录。
             </p>
           ) : null}
           {nextCursor ? (
             <button
               type="button"
-              style={{ ...btnSecondary, marginTop: "0.5rem" }}
+              className={`${adminBtnSecondary} mt-2`}
               disabled={listLoading}
               onClick={() => void fetchData({ append: true, cursor: nextCursor })}
             >
@@ -581,96 +455,38 @@ export default function P76AllowlistApplyMetaPage() {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-            zIndex: 50,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
+          className={adminModalOverlay}
           onClick={closeDetail}
         >
           <div
-            style={{
-              width: "min(520px, 100%)",
-              height: "100%",
-              background: "#fff",
-              overflowY: "auto",
-              padding: "1rem",
-              boxShadow: "-4px 0 24px rgba(0,0,0,0.12)",
-            }}
+            className={`${adminModalPanel} max-w-lg max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                background: "#eff6ff",
-                border: "1px solid #93c5fd",
-                borderRadius: 6,
-                padding: "0.45rem 0.6rem",
-                fontSize: "0.75rem",
-                color: "#1e3a8a",
-                marginBottom: "0.65rem",
-              }}
-            >
-              {AUDIT_BANNER}
-            </div>
+            <AdminNotice variant="info">{AUDIT_BANNER}</AdminNotice>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: "1rem" }}>Detail</h2>
-              <button type="button" style={btnSecondary} onClick={closeDetail}>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-base font-semibold text-white m-0">Detail</h2>
+              <button type="button" className={adminBtnSecondary} onClick={closeDetail}>
                 Close
               </button>
             </div>
 
             {detailLoading ? <LoadingState label="加载详情…" /> : null}
             {detailError ? (
-              <p style={{ color: "#b91c1c" }} role="alert">
-                {detailError}
-              </p>
+              <AdminNotice variant="p0">{detailError}</AdminNotice>
             ) : null}
 
             {row ? (
               <>
                 {hasMainChainP0(row) ? (
-                  <p
-                    role="alert"
-                    style={{
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      padding: "0.45rem",
-                      borderRadius: 6,
-                      color: "#b91c1c",
-                      fontWeight: 600,
-                      fontSize: "0.82rem",
-                    }}
-                  >
+                  <AdminNotice variant="p0">
                     P0: main-chain apply flag detected.
-                  </p>
+                  </AdminNotice>
                 ) : null}
                 {hasNonAllowlistP0(row) ? (
-                  <p
-                    role="alert"
-                    style={{
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      padding: "0.45rem",
-                      borderRadius: 6,
-                      color: "#b91c1c",
-                      fontWeight: 600,
-                      fontSize: "0.82rem",
-                      marginTop: "0.35rem",
-                    }}
-                  >
+                  <AdminNotice variant="p0">
                     P0: non-allowlist row.
-                  </p>
+                  </AdminNotice>
                 ) : null}
 
                 <DetailGrid
@@ -722,9 +538,7 @@ export default function P76AllowlistApplyMetaPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  Derived statuses
-                </h3>
+                <h3 className={adminSectionTitle}>Derived statuses</h3>
                 <DetailGrid
                   items={[
                     ["sidecarStatus", labelSidecarStatus(row.sidecarStatus)],
@@ -750,9 +564,7 @@ export default function P76AllowlistApplyMetaPage() {
 
                 {detail.stageSummary ? (
                   <>
-                    <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                      Stage summary
-                    </h3>
+                    <h3 className={adminSectionTitle}>Stage summary</h3>
                     <DetailGrid
                       items={[
                         ["stage1Count", detail.stageSummary.stage1Count],
@@ -779,25 +591,17 @@ export default function P76AllowlistApplyMetaPage() {
           </div>
         </div>
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
 
 function DetailGrid({ items }) {
   return (
-    <dl
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 38%) 1fr",
-        gap: "0.25rem 0.5rem",
-        fontSize: "0.78rem",
-        margin: 0,
-      }}
-    >
+    <dl className="grid grid-cols-[minmax(140px,38%)_1fr] gap-x-2 gap-y-1 text-xs m-0 mb-3">
       {items.map(([k, v]) => (
-        <div key={k} style={{ display: "contents" }}>
-          <dt style={{ margin: 0, color: "#64748b" }}>{k}</dt>
-          <dd style={{ margin: 0, wordBreak: "break-all" }}>{v}</dd>
+        <div key={k} className="contents">
+          <dt className="m-0 text-white/45">{k}</dt>
+          <dd className="m-0 break-all text-white/85">{v}</dd>
         </div>
       ))}
     </dl>

@@ -101,6 +101,22 @@ main:not(.app-surface-light) {
   .page-container {
     @apply min-h-dvh w-full flex flex-col;
   }
+
+  /* Admin ops pages (dark shell) */
+  .admin-input,
+  .admin-select {
+    @apply rounded-lg px-2 py-1 text-sm text-white/90 outline-none border transition-colors;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.14);
+  }
+  .admin-input:focus,
+  .admin-select:focus {
+    border-color: rgba(196,77,255,0.45);
+    box-shadow: 0 0 0 2px rgba(196,77,255,0.12);
+  }
+  .admin-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-white/10;
+  }
 }
 
 /* ── Gradient text ──────────────────────────────────────── */

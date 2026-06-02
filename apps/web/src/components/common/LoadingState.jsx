@@ -1,6 +1,6 @@
-export default function LoadingState({ label = "加载中…" }) {
+export default function LoadingState({ label = "加载中…", className = "" }) {
   return (
-    <p style={{ margin: 0, color: "#555" }} role="status">
+    <p className={`m-0 text-sm ${className || "text-white/50"}`} role="status">
       {label}
     </p>
   );

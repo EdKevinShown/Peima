@@ -3,6 +3,16 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getAdminAiSimulationV1Job } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
 import UserIdWithName from "../components/common/UserIdWithName";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminSection from "../components/admin/AdminSection";
+import AdminIdPill from "../components/admin/AdminIdPill";
+import {
+  adminTh,
+  adminTd,
+  adminLink,
+  adminMuted,
+} from "../components/admin/adminTheme";
 
 function readJobId(searchParams) {
   return (searchParams.get("jobId") || searchParams.get("aiSimJobId") || "").trim();
@@ -101,6 +111,23 @@ function sidecarPresence(job) {
   };
 }
 
+function DiagnosticRow({ label, children }) {
+  return (
+    <p className="m-0 mb-1 text-sm text-white/80 leading-relaxed">
+      <span className="text-white/55">{label}：</span>
+      {children}
+    </p>
+  );
+}
+
+function AdminTable({ children }) {
+  return (
+    <div className="admin-table-wrap overflow-x-auto">
+      <table className="w-full min-w-[480px] border-collapse text-sm">{children}</table>
+    </div>
+  );
+}
+
 export default function AiSimulationJobDiagnosticPage() {
   const [searchParams] = useSearchParams();
   const jobId = useMemo(() => readJobId(searchParams), [searchParams]);
@@ -154,445 +181,325 @@ export default function AiSimulationJobDiagnosticPage() {
   const rrmProposal = job && typeof job === "object" && job.rrmRankingProposal ? job.rrmRankingProposal : null;
 
   return (
-    <main style={{ maxWidth: 980, margin: "1.2rem auto", padding: "0 1rem", color: "#334155" }}>
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
-        <strong>内部 / Admin</strong> — 不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。
-      </div>
-      <h1 style={{ margin: "0 0 0.6rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        AI 模拟 job 诊断详情（内部只读）
-      </h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#64748b" }}>
-        仅用于诊断状态与排障信息；不参与主链匹配结论，不影响 finalScore。
+    <AdminPageShell
+      maxWidth="max-w-4xl"
+      title="AI 模拟 job 诊断详情（内部只读）"
+      subtitle="仅用于诊断状态与排障信息；不参与主链匹配结论，不影响 finalScore。"
+    >
+      <AdminNotice variant="internal" title="内部 / Admin">
+        不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。本页为<strong>只读</strong>诊断，不写入
+        MatchResult，不改变 finalScore。
+      </AdminNotice>
+
+      <p className={`${adminMuted} mb-1`}>
+        <Link className={adminLink} to="/final-match">
+          返回 Final Match
+        </Link>
       </p>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem" }}>
-        <Link to="/final-match">返回 Final Match</Link>
-      </p>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem" }}>
-        <Link to="/admin/ai-sim-job-triage">去 AI 模拟 job 分诊列表（内部只读）</Link>
+      <p className={`${adminMuted} mb-4`}>
+        <Link className={adminLink} to="/admin/ai-sim-job-triage">
+          去 AI 模拟 job 分诊列表（内部只读）
+        </Link>
       </p>
 
       {!jobId ? (
-        <p style={{ margin: 0 }}>缺少 jobId（请使用 ?jobId=... 或 ?aiSimJobId=...）。</p>
+        <AdminNotice variant="warning">缺少 jobId（请使用 ?jobId=... 或 ?aiSimJobId=...）。</AdminNotice>
       ) : null}
       {loading ? <LoadingState label="加载 AI 模拟 job 诊断..." /> : null}
       {error ? (
-        <p style={{ marginTop: "0.5rem", color: "#b91c1c" }} role="alert">
+        <AdminNotice variant="danger" title="加载失败">
           {error}
-        </p>
+        </AdminNotice>
       ) : null}
 
       {!loading && !error && job ? (
         <>
           {(job.jobStatus === "queued" || job.jobStatus === "running") && (
-            <div
-              style={{
-                border: "1px solid #93c5fd",
-                borderRadius: 8,
-                background: "#eff6ff",
-                padding: "0.55rem 0.75rem",
-                marginBottom: "0.75rem",
-                fontSize: "0.82rem",
-                color: "#1e3a8a",
-              }}
-              role="status"
-            >
-              后台生成中：本页可继续浏览当前快照；数据会随轮询自动刷新，无需阻塞等待整轮 LLM 完成。
-            </div>
+            <AdminNotice variant="info" title="后台生成中">
+              本页可继续浏览当前快照；数据会随轮询自动刷新，无需阻塞等待整轮 LLM 完成。
+            </AdminNotice>
           )}
-          <section
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              background: "#f8fafc",
-              padding: "0.7rem 0.85rem",
-              marginBottom: "0.75rem",
-              fontSize: "0.82rem",
-              lineHeight: 1.55,
-            }}
-          >
-            <h2 style={{ margin: "0 0 0.45rem", fontSize: "0.9rem", color: "#334155" }}>诊断摘要</h2>
-            <p style={{ margin: "0 0 0.2rem" }}>
-              aiSimJobId：<code style={{ fontSize: "0.74rem" }}>{job.simulationJobId || jobId}</code>
-            </p>
-            <p style={{ margin: "0 0 0.2rem" }}>
-              jobStatus：<code style={{ fontSize: "0.74rem" }}>{job.jobStatus || "—"}</code>
-            </p>
+
+          <AdminSection title="诊断摘要">
+            <DiagnosticRow label="aiSimJobId">
+              <AdminIdPill id={job.simulationJobId || jobId} truncate={24} />
+            </DiagnosticRow>
+            <DiagnosticRow label="jobStatus">
+              <AdminIdPill id={job.jobStatus || "—"} truncate={20} />
+            </DiagnosticRow>
             {audit.state === "ok" ? (
               <>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  itemCounts：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>
-                    total {audit.itemCounts.total} / queued {audit.itemCounts.queued} / running {audit.itemCounts.running} /
-                    succeeded {audit.itemCounts.succeeded} / failed {audit.itemCounts.failed}
+                <DiagnosticRow label="itemCounts">
+                  <code className="text-xs text-white/75">
+                    total {audit.itemCounts.total} / queued {audit.itemCounts.queued} / running{" "}
+                    {audit.itemCounts.running} / succeeded {audit.itemCounts.succeeded} / failed{" "}
+                    {audit.itemCounts.failed}
                   </code>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  shortlistBindingPresent：<strong>{String(audit.shortlistBindingPresent)}</strong>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  sidecarTrioPresent：<strong>{String(audit.sidecarTrioPresent)}</strong>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  rankConsistent：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>
+                </DiagnosticRow>
+                <DiagnosticRow label="shortlistBindingPresent">
+                  <strong className="text-white">{String(audit.shortlistBindingPresent)}</strong>
+                </DiagnosticRow>
+                <DiagnosticRow label="sidecarTrioPresent">
+                  <strong className="text-white">{String(audit.sidecarTrioPresent)}</strong>
+                </DiagnosticRow>
+                <DiagnosticRow label="rankConsistent">
+                  <code className="text-xs text-white/75">
                     {audit.rankConsistent == null ? "null (in progress)" : String(audit.rankConsistent)}
                   </code>
-                </p>
-                <p style={{ margin: 0 }}>
-                  sidecarSuppressedReason：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>{audit.sidecarSuppressedReason}</code>
-                </p>
-                <p style={{ margin: "0.2rem 0 0" }}>
-                  specClassification：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>{audit.specClassification}</code>
-                </p>
-                <p style={{ margin: "0.2rem 0 0" }}>
-                  diagnosticBucket：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>{audit.diagnosticBucket}</code>
-                </p>
-                <p style={{ margin: "0.2rem 0 0" }}>
-                  buildabilityDetail：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem" }}>{audit.buildabilityDetail}</code>
-                </p>
+                </DiagnosticRow>
+                <DiagnosticRow label="sidecarSuppressedReason">
+                  <AdminIdPill id={audit.sidecarSuppressedReason} truncate={24} />
+                </DiagnosticRow>
+                <DiagnosticRow label="specClassification">
+                  <AdminIdPill id={audit.specClassification} truncate={24} />
+                </DiagnosticRow>
+                <DiagnosticRow label="diagnosticBucket">
+                  <AdminIdPill id={audit.diagnosticBucket} truncate={24} />
+                </DiagnosticRow>
+                <DiagnosticRow label="buildabilityDetail">
+                  <AdminIdPill id={audit.buildabilityDetail} truncate={24} />
+                </DiagnosticRow>
               </>
             ) : (
-              <p style={{ margin: 0, color: "#92400e" }}>
+              <AdminNotice variant="warning" className="mb-0 mt-2">
                 jobAuditV0 {audit.state === "unavailable" ? "缺失（已平滑降级）" : "结构异常（仅供排障）"}。
-              </p>
+              </AdminNotice>
             )}
-          </section>
+          </AdminSection>
 
-          <section
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              background: "#f8fafc",
-              padding: "0.7rem 0.85rem",
-              marginBottom: "0.75rem",
-              fontSize: "0.82rem",
-              lineHeight: 1.55,
-            }}
-          >
-            <h2 style={{ margin: "0 0 0.45rem", fontSize: "0.9rem", color: "#334155" }}>shortlistBinding 摘要</h2>
+          <AdminSection title="shortlistBinding 摘要">
             {binding.state !== "ok" ? (
-              <p style={{ margin: 0 }}>shortlistBinding 不可读。</p>
+              <p className={`m-0 ${adminMuted}`}>shortlistBinding 不可读。</p>
             ) : (
               <>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  previewPoolId：<code style={{ fontSize: "0.74rem" }}>{binding.previewPoolId}</code>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  shortlistSchemaVersion：<code style={{ fontSize: "0.74rem" }}>{binding.shortlistSchemaVersion}</code>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  shortlistFingerprint：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem", wordBreak: "break-all" }}>
-                    {binding.shortlistFingerprint}
-                  </code>
-                </p>
-                <p style={{ margin: 0 }}>
-                  shortlistCandidateUserIds：
-                  <code style={{ fontSize: "0.74rem", marginLeft: "0.25rem", wordBreak: "break-all" }}>
+                <DiagnosticRow label="previewPoolId">
+                  <AdminIdPill id={binding.previewPoolId} truncate={24} />
+                </DiagnosticRow>
+                <DiagnosticRow label="shortlistSchemaVersion">
+                  <AdminIdPill id={binding.shortlistSchemaVersion} truncate={24} />
+                </DiagnosticRow>
+                <DiagnosticRow label="shortlistFingerprint">
+                  <code className="text-xs text-white/75 break-all">{binding.shortlistFingerprint}</code>
+                </DiagnosticRow>
+                <DiagnosticRow label="shortlistCandidateUserIds">
+                  <code className="text-xs text-white/75 break-all">
                     {binding.shortlistCandidateUserIds.join(" > ")}
                   </code>
-                </p>
+                </DiagnosticRow>
               </>
             )}
-          </section>
+          </AdminSection>
 
-          <section
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              background: "#f8fafc",
-              padding: "0.7rem 0.85rem",
-              marginBottom: "0.75rem",
-              fontSize: "0.82rem",
-              lineHeight: 1.55,
-            }}
-          >
-            <h2 style={{ margin: "0 0 0.45rem", fontSize: "0.9rem", color: "#334155" }}>sidecar 存在性</h2>
+          <AdminSection title="sidecar 存在性">
             {!presence ? (
-              <p style={{ margin: 0 }}>sidecar 信息不可读。</p>
+              <p className={`m-0 ${adminMuted}`}>sidecar 信息不可读。</p>
             ) : (
               <>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  shortlistFourDimV0：<strong>{String(presence.shortlistFourDimV0)}</strong>
-                </p>
-                <p style={{ margin: 0 }}>
-                  shortlistDecisionV0：<strong>{String(presence.shortlistDecisionV0)}</strong>
-                </p>
+                <DiagnosticRow label="shortlistFourDimV0">
+                  <strong className="text-white">{String(presence.shortlistFourDimV0)}</strong>
+                </DiagnosticRow>
+                <DiagnosticRow label="shortlistDecisionV0">
+                  <strong className="text-white">{String(presence.shortlistDecisionV0)}</strong>
+                </DiagnosticRow>
               </>
             )}
-          </section>
+          </AdminSection>
 
-          <section
-            style={{
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              background: "#f8fafc",
-              padding: "0.7rem 0.85rem",
-              fontSize: "0.82rem",
-              lineHeight: 1.55,
-            }}
-          >
-            <h2 style={{ margin: "0 0 0.45rem", fontSize: "0.9rem", color: "#334155" }}>candidate item 最小状态摘要</h2>
+          <AdminSection title="candidate item 最小状态摘要">
             {items.length === 0 ? (
-              <p style={{ margin: 0 }}>当前 job 无 results。</p>
+              <p className={`m-0 ${adminMuted}`}>当前 job 无 results。</p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        candidateUserId
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>status</th>
-                      <th style={{ textAlign: "right", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        attemptCount
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>errorCode</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        hasTranscriptLite
-                      </th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.2rem" }}>
-                        hasEvaluator
-                      </th>
+              <AdminTable>
+                <thead>
+                  <tr>
+                    <th className={adminTh}>candidateUserId</th>
+                    <th className={adminTh}>status</th>
+                    <th className={`${adminTh} text-right`}>attemptCount</th>
+                    <th className={adminTh}>errorCode</th>
+                    <th className={adminTh}>hasTranscriptLite</th>
+                    <th className={adminTh}>hasEvaluator</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, idx) => (
+                    <tr key={`${it.candidateUserId}-${idx}`}>
+                      <td className={adminTd}>
+                        <code className="text-[0.72rem] text-white/80">
+                          <UserIdWithName userId={it.candidateUserId} />
+                        </code>
+                      </td>
+                      <td className={adminTd}>{it.status || "—"}</td>
+                      <td className={`${adminTd} text-right`}>
+                        {Number.isFinite(Number(it.attemptCount)) ? Number(it.attemptCount) : "—"}
+                      </td>
+                      <td className={adminTd}>
+                        <AdminIdPill id={it.errorCode || "—"} truncate={16} />
+                      </td>
+                      <td className={adminTd}>{String(it.transcriptLite != null)}</td>
+                      <td className={adminTd}>{String(it.evaluator != null)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((it, idx) => (
-                      <tr key={`${it.candidateUserId}-${idx}`}>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>
-                            <UserIdWithName userId={it.candidateUserId} />
-                          </code>
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>{it.status || "—"}</td>
-                        <td style={{ textAlign: "right", padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {Number.isFinite(Number(it.attemptCount)) ? Number(it.attemptCount) : "—"}
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          <code style={{ fontSize: "0.72rem" }}>{it.errorCode || "—"}</code>
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {String(it.transcriptLite != null)}
-                        </td>
-                        <td style={{ padding: "0.2rem", borderBottom: "1px solid #f1f5f9" }}>
-                          {String(it.evaluator != null)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </AdminTable>
             )}
-          </section>
+          </AdminSection>
 
           {rrmDiag ? (
             <>
-            {rrmProposal ? (
-              <details
-                style={{
-                  border: "1px solid #0ea5e9",
-                  borderRadius: 8,
-                  background: "#ecfeff",
-                  padding: "0.65rem 0.85rem",
-                  marginBottom: "0.75rem",
-                  fontSize: "0.82rem",
-                  lineHeight: 1.55,
-                }}
-              >
-                <summary style={{ cursor: "pointer", fontWeight: 700, color: "#0c4a6e", userSelect: "none" }}>
-                  M4.0 — RRM 排序建议（只读 · 不入主链）
-                </summary>
-                <p style={{ margin: "0.45rem 0 0.5rem", fontSize: "0.78rem", color: "#155e75" }}>
-                  <strong>Admin / 诊断专用</strong>：展示「若仅按 RRM-Sim 节奏分重排」的假设结果；<strong>不</strong>写入 MatchResult、<strong>不</strong>影响 worker
-                  主排序与 finalScore。
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
-                  <code>{rrmProposal.sourceVersion}</code> · schemaVersion {rrmProposal.schemaVersion} · mode{" "}
-                  <code>{rrmProposal.mode}</code>
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
-                  appliedToFinalScore：<strong>{String(rrmProposal.appliedToFinalScore)}</strong> · appliedToWorkerRanking：
-                  <strong>{String(rrmProposal.appliedToWorkerRanking)}</strong>
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
-                  recommendation：<code style={{ fontSize: "0.78rem" }}>{rrmProposal.recommendation}</code> · confidenceLevel：
-                  <code>{rrmProposal.confidenceLevel}</code> · scoreDistributionFlag：
-                  <code>{rrmProposal.scoreDistributionFlag}</code>
-                </p>
-                <p style={{ margin: "0 0 0.35rem", fontSize: "0.74rem", color: "#164e63" }}>
-                  existingTop：<code>{rrmProposal.existingTopCandidateUserId || "—"}</code> · rrmTop：
-                  <code>{rrmProposal.rrmTopCandidateUserId || "—"}</code> · topCandidateChanged：
-                  <strong>{String(rrmProposal.topCandidateChanged)}</strong>
-                </p>
-                {Array.isArray(rrmProposal.warnings) && rrmProposal.warnings.length > 0 ? (
-                  <ul style={{ margin: "0.35rem 0 0.5rem", paddingLeft: "1.1rem", fontSize: "0.74rem", color: "#9a3412" }}>
-                    {rrmProposal.warnings.map((w, i) => (
-                      <li key={`rrm-prop-w-${i}`}>{w}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div style={{ overflowX: "auto", marginTop: "0.45rem" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
+              {rrmProposal ? (
+                <details className="glass rounded-2xl p-4 sm:p-5 mb-4 border border-sky-400/25 text-sm leading-relaxed">
+                  <summary className="cursor-pointer font-bold text-sky-100 select-none">
+                    M4.0 — RRM 排序建议（只读 · 不入主链）
+                  </summary>
+                  <p className="mt-2 mb-2 text-xs text-sky-200/80">
+                    <strong>Admin / 诊断专用</strong>：展示「若仅按 RRM-Sim 节奏分重排」的假设结果；<strong>不</strong>
+                    写入 MatchResult、<strong>不</strong>影响 worker 主排序与 finalScore。
+                  </p>
+                  <p className={`${adminMuted} mb-1`}>
+                    <AdminIdPill id={rrmProposal.sourceVersion} truncate={20} /> · schemaVersion{" "}
+                    {rrmProposal.schemaVersion} · mode <AdminIdPill id={rrmProposal.mode} truncate={16} />
+                  </p>
+                  <p className={`${adminMuted} mb-1`}>
+                    appliedToFinalScore：<strong className="text-white">{String(rrmProposal.appliedToFinalScore)}</strong>{" "}
+                    · appliedToWorkerRanking：
+                    <strong className="text-white">{String(rrmProposal.appliedToWorkerRanking)}</strong>
+                  </p>
+                  <p className={`${adminMuted} mb-1`}>
+                    recommendation：<AdminIdPill id={rrmProposal.recommendation} truncate={20} /> · confidenceLevel：
+                    <AdminIdPill id={rrmProposal.confidenceLevel} truncate={12} /> · scoreDistributionFlag：
+                    <AdminIdPill id={rrmProposal.scoreDistributionFlag} truncate={16} />
+                  </p>
+                  <p className={`${adminMuted} mb-1`}>
+                    existingTop：<AdminIdPill id={rrmProposal.existingTopCandidateUserId || "—"} truncate={12} /> ·
+                    rrmTop：<AdminIdPill id={rrmProposal.rrmTopCandidateUserId || "—"} truncate={12} /> ·
+                    topCandidateChanged：
+                    <strong className="text-white">{String(rrmProposal.topCandidateChanged)}</strong>
+                  </p>
+                  {Array.isArray(rrmProposal.warnings) && rrmProposal.warnings.length > 0 ? (
+                    <ul className="my-2 pl-4 text-xs text-amber-200/90 list-disc">
+                      {rrmProposal.warnings.map((w, i) => (
+                        <li key={`rrm-prop-w-${i}`}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <AdminTable>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>existingRank</th>
-                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>rrmRank</th>
-                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>candidateUserId</th>
-                        <th style={{ textAlign: "right", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>simulatedRhythmScore</th>
-                        <th style={{ textAlign: "left", borderBottom: "1px solid #bae6fd", padding: "0.25rem" }}>reasonSummary</th>
+                        <th className={adminTh}>existingRank</th>
+                        <th className={adminTh}>rrmRank</th>
+                        <th className={adminTh}>candidateUserId</th>
+                        <th className={`${adminTh} text-right`}>simulatedRhythmScore</th>
+                        <th className={adminTh}>reasonSummary</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rrmProposal.items.map((row, idx) => (
                         <tr key={`rrm-prop-${row.candidateUserId}-${idx}`}>
-                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
-                            {row.existingRank == null ? "—" : row.existingRank}
-                          </td>
-                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
-                            {row.rrmRank == null ? "—" : row.rrmRank}
-                          </td>
-                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
-                            <code style={{ fontSize: "0.68rem" }}>
+                          <td className={adminTd}>{row.existingRank == null ? "—" : row.existingRank}</td>
+                          <td className={adminTd}>{row.rrmRank == null ? "—" : row.rrmRank}</td>
+                          <td className={adminTd}>
+                            <code className="text-[0.68rem] text-white/80">
                               <UserIdWithName userId={row.candidateUserId} />
                             </code>
                           </td>
-                          <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #e0f2fe" }}>
+                          <td className={`${adminTd} text-right`}>
                             {row.simulatedRhythmScore == null ? "—" : row.simulatedRhythmScore}
                           </td>
-                          <td style={{ padding: "0.25rem", borderBottom: "1px solid #e0f2fe", wordBreak: "break-word" }}>
-                            {row.reasonSummary}
-                          </td>
+                          <td className={`${adminTd} break-words`}>{row.reasonSummary}</td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </AdminTable>
+                </details>
+              ) : null}
+              <details className="glass rounded-2xl p-4 sm:p-5 mb-4 border border-violet-400/25 text-sm leading-relaxed">
+                <summary className="cursor-pointer font-bold text-violet-100 select-none">
+                  RRM-Sim 多候选人对比（只读诊断）
+                </summary>
+                <p className="mt-2 mb-2 text-xs text-violet-200/80">
+                  以下排序为<strong>假设仅按 RRM 节奏分</strong>的对比，不参与真实匹配排序，不改变 finalScore /
+                  MatchResult。
+                </p>
+                <p className={`${adminMuted} mb-1`}>
+                  jobId：<AdminIdPill id={rrmDiag.jobId} truncate={16} /> · viewerUserId：
+                  <code className="text-white/75 text-xs">
+                    <UserIdWithName userId={rrmDiag.viewerUserId} />
+                  </code>{" "}
+                  · transcript 侧 sourceVersion 摘要：
+                  <AdminIdPill id={rrmDiag.sourceVersion} truncate={16} />
+                </p>
+                <div className="mb-3 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs text-violet-100/90">
+                  <p className="m-0 mb-1">
+                    RRM 可用条数：<strong>{rrmDiag.diagnostics.rrmAvailableCount}</strong> · fallback 条数：
+                    <strong>{rrmDiag.diagnostics.fallbackCount}</strong>
+                  </p>
+                  <p className="m-0 mb-1">
+                    节奏分 spread（仅非 fallback）：<strong>{rrmDiag.diagnostics.scoreRange.spread}</strong>（min{" "}
+                    {rrmDiag.diagnostics.scoreRange.min} / max {rrmDiag.diagnostics.scoreRange.max}）
+                  </p>
+                  <p className="m-0 mb-1">
+                    scoreDistributionFlag：<AdminIdPill id={rrmDiag.diagnostics.scoreDistributionFlag} truncate={16} />
+                  </p>
+                  <p className="m-0">
+                    若仅按 RRM 节奏排，Top 是否变化：
+                    <strong>{String(rrmDiag.diagnostics.topCandidateChangedIfRrmOnly)}</strong>
+                  </p>
+                  <p className={`${adminMuted} mt-2 mb-0`}>
+                    existingSimulationRank：<code className="text-white/70">{rrmDiag.rankings.existingSimulationRank.join(" > ")}</code>
+                  </p>
+                  <p className={`${adminMuted} mt-1 mb-0`}>
+                    rrmRhythmRank（降序）：<code className="text-white/70">{rrmDiag.rankings.rrmRhythmRank.join(" > ")}</code>
+                  </p>
                 </div>
-              </details>
-            ) : null}
-            <details
-              style={{
-                border: "1px solid #c7d2fe",
-                borderRadius: 8,
-                background: "#eef2ff",
-                padding: "0.65rem 0.85rem",
-                marginBottom: "0.75rem",
-                fontSize: "0.82rem",
-                lineHeight: 1.55,
-              }}
-            >
-              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#312e81", userSelect: "none" }}>
-                RRM-Sim 多候选人对比（只读诊断）
-              </summary>
-              <p style={{ margin: "0.45rem 0 0.5rem", fontSize: "0.78rem", color: "#4c1d95" }}>
-                以下排序为<strong>假设仅按 RRM 节奏分</strong>的对比，不参与真实匹配排序，不改变 finalScore / MatchResult。
-              </p>
-              <p style={{ margin: "0 0 0.35rem", fontSize: "0.76rem", color: "#5b21b6" }}>
-                jobId：<code>{rrmDiag.jobId}</code> · viewerUserId：<code><UserIdWithName userId={rrmDiag.viewerUserId} /></code> · transcript 侧 sourceVersion
-                摘要：<code>{rrmDiag.sourceVersion}</code>
-              </p>
-              <div
-                style={{
-                  marginBottom: "0.55rem",
-                  padding: "0.45rem 0.55rem",
-                  background: "#faf5ff",
-                  borderRadius: 6,
-                  border: "1px solid #e9d5ff",
-                  fontSize: "0.76rem",
-                  color: "#5b21b6",
-                }}
-              >
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  RRM 可用条数：<strong>{rrmDiag.diagnostics.rrmAvailableCount}</strong> · fallback 条数：
-                  <strong>{rrmDiag.diagnostics.fallbackCount}</strong>
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  节奏分 spread（仅非 fallback）：<strong>{rrmDiag.diagnostics.scoreRange.spread}</strong>（min{" "}
-                  {rrmDiag.diagnostics.scoreRange.min} / max {rrmDiag.diagnostics.scoreRange.max}）
-                </p>
-                <p style={{ margin: "0 0 0.2rem" }}>
-                  scoreDistributionFlag：<code>{rrmDiag.diagnostics.scoreDistributionFlag}</code>
-                </p>
-                <p style={{ margin: 0 }}>
-                  若仅按 RRM 节奏排，Top 是否变化：
-                  <strong>{String(rrmDiag.diagnostics.topCandidateChangedIfRrmOnly)}</strong>
-                </p>
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#6b21a8" }}>
-                  existingSimulationRank：<code>{rrmDiag.rankings.existingSimulationRank.join(" > ")}</code>
-                </p>
-                <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#6b21a8" }}>
-                  rrmRhythmRank（降序）：<code>{rrmDiag.rankings.rrmRhythmRank.join(" > ")}</code>
-                </p>
-              </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.74rem" }}>
+                <AdminTable>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>existingRank</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>candidateUserId</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>v2 full</th>
-                      <th style={{ textAlign: "right", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>simulationRankScore</th>
-                      <th style={{ textAlign: "right", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>simulatedRhythmScore</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>suggestedAction</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>progressionWindow</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>fallbackUsed</th>
-                      <th style={{ textAlign: "left", borderBottom: "1px solid #ddd6fe", padding: "0.25rem" }}>
-                        rrmUnavailableReason
-                      </th>
+                      <th className={adminTh}>existingRank</th>
+                      <th className={adminTh}>candidateUserId</th>
+                      <th className={adminTh}>v2 full</th>
+                      <th className={`${adminTh} text-right`}>simulationRankScore</th>
+                      <th className={`${adminTh} text-right`}>simulatedRhythmScore</th>
+                      <th className={adminTh}>suggestedAction</th>
+                      <th className={adminTh}>progressionWindow</th>
+                      <th className={adminTh}>fallbackUsed</th>
+                      <th className={adminTh}>rrmUnavailableReason</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rrmDiag.items.map((row, idx) => (
                       <tr key={`rrm-diag-${row.candidateUserId}-${idx}`}>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
-                          {row.existingRank == null ? "—" : row.existingRank}
-                        </td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
-                          <code style={{ fontSize: "0.7rem" }}>
+                        <td className={adminTd}>{row.existingRank == null ? "—" : row.existingRank}</td>
+                        <td className={adminTd}>
+                          <code className="text-[0.7rem] text-white/80">
                             <UserIdWithName userId={row.candidateUserId} />
                           </code>
                         </td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>{String(row.aiSimulationV2Full)}</td>
-                        <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                        <td className={adminTd}>{String(row.aiSimulationV2Full)}</td>
+                        <td className={`${adminTd} text-right`}>
                           {row.simulationRankScore == null ? "—" : row.simulationRankScore}
                         </td>
-                        <td style={{ textAlign: "right", padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
+                        <td className={`${adminTd} text-right`}>
                           {row.simulatedRhythmScore == null ? "—" : row.simulatedRhythmScore}
                         </td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
-                          <code style={{ fontSize: "0.68rem" }}>{row.suggestedAction || "—"}</code>
+                        <td className={adminTd}>
+                          <AdminIdPill id={row.suggestedAction || "—"} truncate={14} />
                         </td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>
-                          <code style={{ fontSize: "0.68rem" }}>{row.progressionWindow || "—"}</code>
+                        <td className={adminTd}>
+                          <AdminIdPill id={row.progressionWindow || "—"} truncate={14} />
                         </td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe" }}>{String(row.fallbackUsed)}</td>
-                        <td style={{ padding: "0.25rem", borderBottom: "1px solid #ede9fe", wordBreak: "break-all" }}>
-                          <code style={{ fontSize: "0.65rem" }}>{row.rrmUnavailableReason || "—"}</code>
+                        <td className={adminTd}>{String(row.fallbackUsed)}</td>
+                        <td className={`${adminTd} break-all`}>
+                          <AdminIdPill id={row.rrmUnavailableReason || "—"} truncate={20} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
-            </details>
+                </AdminTable>
+              </details>
             </>
           ) : null}
         </>
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
-

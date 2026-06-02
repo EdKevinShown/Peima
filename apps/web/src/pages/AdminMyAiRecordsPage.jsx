@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
-import StandalonePage from "../components/layout/StandalonePage";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminSection from "../components/admin/AdminSection";
+import AdminDataTable from "../components/admin/AdminDataTable";
+import AdminIdPill from "../components/admin/AdminIdPill";
+import AdminNotice from "../components/admin/AdminNotice";
+import { adminMuted } from "../components/admin/adminTheme";
 import { getAdminMyAiRecords } from "../api/admin";
 import UserIdWithName from "../components/common/UserIdWithName";
 
@@ -35,8 +39,47 @@ export default function AdminMyAiRecordsPage() {
     void load();
   }, [load]);
 
+  const profileColumns = [
+    { key: "id", label: "id", render: (row) => <AdminIdPill id={row.id} /> },
+    { key: "status", label: "status" },
+    {
+      key: "source",
+      label: "source",
+      render: (row) => (
+        <span className="text-white/75">
+          <AdminIdPill id={row.sourceType} truncate={16} /> ·{" "}
+          <AdminIdPill id={row.sourceVersion} truncate={16} />
+        </span>
+      ),
+    },
+    {
+      key: "sourceConversationId",
+      label: "sourceConversationId",
+      render: (row) =>
+        row.sourceConversationId ? <AdminIdPill id={row.sourceConversationId} /> : "—",
+    },
+    { key: "createdAt", label: "createdAt", render: (row) => dt(row.createdAt) },
+  ];
+
+  const jobColumns = [
+    { key: "id", label: "jobId", render: (row) => <AdminIdPill id={row.id} /> },
+    { key: "jobStatus", label: "status" },
+    { key: "poolId", label: "poolId", render: (row) => <AdminIdPill id={row.poolId} /> },
+    {
+      key: "spec",
+      label: "spec",
+      render: (row) => (
+        <span className="text-white/75">
+          <AdminIdPill id={row.schemaVersion} truncate={12} /> ·{" "}
+          <AdminIdPill id={row.runSpecVersion} truncate={12} />
+        </span>
+      ),
+    },
+    { key: "createdAt", label: "createdAt", render: (row) => dt(row.createdAt) },
+  ];
+
   return (
-    <StandalonePage
+    <AdminPageShell
       maxWidth="max-w-5xl"
       title="管理员：我的 AI 记录"
       subtitle="当前管理员账号可追溯的 AI 持久化记录（摘要、画像建议、模拟 job）。"
@@ -46,115 +89,79 @@ export default function AdminMyAiRecordsPage() {
         </button>
       }
     >
-
       {loading ? <LoadingState label="加载 AI 记录…" /> : null}
       {error ? (
-        <p style={{ color: "#b91c1c" }} role="alert">
+        <AdminNotice variant="danger" title="加载失败">
           {error}
-        </p>
+        </AdminNotice>
       ) : null}
 
       {!loading && !error && data ? (
         <>
-          <section style={{ marginTop: "0.9rem", padding: "0.7rem 0.8rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-            <p style={{ margin: "0 0 0.25rem", fontSize: "0.82rem" }}>
-              userId: <code><UserIdWithName userId={data.userId} /></code>
+          <AdminSection title="账号摘要">
+            <p className={`${adminMuted} mb-1`}>
+              userId:{" "}
+              <code className="text-white/80 text-xs">
+                <UserIdWithName userId={data.userId} />
+              </code>
             </p>
-            <p style={{ margin: "0 0 0.25rem", fontSize: "0.82rem" }}>
-              generatedAt: <code>{dt(data.generatedAt)}</code>
+            <p className={`${adminMuted} mb-1`}>
+              generatedAt: <code className="text-white/80">{dt(data.generatedAt)}</code>
             </p>
-            <p style={{ margin: 0, fontSize: "0.8rem", color: "#475569" }}>{data.note}</p>
-          </section>
+            <p className="text-xs text-white/55 m-0">{data.note}</p>
+          </AdminSection>
 
-          <section style={{ marginTop: "0.9rem" }}>
-            <h2 style={{ fontSize: "1rem", margin: "0 0 0.45rem" }}>
-              会话摘要快照（{data.conversationSummaries.length}）
-            </h2>
-            <div style={{ display: "grid", gap: "0.5rem" }}>
+          <AdminSection title={`会话摘要快照（${data.conversationSummaries.length}）`}>
+            <div className="grid gap-2">
               {data.conversationSummaries.map((row) => (
-                <article key={row.id} style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "0.55rem 0.65rem" }}>
-                  <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                    {dt(row.createdAt)} · <code>{row.sourceType}</code> · <code>{row.sourceVersion}</code>
+                <article
+                  key={row.id}
+                  className="rounded-xl border border-white/10 bg-white/5 p-3"
+                >
+                  <div className="text-[0.72rem] text-white/45">
+                    {dt(row.createdAt)} · <AdminIdPill id={row.sourceType} truncate={14} /> ·{" "}
+                    <AdminIdPill id={row.sourceVersion} truncate={14} />
                   </div>
-                  <div style={{ marginTop: "0.25rem", fontSize: "0.82rem" }}>
-                    conv: <code>{row.conversationId}</code> · viewer: <code><UserIdWithName userId={row.viewerUserId} /></code> · candidate:{" "}
-                    <code><UserIdWithName userId={row.candidateUserId} /></code>
+                  <div className="mt-1 text-xs text-white/70">
+                    conv: <AdminIdPill id={row.conversationId} /> · viewer:{" "}
+                    <code className="text-white/80">
+                      <UserIdWithName userId={row.viewerUserId} />
+                    </code>{" "}
+                    · candidate:{" "}
+                    <code className="text-white/80">
+                      <UserIdWithName userId={row.candidateUserId} />
+                    </code>
                   </div>
-                  <p style={{ margin: "0.3rem 0 0", fontSize: "0.86rem", color: "#334155", lineHeight: 1.5 }}>
+                  <p className="mt-1.5 mb-0 text-sm text-white/75 leading-relaxed">
                     {row.summaryPreview}
                   </p>
                 </article>
               ))}
               {data.conversationSummaries.length === 0 ? (
-                <p style={{ margin: 0, color: "#64748b", fontSize: "0.84rem" }}>暂无记录</p>
+                <p className={`m-0 ${adminMuted}`}>暂无记录</p>
               ) : null}
             </div>
-          </section>
+          </AdminSection>
 
-          <section style={{ marginTop: "0.9rem" }}>
-            <h2 style={{ fontSize: "1rem", margin: "0 0 0.45rem" }}>
-              画像建议（AI 来源）（{data.profileSuggestions.length}）
-            </h2>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                    <th style={{ padding: "0.45rem" }}>id</th>
-                    <th style={{ padding: "0.45rem" }}>status</th>
-                    <th style={{ padding: "0.45rem" }}>source</th>
-                    <th style={{ padding: "0.45rem" }}>sourceConversationId</th>
-                    <th style={{ padding: "0.45rem" }}>createdAt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.profileSuggestions.map((row) => (
-                    <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "0.45rem" }}><code>{row.id}</code></td>
-                      <td style={{ padding: "0.45rem" }}>{row.status}</td>
-                      <td style={{ padding: "0.45rem" }}><code>{row.sourceType}</code> · <code>{row.sourceVersion}</code></td>
-                      <td style={{ padding: "0.45rem" }}>{row.sourceConversationId ? <code>{row.sourceConversationId}</code> : "-"}</td>
-                      <td style={{ padding: "0.45rem" }}>{dt(row.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <AdminSection title={`画像建议（AI 来源）（${data.profileSuggestions.length}）`}>
+            <AdminDataTable
+              columns={profileColumns}
+              rows={data.profileSuggestions}
+              rowKey="id"
+              emptyMessage="暂无记录"
+            />
+          </AdminSection>
 
-          <section style={{ marginTop: "0.9rem" }}>
-            <h2 style={{ fontSize: "1rem", margin: "0 0 0.45rem" }}>
-              AI 模拟 Jobs（{data.aiSimulationJobs.length}）
-            </h2>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                    <th style={{ padding: "0.45rem" }}>jobId</th>
-                    <th style={{ padding: "0.45rem" }}>status</th>
-                    <th style={{ padding: "0.45rem" }}>poolId</th>
-                    <th style={{ padding: "0.45rem" }}>spec</th>
-                    <th style={{ padding: "0.45rem" }}>createdAt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.aiSimulationJobs.map((row) => (
-                    <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "0.45rem" }}><code>{row.id}</code></td>
-                      <td style={{ padding: "0.45rem" }}>{row.jobStatus}</td>
-                      <td style={{ padding: "0.45rem" }}><code>{row.poolId}</code></td>
-                      <td style={{ padding: "0.45rem" }}>
-                        <code>{row.schemaVersion}</code> · <code>{row.runSpecVersion}</code>
-                      </td>
-                      <td style={{ padding: "0.45rem" }}>{dt(row.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <AdminSection title={`AI 模拟 Jobs（${data.aiSimulationJobs.length}）`}>
+            <AdminDataTable
+              columns={jobColumns}
+              rows={data.aiSimulationJobs}
+              rowKey="id"
+              emptyMessage="暂无记录"
+            />
+          </AdminSection>
         </>
       ) : null}
-    </StandalonePage>
+    </AdminPageShell>
   );
 }
-

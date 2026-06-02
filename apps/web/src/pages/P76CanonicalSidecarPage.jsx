@@ -5,6 +5,25 @@ import {
   getP76CanonicalSidecarDetail,
   listP76CanonicalSidecarAdmin,
 } from "../api/p76CanonicalSidecarAdmin";
+import AdminFilterPanel from "../components/admin/AdminFilterPanel";
+import AdminJsonBlock from "../components/admin/AdminJsonBlock";
+import AdminKpiGrid from "../components/admin/AdminKpiGrid";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import {
+  adminBadgeToneClass,
+  adminBtnSecondary,
+  adminInput,
+  adminLabel,
+  adminLink,
+  adminModalOverlay,
+  adminModalPanel,
+  adminMuted,
+  adminSectionTitle,
+  adminSelect,
+  adminTd,
+  adminTh,
+} from "../components/admin/adminTheme";
 import LoadingState from "../components/common/LoadingState";
 import UserIdWithName from "../components/common/UserIdWithName";
 import {
@@ -43,41 +62,6 @@ const DEFAULT_FILTERS = {
   limit: "50",
 };
 
-const th = {
-  textAlign: "left",
-  borderBottom: "1px solid #e2e8f0",
-  padding: "0.35rem 0.4rem",
-  whiteSpace: "nowrap",
-  fontSize: "0.72rem",
-};
-const td = {
-  padding: "0.35rem 0.4rem",
-  borderBottom: "1px solid #f1f5f9",
-  verticalAlign: "top",
-  fontSize: "0.72rem",
-};
-const btnSecondary = {
-  padding: "0.3rem 0.55rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#334155",
-  fontSize: "0.75rem",
-  cursor: "pointer",
-};
-const jsonPreStyle = {
-  margin: 0,
-  padding: "0.5rem",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  borderRadius: 6,
-  fontSize: "0.7rem",
-  maxHeight: 240,
-  overflow: "auto",
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-all",
-};
-
 function formatDt(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -112,15 +96,9 @@ function isPermissionError(message) {
   return m.includes("无权限") || m.includes("403") || m.includes("401");
 }
 
-function badgeStyle(tone) {
-  const map = {
-    p0: { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
-    warning: { bg: "#fffbeb", color: "#b45309", border: "#fde68a" },
-    ok: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-    muted: { bg: "#f1f5f9", color: "#64748b", border: "#e2e8f0" },
-    neutral: { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" },
-  };
-  return map[tone] ?? map.neutral;
+function badgeToneClass(tone) {
+  const key = tone === "neutral" ? "muted" : tone;
+  return adminBadgeToneClass[key] ?? adminBadgeToneClass.muted;
 }
 
 function jsonPreview(value, maxLen = 8192) {
@@ -139,19 +117,9 @@ function jsonPreview(value, maxLen = 8192) {
 
 function AppliedFlagBadge({ value, context, promotionStatus }) {
   const tone = appliedFlagTone(value, promotionStatus);
-  const s = badgeStyle(tone);
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: s.bg,
-        color: s.color,
-        border: `1px solid ${s.border}`,
-        fontWeight: tone === "p0" ? 600 : 400,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${badgeToneClass(tone)} ${tone === "p0" ? "font-semibold" : ""}`}
     >
       {getCanonicalSidecarAppliedFlagLabel(value, context, promotionStatus)}
     </span>
@@ -161,19 +129,9 @@ function AppliedFlagBadge({ value, context, promotionStatus }) {
 function SafetyBadge({ item }) {
   const label = getCanonicalSidecarSafetyLabel(item);
   const tone = safetyBadgeTone(item);
-  const s = badgeStyle(tone);
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: s.bg,
-        color: s.color,
-        border: `1px solid ${s.border}`,
-        fontWeight: tone === "p0" ? 600 : 400,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${badgeToneClass(tone)} ${tone === "p0" ? "font-semibold" : ""}`}
     >
       {label}
     </span>
@@ -183,11 +141,11 @@ function SafetyBadge({ item }) {
 function CopyIdCell({ value, truncate = true }) {
   if (!value) return <span>—</span>;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+    <span className="inline-flex items-center gap-1">
       <span title={value}>{truncate ? truncateId(value) : value}</span>
       <button
         type="button"
-        style={{ ...btnSecondary, padding: "0.1rem 0.35rem", fontSize: "0.65rem" }}
+        className={`${adminBtnSecondary} !py-0.5 !px-1.5 !text-[0.65rem]`}
         onClick={(e) => {
           e.stopPropagation();
           void copyText(value);
@@ -207,23 +165,26 @@ function AggregateCards({ aggregate, loading }) {
 
   const p0Violation = hasCanonicalSidecarP0Violation(aggregate);
 
-  const cards = [
-    { label: "totalVisible", value: aggregate.totalVisible },
-    { label: "sidecarOnlyCount", value: aggregate.sidecarOnlyCount },
-    { label: "promotedCount", value: aggregate.promotedCount },
-    { label: "blockedCount", value: aggregate.blockedCount },
-    { label: "rolledBackCount", value: aggregate.rolledBackCount },
+  const items = [
+    { key: "totalVisible", label: "totalVisible", value: aggregate.totalVisible },
+    { key: "sidecarOnlyCount", label: "sidecarOnlyCount", value: aggregate.sidecarOnlyCount },
+    { key: "promotedCount", label: "promotedCount", value: aggregate.promotedCount },
+    { key: "blockedCount", label: "blockedCount", value: aggregate.blockedCount },
+    { key: "rolledBackCount", label: "rolledBackCount", value: aggregate.rolledBackCount },
     {
+      key: "appliedToMatchResultViolationCount",
       label: "appliedToMatchResultViolationCount",
       value: aggregate.appliedToMatchResultViolationCount,
       p0: aggregate.appliedToMatchResultViolationCount > 0,
     },
     {
+      key: "appliedToFinalScoreViolationCount",
       label: "appliedToFinalScoreViolationCount",
       value: aggregate.appliedToFinalScoreViolationCount,
       p0: aggregate.appliedToFinalScoreViolationCount > 0,
     },
     {
+      key: "appliedToWorkerRankingViolationCount",
       label: "appliedToWorkerRankingViolationCount",
       value: aggregate.appliedToWorkerRankingViolationCount,
       p0: aggregate.appliedToWorkerRankingViolationCount > 0,
@@ -231,63 +192,14 @@ function AggregateCards({ aggregate, loading }) {
   ];
 
   return (
-    <section style={{ marginBottom: "0.85rem" }}>
+    <>
       {p0Violation ? (
-        <p
-          role="alert"
-          style={{
-            margin: "0 0 0.5rem",
-            padding: "0.45rem 0.65rem",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 6,
-            color: "#b91c1c",
-            fontSize: "0.82rem",
-            fontWeight: 600,
-          }}
-        >
+        <AdminNotice variant="p0">
           P0 alert: one or more applied* violation counts &gt; 0
-        </p>
+        </AdminNotice>
       ) : null}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-          gap: "0.45rem",
-        }}
-      >
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            style={{
-              border: `1px solid ${c.p0 ? "#fecaca" : "#e2e8f0"}`,
-              borderRadius: 8,
-              padding: "0.45rem 0.55rem",
-              background: c.p0 ? "#fef2f2" : "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.65rem",
-                color: "#64748b",
-                marginBottom: "0.15rem",
-              }}
-            >
-              {c.label}
-            </div>
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                color: c.p0 ? "#b91c1c" : "#0f172a",
-              }}
-            >
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+      <AdminKpiGrid items={items} />
+    </>
   );
 }
 
@@ -430,96 +342,35 @@ export default function P76CanonicalSidecarPage() {
   const permissionDenied = isPermissionError(listError);
 
   return (
-    <main
-      style={{
-        maxWidth: 1400,
-        margin: "1.1rem auto",
-        padding: "0 1rem",
-        color: "#334155",
-      }}
+    <AdminPageShell
+      title="P7.6 Canonical Sidecar Review"
+      subtitle="Read-only review of p76_canonical_match_result_meta. Not applied to MatchResult."
+      maxWidth="max-w-[1400px]"
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "#fef2f2",
-          border: "1px solid #fecaca",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.8rem",
-          color: "#991b1b",
-        }}
-      >
-        <strong>{SIDECAR_BANNER}</strong>
-        <div style={{ marginTop: "0.25rem", fontSize: "0.78rem" }}>
-          {SIDECAR_BANNER_ZH}
-        </div>
-        <ul
-          style={{
-            margin: "0.35rem 0 0",
-            paddingLeft: "1.1rem",
-            fontSize: "0.72rem",
-            color: "#7f1d1d",
-          }}
-        >
+      <AdminNotice variant="p0" sticky title={SIDECAR_BANNER}>
+        <div className="text-xs mt-1">{SIDECAR_BANNER_ZH}</div>
+        <ul className="mt-1.5 pl-4 text-xs list-disc">
           <li>No Apply</li>
           <li>No MatchResult write</li>
           <li>No worker / GET read</li>
           <li>No production rollout</li>
         </ul>
-      </div>
+      </AdminNotice>
 
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
+      <AdminNotice variant="internal">
         <strong>内部 / Admin</strong> — 只读审阅；权限 VIEW_P76_CANONICAL_REHEARSAL。
         你需要 VIEW_P76_CANONICAL_REHEARSAL 权限才能查看 canonical sidecar 只读记录。
         No Apply · No MatchResult write · No worker / GET read · No production rollout。
         {" "}
-        <Link to="/admin/p76/canonical-rehearsal" style={{ color: "#b45309" }}>
+        <Link to="/admin/p76/canonical-rehearsal" className={adminLink}>
           Canonical Rehearsal
         </Link>
-      </div>
-
-      <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        P7.6 Canonical Sidecar Review
-      </h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#64748b" }}>
-        Read-only review of p76_canonical_match_result_meta. Not applied to MatchResult.
-      </p>
+      </AdminNotice>
 
       <AggregateCards aggregate={aggregate} loading={aggLoading} />
 
-      <section
-        style={{
-          border: "1px solid #e2e8f0",
-          borderRadius: 8,
-          background: "#f8fafc",
-          padding: "0.65rem 0.75rem",
-          marginBottom: "0.75rem",
-        }}
-      >
-        <h2 style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>Filters</h2>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.5rem 0.75rem",
-            alignItems: "flex-end",
-            fontSize: "0.78rem",
-          }}
-        >
-          <label>
+      <AdminFilterPanel title="Filters">
+          <label className={adminLabel}>
             auditRunId
             <input
               type="text"
@@ -527,24 +378,24 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, auditRunId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 180 }}
+              className={`${adminInput} block mt-0.5 w-[180px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             environment
             <select
               value={filters.environment}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, environment: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="dev">dev</option>
               <option value="staging">staging</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             viewerUserId
             <input
               type="text"
@@ -552,10 +403,10 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, viewerUserId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 160 }}
+              className={`${adminInput} block mt-0.5 w-[160px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             matchResultId
             <input
               type="text"
@@ -563,10 +414,10 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, matchResultId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 160 }}
+              className={`${adminInput} block mt-0.5 w-[160px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             selectedCandidateId
             <input
               type="text"
@@ -574,10 +425,10 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, selectedCandidateId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 160 }}
+              className={`${adminInput} block mt-0.5 w-[160px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             sourceVersion
             <input
               type="text"
@@ -585,15 +436,15 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, sourceVersion: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 220 }}
+              className={`${adminInput} block mt-0.5 w-[220px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             mode
             <select
               value={filters.mode}
               onChange={(e) => setFilters((f) => ({ ...f, mode: e.target.value }))}
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="dry_run">dry_run</option>
@@ -601,14 +452,14 @@ export default function P76CanonicalSidecarPage() {
               <option value="promoted">promoted</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             promotionStatus
             <select
               value={filters.promotionStatus}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, promotionStatus: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="not_promoted">not_promoted</option>
@@ -617,7 +468,7 @@ export default function P76CanonicalSidecarPage() {
               <option value="blocked">blocked</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             appliedToMatchResult
             <select
               value={filters.appliedToMatchResult}
@@ -627,14 +478,14 @@ export default function P76CanonicalSidecarPage() {
                   appliedToMatchResult: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="false">false</option>
               <option value="true">true (P0)</option>
               <option value="">any</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             appliedToFinalScore
             <select
               value={filters.appliedToFinalScore}
@@ -644,14 +495,14 @@ export default function P76CanonicalSidecarPage() {
                   appliedToFinalScore: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="false">false</option>
               <option value="true">true (P0)</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             appliedToWorkerRanking
             <select
               value={filters.appliedToWorkerRanking}
@@ -661,28 +512,28 @@ export default function P76CanonicalSidecarPage() {
                   appliedToWorkerRanking: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="false">false</option>
               <option value="true">true (P0)</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             rolledBack
             <select
               value={filters.rolledBack}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, rolledBack: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="false">false</option>
               <option value="true">true</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             generatedAtFrom
             <input
               type="datetime-local"
@@ -690,10 +541,10 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, generatedAtFrom: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem" }}
+              className={`${adminInput} block mt-0.5`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             generatedAtTo
             <input
               type="datetime-local"
@@ -701,36 +552,36 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, generatedAtTo: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem" }}
+              className={`${adminInput} block mt-0.5`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             activeOnly
             <select
               value={filters.activeOnly}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, activeOnly: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             includeDeleted
             <select
               value={filters.includeDeleted}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, includeDeleted: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="false">false</option>
               <option value="true">true</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             limit
             <input
               type="number"
@@ -740,12 +591,12 @@ export default function P76CanonicalSidecarPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, limit: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 72 }}
+              className={`${adminInput} block mt-0.5 w-[72px]`}
             />
           </label>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => void fetchData({ append: false })}
           >
@@ -753,7 +604,7 @@ export default function P76CanonicalSidecarPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => setAppliedFilters({ ...filters })}
           >
@@ -761,7 +612,7 @@ export default function P76CanonicalSidecarPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => {
               setFilters({ ...DEFAULT_FILTERS });
@@ -772,35 +623,25 @@ export default function P76CanonicalSidecarPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={items.length === 0}
             onClick={exportVisibleJson}
           >
             Export visible JSON
           </button>
-        </div>
-        <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
+        </AdminFilterPanel>
+        <p className={`${adminMuted} mt-2`}>
           Default: activeOnly=true · includeDeleted=false · appliedToMatchResult=false ·
           limit=50 · createdAt desc
         </p>
-      </section>
 
       {listLoading && items.length === 0 ? (
         <LoadingState label="加载列表…" />
       ) : null}
 
       {listError ? (
-        <div
-          role="alert"
-          style={{
-            padding: "0.65rem 0.75rem",
-            borderRadius: 8,
-            marginBottom: "0.75rem",
-            fontSize: "0.85rem",
-            background: apiDisabled ? "#f8fafc" : permissionDenied ? "#fffbeb" : "#fef2f2",
-            border: `1px solid ${apiDisabled ? "#cbd5e1" : permissionDenied ? "#fde68a" : "#fecaca"}`,
-            color: apiDisabled ? "#475569" : permissionDenied ? "#b45309" : "#b91c1c",
-          }}
+        <AdminNotice
+          variant={apiDisabled ? "disabled" : permissionDenied ? "warning" : "p0"}
         >
           {apiDisabled ? (
             <>
@@ -815,30 +656,30 @@ export default function P76CanonicalSidecarPage() {
           ) : (
             listError
           )}
-        </div>
+        </AdminNotice>
       ) : null}
 
       {!listError || items.length > 0 ? (
-        <section style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <section className="admin-table-wrap overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th style={th}>createdAt</th>
-                <th style={th}>environment</th>
-                <th style={th}>auditRunId</th>
-                <th style={th}>sourceVersion</th>
-                <th style={th}>viewerUserId</th>
-                <th style={th}>matchResultId</th>
-                <th style={th}>selectedCandidateId</th>
-                <th style={th}>score</th>
-                <th style={th}>mode</th>
-                <th style={th}>promotionStatus</th>
-                <th style={th}>appliedToMatchResult</th>
-                <th style={th}>appliedToFinalScore</th>
-                <th style={th}>appliedToWorkerRanking</th>
-                <th style={th}>rolledBack</th>
-                <th style={th}>safety</th>
-                <th style={th}>Detail</th>
+                <th className={adminTh}>createdAt</th>
+                <th className={adminTh}>environment</th>
+                <th className={adminTh}>auditRunId</th>
+                <th className={adminTh}>sourceVersion</th>
+                <th className={adminTh}>viewerUserId</th>
+                <th className={adminTh}>matchResultId</th>
+                <th className={adminTh}>selectedCandidateId</th>
+                <th className={adminTh}>score</th>
+                <th className={adminTh}>mode</th>
+                <th className={adminTh}>promotionStatus</th>
+                <th className={adminTh}>appliedToMatchResult</th>
+                <th className={adminTh}>appliedToFinalScore</th>
+                <th className={adminTh}>appliedToWorkerRanking</th>
+                <th className={adminTh}>rolledBack</th>
+                <th className={adminTh}>safety</th>
+                <th className={adminTh}>Detail</th>
               </tr>
             </thead>
             <tbody>
@@ -849,62 +690,61 @@ export default function P76CanonicalSidecarPage() {
                   <tr
                     key={r.id}
                     onClick={() => void openDetail(r.id)}
-                    style={{
-                      cursor: "pointer",
-                      background: p0
-                        ? "#fef2f2"
+                    className={`cursor-pointer ${
+                      p0
+                        ? "bg-red-500/10"
                         : superseded
-                          ? "#f1f5f9"
-                          : undefined,
-                    }}
+                          ? "bg-white/5"
+                          : "hover:bg-white/5"
+                    }`}
                   >
-                    <td style={td}>{formatDt(r.createdAt)}</td>
-                    <td style={td}>{r.environment ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{formatDt(r.createdAt)}</td>
+                    <td className={adminTd}>{r.environment ?? "—"}</td>
+                    <td className={adminTd}>
                       <CopyIdCell value={r.auditRunId} />
                     </td>
-                    <td style={td}>{r.sourceVersion ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.sourceVersion ?? "—"}</td>
+                    <td className={adminTd}>
                       {r.viewerUserId ? <UserIdWithName userId={r.viewerUserId} /> : "—"}
                     </td>
-                    <td style={td}>{r.matchResultId ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.matchResultId ?? "—"}</td>
+                    <td className={adminTd}>
                       {r.selectedCandidateId ? <UserIdWithName userId={r.selectedCandidateId} /> : "—"}
                     </td>
-                    <td style={td}>{r.score != null ? String(r.score) : "—"}</td>
-                    <td style={td}>{getCanonicalSidecarModeLabel(r.mode)}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.score != null ? String(r.score) : "—"}</td>
+                    <td className={adminTd}>{getCanonicalSidecarModeLabel(r.mode)}</td>
+                    <td className={adminTd}>
                       {getCanonicalSidecarPromotionStatusLabel(r.promotionStatus)}
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       <AppliedFlagBadge
                         value={r.appliedToMatchResult}
                         context="matchResult"
                         promotionStatus={r.promotionStatus}
                       />
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       <AppliedFlagBadge
                         value={r.appliedToFinalScore}
                         context="finalScore"
                         promotionStatus={r.promotionStatus}
                       />
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       <AppliedFlagBadge
                         value={r.appliedToWorkerRanking}
                         context="workerRanking"
                         promotionStatus={r.promotionStatus}
                       />
                     </td>
-                    <td style={td}>{r.rolledBack ? "yes" : "no"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.rolledBack ? "yes" : "no"}</td>
+                    <td className={adminTd}>
                       <SafetyBadge item={r} />
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       <button
                         type="button"
-                        style={btnSecondary}
+                        className={adminBtnSecondary}
                         onClick={(e) => {
                           e.stopPropagation();
                           void openDetail(r.id);
@@ -915,7 +755,7 @@ export default function P76CanonicalSidecarPage() {
                       {" "}
                       <Link
                         to={`/admin/p76/canonical-sidecar/${r.id}/apply-review`}
-                        style={{ fontSize: "0.68rem", color: "#2563eb" }}
+                        className={`${adminLink} text-[0.68rem]`}
                         onClick={(e) => e.stopPropagation()}
                       >
                         Apply review
@@ -927,19 +767,19 @@ export default function P76CanonicalSidecarPage() {
             </tbody>
           </table>
           {items.length === 0 && !listLoading && !listError ? (
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+            <p className={`${adminMuted} mt-2`}>
               无记录。
             </p>
           ) : null}
           {items.length === 0 && !listLoading && listError && !apiDisabled ? (
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+            <p className={`${adminMuted} mt-2`}>
               无记录（请调整筛选条件）。
             </p>
           ) : null}
           {nextCursor ? (
             <button
               type="button"
-              style={{ ...btnSecondary, marginTop: "0.5rem" }}
+              className={`${adminBtnSecondary} mt-2`}
               disabled={listLoading}
               onClick={() => void fetchData({ append: true, cursor: nextCursor })}
             >
@@ -953,70 +793,38 @@ export default function P76CanonicalSidecarPage() {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-            zIndex: 50,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
+          className={adminModalOverlay}
           onClick={closeDetail}
         >
           <div
-            style={{
-              width: "min(560px, 100%)",
-              height: "100%",
-              background: "#fff",
-              overflowY: "auto",
-              padding: "1rem",
-              boxShadow: "-4px 0 24px rgba(0,0,0,0.12)",
-            }}
+            className={`${adminModalPanel} max-w-xl max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 6,
-                padding: "0.45rem 0.6rem",
-                fontSize: "0.75rem",
-                color: "#991b1b",
-                marginBottom: "0.65rem",
-              }}
-            >
-              <strong>{SIDECAR_BANNER}</strong>
-              <div style={{ marginTop: "0.2rem" }}>{SIDECAR_BANNER_ZH}</div>
-            </div>
+            <AdminNotice variant="p0" title={SIDECAR_BANNER}>
+              {SIDECAR_BANNER_ZH}
+            </AdminNotice>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: "1rem" }}>Detail</h2>
-              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+            <div className="flex justify-between items-center mb-3 gap-2 flex-wrap">
+              <h2 className="text-base font-semibold text-white m-0">Detail</h2>
+              <div className="flex gap-1.5 flex-wrap">
                 {detailId ? (
                   <>
                     <button
                       type="button"
-                      style={btnSecondary}
+                      className={adminBtnSecondary}
                       onClick={() => void copyText(detailId)}
                     >
                       Copy id
                     </button>
                     <Link
                       to={`/admin/p76/canonical-sidecar/${detailId}/apply-review`}
-                      style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}
+                      className={adminBtnSecondary}
                     >
                       Open apply review
                     </Link>
                   </>
                 ) : null}
-                <button type="button" style={btnSecondary} onClick={closeDetail}>
+                <button type="button" className={adminBtnSecondary} onClick={closeDetail}>
                   Close
                 </button>
               </div>
@@ -1024,32 +832,19 @@ export default function P76CanonicalSidecarPage() {
 
             {detailLoading ? <LoadingState label="加载详情…" /> : null}
             {detailError ? (
-              <p style={{ color: "#b91c1c" }} role="alert">
-                {detailError}
-              </p>
+              <AdminNotice variant="p0">{detailError}</AdminNotice>
             ) : null}
 
             {row ? (
               <>
                 {hasCanonicalSidecarRowP0Violation(row) ? (
-                  <p
-                    role="alert"
-                    style={{
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      padding: "0.45rem",
-                      borderRadius: 6,
-                      color: "#b91c1c",
-                      fontWeight: 600,
-                      fontSize: "0.82rem",
-                    }}
-                  >
+                  <AdminNotice variant="p0">
                     P0: applied* flag violation — sidecar must not mutate MatchResult /
                     finalScore / worker ranking.
-                  </p>
+                  </AdminNotice>
                 ) : null}
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>Basic info</h3>
+                <h3 className={`${adminSectionTitle} mt-2`}>Basic info</h3>
                 <DetailGrid
                   items={[
                     ["id", <CopyIdCell key="id" value={row.id} truncate={false} />],
@@ -1061,9 +856,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  Candidate / score
-                </h3>
+                <h3 className={adminSectionTitle}>Candidate / score</h3>
                 <DetailGrid
                   items={[
                     ["selectedCandidateId", row.selectedCandidateId ?? "—"],
@@ -1072,7 +865,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Source / audit</h3>
+                <h3 className={adminSectionTitle}>Source / audit</h3>
                 <DetailGrid
                   items={[
                     ["auditRunId", <CopyIdCell key="a" value={row.auditRunId} truncate={false} />],
@@ -1082,9 +875,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  Promotion status
-                </h3>
+                <h3 className={adminSectionTitle}>Promotion status</h3>
                 <DetailGrid
                   items={[
                     [
@@ -1103,7 +894,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Applied flags</h3>
+                <h3 className={adminSectionTitle}>Applied flags</h3>
                 <DetailGrid
                   items={[
                     [
@@ -1136,7 +927,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Safety flags</h3>
+                <h3 className={adminSectionTitle}>Safety flags</h3>
                 <DetailGrid
                   items={[
                     ["isSidecarOnly", safety?.isSidecarOnly ? "true" : "false"],
@@ -1157,7 +948,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Signoff statuses</h3>
+                <h3 className={adminSectionTitle}>Signoff statuses</h3>
                 <DetailGrid
                   items={[
                     ["pmSignoffStatus", row.pmSignoffStatus ?? "—"],
@@ -1165,7 +956,7 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Lifecycle</h3>
+                <h3 className={adminSectionTitle}>Lifecycle</h3>
                 <DetailGrid
                   items={[
                     ["supersededAt", formatDt(row.supersededAt)],
@@ -1173,7 +964,7 @@ export default function P76CanonicalSidecarPage() {
                     [
                       "rehearsal admin",
                       links?.rehearsalAdminPath ? (
-                        <Link key="rh" to={links.rehearsalAdminPath} style={{ color: "#2563eb" }}>
+                        <Link key="rh" to={links.rehearsalAdminPath} className={adminLink}>
                           open rehearsal
                         </Link>
                       ) : (
@@ -1183,54 +974,36 @@ export default function P76CanonicalSidecarPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  reasonSummary JSON preview
-                </h3>
-                <pre style={jsonPreStyle}>{jsonPreview(row.reasonSummary)}</pre>
+                <h3 className={adminSectionTitle}>reasonSummary JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(row.reasonSummary)} />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  stageSummary JSON preview
-                </h3>
-                <pre style={jsonPreStyle}>{jsonPreview(row.stageSummary)}</pre>
+                <h3 className={adminSectionTitle}>stageSummary JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(row.stageSummary)} />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  safeFallbackMeta JSON preview
-                </h3>
-                <pre style={jsonPreStyle}>{jsonPreview(row.safeFallbackMeta)}</pre>
+                <h3 className={adminSectionTitle}>safeFallbackMeta JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(row.safeFallbackMeta)} />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  guardrails JSON preview
-                </h3>
-                <pre style={jsonPreStyle}>{jsonPreview(row.guardrails)}</pre>
+                <h3 className={adminSectionTitle}>guardrails JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(row.guardrails)} />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  sanitized dryRunPayload JSON preview
-                </h3>
-                <pre style={jsonPreStyle}>{jsonPreview(row.dryRunPayload)}</pre>
+                <h3 className={adminSectionTitle}>sanitized dryRunPayload JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(row.dryRunPayload)} />
               </>
             ) : null}
           </div>
         </div>
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
 
 function DetailGrid({ items }) {
   return (
-    <dl
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 38%) 1fr",
-        gap: "0.25rem 0.5rem",
-        fontSize: "0.78rem",
-        margin: 0,
-      }}
-    >
+    <dl className="grid grid-cols-[minmax(140px,38%)_1fr] gap-x-2 gap-y-1 text-xs m-0 mb-3">
       {items.map(([k, v]) => (
-        <div key={k} style={{ display: "contents" }}>
-          <dt style={{ margin: 0, color: "#64748b" }}>{k}</dt>
-          <dd style={{ margin: 0, wordBreak: "break-all" }}>{v}</dd>
+        <div key={k} className="contents">
+          <dt className="m-0 text-white/45">{k}</dt>
+          <dd className="m-0 break-all text-white/85">{v}</dd>
         </div>
       ))}
     </dl>

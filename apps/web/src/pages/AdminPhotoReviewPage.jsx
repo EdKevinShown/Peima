@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   PHOTO_REVIEW_REASON_CODES,
   approveAdminPhotoReviewItem,
@@ -9,6 +8,24 @@ import {
   rejectAdminPhotoReviewItem,
 } from "../api/adminPhotoReview";
 import LoadingState from "../components/common/LoadingState";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminFilterPanel from "../components/admin/AdminFilterPanel";
+import AdminJsonBlock from "../components/admin/AdminJsonBlock";
+import AdminSection from "../components/admin/AdminSection";
+import {
+  adminTh,
+  adminTd,
+  adminBtnPrimary,
+  adminBtnSecondary,
+  adminBtnDanger,
+  adminLabel,
+  adminSelect,
+  adminInput,
+  adminModalOverlay,
+  adminModalPanel,
+  adminMuted,
+} from "../components/admin/adminTheme";
 
 const DEFAULT_FILTERS = {
   reviewStatus: "pending_review",
@@ -34,56 +51,6 @@ function warningsLabel(summary) {
   if (!w?.length) return "—";
   return w.join(", ");
 }
-
-const th = {
-  textAlign: "left",
-  borderBottom: "1px solid #e2e8f0",
-  padding: "0.35rem 0.4rem",
-  whiteSpace: "nowrap",
-};
-const td = {
-  padding: "0.35rem 0.4rem",
-  borderBottom: "1px solid #f1f5f9",
-  verticalAlign: "top",
-  fontSize: "0.78rem",
-};
-const btnPrimary = {
-  padding: "0.4rem 0.85rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#1e293b",
-  color: "#fff",
-  fontSize: "0.82rem",
-  cursor: "pointer",
-};
-const btnSecondary = {
-  padding: "0.35rem 0.7rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#334155",
-  fontSize: "0.82rem",
-  cursor: "pointer",
-};
-const btnDanger = {
-  padding: "0.4rem 0.85rem",
-  borderRadius: 6,
-  border: "none",
-  background: "#b91c1c",
-  color: "#fff",
-  fontSize: "0.82rem",
-  cursor: "pointer",
-};
-const textareaStyle = {
-  display: "block",
-  width: "100%",
-  marginTop: "0.35rem",
-  padding: "0.4rem",
-  fontSize: "0.8rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  boxSizing: "border-box",
-};
 
 export default function AdminPhotoReviewPage() {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
@@ -257,25 +224,14 @@ export default function AdminPhotoReviewPage() {
   };
 
   return (
-    <main style={{ maxWidth: 1280, margin: "1.1rem auto", padding: "0 1rem", color: "#334155" }}>
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
-        <strong>内部 / Admin</strong> — 仅运营与管理员；普通用户页面不展示 reviewNote。
-      </div>
-
-      <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>照片审核</h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#64748b" }}>
-        运营 / 管理员审核用户上传照片。需 manage_photo_review 权限。
-      </p>
+    <AdminPageShell
+      maxWidth="max-w-6xl"
+      title="照片审核"
+      subtitle="运营 / 管理员审核用户上传照片。需 manage_photo_review 权限。"
+    >
+      <AdminNotice variant="internal" title="内部 / Admin">
+        仅运营与管理员；普通用户页面不展示 reviewNote。
+      </AdminNotice>
 
       <FilterSection
         filters={filters}
@@ -292,9 +248,9 @@ export default function AdminPhotoReviewPage() {
         <LoadingState label="加载待审核照片列表…" />
       ) : null}
       {listError ? (
-        <p style={{ color: "#b91c1c", fontSize: "0.85rem" }} role="alert">
+        <AdminNotice variant="danger" title="列表加载失败">
           {listError}
-        </p>
+        </AdminNotice>
       ) : null}
 
       {!listError ? (
@@ -332,34 +288,23 @@ export default function AdminPhotoReviewPage() {
           toggleReupload={(code) => toggleReason(setReuploadReasonCodes, code)}
         />
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
 
 function FilterSection({ filters, setFilters, onQuery, onReset, listLoading }) {
   return (
-    <section
-      style={{
-        border: "1px solid #e2e8f0",
-        borderRadius: 8,
-        background: "#f8fafc",
-        padding: "0.65rem 0.85rem",
-        marginBottom: "0.8rem",
-        fontSize: "0.8rem",
-      }}
+    <AdminFilterPanel
+      title="筛选"
+      actions={
+        <FilterActions onQuery={onQuery} onReset={onReset} listLoading={listLoading} />
+      }
     >
-      <strong>筛选</strong>
-      <div
-        style={{
-          marginTop: "0.45rem",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
-          gap: "0.55rem",
-        }}
-      >
-        <label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 w-full">
+        <label className={adminLabel}>
           reviewStatus{" "}
           <select
+            className={adminSelect}
             value={filters.reviewStatus}
             onChange={(e) => setFilters((f) => ({ ...f, reviewStatus: e.target.value }))}
           >
@@ -371,9 +316,10 @@ function FilterSection({ filters, setFilters, onQuery, onReset, listLoading }) {
             <option value="">全部</option>
           </select>
         </label>
-        <label>
+        <label className={adminLabel}>
           detectionStatus{" "}
           <select
+            className={adminSelect}
             value={filters.detectionStatus}
             onChange={(e) => setFilters((f) => ({ ...f, detectionStatus: e.target.value }))}
           >
@@ -384,17 +330,19 @@ function FilterSection({ filters, setFilters, onQuery, onReset, listLoading }) {
             <option value="skipped">skipped</option>
           </select>
         </label>
-        <label>
+        <label className={adminLabel}>
           reasonCode{" "}
           <input
+            className={adminInput}
             value={filters.reasonCode}
             onChange={(e) => setFilters((f) => ({ ...f, reasonCode: e.target.value }))}
             placeholder="如 FACE_NOT_FOUND"
           />
         </label>
-        <label>
+        <label className={adminLabel}>
           hasWarnings{" "}
           <select
+            className={adminSelect}
             value={filters.hasWarnings}
             onChange={(e) => setFilters((f) => ({ ...f, hasWarnings: e.target.value }))}
           >
@@ -403,97 +351,84 @@ function FilterSection({ filters, setFilters, onQuery, onReset, listLoading }) {
             <option value="false">无 warning</option>
           </select>
         </label>
-        <label>
+        <label className={adminLabel}>
           userId{" "}
           <input
+            className={adminInput}
             value={filters.userId}
             onChange={(e) => setFilters((f) => ({ ...f, userId: e.target.value }))}
             placeholder="用户 ID"
           />
         </label>
       </div>
-      <FilterActions onQuery={onQuery} onReset={onReset} listLoading={listLoading} />
-    </section>
+    </AdminFilterPanel>
   );
 }
 
 function FilterActions({ onQuery, onReset, listLoading }) {
   return (
-    <div style={{ marginTop: "0.55rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-      <button type="button" onClick={onQuery} disabled={listLoading} style={btnPrimary}>
+    <>
+      <button type="button" onClick={onQuery} disabled={listLoading} className={adminBtnPrimary}>
         查询
       </button>
-      <button type="button" onClick={onReset} disabled={listLoading} style={btnSecondary}>
+      <button type="button" onClick={onReset} disabled={listLoading} className={adminBtnSecondary}>
         重置
       </button>
-    </div>
+    </>
   );
 }
 
 function ListSection({ items, listLoading, openDetail, nextCursor, onLoadMore }) {
   return (
-    <section
-      style={{
-        border: "1px solid #e2e8f0",
-        borderRadius: 8,
-        background: "#fff",
-        padding: "0.6rem 0.75rem",
-      }}
-    >
+    <AdminSection className="mb-0">
       {items.length === 0 && !listLoading ? (
-        <p style={{ margin: 0, fontSize: "0.82rem" }}>无匹配记录。</p>
+        <p className={`m-0 ${adminMuted}`}>无匹配记录。</p>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="admin-table-wrap overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th style={th}>缩略图</th>
-                <th style={th}>userId</th>
-                <th style={th}>detection</th>
-                <th style={th}>detection codes</th>
-                <th style={th}>review</th>
-                <th style={th}>review codes</th>
-                <th style={th}>warnings</th>
-                <th style={th}>detectedAt</th>
-                <th style={th}>createdAt</th>
-                <th style={th}>操作</th>
+                <th className={adminTh}>缩略图</th>
+                <th className={adminTh}>userId</th>
+                <th className={adminTh}>detection</th>
+                <th className={adminTh}>detection codes</th>
+                <th className={adminTh}>review</th>
+                <th className={adminTh}>review codes</th>
+                <th className={adminTh}>warnings</th>
+                <th className={adminTh}>detectedAt</th>
+                <th className={adminTh}>createdAt</th>
+                <th className={adminTh}>操作</th>
               </tr>
             </thead>
             <tbody>
               {items.map((row) => (
-                <tr key={row.imageId}>
-                  <td style={td}>
+                <tr key={row.imageId} className="hover:bg-white/5">
+                  <td className={adminTd}>
                     <img
                       src={row.imageUrl}
                       alt=""
-                      style={{
-                        width: 56,
-                        height: 56,
-                        objectFit: "cover",
-                        borderRadius: 6,
-                        border: "1px solid #e2e8f0",
-                      }}
+                      className="w-14 h-14 object-cover rounded-lg border border-white/15"
                     />
                   </td>
-                  <td style={td}>
-                    <code style={{ fontSize: "0.7rem" }}>{row.userId}</code>
+                  <td className={adminTd}>
+                    <code className="text-[0.7rem] text-white/75">{row.userId}</code>
                   </td>
-                  <td style={td}>{row.detectionStatus}</td>
-                  <td style={td}>
-                    <code style={{ fontSize: "0.68rem" }}>{formatCodes(row.detectionReasonCodes)}</code>
+                  <td className={adminTd}>{row.detectionStatus}</td>
+                  <td className={adminTd}>
+                    <code className="text-[0.68rem] text-white/70">{formatCodes(row.detectionReasonCodes)}</code>
                   </td>
-                  <td style={td}>{row.reviewStatus}</td>
-                  <td style={td}>
-                    <code style={{ fontSize: "0.68rem" }}>{formatCodes(row.reviewReasonCodes)}</code>
+                  <td className={adminTd}>{row.reviewStatus}</td>
+                  <td className={adminTd}>
+                    <code className="text-[0.68rem] text-white/70">{formatCodes(row.reviewReasonCodes)}</code>
                   </td>
-                  <td style={td}>{warningsLabel(row.detectionSummary)}</td>
-                  <td style={td}>{formatDt(row.detectedAt)}</td>
-                  <td style={td}>{formatDt(row.createdAt)}</td>
-                  <td style={td}>
+                  <td className={adminTd}>{warningsLabel(row.detectionSummary)}</td>
+                  <td className={adminTd}>{formatDt(row.detectedAt)}</td>
+                  <td className={adminTd}>{formatDt(row.createdAt)}</td>
+                  <td className={adminTd}>
                     <button
                       type="button"
                       onClick={() => void openDetail(row.imageId)}
-                      style={btnSecondary}
+                      className={adminBtnSecondary}
                     >
                       查看详情
                     </button>
@@ -507,14 +442,14 @@ function ListSection({ items, listLoading, openDetail, nextCursor, onLoadMore })
       {items.length > 0 && nextCursor ? (
         <LoadMoreButton listLoading={listLoading} onLoadMore={onLoadMore} />
       ) : null}
-    </section>
+    </AdminSection>
   );
 }
 
 function LoadMoreButton({ listLoading, onLoadMore }) {
   return (
-    <div style={{ marginTop: "0.65rem" }}>
-      <button type="button" disabled={listLoading} onClick={onLoadMore} style={btnSecondary}>
+    <div className="mt-3">
+      <button type="button" disabled={listLoading} onClick={onLoadMore} className={adminBtnSecondary}>
         {listLoading ? "加载中…" : "加载更多"}
       </button>
     </div>
@@ -551,63 +486,38 @@ function DetailModal(props) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="photo-review-detail-title"
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        padding: "1.5rem 1rem",
-        overflowY: "auto",
-        zIndex: 1000,
-      }}
+      className={adminModalOverlay}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 920,
-          background: "#fff",
-          borderRadius: 10,
-          border: "1px solid #e2e8f0",
-          padding: "1rem 1.1rem",
-          boxShadow: "0 12px 40px rgba(15,23,42,0.12)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 id="photo-review-detail-title" style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a" }}>
+      <div className={`${adminModalPanel} max-w-[920px]`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center gap-2">
+          <h2 id="photo-review-detail-title" className="m-0 text-base font-semibold text-white">
             照片详情
           </h2>
-          <button type="button" onClick={onClose} style={btnSecondary}>
+          <button type="button" onClick={onClose} className={adminBtnSecondary}>
             关闭
           </button>
         </div>
 
         {detailLoading ? <LoadingState label="加载详情…" /> : null}
         {detailError ? (
-          <p style={{ color: "#b91c1c", fontSize: "0.85rem" }} role="alert">
+          <AdminNotice variant="danger" className="mt-3 mb-0">
             {detailError}
-          </p>
+          </AdminNotice>
         ) : null}
 
         {detail && !detailLoading ? (
           <>
             <DetailBody detail={detail} showScoreJson={showScoreJson} setShowScoreJson={setShowScoreJson} />
             {actionMessage ? (
-              <p
-                style={{
-                  margin: "0.75rem 0 0",
-                  fontSize: "0.82rem",
-                  color: actionMessage.includes("成功") ? "#15803d" : "#b91c1c",
-                }}
-                role="status"
+              <AdminNotice
+                variant={actionMessage.includes("成功") ? "success" : "danger"}
+                className="mt-3 mb-0"
               >
                 {actionMessage}
-              </p>
+              </AdminNotice>
             ) : null}
             <ActionPanel
               approveNote={approveNote}
@@ -645,27 +555,13 @@ function DetailBody({ detail, showScoreJson, setShowScoreJson }) {
 
 function DetailContent({ detail, summary, showScoreJson, setShowScoreJson }) {
   return (
-    <div
-      style={{
-        marginTop: "0.85rem",
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 220px) 1fr",
-        gap: "1rem",
-      }}
-    >
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-[minmax(140px,220px)_1fr] gap-4">
       <img
         src={detail.imageUrl}
         alt=""
-        style={{
-          width: "100%",
-          maxHeight: 280,
-          objectFit: "contain",
-          borderRadius: 8,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-        }}
+        className="w-full max-h-[280px] object-contain rounded-xl border border-white/15 bg-white/5"
       />
-      <div style={{ fontSize: "0.8rem", lineHeight: 1.55 }}>
+      <div className="text-sm leading-relaxed text-white/85">
         <DetailRow label="imageId" value={detail.imageId} mono />
         <DetailRow label="userId" value={detail.userId} mono />
         <DetailRow label="nickname" value={detail.user?.nickname ?? "—"} />
@@ -695,22 +591,10 @@ function DetailContent({ detail, summary, showScoreJson, setShowScoreJson }) {
         <details
           open={showScoreJson}
           onToggle={(e) => setShowScoreJson(e.target.open)}
-          style={{ marginTop: "0.5rem" }}
+          className="mt-2"
         >
-          <summary style={{ cursor: "pointer", fontWeight: 600 }}>detectionScoreJson（完整）</summary>
-          <pre
-            style={{
-              marginTop: "0.35rem",
-              padding: "0.5rem",
-              background: "#f1f5f9",
-              borderRadius: 6,
-              fontSize: "0.68rem",
-              overflow: "auto",
-              maxHeight: 240,
-            }}
-          >
-            {JSON.stringify(detail.detectionScoreJson, null, 2)}
-          </pre>
+          <summary className="cursor-pointer font-semibold text-white/90">detectionScoreJson（完整）</summary>
+          <AdminJsonBlock value={detail.detectionScoreJson} maxHeightClass="max-h-60" className="mt-2" />
         </details>
       </div>
     </div>
@@ -719,9 +603,9 @@ function DetailContent({ detail, summary, showScoreJson, setShowScoreJson }) {
 
 function DetailRow({ label, value, mono }) {
   return (
-    <p style={{ margin: "0.2rem 0" }}>
-      <strong>{label}：</strong>
-      {mono ? <code style={{ fontSize: "0.72rem" }}>{value}</code> : <span>{value}</span>}
+    <p className="my-0.5">
+      <strong className="text-white/60">{label}：</strong>
+      {mono ? <code className="text-[0.72rem] text-white/80">{value}</code> : <span>{value}</span>}
     </p>
   );
 }
@@ -745,25 +629,25 @@ function ActionPanel(props) {
   } = props;
 
   return (
-    <section style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px solid #e2e8f0" }}>
-      <h3 style={{ margin: "0 0 0.65rem", fontSize: "0.95rem" }}>审核操作</h3>
+    <section className="mt-4 pt-4 border-t border-white/10">
+      <h3 className="m-0 mb-3 text-sm font-semibold text-white">审核操作</h3>
 
-      <div style={{ marginBottom: "0.85rem" }}>
-        <strong style={{ fontSize: "0.82rem" }}>Approve</strong>
+      <div className="mb-3">
+        <strong className="text-xs text-white/70">Approve</strong>
         <textarea
           value={approveNote}
           onChange={(e) => setApproveNote(e.target.value)}
           maxLength={500}
           placeholder="备注（可选，最多 500 字）"
           rows={2}
-          style={textareaStyle}
+          className="admin-input block w-full mt-1.5"
           disabled={!!actionBusy}
         />
         <button
           type="button"
           disabled={!!actionBusy}
           onClick={onApprove}
-          style={{ ...btnPrimary, marginTop: "0.35rem" }}
+          className={`${adminBtnPrimary} mt-1.5`}
         >
           {actionBusy === "approve" ? "提交中…" : "通过 Approve"}
         </button>
@@ -808,11 +692,11 @@ function ReasonActionBlock({
   submitLabel,
 }) {
   return (
-    <div style={{ marginBottom: "0.85rem" }}>
-      <strong style={{ fontSize: "0.82rem" }}>{title}</strong>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem 0.65rem", margin: "0.35rem 0" }}>
+    <div className="mb-3">
+      <strong className="text-xs text-white/70">{title}</strong>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 my-1.5">
         {PHOTO_REVIEW_REASON_CODES.map((code) => (
-          <label key={`${title}-${code}`} style={{ fontSize: "0.75rem" }}>
+          <label key={`${title}-${code}`} className="text-xs text-white/75">
             <input
               type="checkbox"
               checked={reasonCodes.includes(code)}
@@ -829,14 +713,14 @@ function ReasonActionBlock({
         maxLength={500}
         placeholder="备注（可选）"
         rows={2}
-        style={textareaStyle}
+        className="admin-input block w-full mt-1"
         disabled={disabled}
       />
       <button
         type="button"
         disabled={disabled || !reasonCodes.length}
         onClick={onSubmit}
-        style={{ ...btnDanger, marginTop: "0.35rem" }}
+        className={`${adminBtnDanger} mt-1.5`}
       >
         {busy ? "提交中…" : submitLabel}
       </button>

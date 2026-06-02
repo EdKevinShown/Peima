@@ -5,6 +5,25 @@ import {
   getP76CanonicalRehearsalRow,
   listP76CanonicalRehearsalRows,
 } from "../api/p76CanonicalRehearsalAdmin";
+import AdminFilterPanel from "../components/admin/AdminFilterPanel";
+import AdminJsonBlock from "../components/admin/AdminJsonBlock";
+import AdminKpiGrid from "../components/admin/AdminKpiGrid";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import {
+  adminBadgeToneClass,
+  adminBtnSecondary,
+  adminInput,
+  adminLabel,
+  adminLink,
+  adminModalOverlay,
+  adminModalPanel,
+  adminMuted,
+  adminSectionTitle,
+  adminSelect,
+  adminTd,
+  adminTh,
+} from "../components/admin/adminTheme";
 import LoadingState from "../components/common/LoadingState";
 import UserIdWithName from "../components/common/UserIdWithName";
 import {
@@ -37,29 +56,6 @@ const DEFAULT_FILTERS = {
   activeOnly: "true",
   includeDeleted: "false",
   limit: "50",
-};
-
-const th = {
-  textAlign: "left",
-  borderBottom: "1px solid #e2e8f0",
-  padding: "0.35rem 0.4rem",
-  whiteSpace: "nowrap",
-  fontSize: "0.72rem",
-};
-const td = {
-  padding: "0.35rem 0.4rem",
-  borderBottom: "1px solid #f1f5f9",
-  verticalAlign: "top",
-  fontSize: "0.72rem",
-};
-const btnSecondary = {
-  padding: "0.3rem 0.55rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#334155",
-  fontSize: "0.75rem",
-  cursor: "pointer",
 };
 
 function formatDt(v) {
@@ -130,38 +126,17 @@ function jsonPreview(value, maxLen = 8192) {
   return text;
 }
 
+function eligibleToneClass(tone) {
+  const key = tone === "blocked" ? "danger" : tone === "warning" ? "warning" : "ok";
+  return adminBadgeToneClass[key] ?? adminBadgeToneClass.muted;
+}
+
 function EligibleBadge({ eligible, guardrailReason }) {
   const tone = eligibleTone(eligible, guardrailReason);
-  const bg =
-    tone === "blocked"
-      ? "#fef2f2"
-      : tone === "warning"
-        ? "#fffbeb"
-        : "#f0fdf4";
-  const color =
-    tone === "blocked"
-      ? "#b91c1c"
-      : tone === "warning"
-        ? "#b45309"
-        : "#15803d";
-  const border =
-    tone === "blocked"
-      ? "#fecaca"
-      : tone === "warning"
-        ? "#fde68a"
-        : "#bbf7d0";
   const label = eligible ? "eligible" : "blocked";
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: bg,
-        color,
-        border: `1px solid ${border}`,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${eligibleToneClass(tone)}`}
     >
       {label}
     </span>
@@ -170,22 +145,10 @@ function EligibleBadge({ eligible, guardrailReason }) {
 
 function AppliedToMatchResultBadge({ applied }) {
   const isP0 = applied === true;
-  const tone = isP0 ? "p0" : "ok";
-  const bg = tone === "p0" ? "#fef2f2" : "#f8fafc";
-  const color = tone === "p0" ? "#b91c1c" : "#475569";
-  const border = tone === "p0" ? "#fecaca" : "#e2e8f0";
+  const tone = isP0 ? "p0" : "muted";
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: bg,
-        color,
-        border: `1px solid ${border}`,
-        fontWeight: isP0 ? 600 : 400,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${adminBadgeToneClass[tone]} ${isP0 ? "font-semibold" : ""}`}
     >
       {appliedToMatchResultLabel(applied)}
     </span>
@@ -194,23 +157,10 @@ function AppliedToMatchResultBadge({ applied }) {
 
 function ViolationBadge({ status }) {
   const tone = violationTone(status);
-  const bg =
-    tone === "p0" ? "#fef2f2" : tone === "warning" ? "#fffbeb" : "#f8fafc";
-  const color =
-    tone === "p0" ? "#b91c1c" : tone === "warning" ? "#b45309" : "#475569";
-  const border =
-    tone === "p0" ? "#fecaca" : tone === "warning" ? "#fde68a" : "#e2e8f0";
+  const key = tone === "p0" ? "p0" : tone === "warning" ? "warning" : "muted";
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: bg,
-        color,
-        border: `1px solid ${border}`,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${adminBadgeToneClass[key]}`}
     >
       {labelViolationStatus(status)}
     </span>
@@ -220,11 +170,11 @@ function ViolationBadge({ status }) {
 function CopyIdCell({ value, truncate = true }) {
   if (!value) return <span>—</span>;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+    <span className="inline-flex items-center gap-1">
       <span title={value}>{truncate ? truncateId(value) : value}</span>
       <button
         type="button"
-        style={{ ...btnSecondary, padding: "0.1rem 0.35rem", fontSize: "0.65rem" }}
+        className={`${adminBtnSecondary} !py-0.5 !px-1.5 !text-[0.65rem]`}
         onClick={(e) => {
           e.stopPropagation();
           void copyText(value);
@@ -244,15 +194,17 @@ function AggregateCards({ aggregate, loading }) {
 
   const p0Violation = aggregate.appliedToMatchResultViolationCount > 0;
 
-  const cards = [
-    { label: "totalVisible", value: aggregate.totalVisible },
-    { label: "eligibleCount", value: aggregate.eligibleCount },
-    { label: "blockedCount", value: aggregate.blockedCount },
+  const items = [
+    { key: "totalVisible", label: "totalVisible", value: aggregate.totalVisible },
+    { key: "eligibleCount", label: "eligibleCount", value: aggregate.eligibleCount },
+    { key: "blockedCount", label: "blockedCount", value: aggregate.blockedCount },
     {
+      key: "wouldChangeCandidateCount",
       label: "wouldChangeCandidateCount",
       value: aggregate.wouldChangeCandidateCount,
     },
     {
+      key: "appliedToMatchResultViolationCount",
       label: "appliedToMatchResultViolationCount",
       value: aggregate.appliedToMatchResultViolationCount,
       p0: p0Violation,
@@ -260,63 +212,14 @@ function AggregateCards({ aggregate, loading }) {
   ];
 
   return (
-    <section style={{ marginBottom: "0.85rem" }}>
+    <>
       {p0Violation ? (
-        <p
-          role="alert"
-          style={{
-            margin: "0 0 0.5rem",
-            padding: "0.45rem 0.65rem",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 6,
-            color: "#b91c1c",
-            fontSize: "0.82rem",
-            fontWeight: 600,
-          }}
-        >
+        <AdminNotice variant="p0">
           P0 alert: appliedToMatchResultViolationCount &gt; 0
-        </p>
+        </AdminNotice>
       ) : null}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-          gap: "0.45rem",
-        }}
-      >
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            style={{
-              border: `1px solid ${c.p0 ? "#fecaca" : "#e2e8f0"}`,
-              borderRadius: 8,
-              padding: "0.45rem 0.55rem",
-              background: c.p0 ? "#fef2f2" : "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.65rem",
-                color: "#64748b",
-                marginBottom: "0.15rem",
-              }}
-            >
-              {c.label}
-            </div>
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                color: c.p0 ? "#b91c1c" : "#0f172a",
-              }}
-            >
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+      <AdminKpiGrid items={items} />
+    </>
   );
 }
 
@@ -459,84 +362,29 @@ export default function P76CanonicalRehearsalPage() {
   const permissionDenied = isPermissionError(listError);
 
   return (
-    <main
-      style={{
-        maxWidth: 1400,
-        margin: "1.1rem auto",
-        padding: "0 1rem",
-        color: "#334155",
-      }}
+    <AdminPageShell
+      title="P7.6 Canonical Writer Rehearsal Review"
+      subtitle="Read-only review of canonical writer rehearsal rows (shadow compare). Rehearsal does not update MatchResult or matchInsights."
+      maxWidth="max-w-[1400px]"
     >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "#fef2f2",
-          border: "1px solid #fecaca",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.8rem",
-          color: "#991b1b",
-        }}
-      >
-        <strong>{SHADOW_BANNER}</strong>
-        <div style={{ marginTop: "0.25rem", fontSize: "0.78rem" }}>
-          {SHADOW_BANNER_ZH}
-        </div>
-      </div>
+      <AdminNotice variant="p0" sticky title={SHADOW_BANNER}>
+        <div className="text-xs mt-1">{SHADOW_BANNER_ZH}</div>
+      </AdminNotice>
 
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
+      <AdminNotice variant="internal">
         <strong>内部 / Admin</strong> — 只读审阅；权限 VIEW_P76_CANONICAL_REHEARSAL。
         你需要 VIEW_P76_CANONICAL_REHEARSAL 权限才能查看 canonical rehearsal 只读记录。
         无 Apply / Promote / worker 操作。
         {" "}
-        <Link to="/admin/p76/allowlist-apply-meta" style={{ color: "#b45309" }}>
+        <Link to="/admin/p76/allowlist-apply-meta" className={adminLink}>
           Allowlist Apply Meta
         </Link>
-      </div>
-
-      <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        P7.6 Canonical Writer Rehearsal Review
-      </h1>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", color: "#64748b" }}>
-        Read-only review of canonical writer rehearsal rows (shadow compare). Rehearsal
-        does not update MatchResult or matchInsights.
-      </p>
+      </AdminNotice>
 
       <AggregateCards aggregate={aggregate} loading={aggLoading} />
 
-      <section
-        style={{
-          border: "1px solid #e2e8f0",
-          borderRadius: 8,
-          background: "#f8fafc",
-          padding: "0.65rem 0.75rem",
-          marginBottom: "0.75rem",
-        }}
-      >
-        <h2 style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>Filters</h2>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.5rem 0.75rem",
-            alignItems: "flex-end",
-            fontSize: "0.78rem",
-          }}
-        >
-          <label>
+      <AdminFilterPanel title="Filters">
+          <label className={adminLabel}>
             auditRunId
             <input
               type="text"
@@ -544,10 +392,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, auditRunId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 180 }}
+              className={`${adminInput} block mt-0.5 w-[180px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             sourceVersion
             <input
               type="text"
@@ -555,10 +403,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, sourceVersion: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 220 }}
+              className={`${adminInput} block mt-0.5 w-[220px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             readPathSourceVersion
             <input
               type="text"
@@ -569,38 +417,38 @@ export default function P76CanonicalRehearsalPage() {
                   readPathSourceVersion: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 200 }}
+              className={`${adminInput} block mt-0.5 w-[200px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             environment
             <select
               value={filters.environment}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, environment: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="dev">dev</option>
               <option value="staging">staging</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             eligible
             <select
               value={filters.eligible}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, eligible: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             guardrailReason
             <input
               type="text"
@@ -608,10 +456,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, guardrailReason: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 140 }}
+              className={`${adminInput} block mt-0.5 w-[140px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             wouldChangeCandidate
             <select
               value={filters.wouldChangeCandidate}
@@ -621,14 +469,14 @@ export default function P76CanonicalRehearsalPage() {
                   wouldChangeCandidate: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             appliedToMatchResult
             <select
               value={filters.appliedToMatchResult}
@@ -638,14 +486,14 @@ export default function P76CanonicalRehearsalPage() {
                   appliedToMatchResult: e.target.value,
                 }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="">any</option>
               <option value="false">false</option>
               <option value="true">true (P0)</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             viewerUserId
             <input
               type="text"
@@ -653,10 +501,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, viewerUserId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 160 }}
+              className={`${adminInput} block mt-0.5 w-[160px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             matchResultId
             <input
               type="text"
@@ -664,10 +512,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, matchResultId: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 160 }}
+              className={`${adminInput} block mt-0.5 w-[160px]`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             generatedAtFrom
             <input
               type="datetime-local"
@@ -675,10 +523,10 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, generatedAtFrom: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem" }}
+              className={`${adminInput} block mt-0.5`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             generatedAtTo
             <input
               type="datetime-local"
@@ -686,36 +534,36 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, generatedAtTo: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem" }}
+              className={`${adminInput} block mt-0.5`}
             />
           </label>
-          <label>
+          <label className={adminLabel}>
             activeOnly
             <select
               value={filters.activeOnly}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, activeOnly: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             includeDeleted
             <select
               value={filters.includeDeleted}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, includeDeleted: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2 }}
+              className={`${adminSelect} block mt-0.5`}
             >
               <option value="false">false</option>
               <option value="true">true</option>
             </select>
           </label>
-          <label>
+          <label className={adminLabel}>
             limit
             <input
               type="number"
@@ -725,12 +573,12 @@ export default function P76CanonicalRehearsalPage() {
               onChange={(e) =>
                 setFilters((f) => ({ ...f, limit: e.target.value }))
               }
-              style={{ display: "block", marginTop: 2, padding: "0.25rem", width: 72 }}
+              className={`${adminInput} block mt-0.5 w-[72px]`}
             />
           </label>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => void fetchData({ append: false })}
           >
@@ -738,7 +586,7 @@ export default function P76CanonicalRehearsalPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => setAppliedFilters({ ...filters })}
           >
@@ -746,7 +594,7 @@ export default function P76CanonicalRehearsalPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={listLoading}
             onClick={() => {
               setFilters({ ...DEFAULT_FILTERS });
@@ -757,34 +605,24 @@ export default function P76CanonicalRehearsalPage() {
           </button>
           <button
             type="button"
-            style={btnSecondary}
+            className={adminBtnSecondary}
             disabled={items.length === 0}
             onClick={exportVisibleJson}
           >
             Export visible JSON
           </button>
-        </div>
-        <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "#94a3b8" }}>
+        </AdminFilterPanel>
+        <p className={`${adminMuted} mt-2`}>
           Default: activeOnly=true · includeDeleted=false · limit=50 · generatedAt desc
         </p>
-      </section>
 
       {listLoading && items.length === 0 ? (
         <LoadingState label="加载列表…" />
       ) : null}
 
       {listError ? (
-        <div
-          role="alert"
-          style={{
-            padding: "0.65rem 0.75rem",
-            borderRadius: 8,
-            marginBottom: "0.75rem",
-            fontSize: "0.85rem",
-            background: apiDisabled ? "#f8fafc" : permissionDenied ? "#fffbeb" : "#fef2f2",
-            border: `1px solid ${apiDisabled ? "#cbd5e1" : permissionDenied ? "#fde68a" : "#fecaca"}`,
-            color: apiDisabled ? "#475569" : permissionDenied ? "#b45309" : "#b91c1c",
-          }}
+        <AdminNotice
+          variant={apiDisabled ? "disabled" : permissionDenied ? "warning" : "p0"}
         >
           {apiDisabled ? (
             <>
@@ -798,29 +636,29 @@ export default function P76CanonicalRehearsalPage() {
           ) : (
             listError
           )}
-        </div>
+        </AdminNotice>
       ) : null}
 
       {!listError || items.length > 0 ? (
-        <section style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <section className="admin-table-wrap overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th style={th}>generatedAt</th>
-                <th style={th}>environment</th>
-                <th style={th}>auditRunId</th>
-                <th style={th}>sourceVersion</th>
-                <th style={th}>viewerUserId</th>
-                <th style={th}>matchResultId</th>
-                <th style={th}>baselineCandidateUserId</th>
-                <th style={th}>proposedCandidateUserId</th>
-                <th style={th}>wouldChangeCandidate</th>
-                <th style={th}>eligible</th>
-                <th style={th}>guardrailReason</th>
-                <th style={th}>scoreDeltaBand</th>
-                <th style={th}>appliedToMatchResult</th>
-                <th style={th}>rehearsalStatus</th>
-                <th style={th}>Detail</th>
+                <th className={adminTh}>generatedAt</th>
+                <th className={adminTh}>environment</th>
+                <th className={adminTh}>auditRunId</th>
+                <th className={adminTh}>sourceVersion</th>
+                <th className={adminTh}>viewerUserId</th>
+                <th className={adminTh}>matchResultId</th>
+                <th className={adminTh}>baselineCandidateUserId</th>
+                <th className={adminTh}>proposedCandidateUserId</th>
+                <th className={adminTh}>wouldChangeCandidate</th>
+                <th className={adminTh}>eligible</th>
+                <th className={adminTh}>guardrailReason</th>
+                <th className={adminTh}>scoreDeltaBand</th>
+                <th className={adminTh}>appliedToMatchResult</th>
+                <th className={adminTh}>rehearsalStatus</th>
+                <th className={adminTh}>Detail</th>
               </tr>
             </thead>
             <tbody>
@@ -831,56 +669,55 @@ export default function P76CanonicalRehearsalPage() {
                   <tr
                     key={r.id}
                     onClick={() => void openDetail(r.id)}
-                    style={{
-                      cursor: "pointer",
-                      background: p0
-                        ? "#fef2f2"
+                    className={`cursor-pointer ${
+                      p0
+                        ? "bg-red-500/10"
                         : superseded
-                          ? "#f1f5f9"
+                          ? "bg-white/5"
                           : r.wouldChangeCandidate
-                            ? "#fffbeb"
-                            : undefined,
-                    }}
+                            ? "bg-amber-500/10"
+                            : "hover:bg-white/5"
+                    }`}
                   >
-                    <td style={td}>{formatDt(r.generatedAt)}</td>
-                    <td style={td}>{r.environment ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{formatDt(r.generatedAt)}</td>
+                    <td className={adminTd}>{r.environment ?? "—"}</td>
+                    <td className={adminTd}>
                       <CopyIdCell value={r.auditRunId} />
                     </td>
-                    <td style={td}>{r.sourceVersion ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.sourceVersion ?? "—"}</td>
+                    <td className={adminTd}>
                       {r.viewerUserId ? <UserIdWithName userId={r.viewerUserId} /> : "—"}
                     </td>
-                    <td style={td}>{r.matchResultId ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.matchResultId ?? "—"}</td>
+                    <td className={adminTd}>
                       {r.baselineCandidateUserId ? <UserIdWithName userId={r.baselineCandidateUserId} /> : "—"}
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       {r.proposedCandidateUserId ? <UserIdWithName userId={r.proposedCandidateUserId} /> : "—"}
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       {r.wouldChangeCandidate ? (
-                        <span style={{ fontWeight: 600, color: "#b45309" }}>yes</span>
+                        <span className="font-semibold text-amber-200">yes</span>
                       ) : (
                         "no"
                       )}
                     </td>
-                    <td style={td}>
+                    <td className={adminTd}>
                       <EligibleBadge
                         eligible={r.eligible}
                         guardrailReason={r.guardrailReason}
                       />
                     </td>
-                    <td style={td}>{r.guardrailReason ?? "—"}</td>
-                    <td style={td}>{r.scoreDeltaBand ?? "—"}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{r.guardrailReason ?? "—"}</td>
+                    <td className={adminTd}>{r.scoreDeltaBand ?? "—"}</td>
+                    <td className={adminTd}>
                       <AppliedToMatchResultBadge applied={r.appliedToMatchResult} />
                     </td>
-                    <td style={td}>{labelRehearsalStatus(r.rehearsalStatus)}</td>
-                    <td style={td}>
+                    <td className={adminTd}>{labelRehearsalStatus(r.rehearsalStatus)}</td>
+                    <td className={adminTd}>
                       <button
                         type="button"
-                        style={btnSecondary}
+                        className={adminBtnSecondary}
                         onClick={(e) => {
                           e.stopPropagation();
                           void openDetail(r.id);
@@ -895,19 +732,19 @@ export default function P76CanonicalRehearsalPage() {
             </tbody>
           </table>
           {items.length === 0 && !listLoading && !listError ? (
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+            <p className={`${adminMuted} mt-2`}>
               无记录。
             </p>
           ) : null}
           {items.length === 0 && !listLoading && listError && !apiDisabled ? (
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+            <p className={`${adminMuted} mt-2`}>
               无记录（请调整筛选条件）。
             </p>
           ) : null}
           {nextCursor ? (
             <button
               type="button"
-              style={{ ...btnSecondary, marginTop: "0.5rem" }}
+              className={`${adminBtnSecondary} mt-2`}
               disabled={listLoading}
               onClick={() => void fetchData({ append: true, cursor: nextCursor })}
             >
@@ -921,62 +758,30 @@ export default function P76CanonicalRehearsalPage() {
         <div
           role="dialog"
           aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15,23,42,0.45)",
-            zIndex: 50,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
+          className={adminModalOverlay}
           onClick={closeDetail}
         >
           <div
-            style={{
-              width: "min(560px, 100%)",
-              height: "100%",
-              background: "#fff",
-              overflowY: "auto",
-              padding: "1rem",
-              boxShadow: "-4px 0 24px rgba(0,0,0,0.12)",
-            }}
+            className={`${adminModalPanel} max-w-xl max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 6,
-                padding: "0.45rem 0.6rem",
-                fontSize: "0.75rem",
-                color: "#991b1b",
-                marginBottom: "0.65rem",
-              }}
-            >
-              <strong>{SHADOW_BANNER}</strong>
-              <div style={{ marginTop: "0.2rem" }}>{SHADOW_BANNER_ZH}</div>
-            </div>
+            <AdminNotice variant="p0" title={SHADOW_BANNER}>
+              {SHADOW_BANNER_ZH}
+            </AdminNotice>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: "1rem" }}>Detail</h2>
-              <div style={{ display: "flex", gap: "0.35rem" }}>
+            <div className="flex justify-between items-center mb-3 gap-2">
+              <h2 className="text-base font-semibold text-white m-0">Detail</h2>
+              <div className="flex gap-1.5">
                 {detailId ? (
                   <button
                     type="button"
-                    style={btnSecondary}
+                    className={adminBtnSecondary}
                     onClick={() => void copyText(detailId)}
                   >
                     Copy id
                   </button>
                 ) : null}
-                <button type="button" style={btnSecondary} onClick={closeDetail}>
+                <button type="button" className={adminBtnSecondary} onClick={closeDetail}>
                   Close
                 </button>
               </div>
@@ -984,33 +789,18 @@ export default function P76CanonicalRehearsalPage() {
 
             {detailLoading ? <LoadingState label="加载详情…" /> : null}
             {detailError ? (
-              <p style={{ color: "#b91c1c" }} role="alert">
-                {detailError}
-              </p>
+              <AdminNotice variant="p0">{detailError}</AdminNotice>
             ) : null}
 
             {row ? (
               <>
                 {hasAppliedToMatchResultP0(row) ? (
-                  <p
-                    role="alert"
-                    style={{
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      padding: "0.45rem",
-                      borderRadius: 6,
-                      color: "#b91c1c",
-                      fontWeight: 600,
-                      fontSize: "0.82rem",
-                    }}
-                  >
+                  <AdminNotice variant="p0">
                     P0: appliedToMatchResult is true — rehearsal must remain shadow-only.
-                  </p>
+                  </AdminNotice>
                 ) : null}
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.5rem" }}>
-                  Safety flags
-                </h3>
+                <h3 className={`${adminSectionTitle} mt-2`}>Safety flags</h3>
                 <DetailGrid
                   items={[
                     ["isShadowOnly", safety?.isShadowOnly ? "true" : "false"],
@@ -1030,9 +820,7 @@ export default function P76CanonicalRehearsalPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  Baseline vs proposal
-                </h3>
+                <h3 className={adminSectionTitle}>Baseline vs proposal</h3>
                 <DetailGrid
                   items={[
                     ["baselineCandidateUserId", row.baselineCandidateUserId ?? "—"],
@@ -1054,7 +842,7 @@ export default function P76CanonicalRehearsalPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Guardrails</h3>
+                <h3 className={adminSectionTitle}>Guardrails</h3>
                 <DetailGrid
                   items={[
                     ["eligible", String(row.eligible)],
@@ -1074,7 +862,7 @@ export default function P76CanonicalRehearsalPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>Provenance</h3>
+                <h3 className={adminSectionTitle}>Provenance</h3>
                 <DetailGrid
                   items={[
                     ["id", row.id],
@@ -1107,7 +895,7 @@ export default function P76CanonicalRehearsalPage() {
                         <Link
                           key="link"
                           to={detail.links.allowlistApplyMetaAdminPath}
-                          style={{ color: "#2563eb" }}
+                          className={adminLink}
                         >
                           {detail.links.allowlistApplyMetaId}
                         </Link>
@@ -1121,69 +909,27 @@ export default function P76CanonicalRehearsalPage() {
                   ]}
                 />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  summary JSON preview
-                </h3>
-                <pre
-                  style={{
-                    margin: 0,
-                    padding: "0.5rem",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 6,
-                    fontSize: "0.7rem",
-                    maxHeight: 240,
-                    overflow: "auto",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {jsonPreview(detail.summary)}
-                </pre>
+                <h3 className={adminSectionTitle}>summary JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(detail.summary)} />
 
-                <h3 style={{ fontSize: "0.85rem", marginTop: "0.75rem" }}>
-                  shadow JSON preview
-                </h3>
-                <pre
-                  style={{
-                    margin: 0,
-                    padding: "0.5rem",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 6,
-                    fontSize: "0.7rem",
-                    maxHeight: 320,
-                    overflow: "auto",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {jsonPreview(detail.shadow)}
-                </pre>
+                <h3 className={adminSectionTitle}>shadow JSON preview</h3>
+                <AdminJsonBlock value={jsonPreview(detail.shadow)} maxHeightClass="max-h-80" />
               </>
             ) : null}
           </div>
         </div>
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
 
 function DetailGrid({ items }) {
   return (
-    <dl
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 38%) 1fr",
-        gap: "0.25rem 0.5rem",
-        fontSize: "0.78rem",
-        margin: 0,
-      }}
-    >
+    <dl className="grid grid-cols-[minmax(140px,38%)_1fr] gap-x-2 gap-y-1 text-xs m-0 mb-3">
       {items.map(([k, v]) => (
-        <div key={k} style={{ display: "contents" }}>
-          <dt style={{ margin: 0, color: "#64748b" }}>{k}</dt>
-          <dd style={{ margin: 0, wordBreak: "break-all" }}>{v}</dd>
+        <div key={k} className="contents">
+          <dt className="m-0 text-white/45">{k}</dt>
+          <dd className="m-0 break-all text-white/85">{v}</dd>
         </div>
       ))}
     </dl>

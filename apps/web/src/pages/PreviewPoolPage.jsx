@@ -8,6 +8,8 @@ import {
 import { getLatestPreviewPool, seedLatestPreviewPoolForTest } from "../api/previewPool";
 import { getTestMatchingCapabilities } from "../api/testMatch";
 import AdminOnly from "../components/admin/AdminOnly";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminNotice from "../components/admin/AdminNotice";
 import OnboardingPreviewPoolGallery from "../components/onboarding/OnboardingPreviewPoolGallery";
 import QuestionnairePanel from "../components/questionnaire/QuestionnairePanel";
 import AppContent from "../components/layout/AppContent";
@@ -268,70 +270,73 @@ export default function PreviewPoolPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <AppContent
-        title="匹配预览池（Legacy）"
-        subtitle="管理员排障用 · batch-match 上游数据"
-        actions={
-          <>
-            <button
-              type="button"
-              className="btn-ghost text-sm"
-              disabled={loading || !userId}
-              onClick={() => void load()}
-            >
-              {loading ? "刷新中…" : "刷新"}
-            </button>
-            <AdminOnly>
-              {seedAllowed ? (
-                <button
-                  type="button"
-                  className="btn-ghost text-sm border-amber-400/40 text-amber-100"
-                  disabled={seeding || !userId}
-                  onClick={() => void seedForTest()}
-                >
-                  {seeding ? "生成中…" : "生成本地测试池"}
-                </button>
-              ) : null}
-            </AdminOnly>
-          </>
-        }
-      >
-        <GlassCard className="mb-4 text-sm text-white/60 leading-relaxed">
-          <p>
-            userId：<code className="text-white/80"><UserIdWithName userId={userId} /></code>
-          </p>
-        </GlassCard>
+    <AdminPageShell
+      maxWidth="max-w-5xl"
+      title="匹配预览池（Legacy）"
+      subtitle="管理员排障用 · batch-match 上游数据"
+      actions={
+        <>
+          <button
+            type="button"
+            className="btn-ghost text-sm"
+            disabled={loading || !userId}
+            onClick={() => void load()}
+          >
+            {loading ? "刷新中…" : "刷新"}
+          </button>
+          <AdminOnly>
+            {seedAllowed ? (
+              <button
+                type="button"
+                className="btn-ghost text-sm border-amber-400/40 text-amber-100"
+                disabled={seeding || !userId}
+                onClick={() => void seedForTest()}
+              >
+                {seeding ? "生成中…" : "生成本地测试池"}
+              </button>
+            ) : null}
+          </AdminOnly>
+        </>
+      }
+    >
+      <AdminNotice variant="internal" title="内部 / Admin">
+        Legacy 预览池排障页；不在用户 onboarding 主路径。仅管理员可见测试种子等能力。
+      </AdminNotice>
 
-        {error ? (
-          <AlertBanner variant="error" title="暂时没有可用预览池" className="mb-4">
-            <p>{error}</p>
-          </AlertBanner>
-        ) : null}
+      <GlassCard className="mb-4 text-sm text-white/60 leading-relaxed">
+        <p>
+          userId：<code className="text-white/80"><UserIdWithName userId={userId} /></code>
+        </p>
+      </GlassCard>
 
-        {bundle ? (
-          <>
-            <GlassCard className="mb-4">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="badge-gradient">status: {bundle.previewPool.status}</span>
-                <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
-                  items: {bundle.items.length}
-                </span>
-              </div>
-            </GlassCard>
+      {error ? (
+        <AlertBanner variant="error" title="暂时没有可用预览池" className="mb-4">
+          <p>{error}</p>
+        </AlertBanner>
+      ) : null}
 
-            <GlassCard>
-              <h2 className="text-base font-semibold text-white mb-3">候选列表</h2>
-              <DataTable
-                columns={legacyTableColumns}
-                rows={bundle.items}
-                rowKey="id"
-                highlightRow={(item) => shortlistIds.includes(item.candidateUserId)}
-              />
-            </GlassCard>
-          </>
-        ) : null}
-      </AppContent>
-    </div>
+      {bundle ? (
+        <>
+          <GlassCard className="mb-4">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="badge-gradient">status: {bundle.previewPool.status}</span>
+              <span className="px-2 py-0.5 rounded-full border border-white/15 text-white/70">
+                items: {bundle.items.length}
+              </span>
+            </div>
+          </GlassCard>
+
+          <GlassCard>
+            <h2 className="text-base font-semibold text-white mb-3">候选列表</h2>
+            <DataTable
+              columns={legacyTableColumns}
+              rows={bundle.items}
+              rowKey="id"
+              highlightRow={(item) => shortlistIds.includes(item.candidateUserId)}
+            />
+          </GlassCard>
+        </>
+      ) : null}
+    </AdminPageShell>
   );
 }

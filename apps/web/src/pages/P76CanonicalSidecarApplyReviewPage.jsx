@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   getP76CanonicalSidecarApplyPreview,
   getP76CanonicalSidecarDetail,
   getP76CanonicalSidecarRollbackSnapshotPreview,
 } from "../api/p76CanonicalSidecarAdmin";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminSection from "../components/admin/AdminSection";
+import {
+  adminBadgeToneClass,
+  adminBtnSecondary,
+  adminMuted,
+  adminTd,
+  adminTh,
+} from "../components/admin/adminTheme";
 import LoadingState from "../components/common/LoadingState";
 import {
   appliedFlagTone,
@@ -26,35 +36,6 @@ import {
   isRollbackSnapshotApiUnavailable,
   proposedChangeLabel,
 } from "../utils/p76CanonicalApplyReviewLabels.mjs";
-
-const th = {
-  textAlign: "left",
-  borderBottom: "1px solid #e2e8f0",
-  padding: "0.35rem 0.4rem",
-  fontSize: "0.72rem",
-};
-const td = {
-  padding: "0.35rem 0.4rem",
-  borderBottom: "1px solid #f1f5f9",
-  verticalAlign: "top",
-  fontSize: "0.72rem",
-};
-const btnSecondary = {
-  padding: "0.3rem 0.55rem",
-  borderRadius: 6,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#334155",
-  fontSize: "0.75rem",
-  cursor: "pointer",
-};
-const sectionStyle = {
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
-  background: "#fff",
-  padding: "0.65rem 0.75rem",
-  marginBottom: "0.75rem",
-};
 
 function formatDt(v) {
   if (!v) return "—";
@@ -82,33 +63,15 @@ function isPermissionError(message) {
   return m.includes("无权限") || m.includes("403") || m.includes("401");
 }
 
-function badgeStyle(tone) {
-  const map = {
-    p0: { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
-    warning: { bg: "#fffbeb", color: "#b45309", border: "#fde68a" },
-    blocked: { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" },
-    ok: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
-    muted: { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
-    neutral: { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" },
-  };
-  return map[tone] ?? map.neutral;
+function badgeToneClass(tone) {
+  const key = tone === "neutral" || tone === "blocked" ? "muted" : tone;
+  return adminBadgeToneClass[key] ?? adminBadgeToneClass.muted;
 }
 
 function StatusChip({ label, tone = "neutral" }) {
-  const s = badgeStyle(tone);
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.12rem 0.4rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: s.bg,
-        color: s.color,
-        border: `1px solid ${s.border}`,
-        marginRight: "0.35rem",
-        marginBottom: "0.25rem",
-      }}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.68rem] mr-1.5 mb-1 ${badgeToneClass(tone)}`}
     >
       {label}
     </span>
@@ -117,15 +80,7 @@ function StatusChip({ label, tone = "neutral" }) {
 
 function DetailGrid({ items }) {
   return (
-    <dl
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(140px, 38%) 1fr",
-        gap: "0.25rem 0.5rem",
-        fontSize: "0.78rem",
-        margin: 0,
-      }}
-    >
+    <dl className="grid grid-cols-[minmax(140px,38%)_1fr] gap-x-2 gap-y-1 text-xs m-0">
       {items.map(([k, v]) => (
         <DetailRow key={k} label={k} value={v} />
       ))}
@@ -136,37 +91,17 @@ function DetailGrid({ items }) {
 function DetailRow({ label, value }) {
   return (
     <>
-      <dt style={{ margin: 0, color: "#64748b" }}>{label}</dt>
-      <dd style={{ margin: 0, wordBreak: "break-all" }}>{value}</dd>
+      <dt className="m-0 text-white/45">{label}</dt>
+      <dd className="m-0 break-all text-white/85">{value}</dd>
     </>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <section style={sectionStyle}>
-      <h2 style={{ margin: "0 0 0.5rem", fontSize: "0.9rem", color: "#0f172a" }}>
-        {title}
-      </h2>
-      {children}
-    </section>
   );
 }
 
 function AppliedFlagBadge({ value, context, promotionStatus }) {
   const tone = appliedFlagTone(value, promotionStatus);
-  const s = badgeStyle(tone);
   return (
     <span
-      style={{
-        display: "inline-block",
-        padding: "0.1rem 0.35rem",
-        borderRadius: 4,
-        fontSize: "0.68rem",
-        background: s.bg,
-        color: s.color,
-        border: `1px solid ${s.border}`,
-      }}
+      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[0.68rem] ${badgeToneClass(tone)}`}
     >
       {getCanonicalSidecarAppliedFlagLabel(value, context, promotionStatus)}
     </span>
@@ -175,62 +110,23 @@ function AppliedFlagBadge({ value, context, promotionStatus }) {
 
 function SafetyBanner() {
   return (
-    <BannerRoot>
-      <strong>PREVIEW ONLY — NO MATCHRESULT WRITE</strong>
-      <BannerLine>
-        Apply blocked until Gate 12 PASS, Grafana import, and PM/Ops signoff (P7.10-r8).
-      </BannerLine>
-      <BannerLine>This page does not change user-visible matching results.</BannerLine>
-    </BannerRoot>
+    <AdminNotice variant="p0" sticky title="PREVIEW ONLY — NO MATCHRESULT WRITE">
+      <div>Apply blocked until Gate 12 PASS, Grafana import, and PM/Ops signoff (P7.10-r8).</div>
+      <div className="mt-1">This page does not change user-visible matching results.</div>
+    </AdminNotice>
   );
-}
-
-function BannerRoot({ children }) {
-  return (
-    <div
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-        background: "#fef2f2",
-        border: "1px solid #fecaca",
-        borderRadius: 8,
-        padding: "0.5rem 0.75rem",
-        marginBottom: "0.85rem",
-        fontSize: "0.78rem",
-        color: "#991b1b",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function BannerLine({ children }) {
-  return <div style={{ marginTop: "0.2rem" }}>{children}</div>;
 }
 
 function PreviewErrorAlert({ previewError, apiDisabled }) {
   return (
-    <div
-      role="alert"
-      style={{
-        padding: "0.65rem 0.75rem",
-        borderRadius: 8,
-        marginBottom: "0.75rem",
-        fontSize: "0.85rem",
-        background: "#f8fafc",
-        border: "1px solid #cbd5e1",
-        color: "#475569",
-      }}
-    >
+    <AdminNotice variant="disabled">
       <strong>Apply preview error.</strong> {previewError}
       {!apiDisabled ? (
-        <div style={{ marginTop: "0.25rem", fontSize: "0.72rem" }}>
+        <div className={`${adminMuted} mt-1`}>
           Sidecar detail may still be shown when available.
         </div>
       ) : null}
-    </div>
+    </AdminNotice>
   );
 }
 
@@ -238,17 +134,8 @@ function ErrorAlerts({ detailError, previewError, apiDisabled, permissionDenied 
   return (
     <>
       {detailError ? (
-        <div
-          role="alert"
-          style={{
-            padding: "0.65rem 0.75rem",
-            borderRadius: 8,
-            marginBottom: "0.75rem",
-            fontSize: "0.85rem",
-            background: apiDisabled ? "#f8fafc" : permissionDenied ? "#fffbeb" : "#fef2f2",
-            border: `1px solid ${apiDisabled ? "#cbd5e1" : permissionDenied ? "#fde68a" : "#fecaca"}`,
-            color: apiDisabled ? "#475569" : permissionDenied ? "#b45309" : "#b91c1c",
-          }}
+        <AdminNotice
+          variant={apiDisabled ? "disabled" : permissionDenied ? "warning" : "p0"}
         >
           {apiDisabled ? (
             <>
@@ -264,7 +151,7 @@ function ErrorAlerts({ detailError, previewError, apiDisabled, permissionDenied 
               <strong>Sidecar detail error.</strong> {detailError}
             </>
           )}
-        </div>
+        </AdminNotice>
       ) : null}
       {previewError ? (
         <PreviewErrorAlert previewError={previewError} apiDisabled={apiDisabled} />
@@ -375,47 +262,29 @@ export default function P76CanonicalSidecarApplyReviewPage() {
   const applyTone = canApplyTone(preview?.canApply === true);
 
   return (
-    <main
-      style={{
-        maxWidth: 960,
-        margin: "1.1rem auto",
-        padding: "0 1rem",
-        color: "#334155",
-      }}
+    <AdminPageShell
+      title="Canonical Apply Review"
+      subtitle={id ? `Sidecar id: ${id}` : undefined}
+      backTo="/admin/p76/canonical-sidecar"
+      backLabel="← Back to sidecar list"
+      maxWidth="max-w-4xl"
+      actions={
+        <button
+          type="button"
+          className={adminBtnSecondary}
+          disabled={loading}
+          onClick={() => void load()}
+        >
+          Refresh
+        </button>
+      }
     >
       <SafetyBanner />
 
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.78rem",
-          color: "#92400e",
-        }}
-      >
+      <AdminNotice variant="internal">
         <strong>内部 / Admin</strong> — read-only apply review · VIEW_P76_CANONICAL_REHEARSAL ·
         GET only · No Apply · No Rollback · No Promote · No MatchResult write.
-      </div>
-
-      <HeaderRow>
-        <h1 style={{ margin: 0, fontSize: "1.2rem", color: "#0f172a", flex: "1 1 auto" }}>
-          Canonical Apply Review
-        </h1>
-        <button type="button" style={btnSecondary} disabled={loading} onClick={() => void load()}>
-          Refresh
-        </button>
-        <Link to="/admin/p76/canonical-sidecar" style={{ fontSize: "0.78rem", color: "#2563eb" }}>
-          Back to sidecar list
-        </Link>
-        {id ? (
-          <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontFamily: "monospace" }}>
-            {id}
-          </span>
-        ) : null}
-      </HeaderRow>
+      </AdminNotice>
 
       {loading ? <LoadingState label="加载 apply review…" /> : null}
 
@@ -429,26 +298,15 @@ export default function P76CanonicalSidecarApplyReviewPage() {
       ) : null}
 
       {!loading && !detailError && row && hasCanonicalSidecarRowP0Violation(row) ? (
-        <p
-          role="alert"
-          style={{
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            padding: "0.5rem 0.65rem",
-            borderRadius: 8,
-            color: "#b91c1c",
-            fontWeight: 600,
-            fontSize: "0.82rem",
-          }}
-        >
+        <AdminNotice variant="p0">
           P0: applied* flag violation on sidecar — must not mutate MatchResult / finalScore /
           worker ranking.
-        </p>
+        </AdminNotice>
       ) : null}
 
       {!loading && preview ? (
         <>
-          <Section title="Status">
+          <AdminSection title="Status">
             <StatusChip label="Preview only" tone="blocked" />
             <StatusChip label="Promotion blocked" tone="muted" />
             {noWriteOk ? <StatusChip label="No-write verified" tone="ok" /> : null}
@@ -463,42 +321,32 @@ export default function P76CanonicalSidecarApplyReviewPage() {
             {promotionStatus === "promoted" ? (
               <StatusChip label="Already promoted" tone="warning" />
             ) : null}
-          </Section>
+          </AdminSection>
 
-          <Section title="Decision (read-only)">
-            <p style={{ margin: "0 0 0.35rem", fontSize: "0.82rem" }}>
+          <AdminSection title="Decision (read-only)">
+            <p className="text-sm text-white/85 mb-1">
               <strong>canApply:</strong>{" "}
-              <span style={{ color: applyTone === "blocked" ? "#64748b" : "#b45309" }}>
+              <span className={applyTone === "blocked" ? "text-white/45" : "text-amber-200"}>
                 {preview.canApply === true ? "true (preview only)" : "false"}
               </span>
             </p>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>{canApplySummary}</p>
+            <p className={`${adminMuted} m-0`}>{canApplySummary}</p>
             {blockedReasons.length > 0 ? (
-              <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem", fontSize: "0.75rem" }}>
+              <ul className="mt-2 pl-4 text-xs list-disc text-white/70">
                 {blockedReasons.map((r) => (
                   <li key={r}>{getBlockedReasonLabel(r)}</li>
                 ))}
               </ul>
             ) : null}
-            <p
-              style={{
-                margin: "0.65rem 0 0",
-                padding: "0.45rem 0.55rem",
-                background: "#f8fafc",
-                border: "1px dashed #cbd5e1",
-                borderRadius: 6,
-                fontSize: "0.72rem",
-                color: "#64748b",
-              }}
-            >
+            <p className={`${adminMuted} mt-3 p-2 border border-dashed border-white/15 rounded-lg`}>
               Apply hidden until P7.10-r8 + signoff. This page performs GET requests only.
             </p>
-          </Section>
+          </AdminSection>
         </>
       ) : null}
 
       {!loading && !detailError && row ? (
-        <Section title="B. Sidecar summary">
+        <AdminSection title="B. Sidecar summary">
           <DetailGrid
             items={[
               ["sidecar id", row.id ?? id ?? "—"],
@@ -543,12 +391,12 @@ export default function P76CanonicalSidecarApplyReviewPage() {
               ],
             ]}
           />
-        </Section>
+        </AdminSection>
       ) : null}
 
       {!loading && preview ? (
         <>
-          <Section title="C. Current MatchResult">
+          <AdminSection title="C. Current MatchResult">
             {currentMr ? (
               <DetailGrid
                 items={[
@@ -563,13 +411,13 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                 ]}
               />
             ) : (
-              <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>
+              <p className={`${adminMuted} m-0`}>
                 No MatchResult baseline in preview (see gate: missing_match_result).
               </p>
             )}
-          </Section>
+          </AdminSection>
 
-          <Section title="D. Proposed change">
+          <AdminSection title="D. Proposed change">
             {proposed ? (
               <DetailGrid
                 items={[
@@ -583,27 +431,27 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                 ]}
               />
             ) : (
-              <p style={{ margin: 0, fontSize: "0.78rem" }}>—</p>
+              <p className={`${adminMuted} m-0`}>—</p>
             )}
-          </Section>
+          </AdminSection>
 
-          <Section title="E. Gate results">
+          <AdminSection title="E. Gate results">
             {gateResults.length > 0 ? (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="admin-table-wrap overflow-x-auto">
+                <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th style={th}>gate</th>
-                      <th style={th}>pass</th>
-                      <th style={th}>blockedReason</th>
+                      <th className={adminTh}>gate</th>
+                      <th className={adminTh}>pass</th>
+                      <th className={adminTh}>blockedReason</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gateResults.map((g) => (
                       <tr key={g.id}>
-                        <td style={td}>{g.id}</td>
-                        <td style={td}>{g.pass ? "pass" : "fail"}</td>
-                        <td style={td}>
+                        <td className={adminTd}>{g.id}</td>
+                        <td className={adminTd}>{g.pass ? "pass" : "fail"}</td>
+                        <td className={adminTd}>
                           {g.blockedReason
                             ? getBlockedReasonLabel(g.blockedReason)
                             : "—"}
@@ -614,12 +462,12 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                 </table>
               </div>
             ) : (
-              <p style={{ margin: 0, fontSize: "0.78rem" }}>No gate results.</p>
+              <p className={`${adminMuted} m-0`}>No gate results.</p>
             )}
-          </Section>
+          </AdminSection>
 
-          <Section title="F. Rollback snapshot preview (dry-run)">
-            <HeaderRow>
+          <AdminSection title="F. Rollback snapshot preview (dry-run)">
+            <div className="flex flex-wrap gap-2 items-center mb-2">
               <StatusChip label={getRollbackSnapshotDryRunBadge()} tone="muted" />
               {snapshot ? (
                 <StatusChip
@@ -627,15 +475,9 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                   tone={snapshot.snapshotReady === true ? "ok" : "blocked"}
                 />
               ) : null}
-            </HeaderRow>
+            </div>
             {snapshotError ? (
-              <p
-                style={{
-                  margin: "0 0 0.5rem",
-                  fontSize: "0.78rem",
-                  color: snapshotUnavailable ? "#64748b" : "#b45309",
-                }}
-              >
+              <p className={`${adminMuted} mb-2 ${snapshotUnavailable ? "" : "text-amber-200"}`}>
                 {snapshotUnavailable
                   ? "Rollback snapshot preview unavailable — apply preview above remains authoritative."
                   : snapshotError}
@@ -644,14 +486,7 @@ export default function P76CanonicalSidecarApplyReviewPage() {
             {snapshot ? (
               <>
                 {snapshotBlocked.length > 0 ? (
-                  <ul
-                    style={{
-                      margin: "0 0 0.5rem",
-                      paddingLeft: "1.1rem",
-                      fontSize: "0.75rem",
-                      color: "#b45309",
-                    }}
-                  >
+                  <ul className="mb-2 pl-4 text-xs list-disc text-amber-200">
                     {snapshotBlocked.map((r) => (
                       <li key={r}>{getBlockedReasonLabel(r)}</li>
                     ))}
@@ -695,14 +530,14 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                     ],
                   ]}
                 />
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.72rem", color: "#64748b" }}>
+                <p className={`${adminMuted} mt-1`}>
                   Snapshot safety:{" "}
                   {snapshotNoWriteOk ? "no-write verified" : "check flags"}
                 </p>
                 <DetailGrid
                   items={getSafetyFlagRows(snapshotSafety).map(({ key, value, ok }) => [
                     `snapshot.${key}`,
-                    <span key={key} style={{ color: ok ? "#15803d" : "#b91c1c" }}>
+                    <span key={key} className={ok ? "text-emerald-300" : "text-red-200"}>
                       {value === false ? "false ✓" : String(value)}
                     </span>,
                   ])}
@@ -718,59 +553,35 @@ export default function P76CanonicalSidecarApplyReviewPage() {
                 ]}
               />
             ) : !snapshotError ? (
-              <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>
+              <p className={`${adminMuted} m-0`}>
                 Rollback snapshot preview pending.
               </p>
             ) : null}
-          </Section>
+          </AdminSection>
 
-          <Section title="G. No-write safety">
+          <AdminSection title="G. No-write safety">
             {!noWriteOk ? (
-              <p
-                role="alert"
-                style={{
-                  margin: "0 0 0.5rem",
-                  color: "#b91c1c",
-                  fontWeight: 600,
-                  fontSize: "0.8rem",
-                }}
-              >
+              <AdminNotice variant="p0">
                 {getNoWriteSafetyLabel(safety)}
-              </p>
+              </AdminNotice>
             ) : (
               <StatusChip label={getNoWriteSafetyLabel(safety)} tone="ok" />
             )}
             <DetailGrid
               items={getSafetyFlagRows(safety).map(({ key, value, ok }) => [
                 key,
-                <span key={key} style={{ color: ok ? "#15803d" : "#b91c1c" }}>
+                <span key={key} className={ok ? "text-emerald-300" : "text-red-200"}>
                   {value === false ? "false ✓" : String(value)}
                 </span>,
               ])}
             />
-          </Section>
+          </AdminSection>
         </>
       ) : null}
 
       {!loading && !previewError && !preview && !detailError ? (
-        <p style={{ fontSize: "0.82rem", color: "#64748b" }}>Apply preview unavailable.</p>
+        <p className={adminMuted}>Apply preview unavailable.</p>
       ) : null}
-    </main>
-  );
-}
-
-function HeaderRow({ children }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "0.5rem",
-        alignItems: "center",
-        marginBottom: "0.75rem",
-      }}
-    >
-      {children}
-    </div>
+    </AdminPageShell>
   );
 }

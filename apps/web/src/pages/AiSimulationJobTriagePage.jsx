@@ -2,6 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getAdminAiSimulationV1JobsTriage } from "../api/ai-simulation-v1";
 import LoadingState from "../components/common/LoadingState";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import AdminNotice from "../components/admin/AdminNotice";
+import AdminFilterPanel from "../components/admin/AdminFilterPanel";
+import AdminKpiGrid from "../components/admin/AdminKpiGrid";
+import AdminDataTable from "../components/admin/AdminDataTable";
+import AdminIdPill from "../components/admin/AdminIdPill";
+import { adminLabel, adminLink, adminSelect, adminMuted } from "../components/admin/adminTheme";
 
 function parseBoolParam(v) {
   if (v === "true") return true;
@@ -64,18 +71,6 @@ export default function AiSimulationJobTriagePage() {
     return { inProgress, currentOk, currentAnomaly, legacyAcceptable, hasFailedItem };
   }, [rows]);
 
-  const pillBase = {
-    display: "inline-flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: "0.12rem",
-    padding: "0.4rem 0.55rem",
-    borderRadius: 6,
-    border: "1px solid #e2e8f0",
-    background: "#fff",
-    minWidth: "5.5rem",
-  };
-
   const updateFilter = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value == null || value === "") next.delete(key);
@@ -83,239 +78,209 @@ export default function AiSimulationJobTriagePage() {
     setSearchParams(next);
   };
 
+  const kpiItems = [
+    { key: "inProgress", label: "进行中", value: triageSummary.inProgress, hint: "排队或运行中，或分诊桶为进行中" },
+    { key: "currentOk", label: "当前规范·正常", value: triageSummary.currentOk, hint: "分诊桶：当前规范、正常" },
+    {
+      key: "currentAnomaly",
+      label: "当前规范·异常",
+      value: triageSummary.currentAnomaly,
+      hint: "分诊桶：当前规范、异常",
+      danger: triageSummary.currentAnomaly > 0,
+    },
+    { key: "legacyAcceptable", label: "旧版可接受", value: triageSummary.legacyAcceptable, hint: "分诊桶：旧版可接受" },
+    {
+      key: "hasFailedItem",
+      label: "含失败项",
+      value: triageSummary.hasFailedItem,
+      hint: "行上标记含失败项为是",
+      danger: triageSummary.hasFailedItem > 0,
+    },
+  ];
+
+  const tableColumns = [
+    {
+      key: "jobId",
+      label: "jobId",
+      render: (row) => <AdminIdPill id={row.simulationJobId} />,
+    },
+    { key: "jobStatus", label: "jobStatus" },
+    {
+      key: "itemCounts",
+      label: "itemCounts",
+      render: (row) => (
+        <code className="text-[0.68rem] text-white/70">
+          t{row.itemCounts.total}/q{row.itemCounts.queued}/r{row.itemCounts.running}/s
+          {row.itemCounts.succeeded}/f{row.itemCounts.failed}
+        </code>
+      ),
+    },
+    { key: "binding", label: "binding", render: (row) => String(row.shortlistBindingPresent) },
+    { key: "trio", label: "trio", render: (row) => String(row.sidecarTrioPresent) },
+    {
+      key: "rank",
+      label: "rank",
+      render: (row) => (row.rankConsistent == null ? "null" : String(row.rankConsistent)),
+    },
+    {
+      key: "suppressedReason",
+      label: "suppressedReason",
+      render: (row) => <AdminIdPill id={row.sidecarSuppressedReason} truncate={18} />,
+    },
+    {
+      key: "spec",
+      label: "spec",
+      render: (row) => <AdminIdPill id={row.specClassification} truncate={18} />,
+    },
+    {
+      key: "bucket",
+      label: "bucket",
+      render: (row) => <AdminIdPill id={row.diagnosticBucket} truncate={18} />,
+    },
+    {
+      key: "buildability",
+      label: "buildability",
+      render: (row) => <AdminIdPill id={row.buildabilityDetail} truncate={18} />,
+    },
+    { key: "hasFailedItem", label: "hasFailedItem", render: (row) => String(row.hasFailedItem) },
+    {
+      key: "updatedAt",
+      label: "updatedAt",
+      render: (row) => new Date(row.updatedAt).toLocaleString(),
+    },
+    {
+      key: "detail",
+      label: "详情",
+      render: (row) => (
+        <Link
+          className={adminLink}
+          to={`/admin/ai-sim-job-diagnostic?jobId=${encodeURIComponent(row.simulationJobId)}`}
+        >
+          查看
+        </Link>
+      ),
+    },
+  ];
+
   return (
-    <main style={{ maxWidth: 1200, margin: "1.1rem auto", padding: "0 1rem", color: "#334155" }}>
-      <div
-        style={{
-          background: "#fffbeb",
-          border: "1px solid #fbbf24",
-          borderRadius: 8,
-          padding: "0.5rem 0.75rem",
-          marginBottom: "0.85rem",
-          fontSize: "0.82rem",
-          color: "#92400e",
-        }}
-      >
-        <strong>内部 / Admin</strong> — 不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。
-      </div>
-      <h1 style={{ margin: "0 0 0.45rem", fontSize: "1.25rem", color: "#0f172a" }}>
-        AI Simulation Job 分诊列表（内部只读）
-      </h1>
-      <p style={{ margin: "0 0 0.65rem", fontSize: "0.82rem", color: "#64748b" }}>
-        仅用于诊断状态与排障分诊；不触发写操作，不参与主链结论。
-      </p>
-      <p style={{ margin: "0 0 0.75rem", fontSize: "0.78rem" }}>
-        <Link to="/admin/ai-sim-job-diagnostic">去单条诊断详情（手填 jobId）</Link>
+    <AdminPageShell
+      maxWidth="max-w-6xl"
+      title="AI Simulation Job 分诊列表（内部只读）"
+      subtitle="仅用于诊断状态与排障分诊；不触发写操作，不参与主链结论。"
+    >
+      <AdminNotice variant="internal" title="内部 / Admin">
+        不在 Phase G v0.1 用户主路径；需管理员权限与有效登录。
+      </AdminNotice>
+
+      <p className={`${adminMuted} mb-4`}>
+        <Link className={adminLink} to="/admin/ai-sim-job-diagnostic">
+          去单条诊断详情（手填 jobId）
+        </Link>
       </p>
 
-      <section
-        style={{
-          border: "1px solid #e2e8f0",
-          borderRadius: 8,
-          background: "#f8fafc",
-          padding: "0.65rem 0.85rem",
-          marginBottom: "0.8rem",
-          fontSize: "0.8rem",
-        }}
-      >
-        <strong style={{ color: "#334155" }}>最小筛选</strong>
-        <div style={{ marginTop: "0.45rem", display: "flex", gap: "0.55rem", flexWrap: "wrap" }}>
-          <label>
-            jobStatus{" "}
-            <select value={filters.jobStatus || ""} onChange={(e) => updateFilter("jobStatus", e.target.value)}>
-              <option value="">全部</option>
-              <option value="queued">queued</option>
-              <option value="running">running</option>
-              <option value="completed">completed</option>
-            </select>
-          </label>
-          <label>
-            sidecarTrioPresent{" "}
-            <select
-              value={searchParams.get("sidecarTrioPresent") || ""}
-              onChange={(e) => updateFilter("sidecarTrioPresent", e.target.value)}
-            >
-              <option value="">全部</option>
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-          </label>
-          <label>
-            rankConsistent{" "}
-            <select
-              value={searchParams.get("rankConsistent") || ""}
-              onChange={(e) => updateFilter("rankConsistent", e.target.value)}
-            >
-              <option value="">全部</option>
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-          </label>
-          <label>
-            hasFailedItem{" "}
-            <select
-              value={searchParams.get("hasFailedItem") || ""}
-              onChange={(e) => updateFilter("hasFailedItem", e.target.value)}
-            >
-              <option value="">全部</option>
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
-          </label>
-          <label>
-            sidecarSuppressedReason{" "}
-            <input
-              value={filters.sidecarSuppressedReason || ""}
-              onChange={(e) => updateFilter("sidecarSuppressedReason", e.target.value)}
-              placeholder="例如 rank_mismatch"
-            />
-          </label>
-          <label>
-            diagnosticBucket{" "}
-            <select
-              value={filters.diagnosticBucket || ""}
-              onChange={(e) => updateFilter("diagnosticBucket", e.target.value)}
-            >
-              <option value="">全部</option>
-              <option value="legacy_acceptable">legacy_acceptable</option>
-              <option value="current_ok">current_ok</option>
-              <option value="current_anomaly">current_anomaly</option>
-              <option value="in_progress">in_progress</option>
-            </select>
-          </label>
-        </div>
-      </section>
+      <AdminFilterPanel title="最小筛选">
+        <label className={adminLabel}>
+          jobStatus{" "}
+          <select
+            className={adminSelect}
+            value={filters.jobStatus || ""}
+            onChange={(e) => updateFilter("jobStatus", e.target.value)}
+          >
+            <option value="">全部</option>
+            <option value="queued">queued</option>
+            <option value="running">running</option>
+            <option value="completed">completed</option>
+          </select>
+        </label>
+        <label className={adminLabel}>
+          sidecarTrioPresent{" "}
+          <select
+            className={adminSelect}
+            value={searchParams.get("sidecarTrioPresent") || ""}
+            onChange={(e) => updateFilter("sidecarTrioPresent", e.target.value)}
+          >
+            <option value="">全部</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+        <label className={adminLabel}>
+          rankConsistent{" "}
+          <select
+            className={adminSelect}
+            value={searchParams.get("rankConsistent") || ""}
+            onChange={(e) => updateFilter("rankConsistent", e.target.value)}
+          >
+            <option value="">全部</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+        <label className={adminLabel}>
+          hasFailedItem{" "}
+          <select
+            className={adminSelect}
+            value={searchParams.get("hasFailedItem") || ""}
+            onChange={(e) => updateFilter("hasFailedItem", e.target.value)}
+          >
+            <option value="">全部</option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+        <label className={adminLabel}>
+          sidecarSuppressedReason{" "}
+          <input
+            className="admin-input"
+            value={filters.sidecarSuppressedReason || ""}
+            onChange={(e) => updateFilter("sidecarSuppressedReason", e.target.value)}
+            placeholder="例如 rank_mismatch"
+          />
+        </label>
+        <label className={adminLabel}>
+          diagnosticBucket{" "}
+          <select
+            className={adminSelect}
+            value={filters.diagnosticBucket || ""}
+            onChange={(e) => updateFilter("diagnosticBucket", e.target.value)}
+          >
+            <option value="">全部</option>
+            <option value="legacy_acceptable">legacy_acceptable</option>
+            <option value="current_ok">current_ok</option>
+            <option value="current_anomaly">current_anomaly</option>
+            <option value="in_progress">in_progress</option>
+          </select>
+        </label>
+      </AdminFilterPanel>
 
       {!loading && !error ? (
-        <section
-          style={{
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-            background: "#f1f5f9",
-            padding: "0.55rem 0.75rem",
-            marginBottom: "0.75rem",
-          }}
-          aria-label="当前列表聚合摘要"
-        >
-          <p style={{ margin: "0 0 0.45rem", fontSize: "0.72rem", color: "#64748b", lineHeight: 1.4 }}>
-            <strong>基于当前列表结果</strong>（本页接口最多 {filters.limit} 条，随上方筛选与刷新变化）· 只读摘要，非全库统计。
+        <>
+          <p className={`${adminMuted} mb-2`}>
+            <strong className="text-white/60">基于当前列表结果</strong>（本页接口最多 {filters.limit}{" "}
+            条，随上方筛选与刷新变化）· 只读摘要，非全库统计。
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", alignItems: "stretch" }}>
-            <div style={pillBase} title="排队或运行中，或分诊桶为进行中">
-              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>进行中</span>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.inProgress}</span>
-            </div>
-            <div style={pillBase} title="分诊桶：当前规范、正常">
-              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>当前规范·正常</span>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.currentOk}</span>
-            </div>
-            <div style={pillBase} title="分诊桶：当前规范、异常">
-              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>当前规范·异常</span>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.currentAnomaly}</span>
-            </div>
-            <div style={pillBase} title="分诊桶：旧版可接受">
-              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>旧版可接受</span>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.legacyAcceptable}</span>
-            </div>
-            <div style={pillBase} title="行上标记含失败项为是">
-              <span style={{ fontSize: "0.68rem", color: "#64748b" }}>含失败项</span>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>{triageSummary.hasFailedItem}</span>
-            </div>
-          </div>
-          <p style={{ margin: "0.4rem 0 0", fontSize: "0.68rem", color: "#94a3b8" }}>
+          <AdminKpiGrid items={kpiItems} />
+          <p className={`${adminMuted} mb-4`}>
             与下方表格为同一批数据；摘要项不可点击，筛选仍请用上方控件。
           </p>
-        </section>
+        </>
       ) : null}
 
       {loading ? <LoadingState label="加载 AI 模拟 job 列表（最近 50 条）..." /> : null}
       {error ? (
-        <p style={{ marginTop: "0.5rem", color: "#b91c1c" }} role="alert">
+        <AdminNotice variant="danger" title="加载失败">
           {error}
-        </p>
+        </AdminNotice>
       ) : null}
 
       {!loading && !error ? (
-        <section
-          style={{
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-            background: "#fff",
-            padding: "0.6rem 0.75rem",
-          }}
-        >
-          {rows.length === 0 ? (
-            <p style={{ margin: 0, fontSize: "0.82rem" }}>无匹配记录（当前筛选条件）。</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>jobId</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>jobStatus</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>itemCounts</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>binding</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>trio</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>rank</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>suppressedReason</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>spec</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>bucket</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>buildability</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>hasFailedItem</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>updatedAt</th>
-                    <th style={{ textAlign: "left", borderBottom: "1px solid #e2e8f0", padding: "0.25rem" }}>详情</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.simulationJobId}>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>{row.simulationJobId}</code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>{row.jobStatus}</td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>
-                          t{row.itemCounts.total}/q{row.itemCounts.queued}/r{row.itemCounts.running}/s{row.itemCounts.succeeded}
-                          /f{row.itemCounts.failed}
-                        </code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        {String(row.shortlistBindingPresent)}
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        {String(row.sidecarTrioPresent)}
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        {row.rankConsistent == null ? "null" : String(row.rankConsistent)}
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>{row.sidecarSuppressedReason}</code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>{row.specClassification}</code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>{row.diagnosticBucket}</code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <code style={{ fontSize: "0.72rem" }}>{row.buildabilityDetail}</code>
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>{String(row.hasFailedItem)}</td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        {new Date(row.updatedAt).toLocaleString()}
-                      </td>
-                      <td style={{ padding: "0.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                        <Link to={`/admin/ai-sim-job-diagnostic?jobId=${encodeURIComponent(row.simulationJobId)}`}>查看</Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        <AdminDataTable
+          columns={tableColumns}
+          rows={rows}
+          rowKey="simulationJobId"
+          emptyMessage="无匹配记录（当前筛选条件）。"
+        />
       ) : null}
-    </main>
+    </AdminPageShell>
   );
 }
-
