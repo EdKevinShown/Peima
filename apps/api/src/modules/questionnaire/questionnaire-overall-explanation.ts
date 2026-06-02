@@ -7,7 +7,9 @@ import type {
 } from "./questionnaire-personality-labels";
 import {
   DISPLAY_PRIMARY_FALLBACK,
+  DISPLAY_RARE_FRAMING,
   PRIMARY_LABEL_COPY,
+  RARE_LABEL_COPY,
   STYLE_LABEL_COPY,
 } from "./questionnaire-profile-copy.constants";
 
@@ -61,6 +63,16 @@ export function resolveDisplayPrimary(
       source: "candidate",
     };
   }
+  const rare = labels.rareLabel;
+  if (rare) {
+    return {
+      id: rare.id,
+      name: rare.name,
+      ruleTokens: [...rare.ruleTokens],
+      matchedAxes: [...rare.matchedAxes],
+      source: "rare",
+    };
+  }
   return {
     id: DISPLAY_PRIMARY_FALLBACK.id,
     name: DISPLAY_PRIMARY_FALLBACK.name,
@@ -73,6 +85,10 @@ export function resolveDisplayPrimary(
 export function buildTitle(displayPrimary: DisplayPrimary): string {
   if (displayPrimary.source === "fallback") {
     return DISPLAY_PRIMARY_FALLBACK.titleLine;
+  }
+  if (displayPrimary.source === "rare") {
+    const row = RARE_LABEL_COPY[displayPrimary.id];
+    return row?.title?.trim() || `隐藏款 · ${displayPrimary.name}`;
   }
   if (displayPrimary.source === "candidate") {
     return `整体画像更接近「${displayPrimary.name}」所描述的关系人格取向。`;
@@ -91,6 +107,13 @@ function segmentOverall(displayPrimary: DisplayPrimary): string {
   if (displayPrimary.source === "fallback") {
     return DISPLAY_PRIMARY_FALLBACK.paragraphLead;
   }
+  if (displayPrimary.source === "rare") {
+    const row = RARE_LABEL_COPY[displayPrimary.id];
+    const summary =
+      row?.summary?.trim() ||
+      `整体上看，你更贴近隐藏款「${displayPrimary.name}」所描述的那类关系反应方式。`;
+    return `${DISPLAY_RARE_FRAMING.paragraphPrefix}${summary}`;
+  }
   const row = PRIMARY_LABEL_COPY[displayPrimary.id];
   return (
     row?.summary?.trim() ||
@@ -102,7 +125,11 @@ function segmentCandidates(
   displayPrimary: DisplayPrimary,
   candidates: PersonalityCandidate[],
 ): string {
-  if (displayPrimary.source === "fallback" || candidates.length === 0) {
+  if (
+    displayPrimary.source === "fallback" ||
+    displayPrimary.source === "rare" ||
+    candidates.length === 0
+  ) {
     return "";
   }
   const others = candidates

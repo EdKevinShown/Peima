@@ -9,6 +9,16 @@ import {
   buildOnboardingProfilePayload,
   onboardingStepFieldKeys,
 } from "../utils/onboardingSubmitPayload";
+import {
+  ACCOUNT_CITY_VALUES,
+  ACCOUNT_DISPLAY_GENDER,
+  ACCOUNT_EDUCATION_VALUES,
+  ACCOUNT_GENDER_VALUES,
+  ACCOUNT_OCCUPATION_CATEGORY_VALUES,
+  ACCOUNT_RELATIONSHIP_GOAL_VALUES,
+  ageOptionsInclusive,
+  heightOptionsCmInclusive,
+} from "@peima/shared/constants";
 
 /**
  * Step types
@@ -18,21 +28,26 @@ import {
  *   - "long"   → textarea
  *   - "range"  → min / max pair (stored under keyMin / keyMax)
  *   - "multi"  → toggle-select multiple from a list
+ *   - "select" → dropdown select (single)
  *
  * Each step belongs to `section`: "profile" (→ PATCH /users/:id)
  * or "preference" (→ PUT /preferences/:userId).
  */
-const STEPS = [
+const AGES = ageOptionsInclusive();
+const HEIGHTS = heightOptionsCmInclusive();
+const ONBOARDING_SELECT_OPTION_STYLE = { color: "#111827", backgroundColor: "#ffffff" };
+
+const RAW_STEPS = [
   // ── Phase 1: about you ──
   { section: "profile", key: "nickname",  label: "你想被叫什么",       type: "text",   placeholder: "例：小安" },
-  { section: "profile", key: "gender",    label: "你是",               type: "choice", options: ["男", "女", "其他"] },
-  { section: "profile", key: "age",       label: "你多大了",           type: "number", unit: "岁", min: 16, max: 80 },
-  { section: "profile", key: "height",    label: "身高呢",             type: "number", unit: "cm", min: 140, max: 210 },
-  { section: "profile", key: "city",      label: "你在哪座城市",       type: "text",   placeholder: "例：上海" },
-  { section: "profile", key: "education", label: "最高学历",           type: "choice", options: ["高中", "大专", "本科", "硕士", "博士"] },
-  { section: "profile", key: "occupation",label: "你的职业",           type: "text",   placeholder: "例：产品经理" },
-  { section: "profile", key: "relationshipGoal", label: "你想要怎样的关系", type: "choice",
-    options: ["认真交往", "先从朋友开始", "开放关系", "步入婚姻", "暂不确定"] },
+  { section: "profile", key: "gender",    label: "你是",               type: "choice", options: Object.values(ACCOUNT_DISPLAY_GENDER) },
+  { section: "profile", key: "age",       label: "你多大了",           type: "select", options: AGES, unit: "岁" },
+  { section: "profile", key: "height",    label: "身高呢",             type: "select", options: HEIGHTS, unit: " 厘米" },
+  { section: "profile", key: "city",      label: "你在哪座城市",       type: "select", options: ACCOUNT_CITY_VALUES },
+  { section: "profile", key: "education", label: "最高学历",           type: "select", options: ACCOUNT_EDUCATION_VALUES },
+  { section: "profile", key: "occupation",label: "你的职业",           type: "select", options: ACCOUNT_OCCUPATION_CATEGORY_VALUES },
+  { section: "profile", key: "relationshipGoal", label: "你想要怎样的关系", type: "select",
+    options: ACCOUNT_RELATIONSHIP_GOAL_VALUES },
   { section: "profile", key: "bio",       label: "一句话介绍你自己",    type: "long",
     placeholder: "兴趣、节奏、想遇到什么样的人…", skippable: true },
 
@@ -40,9 +55,9 @@ const STEPS = [
   { section: "preference", phaseIntro: true, label: "接下来，聊聊你理想中的 Ta",
     sub: "别急，可以随时回来改，系统会越来越懂你" },
   { section: "preference", key: "__ageRange",    label: "Ta 的年龄在什么区间",  type: "range",
-    keyMin: "minAge", keyMax: "maxAge",  unit: "岁", min: 16, max: 80,  defaults: [22, 35] },
+    keyMin: "minAge", keyMax: "maxAge",  unit: "岁", min: 16, max: 80,  defaults: [22, 35], skippable: true },
   { section: "preference", key: "__heightRange", label: "Ta 的身高大概多少",    type: "range",
-    keyMin: "minHeight", keyMax: "maxHeight", unit: "cm", min: 140, max: 210, defaults: [160, 185] },
+    keyMin: "minHeight", keyMax: "maxHeight", unit: "cm", min: 140, max: 210, defaults: [160, 185], skippable: true },
   { section: "preference", key: "preferredCities", label: "你希望 Ta 在哪些城市", type: "multi",
     options: ["北京", "上海", "广州", "深圳", "杭州", "成都", "南京", "武汉"], allowCustom: true, skippable: true },
   { section: "preference", key: "educationPreferences", label: "Ta 的学历你介意吗", type: "multi",
@@ -56,13 +71,21 @@ const STEPS = [
 ];
 
 /** Fields we consider "essential" for gating */
-function isProfileIncomplete(me) {
-  if (!me) return true;
-  return !me.gender || !me.age || !me.city || !me.height;
+export function getProfileMissingFields(me) {
+  const missing = [];
+  if (!me) {
+    return ["性别", "年龄", "所在城市", "身高"];
+  }
+  if (!me.gender) missing.push("性别");
+  if (!me.age) missing.push("年龄");
+  if (!me.city) missing.push("所在城市");
+  if (!me.height) missing.push("身高");
+  return missing;
 }
 
-/** Total "countable" steps (excludes intro screens) */
-const COUNTABLE = STEPS.filter((s) => !s.phaseIntro).length;
+export function isProfileIncomplete(me) {
+  return getProfileMissingFields(me).length > 0;
+}
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -75,15 +98,42 @@ export default function OnboardingPage() {
   const [error, setError] = useState(null);
 
   const userId = useMemo(() => localStorage.getItem("peimaUserId") || "", []);
-  const step = STEPS[stepIdx];
+  const [stepsLoaded, setStepsLoaded] = useState(false);
+  const [visibleStepKeys, setVisibleStepKeys] = useState(null);
+
+  const isFilledValue = useCallback((v) => {
+    if (v == null) return false;
+    const s = String(v).trim();
+    return s.length > 0;
+  }, []);
+
+  const steps = useMemo(() => {
+    if (!stepsLoaded || !visibleStepKeys) return RAW_STEPS;
+    return RAW_STEPS.filter((s) => {
+      if (s.phaseIntro) return true;
+      if (!s.key) return true;
+      return visibleStepKeys.has(s.key);
+    });
+  }, [stepsLoaded, visibleStepKeys]);
+
+  const countableCount = useMemo(
+    () => steps.filter((s) => !s.phaseIntro).length,
+    [steps],
+  );
+
+  const hasSteps = steps.length > 0;
+  const step = hasSteps ? steps[stepIdx] ?? null : null;
 
   // Count progress ignoring phaseIntro screens
   const countIdxOfStep = useMemo(() => {
     let n = 0;
-    for (let i = 0; i <= stepIdx; i++) if (!STEPS[i].phaseIntro) n++;
+    for (let i = 0; i <= stepIdx; i += 1) {
+      if (!steps[i]?.phaseIntro) n += 1;
+    }
     return n;
-  }, [stepIdx]);
-  const progress = (countIdxOfStep / COUNTABLE) * 100;
+  }, [stepIdx, steps]);
+
+  const progress = countableCount > 0 ? (countIdxOfStep / countableCount) * 100 : 0;
 
   /* Prefill */
   useEffect(() => {
@@ -92,15 +142,24 @@ export default function OnboardingPage() {
       try {
         const me = await getMe();
         const pref = await getUserPreferencesOptional(userId);
+
+        const genderRaw = String(me?.gender ?? "").trim();
+        const genderUi =
+          (ACCOUNT_GENDER_VALUES.includes(genderRaw) && ACCOUNT_DISPLAY_GENDER[genderRaw]) ||
+          (genderRaw === "男" || genderRaw === "女" ? genderRaw : "");
+
+        const ageUi = me?.age != null ? String(me.age) : "";
+        const heightUi = me?.height != null ? String(me.height) : "";
+
         setAnswers({
           nickname: me.nickname || "",
-          gender: me.gender || "",
-          age: me.age ?? "",
-          height: me.height ?? "",
-          city: me.city || "",
-          education: me.education || "",
-          occupation: me.occupation || "",
-          relationshipGoal: me.relationshipGoal || "",
+          gender: genderUi,
+          age: AGES.includes(Number(ageUi)) ? ageUi : "",
+          height: HEIGHTS.includes(Number(heightUi)) ? heightUi : "",
+          city: ACCOUNT_CITY_VALUES.includes(me.city) ? me.city : "",
+          education: ACCOUNT_EDUCATION_VALUES.includes(me.education) ? me.education : "",
+          occupation: ACCOUNT_OCCUPATION_CATEGORY_VALUES.includes(me.occupation) ? me.occupation : "",
+          relationshipGoal: ACCOUNT_RELATIONSHIP_GOAL_VALUES.includes(me.relationshipGoal) ? me.relationshipGoal : "",
           bio: me.bio || "",
           minAge: pref?.minAge ?? "",
           maxAge: pref?.maxAge ?? "",
@@ -111,6 +170,52 @@ export default function OnboardingPage() {
           relationshipGoalPreferences: pref?.relationshipGoalPreferences ?? [],
           styleTags: pref?.styleTags ?? [],
         });
+
+        // Freeze visible steps at entry time (based on already-saved data only).
+        // This prevents "click once then current step disappears" perceived auto-skip.
+        const nextVisible = new Set();
+        for (const s of RAW_STEPS) {
+          if (s.phaseIntro || !s.key) continue;
+          if (s.section === "profile") {
+            const v = {
+              nickname: me.nickname || "",
+              gender: genderUi,
+              age: AGES.includes(Number(ageUi)) ? ageUi : "",
+              height: HEIGHTS.includes(Number(heightUi)) ? heightUi : "",
+              city: ACCOUNT_CITY_VALUES.includes(me.city) ? me.city : "",
+              education: ACCOUNT_EDUCATION_VALUES.includes(me.education)
+                ? me.education
+                : "",
+              occupation: ACCOUNT_OCCUPATION_CATEGORY_VALUES.includes(me.occupation)
+                ? me.occupation
+                : "",
+              relationshipGoal: ACCOUNT_RELATIONSHIP_GOAL_VALUES.includes(
+                me.relationshipGoal,
+              )
+                ? me.relationshipGoal
+                : "",
+              bio: me.bio || "",
+            }[s.key];
+            if (!isFilledValue(v)) nextVisible.add(s.key);
+            continue;
+          }
+          if (s.section === "preference") {
+            if (s.type === "range") {
+              const hasRange =
+                (pref?.[s.keyMin] ?? null) != null || (pref?.[s.keyMax] ?? null) != null;
+              if (!hasRange) nextVisible.add(s.key);
+              continue;
+            }
+            if (s.type === "multi") {
+              const arr = Array.isArray(pref?.[s.key]) ? pref[s.key] : [];
+              if (arr.length === 0) nextVisible.add(s.key);
+              continue;
+            }
+            nextVisible.add(s.key);
+          }
+        }
+        setVisibleStepKeys(nextVisible);
+        setStepsLoaded(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -118,6 +223,23 @@ export default function OnboardingPage() {
       }
     })();
   }, [userId, navigate]);
+
+  useEffect(() => {
+    // When steps are re-built after prefill, start from the first missing profile field.
+    if (!stepsLoaded) return;
+    setStepIdx(0);
+    setTouchedKeys(new Set());
+  }, [stepsLoaded]);
+
+  useEffect(() => {
+    // Steps can shrink dynamically after each answer (filled fields are removed).
+    // Clamp index to prevent rendering with an out-of-range step.
+    if (!steps.length) return;
+    setStepIdx((prev) => {
+      const max = steps.length - 1;
+      return prev > max ? max : prev;
+    });
+  }, [steps.length]);
 
   const setAnswer = useCallback((key, val) => {
     setTouchedKeys((prev) => {
@@ -140,9 +262,10 @@ export default function OnboardingPage() {
 
   /* Current-step helpers */
   const getVal = (k) => answers[k];
-  const currentValue = step.key ? getVal(step.key) : undefined;
+  const currentValue = step && step.key ? getVal(step.key) : undefined;
 
   const canProceed = useMemo(() => {
+    if (!step) return true;
     if (step.phaseIntro) return true;
     if (step.skippable) return true;
     switch (step.type) {
@@ -150,6 +273,8 @@ export default function OnboardingPage() {
       case "long":
         return typeof currentValue === "string" && currentValue.trim().length > 0;
       case "number":
+        return currentValue !== "" && currentValue !== null && currentValue !== undefined;
+      case "select":
         return currentValue !== "" && currentValue !== null && currentValue !== undefined;
       case "choice":
         return !!currentValue;
@@ -166,12 +291,20 @@ export default function OnboardingPage() {
   }, [step, currentValue, answers]);
 
   const goBack = useCallback(() => {
+    if (!step) {
+      navigate("/home", { replace: true });
+      return;
+    }
     if (stepIdx === 0) navigate("/home", { replace: true });
     else setStepIdx((i) => i - 1);
   }, [stepIdx, navigate]);
 
   const submitAll = useCallback(async () => {
     if (!userId) return;
+    if (!step) {
+      navigate("/home", { replace: true });
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -206,14 +339,18 @@ export default function OnboardingPage() {
   }, [userId, answers, touchedKeys, step, navigate]);
 
   const goNext = useCallback(() => {
+    if (!step) {
+      navigate("/home", { replace: true });
+      return;
+    }
     if (!canProceed && !step.skippable && !step.phaseIntro) return;
     markStepTouched(step);
-    if (stepIdx === STEPS.length - 1) void submitAll();
+    if (stepIdx === steps.length - 1) void submitAll();
     else setStepIdx((i) => i + 1);
-  }, [stepIdx, canProceed, submitAll, step, markStepTouched]);
+  }, [stepIdx, canProceed, submitAll, step, markStepTouched, steps.length, navigate]);
 
   const onInputKeyDown = (e) => {
-    if (e.key === "Enter" && step.type !== "long") {
+    if (e.key === "Enter" && step && step.type !== "long") {
       e.preventDefault();
       goNext();
     }
@@ -236,7 +373,7 @@ export default function OnboardingPage() {
     setCustomInputs((p) => ({ ...p, [key]: "" }));
   };
 
-  const isLast = stepIdx === STEPS.length - 1;
+  const isLast = hasSteps && stepIdx === steps.length - 1;
 
   return (
     <div className="min-h-dvh flex flex-col px-5 py-6 relative overflow-hidden">
@@ -250,10 +387,12 @@ export default function OnboardingPage() {
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
           ←
         </button>
-        {!step.phaseIntro && (
-          <span className="text-xs text-white/40 tabular-nums">{countIdxOfStep} / {COUNTABLE}</span>
+        {step && !step.phaseIntro && (
+          <span className="text-xs text-white/40 tabular-nums">
+            {countIdxOfStep} / {countableCount || 1}
+          </span>
         )}
-        {step.phaseIntro && <span />}
+        {step && step.phaseIntro && <span />}
       </div>
 
       {/* Progress bar */}
@@ -271,9 +410,25 @@ export default function OnboardingPage() {
       <div className="relative z-10 flex-1 flex flex-col justify-center max-w-md w-full mx-auto">
         {loading ? (
           <p className="text-white/40 text-center">加载中…</p>
+        ) : !hasSteps ? (
+          <div className="animate-fade-in text-center text-white/80">
+            <h1 className="font-serif font-bold text-2xl mb-3">
+              资料已完善啦
+            </h1>
+            <p className="text-sm text-white/60 mb-6">
+              你当前的资料和偏好已经足够用于匹配了，可以直接返回首页继续使用。
+            </p>
+            <button
+              type="button"
+              className="btn-primary px-5 py-2 text-sm"
+              onClick={() => navigate("/home", { replace: true })}
+            >
+              返回首页
+            </button>
+          </div>
         ) : (
           <div key={stepIdx} className="animate-fade-in">
-            {step.phaseIntro ? (
+            {step && step.phaseIntro ? (
               <>
                 <p className="text-xs text-white/30 uppercase tracking-widest mb-3">Part 2</p>
                 <h1 className="font-serif font-bold text-white text-3xl sm:text-4xl leading-snug mb-4"
@@ -284,9 +439,11 @@ export default function OnboardingPage() {
               </>
             ) : (
               <>
-                <p className="text-xs text-white/30 uppercase tracking-widest mb-3">
-                  第 {countIdxOfStep} 题 {step.skippable ? "· 可跳过" : ""}
-                </p>
+                {step && (
+                  <p className="text-xs text-white/30 uppercase tracking-widest mb-3">
+                    第 {countIdxOfStep} 题 {step.skippable ? "· 可跳过" : ""}
+                  </p>
+                )}
                 <h1 className="font-serif font-bold text-white text-3xl sm:text-4xl leading-snug mb-3"
                     style={{ letterSpacing: "-0.01em" }}>
                   {step.label}
@@ -301,6 +458,28 @@ export default function OnboardingPage() {
                          onChange={(e) => setAnswer(step.key, e.target.value)}
                          onKeyDown={onInputKeyDown}
                          maxLength={40} />
+                )}
+
+                {step.type === "select" && (
+                  <select
+                    autoFocus
+                    value={currentValue ?? ""}
+                    className="input-glass text-xl py-4"
+                    onChange={(e) => setAnswer(step.key, e.target.value)}
+                  >
+                    <option value="" style={ONBOARDING_SELECT_OPTION_STYLE}>
+                      {step.placeholder ?? "选填"}
+                    </option>
+                    {(step.options ?? []).map((opt) => (
+                      <option
+                        key={String(opt)}
+                        value={String(opt)}
+                        style={ONBOARDING_SELECT_OPTION_STYLE}
+                      >
+                        {step.unit ? `${opt}${step.unit}` : opt}
+                      </option>
+                    ))}
+                  </select>
                 )}
 
                 {step.type === "number" && (
@@ -322,7 +501,7 @@ export default function OnboardingPage() {
                       const selected = currentValue === opt;
                       return (
                         <button key={opt} type="button"
-                                onClick={() => { setAnswer(step.key, opt); setTimeout(goNext, 180); }}
+                                onClick={() => setAnswer(step.key, opt)}
                                 className="rounded-2xl py-4 px-5 text-base font-medium transition-all duration-200 text-left"
                                 style={selected
                                   ? { background: "linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%)", color: "white",
@@ -367,18 +546,49 @@ export default function OnboardingPage() {
 
       {/* Footer buttons */}
       <div className="relative z-10 max-w-md w-full mx-auto mt-8 flex items-center gap-3">
-        <button type="button" onClick={goBack} disabled={saving}
-                className="btn-ghost flex-shrink-0 px-5 py-3 text-sm">
-          {stepIdx === 0 ? "返回" : "上一步"}
-        </button>
-        <button type="button" onClick={goNext}
-                disabled={saving || (!canProceed && !step.skippable && !step.phaseIntro)}
-                className="btn-primary flex-1 py-3">
-          {saving ? "保存中…"
-            : isLast ? (canProceed ? "完成 →" : "跳过并完成")
-            : step.phaseIntro ? "好的，继续 →"
-            : (canProceed ? "下一步 →" : (step.skippable ? "跳过 →" : "下一步 →"))}
-        </button>
+        {hasSteps ? (
+          <>
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={saving}
+              className="btn-ghost flex-shrink-0 px-5 py-3 text-sm"
+            >
+              {stepIdx === 0 ? "返回" : "上一步"}
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={
+                saving ||
+                (!canProceed && step && !step.skippable && !step.phaseIntro)
+              }
+              className="btn-primary flex-1 py-3"
+            >
+              {saving
+                ? "保存中…"
+                : isLast
+                ? canProceed
+                  ? "完成 →"
+                  : "跳过并完成"
+                : step && step.phaseIntro
+                ? "好的，继续 →"
+                : canProceed
+                ? "下一步 →"
+                : step && step.skippable
+                ? "跳过 →"
+                : "下一步 →"}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate("/home", { replace: true })}
+            className="btn-primary flex-1 py-3"
+          >
+            返回首页
+          </button>
+        )}
       </div>
     </div>
   );
@@ -467,5 +677,4 @@ function MultiChoice({ step, answers, toggle, customInputs, setCustomInputs, add
   );
 }
 
-/* Exported for Login gating */
-export { isProfileIncomplete };
+// (named exports: getProfileMissingFields / isProfileIncomplete)

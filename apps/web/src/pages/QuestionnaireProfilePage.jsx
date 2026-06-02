@@ -72,6 +72,22 @@ const QP_SCOPED_CSS = `
   font-weight: 700;
   color: #fff;
 }
+.qp-hero-badge {
+  display: inline-block;
+  margin: 0 0 0.45rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(196, 181, 253, 0.45);
+  background: rgba(139, 92, 246, 0.18);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(233, 213, 255, 0.95);
+}
+.qp-section--rare {
+  border-radius: 0.85rem;
+  padding: 0.15rem 0 0;
+}
 .qp-hero-name {
   margin: 0 0 0.4rem;
   font-size: 1.65rem;
@@ -440,9 +456,18 @@ function candidateForDisplayPrimary(displayPrimary, candidates) {
   return (candidates ?? []).find((c) => c.id === displayPrimary.id) ?? null;
 }
 
-function displayPrimarySubtitle(displayPrimary, candidates) {
+function displayPrimarySubtitle(displayPrimary, candidates, rareLabel) {
   if (!displayPrimary) return "";
   if (displayPrimary.source === "primary") return "核心人格类型";
+  if (displayPrimary.source === "rare") {
+    const ratio =
+      rareLabel?.matchRatio != null
+        ? fmtRatio(rareLabel.matchRatio)
+        : null;
+    return ratio
+      ? `隐藏款 · 主池外稀有人格 · 呼应度 ${ratio}`
+      : "隐藏款 · 主池外稀有人格";
+  }
   if (displayPrimary.source === "fallback") {
     return "各维度倾向仍较分散，以下为对照线索";
   }
@@ -519,14 +544,25 @@ function ProfileHeroSection({
     explainTitle !== displayPrimary.name &&
     !explainTitle.includes(displayPrimary.name);
 
+  const isRare = displayPrimary?.source === "rare";
+
   return (
-    <section className="qp-section">
+    <section className={`qp-section${isRare ? " qp-section--rare" : ""}`}>
       <h2>你的关系画像</h2>
       {displayPrimary ? (
         <>
+          {isRare ? (
+            <p className="qp-hero-badge" aria-label="隐藏款人格">
+              隐藏款
+            </p>
+          ) : null}
           <p className="qp-hero-name">{displayPrimary.name}</p>
           <p className="qp-hero-sub">
-            {displayPrimarySubtitle(displayPrimary, candidates)}
+            {displayPrimarySubtitle(
+              displayPrimary,
+              candidates,
+              labels?.rareLabel,
+            )}
             {showDebug ? ` · ${displayPrimary.id}` : ""}
           </p>
         </>
@@ -769,7 +805,7 @@ export default function QuestionnaireProfilePage() {
         </p>
       ) : null}
       <nav className="qp-page__nav" aria-label="快捷入口">
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         <span aria-hidden>·</span>
         <Link to={userId ? `/questionnaire?userId=${encodeURIComponent(userId)}` : "/questionnaire"}>
           问卷

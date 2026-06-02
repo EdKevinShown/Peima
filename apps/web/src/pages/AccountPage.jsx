@@ -633,7 +633,7 @@ export default function AccountPage() {
         </p>
       ) : null}
       <nav className="account-page__nav" aria-label="快捷入口">
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         <span aria-hidden>·</span>
         <Link to={`/onboarding/photo-upload?userId=${encodeURIComponent(userId || "")}`}>
           上传照片
@@ -708,11 +708,11 @@ export default function AccountPage() {
               ))}
             </AccountSelect>
 
-            <AccountSelect label="身高（cm）" value={height} onChange={(e) => setHeight(e.target.value)}>
+            <AccountSelect label="身高（厘米）" value={height} onChange={(e) => setHeight(e.target.value)}>
               <option value="">选填</option>
               {HEIGHTS.map((h) => (
                 <option key={h} value={String(h)}>
-                  {h} cm
+                  {h} 厘米
                 </option>
               ))}
             </AccountSelect>

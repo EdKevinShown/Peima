@@ -18,7 +18,7 @@ const stubProfile = {
   byDimensionBranchScores: {},
   dominantBranches: {},
   uncertainBranchesByAxis: {},
-  labels: { primary: null, candidates: [], styleLabels: [] },
+  labels: { primary: null, candidates: [], styleLabels: [], rareLabel: null },
   displayPrimary: { id: "x", name: "n", ruleTokens: [], matchedAxes: [], source: "fallback" as const },
   overallExplanation: { title: "t", paragraph: "p" },
 } as const;

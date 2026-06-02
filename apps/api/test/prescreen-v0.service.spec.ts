@@ -50,7 +50,7 @@ function baseProfileView(profile: UserProfile): QuestionnaireProfileView {
     byDimensionBranchScores: {},
     dominantBranches: emptyDominants(),
     uncertainBranchesByAxis: {},
-    labels: { primary: null, candidates: [], styleLabels: [] },
+    labels: { primary: null, candidates: [], styleLabels: [], rareLabel: null },
     displayPrimary: {
       id: "x",
       name: "测试主标签",

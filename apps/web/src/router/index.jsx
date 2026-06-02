@@ -19,7 +19,10 @@ import NavCard from "../components/admin/NavCard";
 import CopilotPage from "../pages/CopilotPage";
 import RelationshipTimelinePage from "../pages/RelationshipTimelinePage";
 import LoginPage from "../pages/LoginPage";
-import OnboardingPage, { isProfileIncomplete } from "../pages/OnboardingPage";
+import OnboardingPage, {
+  getProfileMissingFields,
+  isProfileIncomplete,
+} from "../pages/OnboardingPage";
 import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
 import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
@@ -37,6 +40,7 @@ import PersonalizedMatchmakerPage from "../pages/PersonalizedMatchmakerPage";
 import MainAppShell from "../components/layout/MainAppShell";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getMe } from "../api/auth";
+import { getUserPreferencesOptional } from "../api/preferences";
 import { getAdminCapabilities } from "../api/admin";
 
 function RequireAuth({ children }) {
@@ -61,9 +65,23 @@ function LegacyMyImagesRedirect() {
 
 function DashboardPage() {
   const navigate = useNavigate();
+  const userId = localStorage.getItem("peimaUserId") || "";
+  const uidQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
   const [nickname, setNickname] = useState("");
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [missingProfileFields, setMissingProfileFields] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  /** 与「我的资料」文案一致：多选可不选=不限；首页只提醒年龄/身高仍完全未设。 */
+  const getPreferenceMissingFields = (pref) => {
+    if (!pref) return ["年龄范围", "身高范围"];
+    const missing = [];
+    const hasAgeRange = pref.minAge != null || pref.maxAge != null;
+    const hasHeightRange = pref.minHeight != null || pref.maxHeight != null;
+    if (!hasAgeRange) missing.push("年龄范围");
+    if (!hasHeightRange) missing.push("身高范围");
+    return missing;
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("peimaToken");
@@ -74,15 +92,23 @@ function DashboardPage() {
     const stored = localStorage.getItem("peimaUserNickname");
     if (stored) setNickname(stored);
     getMe()
-      .then((me) => setNeedsOnboarding(isProfileIncomplete(me)))
+      .then(async (me) => {
+        const profileMissing = getProfileMissingFields(me);
+        let prefMissing = [];
+        try {
+          const pref = await getUserPreferencesOptional(me?.id || userId);
+          prefMissing = getPreferenceMissingFields(pref);
+        } catch {
+          prefMissing = ["年龄范围", "身高范围"];
+        }
+        setNeedsOnboarding(profileMissing.length > 0 || prefMissing.length > 0);
+        setMissingProfileFields([...profileMissing, ...prefMissing]);
+      })
       .catch(() => {});
     getAdminCapabilities()
       .then((c) => setIsAdmin(Boolean(c?.batchMatchTrigger)))
       .catch(() => {});
-  }, [navigate]);
-
-  const userId = localStorage.getItem("peimaUserId") || "";
-  const uidQs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+  }, [navigate, userId]);
 
   const handleLogout = () => {
     localStorage.removeItem("peimaToken");
@@ -146,6 +172,11 @@ function DashboardPage() {
               <p className="text-xs text-white/55 mt-0.5">
                 填完问卷，系统才能为你生成专属候选池
               </p>
+              {missingProfileFields.length > 0 ? (
+                <p className="text-xs text-white/65 mt-1">
+                  还缺：{missingProfileFields.join("、")}
+                </p>
+              ) : null}
             </div>
             <span className="text-white/60 text-sm">继续 →</span>
           </Link>

@@ -242,6 +242,7 @@ describe("questionnaire profile v3 rules", () => {
       primary: null,
       candidates: [],
       styleLabels: [],
+      rareLabel: null,
     };
     const displayPrimary = resolveDisplayPrimary(labels);
     expect(displayPrimary.source).toBe("fallback");
@@ -262,6 +263,36 @@ describe("questionnaire profile v3 rules", () => {
     expect(exp.paragraph.trim().length).toBeGreaterThan(0);
     expect(exp.paragraph).not.toMatch(/undefined/i);
     expect(exp.paragraph).not.toMatch(/\bnull\b/i);
+  });
+
+  it("all-D dispersed profile -> rare hidden displayPrimary instead of fallback", () => {
+    const layer1 = baseLayer1();
+    const labels = matchPersonalityLabelsV3(layer1);
+    expect(labels.primary).toBeNull();
+    expect(labels.candidates).toHaveLength(0);
+    expect(labels.rareLabel).not.toBeNull();
+    expect(labels.rareLabel?.id).toBe("mist_boundary");
+
+    const emptyManual: PersonalityLabelsResult = {
+      primary: null,
+      candidates: [],
+      styleLabels: [],
+      rareLabel: matchPersonalityLabelsV3(layer1).rareLabel,
+    };
+    expect(resolveDisplayPrimary(emptyManual).source).not.toBe("fallback");
+
+    const displayPrimary = resolveDisplayPrimary(labels);
+    expect(displayPrimary.source).toBe("rare");
+    expect(displayPrimary.name).toBe("雾里边界人");
+
+    const exp = buildOverallExplanation({
+      labels,
+      displayPrimary,
+      uncertainBranchesByAxis: serializeUncertain(layer1),
+    });
+    expect(exp.title).toContain("雾里边界人");
+    expect(exp.paragraph).toContain("若即若离");
+    expect(exp.paragraph).not.toContain(DISPLAY_PRIMARY_FALLBACK.paragraphLead);
   });
 
   it("layer1 dominant follows adjustedScore (opportunities-aware), not raw hits", () => {

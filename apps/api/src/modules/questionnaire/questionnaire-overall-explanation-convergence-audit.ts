@@ -414,7 +414,7 @@ export function formatConvergenceReport(
     "判定提示：",
     "- invalid > 0 → 不合格（空文案 / undefined / null）",
     "- 同一 explanation 对应多个 displayPrimaryId → 不稳定（instability）",
-    "- non_convergent_fallback → 主标签未命中，标题为「尚未收敛到命名标签」",
+    "- non_convergent_fallback → 主标签未命中且未命中隐藏款，标题为「尚未收敛到命名标签」（应为 0）",
     "- has_uncertain_axis → 至少一轴分支不确定（paragraph 会带不确定性收尾）",
     `- unique_overall_explanations 接近 sampled → 文案指纹几乎不重复（压缩比≈1）`,
     "",

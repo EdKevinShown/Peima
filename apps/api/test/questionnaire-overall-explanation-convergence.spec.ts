@@ -25,8 +25,8 @@ describe("questionnaire overallExplanation convergence audit", () => {
       report.sampled,
     );
     expect(report.instabilitySamples.length).toBe(0);
-    expect(report.nonConvergentFallbackCount).toBeGreaterThanOrEqual(0);
-    expect(report.nonConvergentFallbackRatio).toBeLessThanOrEqual(1);
+    expect(report.nonConvergentFallbackCount).toBe(0);
+    expect(report.nonConvergentFallbackRatio).toBe(0);
 
     // eslint-disable-next-line no-console -- audit visibility
     console.log("\n" + formatConvergenceReport(report));
@@ -42,6 +42,8 @@ describe("questionnaire overallExplanation convergence audit", () => {
     expect(report.sampled).toBe(50_000);
     expect(report.cappedAt).toBe(50_000);
     expect(report.instabilitySamples.length).toBe(0);
+    expect(report.nonConvergentFallbackCount).toBe(0);
+    expect(report.nonConvergentFallbackRatio).toBe(0);
     expect(report.uniqueExplanationFingerprints).toBeLessThan(
       report.sampled,
     );

@@ -110,13 +110,20 @@ export type PersonalityStyleLabel = {
   matchedAxes: MatchedAxis[];
 };
 
+export type PersonalityRareLabel = PersonalityLabelCandidate;
+
 export type PersonalityLabelsResult = {
   primary: PersonalityLabelPrimary | null;
   candidates: PersonalityLabelCandidate[];
   styleLabels: PersonalityStyleLabel[];
+  rareLabel: PersonalityRareLabel | null;
 };
 
-export type DisplayPrimarySource = "primary" | "candidate" | "fallback";
+export type DisplayPrimarySource =
+  | "primary"
+  | "candidate"
+  | "rare"
+  | "fallback";
 
 export type QuestionnaireDisplayPrimary = {
   id: string;

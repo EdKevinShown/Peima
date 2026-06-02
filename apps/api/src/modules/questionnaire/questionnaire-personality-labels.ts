@@ -8,6 +8,10 @@ import {
   PERSONALITY_STYLE_LABEL_RULES,
   QUESTIONNAIRE_LABEL_MATCH_V3,
 } from "./questionnaire-personality-labels.constants";
+import {
+  PERSONALITY_RARE_LABEL_RULES,
+  RARE_LABEL_MATCH_V3,
+} from "./questionnaire-personality-rare-labels.constants";
 
 export type MatchedAxis = { axisId: number; branch: string };
 
@@ -32,7 +36,21 @@ export type PersonalityStyleLabel = {
 };
 
 /** 展示用主标签（永不为空）；与 labels.primary（强主，可为 null）分离。 */
-export type DisplayPrimarySource = "primary" | "candidate" | "fallback";
+export type DisplayPrimarySource =
+  | "primary"
+  | "candidate"
+  | "rare"
+  | "fallback";
+
+export type PersonalityRareLabel = {
+  id: string;
+  name: string;
+  ruleTokens: string[];
+  matchedAxes: MatchedAxis[];
+  matchRatio: number;
+  matchedCount: number;
+  requiredCount: number;
+};
 
 export type DisplayPrimary = {
   id: string;
@@ -46,6 +64,8 @@ export type PersonalityLabelsResult = {
   primary: PersonalityPrimary | null;
   candidates: PersonalityCandidate[];
   styleLabels: PersonalityStyleLabel[];
+  /** 隐藏款匹配结果；仅在与主池 fallback 同时有意义，否则为 null */
+  rareLabel: PersonalityRareLabel | null;
 };
 
 function parseRuleConditions(
@@ -205,6 +225,103 @@ export function bestCoreLabelWeakMatchRatio(
   return best;
 }
 
+function rareRuleQualifies(
+  matchedCount: number,
+  requiredCount: number,
+  matchRatio: number,
+): boolean {
+  if (requiredCount === 0) return false;
+  if (matchedCount < RARE_LABEL_MATCH_V3.MIN_MATCHED_CONDITIONS) return false;
+  return matchRatio >= RARE_LABEL_MATCH_V3.MIN_MATCH_RATIO;
+}
+
+function compareRareScored(
+  a: PersonalityRareLabel,
+  aIndex: number,
+  b: PersonalityRareLabel,
+  bIndex: number,
+): number {
+  if (a.matchRatio !== b.matchRatio) return b.matchRatio - a.matchRatio;
+  if (a.matchedCount !== b.matchedCount) return b.matchedCount - a.matchedCount;
+  return aIndex - bIndex;
+}
+
+function buildRareLabelEntry(
+  rule: (typeof PERSONALITY_RARE_LABEL_RULES)[number],
+  layer1: Record<number, AxisBranchProfileV3>,
+): PersonalityRareLabel {
+  const conditions = parseRuleConditions(rule.tokens);
+  const { matchedCount, requiredCount: req } = ruleWeakStats(layer1, conditions);
+  const matchRatio = req > 0 ? matchedCount / req : 0;
+  return {
+    id: rule.id,
+    name: rule.name,
+    ruleTokens: [...rule.tokens],
+    matchedAxes: matchedAxesForRule(conditions),
+    matchRatio,
+    matchedCount,
+    requiredCount: req,
+  };
+}
+
+const ULTIMATE_RARE_LABEL_ID = "self_named_enigma" as const;
+
+/**
+ * 主池无法收敛时，从稀有人格池取展示标签（永不为 null）。
+ */
+export function matchRarePersonalityLabelV3(
+  layer1: Record<number, AxisBranchProfileV3>,
+): PersonalityRareLabel {
+  type Scored = { entry: PersonalityRareLabel; ruleIndex: number };
+  let bestQualified: Scored | null = null;
+  let bestAnyHit: Scored | null = null;
+
+  for (let ruleIndex = 0; ruleIndex < PERSONALITY_RARE_LABEL_RULES.length; ruleIndex += 1) {
+    const rule = PERSONALITY_RARE_LABEL_RULES[ruleIndex]!;
+    const entry = buildRareLabelEntry(rule, layer1);
+
+    if (rareRuleQualifies(entry.matchedCount, entry.requiredCount, entry.matchRatio)) {
+      if (
+        bestQualified === null ||
+        compareRareScored(
+          entry,
+          ruleIndex,
+          bestQualified.entry,
+          bestQualified.ruleIndex,
+        ) < 0
+      ) {
+        bestQualified = { entry, ruleIndex };
+      }
+    }
+
+    if (entry.matchedCount > 0) {
+      if (
+        bestAnyHit === null ||
+        compareRareScored(entry, ruleIndex, bestAnyHit.entry, bestAnyHit.ruleIndex) <
+          0
+      ) {
+        bestAnyHit = { entry, ruleIndex };
+      }
+    }
+  }
+
+  if (bestQualified) return bestQualified.entry;
+  if (bestAnyHit) return bestAnyHit.entry;
+
+  const ultimate =
+    PERSONALITY_RARE_LABEL_RULES.find((r) => r.id === ULTIMATE_RARE_LABEL_ID) ??
+    PERSONALITY_RARE_LABEL_RULES[0]!;
+  return {
+    id: ultimate.id,
+    name: ultimate.name,
+    ruleTokens: [...ultimate.tokens],
+    matchedAxes: [],
+    matchRatio: 0,
+    matchedCount: 0,
+    requiredCount: ultimate.tokens.length,
+  };
+}
+
 export function matchPersonalityLabelsV3(
   layer1: Record<number, AxisBranchProfileV3>,
 ): PersonalityLabelsResult {
@@ -267,5 +384,8 @@ export function matchPersonalityLabelsV3(
 
   const styleLabels = collectStyleLabels(layer1);
 
-  return { primary, candidates: filtered, styleLabels };
+  const wouldFallback = primary === null && filtered.length === 0;
+  const rareLabel = wouldFallback ? matchRarePersonalityLabelV3(layer1) : null;
+
+  return { primary, candidates: filtered, styleLabels, rareLabel };
 }

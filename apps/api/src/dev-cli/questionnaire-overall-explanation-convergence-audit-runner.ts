@@ -58,6 +58,12 @@ function main(): void {
   if (report.instabilitySamples.length > 0) {
     process.exit(3);
   }
+  if (report.nonConvergentFallbackCount > 0) {
+    console.error(
+      `FAIL: non_convergent_fallback=${report.nonConvergentFallbackCount} (${(report.nonConvergentFallbackRatio * 100).toFixed(2)}%) — 仍有「尚未收敛到命名标签」画像`,
+    );
+    process.exit(4);
+  }
 }
 
 main();

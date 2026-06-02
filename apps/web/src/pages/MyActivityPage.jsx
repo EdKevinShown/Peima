@@ -432,7 +432,7 @@ export default function MyActivityPage() {
         </p>
       ) : null}
       <nav className="my-activity-page__nav" aria-label="快捷入口">
-        <Link to="/">首页</Link>
+        <Link to="/home">首页</Link>
         <span aria-hidden>·</span>
         <Link to={`/account?userId=${encodeURIComponent(userId || "")}`}>我的资料</Link>
       </nav>

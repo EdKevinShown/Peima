@@ -94,6 +94,67 @@ export const DISPLAY_PRIMARY_FALLBACK = {
     "各维度上的分支倾向仍较分散，暂不足以稳定套入某一类命名人格标签；不妨把下方分支明细当作自我对照的线索。",
 } as const;
 
+/** 隐藏款稀有人格：主池外小众原型（非 AI）。 */
+export const RARE_LABEL_COPY: Record<string, PrimaryLabelCopyEntry> = {
+  mist_boundary: {
+    title: "隐藏款 · 雾里边界人",
+    summary:
+      "你在亲密与距离之间更像踩着雾走：既需要被看见，又本能保留退路，边界感柔韧而不僵硬，别人容易读成「若即若离」。",
+  },
+  emotion_blender: {
+    title: "隐藏款 · 情绪混血体",
+    summary:
+      "情绪表达与消化方式常混搭多种模式，同一情境里可能既敏感又克制；关系里更像「多色系」而非单一色调。",
+  },
+  slow_bloom: {
+    title: "隐藏款 · 慢热开花株",
+    summary:
+      "信任与投入偏慢热，前期像观望，一旦认定则愿意长期经营；急火式推进或高压确认未必适合你。",
+  },
+  parallel_orbit: {
+    title: "隐藏款 · 平行轨道伴侣",
+    summary:
+      "你更习惯在关系里保留平行生活与节奏，亲密不等于完全重叠，并肩而行比黏成一体更自在。",
+  },
+  tidal_lover: {
+    title: "隐藏款 · 潮汐式恋人",
+    summary:
+      "靠近与退潮会周期性交替，感情未必浅，但稳定性与可预期性对你和对方都是长期课题。",
+  },
+  glass_heart_architect: {
+    title: "隐藏款 · 玻璃心建筑师",
+    summary:
+      "内心细腻、对互动温差敏感，同时又会用理性或规则感给自己搭脚手架；受伤时可能先收紧再表达。",
+  },
+  rational_romantic: {
+    title: "隐藏款 · 理性浪漫主义",
+    summary:
+      "既渴望浪漫与联结，又习惯用清醒与边界护住自己；上头与自持常在内心并存，外人未必一眼看穿。",
+  },
+  quiet_storm: {
+    title: "隐藏款 · 静音暴风雨",
+    summary:
+      "表面平静、少戏剧化表达，内在却对关系质量高度在意；积压久了可能以离开或冷处理而非大吵收场。",
+  },
+  orbit_partner: {
+    title: "隐藏款 · 轨道式伴侣",
+    summary:
+      "更像稳定绕行的陪伴：存在感持续但不抢戏，重视默契与节奏合拍，讨厌被拽进失控的占有或审问。",
+  },
+  self_named_enigma: {
+    title: "隐藏款 · 自洽未命名体",
+    summary:
+      "答卷在多个维度上难以单点归类，但你并非「没有类型」，而是更接近自洽的混搭体；下列称呼是参照用的小众原型，用来补全主池留白的阅读体验。",
+  },
+};
+
+/** 隐藏款展示时的统一说明（接在人格 summary 之前）。 */
+export const DISPLAY_RARE_FRAMING = {
+  subtitle: "隐藏款 · 主池外稀有人格",
+  paragraphPrefix:
+    "主流十五类关系人格之外，你的回答在若干关键维度上呈现出更混搭、更难单点收敛的图案；下面这一型是参照用的小众原型，用来补全「暂无法命名」的空缺，不等于临床或依恋类型定论。",
+} as const;
+
 /** 风格侧写：一句人话，用于 summary / bullets。 */
 export const STYLE_LABEL_COPY: Record<string, string> = {
   blunt_not_gentle:

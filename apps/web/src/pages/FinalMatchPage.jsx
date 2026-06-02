@@ -106,6 +106,18 @@ function resolveScoreProjectionFallbackHint(reason) {
   return typeof reason === "string" && map[reason] ? map[reason] : "当前分数暂时回退到基线分数";
 }
 
+function toFinalMatchErrorMessage(err) {
+  const raw = String(err?.message ?? err ?? "").trim();
+  if (!raw) return "暂时还没有可展示的最终匹配结果。";
+  if (/No match result for user/i.test(raw)) {
+    return "暂时还没有可展示的最终匹配结果，你可以先回到等待页继续匹配。";
+  }
+  if (/404|not\s*found/i.test(raw)) {
+    return "未找到可展示的匹配结果，你可以稍后再试，或回到等待页继续匹配。";
+  }
+  return raw;
+}
+
 /** M6.0-H2: `VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE=1` 启用主视觉 V2。 */
 function readV2PrimaryScoreFlag() {
   return import.meta.env.VITE_FINAL_MATCH_USE_V2_PRIMARY_SCORE === "1";
@@ -1401,9 +1413,22 @@ export default function FinalMatchPage() {
       ) : null}
       {loading ? <LoadingState label="加载匹配结果" /> : null}
       {error ? (
-        <AlertBanner variant="error" className="mb-4">
-          {error.message}
-        </AlertBanner>
+        <div className="mb-4 space-y-3">
+          <AlertBanner variant="error">
+            {toFinalMatchErrorMessage(error)}
+          </AlertBanner>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/matching-waiting?userId=${encodeURIComponent(userId || "")}`}
+              className="btn-ghost text-xs py-1.5 px-3"
+            >
+              回到等待页
+            </Link>
+            <Link to="/home" className="btn-ghost text-xs py-1.5 px-3">
+              返回首页
+            </Link>
+          </div>
+        </div>
       ) : null}
 
       {!loading && !error && result ? (
