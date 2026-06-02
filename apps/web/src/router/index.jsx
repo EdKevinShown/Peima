@@ -3,7 +3,7 @@ import { Link, Navigate, Route, Routes, useNavigate, useSearchParams } from "rea
 import {
   FileText, Sparkles, Heart, MessageCircle,
   User, Image as ImageIcon, BarChart3, Users,
-  Bot, Calendar, ShieldCheck, Database, Activity, Palette,
+  Bot, Calendar, ShieldCheck, Database, Activity, Palette, Radar,
 } from "lucide-react";
 import LandingPage from "../pages/LandingPage";
 import FinalMatchPage from "../pages/FinalMatchPage";
@@ -30,6 +30,7 @@ import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
 import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
 import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
 import P76CanonicalSidecarApplyReviewPage from "../pages/P76CanonicalSidecarApplyReviewPage";
+import TestingObservabilityPage from "../pages/TestingObservabilityPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import PersonalizedMatchmakerPage from "../pages/PersonalizedMatchmakerPage";
@@ -331,6 +332,12 @@ function DashboardPage() {
                   title="匹配预览池"
                   desc="Legacy · batch-match 排障"
                 />
+                <NavCard
+                  to="/admin/testing-observability"
+                  Icon={Radar}
+                  title="测试监视器"
+                  desc="流程状态 · 匹配来源 · 反馈"
+                />
               </div>
             </div>
           ) : null}
@@ -378,6 +385,7 @@ export default function AppRoutes() {
         <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
         <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
         <Route path="/admin/my-ai-records" element={<AdminMyAiRecordsPage />} />
+        <Route path="/admin/testing-observability" element={<TestingObservabilityPage />} />
         <Route path="/admin/p76/allowlist-apply-meta" element={<P76AllowlistApplyMetaPage />} />
         <Route path="/admin/p76/canonical-rehearsal" element={<P76CanonicalRehearsalPage />} />
         <Route path="/admin/p76/canonical-sidecar" element={<P76CanonicalSidecarPage />} />

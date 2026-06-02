@@ -36,6 +36,7 @@ import { AdminPhotoReviewModule } from "./modules/admin-photo-review/admin-photo
 import { P76AdminAllowlistApplyMetaModule } from "./modules/matching/p76-admin-allowlist-apply-meta.module";
 import { P76CanonicalRehearsalAdminModule } from "./modules/matching/p76-canonical-rehearsal-admin.module";
 import { P76CanonicalSidecarAdminModule } from "./modules/matching/p76-canonical-sidecar-admin.module";
+import { TestingObservabilityModule } from "./modules/testing-observability/testing-observability.module";
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { P76CanonicalSidecarAdminModule } from "./modules/matching/p76-canonical
     P76AdminAllowlistApplyMetaModule,
     P76CanonicalRehearsalAdminModule,
     P76CanonicalSidecarAdminModule,
+    TestingObservabilityModule,
   ],
   controllers: [],
   providers: [],

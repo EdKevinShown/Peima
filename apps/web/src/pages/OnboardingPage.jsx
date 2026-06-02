@@ -3,6 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { getMe } from "../api/auth";
 import { updateUser } from "../api/users";
 import { getUserPreferencesOptional, upsertUserPreferences } from "../api/preferences";
+import { mapAccountApiErrorMessage } from "../utils/accountApiErrorMap";
+import {
+  buildOnboardingPreferencePayload,
+  buildOnboardingProfilePayload,
+  onboardingStepFieldKeys,
+} from "../utils/onboardingSubmitPayload";
 
 /**
  * Step types
@@ -62,6 +68,7 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [touchedKeys, setTouchedKeys] = useState(() => new Set());
   const [customInputs, setCustomInputs] = useState({});  // per-step typed "custom" tags buffer
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -113,7 +120,22 @@ export default function OnboardingPage() {
   }, [userId, navigate]);
 
   const setAnswer = useCallback((key, val) => {
+    setTouchedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
     setAnswers((prev) => ({ ...prev, [key]: val }));
+  }, []);
+
+  const markStepTouched = useCallback((s) => {
+    const keys = onboardingStepFieldKeys(s);
+    if (!keys.length) return;
+    setTouchedKeys((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) next.add(k);
+      return next;
+    });
   }, []);
 
   /* Current-step helpers */
@@ -153,57 +175,42 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
-      const profilePayload = {};
-      const prefPayload = {};
-      for (const s of STEPS) {
-        if (s.phaseIntro) continue;
-        if (s.type === "range") {
-          const lo = answers[s.keyMin];
-          const hi = answers[s.keyMax];
-          if (lo !== "" && lo != null) profilePayload[s.keyMin] = undefined; // skip in profile
-          if (hi !== "" && hi != null) profilePayload[s.keyMax] = undefined;
-          if (lo !== "" && lo != null) prefPayload[s.keyMin] = parseInt(String(lo), 10);
-          if (hi !== "" && hi != null) prefPayload[s.keyMax] = parseInt(String(hi), 10);
-          continue;
-        }
-        const v = answers[s.key];
-        if (v === "" || v === null || v === undefined) continue;
-        const target = s.section === "profile" ? profilePayload : prefPayload;
-        if (s.type === "number") {
-          const n = typeof v === "number" ? v : parseInt(String(v), 10);
-          if (!Number.isNaN(n)) target[s.key] = n;
-        } else if (s.type === "multi") {
-          target[s.key] = Array.isArray(v) ? v.filter(Boolean) : [];
-        } else {
-          target[s.key] = String(v).trim();
-        }
-      }
+      const effectiveTouched = new Set([
+        ...touchedKeys,
+        ...onboardingStepFieldKeys(step),
+      ]);
+      const profilePayload = buildOnboardingProfilePayload(
+        answers,
+        effectiveTouched,
+      );
+      const prefPayload = buildOnboardingPreferencePayload(
+        answers,
+        effectiveTouched,
+      );
 
-      // Clean undefined out of profilePayload
-      Object.keys(profilePayload).forEach((k) => {
-        if (profilePayload[k] === undefined) delete profilePayload[k];
-      });
-
-      const updated = await updateUser(userId, profilePayload);
-      if (updated?.nickname) {
-        localStorage.setItem("peimaUserNickname", updated.nickname);
+      if (Object.keys(profilePayload).length > 0) {
+        const updated = await updateUser(userId, profilePayload);
+        if (updated?.nickname) {
+          localStorage.setItem("peimaUserNickname", updated.nickname);
+        }
       }
       if (Object.keys(prefPayload).length > 0) {
         await upsertUserPreferences(userId, prefPayload);
       }
       navigate("/home", { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(mapAccountApiErrorMessage(e));
     } finally {
       setSaving(false);
     }
-  }, [userId, answers, navigate]);
+  }, [userId, answers, touchedKeys, step, navigate]);
 
   const goNext = useCallback(() => {
     if (!canProceed && !step.skippable && !step.phaseIntro) return;
+    markStepTouched(step);
     if (stepIdx === STEPS.length - 1) void submitAll();
     else setStepIdx((i) => i + 1);
-  }, [stepIdx, canProceed, submitAll, step]);
+  }, [stepIdx, canProceed, submitAll, step, markStepTouched]);
 
   const onInputKeyDown = (e) => {
     if (e.key === "Enter" && step.type !== "long") {

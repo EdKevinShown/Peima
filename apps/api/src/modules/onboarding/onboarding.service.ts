@@ -251,6 +251,15 @@ export class OnboardingService {
       data: { onboardingPhotoAestheticCompletedAt: now },
     });
 
+    void import("../testing-observability/record-testing-event").then(({ recordTestingEvent }) =>
+      recordTestingEvent(this.prisma, {
+        userId,
+        eventType: "photo_preference_submitted",
+        status: "success",
+        source: "onboarding_service",
+      }),
+    );
+
     return { styleTags: savedTags };
   }
 }

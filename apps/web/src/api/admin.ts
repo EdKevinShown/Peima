@@ -112,3 +112,17 @@ export async function runAdminPostPoolOrchestrationMvp(
   });
   return handleJson<AdminPostPoolOrchestrationMvpEnvelope>(res);
 }
+
+export async function getMatchingObservabilitySummary(query?: {
+  limit?: number;
+  sinceDays?: number;
+}) {
+  const qs = new URLSearchParams();
+  if (query?.limit != null) qs.set("limit", String(query.limit));
+  if (query?.sinceDays != null) qs.set("sinceDays", String(query.sinceDays));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await fetch(`${baseUrl}/admin/matching-observability/summary${suffix}`, {
+    headers: authHeaders(),
+  });
+  return handleJson(res);
+}

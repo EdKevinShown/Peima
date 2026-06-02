@@ -151,6 +151,16 @@ export class QuestionnaireService {
       });
     });
 
+    void import("../testing-observability/record-testing-event").then(({ recordTestingEvent }) =>
+      recordTestingEvent(this.prisma, {
+        userId: dto.userId,
+        eventType: "questionnaire_completed",
+        status: "success",
+        source: "questionnaire_service",
+        sourceVersion: "questionnaire-g1r-v1",
+      }),
+    );
+
     return {
       userId: dto.userId,
       answersSaved: dto.answers.length,

@@ -48,6 +48,20 @@ function mapValidationFragment(part) {
   if (m.includes("styletags") && m.includes("invalid")) {
     return "选项不合法，请重新选择后保存";
   }
+  if (m.includes("gender") && m.includes("must be one of")) {
+    return "性别选项无效，请重新选择";
+  }
+  if (m.includes("occupation") && m.includes("must be one of")) {
+    return "职业类别无效，请重新选择";
+  }
+  if (m.includes("relationshipgoal") && m.includes("must be one of")) {
+    return "关系目标选项无效，请重新选择";
+  }
+  if (m.includes("gender") || m.includes("occupation") || m.includes("relationshipgoal")) {
+    if (m.includes("must be") || m.includes("enum")) {
+      return "资料选项无效，请返回前面步骤重新选择后保存";
+    }
+  }
   if (
     m.includes("contains invalid value") ||
     m.includes("must be a valid enum")

@@ -21,6 +21,7 @@ const pathTitle = (pathname) => {
   if (pathname.startsWith("/preview-pool")) return "预览池";
   if (pathname.startsWith("/admin/photo-review")) return "照片审核";
   if (pathname.startsWith("/admin/my-ai-records")) return "我的 AI 记录";
+  if (pathname.startsWith("/admin/testing-observability")) return "测试监视器";
   if (pathname.startsWith("/admin/ai-sim-job-diagnostic")) return "AI Sim 诊断";
   if (pathname.startsWith("/admin/ai-sim-job-triage")) return "AI Sim 分诊";
   if (pathname.startsWith("/admin/p76/allowlist-apply-meta")) return "P76 灰度应用";

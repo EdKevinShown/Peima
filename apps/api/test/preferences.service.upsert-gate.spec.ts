@@ -80,6 +80,19 @@ describe("PreferencesService upsert (optional match preferences)", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("allows styleTags-only upsert without gender/occupation/relationshipGoal profile fields", async () => {
+    const row = { id: "pref-1", userId, styleTags: ["清爽自然"] };
+    const { service, create } = makeService({
+      user: { id: userId },
+      existingPref: null,
+      createResult: row,
+    });
+    await expect(
+      service.upsertForUser(userId, { styleTags: ["清爽自然"] }),
+    ).resolves.toEqual(row);
+    expect(create.mock.calls[0][0].data.styleTags).toEqual(["清爽自然"]);
+  });
+
   it("allows create / update with only one age bound (other side null)", async () => {
     const row = { id: "pref-1", userId };
     const { service, create } = makeService({

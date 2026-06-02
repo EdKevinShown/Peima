@@ -219,6 +219,20 @@ export class OnboardingPhotoPreviewPoolService {
       })
       .catch(() => undefined);
 
+    void import("../testing-observability/record-testing-event").then(({ recordTestingEvent }) =>
+      recordTestingEvent(this.prisma, {
+        userId: viewerUserId,
+        eventType: "preview_pool_generated",
+        status: "success",
+        source: "onboarding_photo_preview_pool",
+        sourceVersion: POOL_SOURCE_VERSION,
+        meta: {
+          poolId: created.id,
+          itemCount: created.items.length,
+        },
+      }),
+    );
+
     return this.toViewerBundle(created);
   }
 

@@ -994,3 +994,40 @@ model P76CanonicalApplyRollbackSnapshot {
   @@index([promotionStatus])
   @@map("p76_canonical_apply_rollback_snapshot")
 }
+
+/// Local/staging testing observability — event log only; never mutates business tables.
+model TestingObservabilityEvent {
+  id            String   @id @default(cuid())
+  userId        String?
+  matchResultId String?
+  eventType     String
+  status        String
+  source        String?
+  sourceVersion String?
+  fallbackUsed  Boolean?
+  errorCode     String?
+  message       String?  @db.Text
+  meta          Json?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([matchResultId, createdAt(sort: Desc)])
+  @@index([eventType, createdAt(sort: Desc)])
+  @@map("testing_observability_events")
+}
+
+/// Local/staging match feedback from testing monitor; does not update MatchResult.
+model TestingMatchFeedback {
+  id            String   @id @default(cuid())
+  userId        String
+  matchResultId String?
+  rating        String
+  reasonCodes   Json?
+  freeText      String?  @db.Text
+  source        String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([matchResultId, createdAt(sort: Desc)])
+  @@map("testing_match_feedback")
+}

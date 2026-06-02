@@ -14,6 +14,7 @@ import {
 } from "../api/onboarding";
 import { getMe } from "../api/auth";
 import { resolveUserId } from "../utils/resolveUserId";
+import { mapAccountApiErrorMessage } from "../utils/accountApiErrorMap";
 
 const MAX_STYLE_TAGS = 8;
 const MAX_FOCUS_TAGS = 8;
@@ -106,12 +107,7 @@ export default function OnboardingPhotoPreferencePage() {
       await postOnboardingPhotoPreferences(tags);
       navigate(`/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`);
     } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e);
-      setError(
-        new Error(
-          `保存审美偏好时出现问题，请稍后重试。${raw ? `（${raw}）` : ""}`,
-        ),
-      );
+      setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
       setSubmitting(false);
     }
