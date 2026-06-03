@@ -95,7 +95,7 @@ export class MatchingService {
     });
     if (!profile) {
       throw new BadRequestException(
-        "User must complete the questionnaire before joining the match queue",
+        "请先完成关系问卷并生成画像，再点击「开始匹配」。",
       );
     }
 

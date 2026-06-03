@@ -22,6 +22,15 @@ export function toFriendlyUserMessage(message) {
   if (text.includes("AI 关系模拟") || lower.includes("pairwise")) {
     return "匹配说明仍在准备，不影响你查看结果。";
   }
+  if (
+    lower.includes("complete the questionnaire") &&
+    lower.includes("match queue")
+  ) {
+    return "请先完成关系问卷并生成画像，再点击「开始匹配」。";
+  }
+  if (text.includes("请先完成关系问卷")) {
+    return text;
+  }
 
   return text;
 }

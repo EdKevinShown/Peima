@@ -51,7 +51,7 @@ export class OnboardingPhotoPreviewPoolService {
     }
     if (user.onboardingPhotoAestheticCompletedAt == null) {
       throw new BadRequestException(
-        "Complete onboarding photo preferences before generating the preview pool.",
+        "请先在「审美偏好」页保存照片审美偏好，再生成第一印象预览。",
       );
     }
     const hasPassing = user.images.some(
@@ -62,7 +62,7 @@ export class OnboardingPhotoPreviewPoolService {
     );
     if (!hasPassing) {
       throw new BadRequestException(
-        "Upload at least one passing onboarding photo before generating the preview pool.",
+        "请先上传并通过审核至少一张照片，再生成第一印象预览。",
       );
     }
   }
@@ -152,7 +152,7 @@ export class OnboardingPhotoPreviewPoolService {
 
     if (slots.length < SLOT_COUNT) {
       throw new BadRequestException(
-        `Not enough gated candidates for 3+2+1 pool (${slots.length}/${SLOT_COUNT}). Add more users with photos and profiles.`,
+        `内测候选人不足，暂时无法生成 6 人预览（当前 ${slots.length}/${SLOT_COUNT}）。请让更多测试账号完成资料、上传照片并通过审核后再试。`,
       );
     }
 

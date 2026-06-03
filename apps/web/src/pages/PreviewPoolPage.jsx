@@ -25,6 +25,30 @@ function fmtScore(n) {
   return typeof n === "number" && Number.isFinite(n) ? n.toFixed(3) : "-";
 }
 
+/** 将 onboarding 预览池 API 英文/旧文案映射为中文提示。 */
+function mapOnboardingPreviewPoolError(msg) {
+  const m = String(msg || "");
+  if (/No active onboarding/i.test(m)) {
+    return "还没有生成预览池。若已完成审美偏好，请点击「生成预览」。";
+  }
+  if (/Not enough gated candidates/i.test(m)) {
+    const hit = m.match(/\((\d+)\/(\d+)\)/);
+    const cur = hit?.[1] ?? "0";
+    const need = hit?.[2] ?? "6";
+    return `内测候选人不足，暂时无法生成 ${need} 人预览（当前 ${cur}/${need}）。请让更多测试账号完成资料、上传照片并通过审核后再试。`;
+  }
+  if (/Complete onboarding photo preferences/i.test(m)) {
+    return "请先在「审美偏好」页保存照片审美偏好，再生成第一印象预览。";
+  }
+  if (/Upload at least one passing/i.test(m)) {
+    return "请先上传并通过审核至少一张照片，再生成第一印象预览。";
+  }
+  if (/内测候选人不足/.test(m)) {
+    return m;
+  }
+  return m;
+}
+
 export default function PreviewPoolPage() {
   const location = useLocation();
   const isOnboardingPool = location.pathname.includes("/onboarding/photo-preview");
@@ -56,11 +80,9 @@ export default function PreviewPoolPage() {
     } catch (e) {
       setBundle(null);
       const msg = e instanceof Error ? e.message : String(e);
-      if (isOnboardingPool && /No active onboarding/i.test(msg)) {
-        setError("还没有生成预览池。若已完成审美偏好，请点击下方「生成预览」。");
-      } else {
-        setError(msg);
-      }
+      setError(
+        isOnboardingPool ? mapOnboardingPreviewPoolError(msg) : msg,
+      );
     } finally {
       setLoading(false);
     }
@@ -78,7 +100,8 @@ export default function PreviewPoolPage() {
       setBundle(next);
     } catch (e) {
       setBundle(null);
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(mapOnboardingPreviewPoolError(msg));
     } finally {
       setGenerating(false);
     }
