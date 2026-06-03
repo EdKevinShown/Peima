@@ -74,6 +74,15 @@ export type TestingQuestionnaireSummary = {
   } | null;
 };
 
+export type TestingMatchUserBrief = {
+  userId: string;
+  nickname: string | null;
+  gender: string | null;
+  age: number | null;
+  city: string | null;
+  phoneTail: string | null;
+};
+
 export type TestingMatchDebugSummary = {
   matchResultId: string;
   viewerUserId: string;
@@ -91,6 +100,16 @@ export type TestingMatchDebugSummary = {
   sourceVersion: string | null;
   createdAt: string;
   updatedAt: string;
+  viewer?: TestingMatchUserBrief;
+  candidate?: TestingMatchUserBrief;
+  displayCandidate?: TestingMatchUserBrief | null;
+  /** e.g. 张三 → 李四 */
+  pairingSummary?: string;
+  /** e.g. 张三（男·28岁·深圳） → 李四（女·测试） */
+  pairingDetail?: string;
+  /** Both A→B and B→A exist in the same result set (or DB pair). */
+  isMutualMatch?: boolean;
+  displayCandidateDiffers?: boolean;
 };
 
 export type TestingEventRow = {

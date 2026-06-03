@@ -18,8 +18,13 @@ import AdminNotice from "../components/admin/AdminNotice";
 import AdminPageShell from "../components/admin/AdminPageShell";
 import AdminSection from "../components/admin/AdminSection";
 import AdminStatusBadge from "../components/admin/AdminStatusBadge";
+import TestingMatchUserCell from "../components/admin/TestingMatchUserCell";
 import { adminBtnPrimary, adminInput, adminLabel, adminMuted } from "../components/admin/adminTheme";
 import LoadingState from "../components/common/LoadingState";
+
+function fmtMatchScore(n) {
+  return typeof n === "number" && Number.isFinite(n) ? n.toFixed(4) : "—";
+}
 
 const FEEDBACK_RATINGS = [
   "accurate",
@@ -176,32 +181,89 @@ export default function TestingObservabilityPage() {
   const matchHistory = sections?.match?.history ?? [];
   const timeline = sections?.timeline ?? [];
 
-  const matchColumns = useMemo(
+  const matchDetailColumns = useMemo(
     () => [
       {
-        key: "viewerUserId",
-        label: "viewer",
+        key: "pairing",
+        label: "配对",
         render: (row) => (
-          <button type="button" className="text-left" onClick={() => setSelectedUserId(row.viewerUserId)}>
-            <AdminIdPill id={row.viewerUserId} />
-          </button>
+          <div className="min-w-[200px]">
+            <p className="text-sm text-white/90 font-medium">
+              {row.pairingSummary ?? `${row.viewerUserId} → ${row.candidateUserId}`}
+            </p>
+            {row.pairingDetail && row.pairingDetail !== row.pairingSummary ? (
+              <p className="text-xs text-white/55 mt-0.5">{row.pairingDetail}</p>
+            ) : null}
+            {row.isMutualMatch ? (
+              <span className="inline-block mt-1 text-[0.65rem] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+                双向匹配
+              </span>
+            ) : (
+              <span className="inline-block mt-1 text-[0.65rem] text-white/40">单向</span>
+            )}
+          </div>
         ),
       },
       {
-        key: "candidateUserId",
-        label: "candidate",
-        render: (row) => <AdminIdPill id={row.candidateUserId} />,
+        key: "viewer",
+        label: "viewer（看谁）",
+        render: (row) => (
+          <TestingMatchUserCell
+            brief={row.viewer ?? { userId: row.viewerUserId, nickname: null }}
+            role="viewer"
+            onSelectUserId={setSelectedUserId}
+          />
+        ),
       },
       {
-        key: "displaySourceType",
-        label: "source",
-        render: (row) => <AdminStatusBadge status={row.displaySourceType} tone="applied" />,
+        key: "candidate",
+        label: "candidate（配到谁）",
+        render: (row) => (
+          <TestingMatchUserCell
+            brief={row.candidate ?? { userId: row.candidateUserId, nickname: null }}
+            role="candidate"
+            onSelectUserId={setSelectedUserId}
+          />
+        ),
       },
-      { key: "finalScore", label: "score" },
+      {
+        key: "display",
+        label: "展示",
+        render: (row) => (
+          <div className="text-xs text-white/70 max-w-[160px]">
+            <AdminStatusBadge status={row.displaySourceType} tone="applied" />
+            {row.displayCandidateDiffers && row.displayCandidate ? (
+              <p className="mt-1 text-amber-200/90">
+                展示对象 ≠ 库内 candidate：
+                <span className="block mt-0.5 text-white/80">
+                  {row.displayCandidate.nickname || row.displayCandidate.userId}
+                </span>
+              </p>
+            ) : null}
+            {row.fallbackUsed === true ? (
+              <p className="mt-1 text-amber-200/80">fallback</p>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "finalScore",
+        label: "score",
+        render: (row) => fmtMatchScore(row.finalScore),
+      },
+      {
+        key: "matchResultId",
+        label: "结果 ID",
+        render: (row) => (
+          <AdminIdPill id={row.matchResultId} truncate={14} title={row.matchResultId} />
+        ),
+      },
       { key: "createdAt", label: "created" },
     ],
     [],
   );
+
+  const matchColumns = matchDetailColumns;
 
   const submitFeedback = async () => {
     if (!selectedUserId) return;
@@ -388,10 +450,31 @@ export default function TestingObservabilityPage() {
               <AdminSection title="Match · 来源与 Sidecar">
                 {match ? (
                   <>
+                    {match.pairingSummary ? (
+                      <p className="text-sm text-white/90 mb-3">
+                        <span className="font-medium">{match.pairingSummary}</span>
+                        {match.isMutualMatch ? (
+                          <span className="ml-2 text-xs text-emerald-300">（双向匹配）</span>
+                        ) : null}
+                        {match.pairingDetail ? (
+                          <span className={`${adminMuted} block mt-1`}>{match.pairingDetail}</span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    <div className="grid gap-4 sm:grid-cols-2 mb-4">
+                      <TestingMatchUserCell
+                        brief={match.viewer ?? { userId: match.viewerUserId, nickname: null }}
+                        role="viewer"
+                      />
+                      <TestingMatchUserCell
+                        brief={match.candidate ?? { userId: match.candidateUserId, nickname: null }}
+                        role="candidate"
+                      />
+                    </div>
                     <AdminKpiGrid
                       items={[
                         { label: "displaySourceType", value: match.displaySourceType },
-                        { label: "finalScore", value: match.finalScore ?? "—" },
+                        { label: "finalScore", value: fmtMatchScore(match.finalScore) },
                         {
                           label: "pairwise",
                           value: match.pairwiseAvailable ? "yes" : "no",
@@ -403,8 +486,8 @@ export default function TestingObservabilityPage() {
                       ]}
                     />
                     <p className={`${adminMuted} mt-2`}>
-                      candidate: <AdminIdPill id={match.candidateUserId} /> · display:{" "}
-                      <AdminIdPill id={match.displayCandidateUserId} />
+                      matchResultId: <AdminIdPill id={match.matchResultId} truncate={0} /> · display:{" "}
+                      <AdminIdPill id={match.displayCandidateUserId} truncate={0} />
                     </p>
                     <p className={`${adminMuted} mt-1`}>
                       meta: finalize={String(match.finalMatchDecisionMetaPresent)} · insights=
@@ -420,12 +503,7 @@ export default function TestingObservabilityPage() {
                   <div className="mt-4">
                     <p className={`${adminMuted} mb-2`}>历史 MatchResult（最近 {matchHistory.length} 条）</p>
                     <AdminDataTable
-                      columns={[
-                        { key: "matchResultId", label: "id" },
-                        { key: "displaySourceType", label: "source" },
-                        { key: "finalScore", label: "score" },
-                        { key: "createdAt", label: "at" },
-                      ]}
+                      columns={matchDetailColumns}
                       rows={matchHistory}
                       rowKey="matchResultId"
                       emptyMessage=""

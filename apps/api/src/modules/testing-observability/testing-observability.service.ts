@@ -7,6 +7,7 @@ import { G1R_PROFILE_KEYS } from "../questionnaire/questionnaire.scorer";
 import { getCanonicalQuestionKeys } from "../questionnaire/data/questions";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { buildTestingMatchDebugSummary } from "./testing-observability-match-debug";
+import { enrichTestingMatchSummaries } from "./testing-observability-match-enrichment";
 import {
   TESTING_MATCH_FEEDBACK_RATINGS,
   TESTING_OBSERVABILITY_SOURCE_VERSION,
@@ -459,7 +460,8 @@ export class TestingObservabilityService {
     for (const row of rows) {
       history.push(await buildTestingMatchDebugSummary(this.prisma, row));
     }
-    return { latest: history[0] ?? null, history };
+    const enriched = await enrichTestingMatchSummaries(this.prisma, history);
+    return { latest: enriched[0] ?? null, history: enriched };
   }
 
   async listMatches(limitRaw?: string) {
@@ -472,10 +474,11 @@ export class TestingObservabilityService {
     for (const row of rows) {
       items.push(await buildTestingMatchDebugSummary(this.prisma, row));
     }
+    const enriched = await enrichTestingMatchSummaries(this.prisma, items);
     return {
       sourceVersion: TESTING_OBSERVABILITY_SOURCE_VERSION,
       generatedAt: new Date().toISOString(),
-      items,
+      items: enriched,
     };
   }
 
@@ -486,7 +489,9 @@ export class TestingObservabilityService {
     if (!row) {
       throw new NotFoundException(`MatchResult ${matchResultId} not found`);
     }
-    return buildTestingMatchDebugSummary(this.prisma, row);
+    const summary = await buildTestingMatchDebugSummary(this.prisma, row);
+    const [enriched] = await enrichTestingMatchSummaries(this.prisma, [summary]);
+    return enriched ?? summary;
   }
 
   async listEvents(query: { userId?: string; limit?: string }) {
