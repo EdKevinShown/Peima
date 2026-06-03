@@ -301,65 +301,69 @@ export default function LandingPage() {
       </div>
 
       <div className="relative z-10">
-        <section className="h-dvh flex flex-col">
+        <section className="flex flex-col min-h-dvh md:h-dvh md:max-h-dvh md:overflow-hidden">
             {/* ── Nav ─────────────────────────────────────────────── */}
-            <nav className="relative z-10 flex items-center justify-between px-6 py-5">
+            <nav className="relative z-10 flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-6 sm:py-5">
               <img
                 src={NAV_LOGO}
                 alt="配吗"
-                className="h-12 w-auto object-contain"
+                className="h-9 sm:h-12 w-auto object-contain"
                 style={{ filter: "drop-shadow(0 6px 18px rgba(255,108,168,0.22))" }}
               />
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Link to="/login"
-                      className="px-5 py-2 rounded-full text-sm font-medium text-white/80 border border-white/20 hover:border-white/50 transition-all"
+                      className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-medium text-white/80 border border-white/20 hover:border-white/50 transition-all"
                       style={{ background: 'rgba(255,255,255,0.06)' }}>
                   登录
                 </Link>
                 <Link to="/login?mode=register"
-                      className="px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:opacity-90"
+                      className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-bold text-white transition-all hover:opacity-90"
                       style={{ background: 'linear-gradient(135deg, #ff6b9d, #c44dff)', boxShadow: '0 4px 20px rgba(255,107,157,0.4)' }}>
                   立即加入
                 </Link>
               </div>
             </nav>
 
-            {/* ── Hero ─────────────────────────────────────────────── */}
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+            {/* ── Hero：手机端可滚动，避免 CTA 压住下一节标题 ── */}
+            <div className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-start md:justify-center px-4 pt-2 pb-10 sm:pb-12 md:py-10 text-center overflow-y-auto md:overflow-visible">
               {/* Main headline */}
-              <h1 className="font-serif text-white leading-tight mb-6 animate-slide-up"
-                  style={{ fontSize: 'clamp(2.8rem, 8vw, 5.5rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
+              <h1 className="font-serif text-white leading-[1.15] mb-4 sm:mb-6 animate-slide-up max-w-[18rem] sm:max-w-none"
+                  style={{ fontSize: 'clamp(2rem, 7.5vw, 5.5rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 你的另一半，<br />
                 <span style={{ color: '#ff6b9d', fontStyle: 'italic' }}>AI 已经认识了</span>
               </h1>
 
-              <p className="text-white/50 text-base mb-10 max-w-xs animate-slide-up" style={{ animationDelay: '0.05s' }}>
-                系统为你生成专属候选，<br />你只需要用心感受
+              <p className="text-white/50 text-sm sm:text-base mb-6 sm:mb-8 max-w-xs animate-slide-up leading-relaxed" style={{ animationDelay: '0.05s' }}>
+                系统为你生成专属候选，
+                <br className="hidden sm:inline" />
+                你只需要用心感受
               </p>
 
               {/* Preview pool visual */}
-              <div className="flex flex-col items-center w-full px-4 mb-10">
-                <p className="text-xs text-white/30 uppercase tracking-widest mb-4">你的专属候选池</p>
+              <div className="flex flex-col items-center w-full max-w-[340px] mb-6 sm:mb-8">
+                <p className="text-xs text-white/30 uppercase tracking-widest mb-3">你的专属候选池</p>
                 <PoolVisual />
-                <p className="text-white/20 text-xs mt-3">6 人候选 · AI 筛选 · 每次只给你最值得的一个</p>
+                <p className="text-white/20 text-[11px] sm:text-xs mt-2 sm:mt-3 px-1 leading-snug">
+                  6 人候选 · AI 筛选 · 每次只给你最值得的一个
+                </p>
               </div>
 
               {/* Social proof */}
-              <div className="flex flex-col items-center gap-1 mb-10 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <div className="flex flex-col items-center gap-1 mb-6 sm:mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
                 <p className="text-white/35 text-sm">
                   已有 <span className="text-white/80 font-semibold tabular-nums">{joined.toLocaleString()}</span> 人加入
                 </p>
               </div>
 
               {/* CTA */}
-              <div className="flex flex-col sm:flex-row gap-3 items-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
+              <div className="flex flex-col w-full max-w-sm gap-2.5 sm:gap-3 sm:flex-row sm:max-w-none sm:w-auto sm:items-center animate-slide-up shrink-0" style={{ animationDelay: '0.3s' }}>
                 <Link to="/login?mode=register"
-                      className="px-8 py-4 rounded-full text-base font-bold text-white transition-all hover:scale-105 hover:opacity-95"
+                      className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-full text-base font-bold text-white transition-all hover:scale-105 hover:opacity-95 text-center"
                       style={{ background: 'linear-gradient(135deg, #ff6b9d, #c44dff)', boxShadow: '0 8px 32px rgba(255,107,157,0.45)' }}>
                   免费加入 →
                 </Link>
                 <Link to="/login"
-                      className="px-8 py-4 rounded-full text-base font-medium text-white/70 border border-white/20 hover:border-white/40 hover:text-white transition-all"
+                      className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-full text-base font-medium text-white/70 border border-white/20 hover:border-white/40 hover:text-white transition-all text-center"
                       style={{ background: 'rgba(255,255,255,0.05)' }}>
                   已有账号，登录
                 </Link>
@@ -368,19 +372,19 @@ export default function LandingPage() {
         </section>
 
         {/* ── How It Works ─────────────────────────────────────── */}
-        <section className="min-h-dvh flex items-center px-6 py-20">
+        <section className="relative z-10 flex items-center px-4 sm:px-6 pt-14 pb-16 sm:py-20 md:min-h-dvh">
           <div className="relative z-10 w-full max-w-5xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="font-serif text-white"
-                  style={{ fontSize: 'clamp(1.8rem, 5vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <div className="text-center mb-8 sm:mb-14">
+              <h2 className="font-serif text-white px-1"
+                  style={{ fontSize: 'clamp(1.5rem, 5.5vw, 3rem)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                 从陌生到<span style={{ color: '#ff6b9d', fontStyle: 'italic' }}> 刚好合适</span>
               </h2>
-              <p className="text-white/45 text-base mt-3 max-w-md mx-auto">
+              <p className="text-white/45 text-sm sm:text-base mt-3 max-w-md mx-auto px-2">
                 四步，带你抵达那个"刚刚好"的人
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               {[
                 { n: "01", Icon: ImageIcon, title: "建立第一印象",
                   desc: "上传你的照片，让系统真实感知外在气质与风格" },
