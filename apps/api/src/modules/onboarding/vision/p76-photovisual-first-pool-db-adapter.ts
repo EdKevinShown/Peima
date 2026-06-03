@@ -15,6 +15,7 @@ import {
   candidatePassesOppositeBinaryGate,
   isStrictBinaryPreviewGender,
   normalizeUserGenderForPreview,
+  oppositeBinaryGenderWhere,
 } from "../onboarding-preview-gender";
 import { readOnboardingPreviewPoolGateEnv } from "../onboarding-preview-pool-env";
 import { ONBOARDING_VISION_SOURCE_CLOUD_ZHIPU } from "./cloud-vision.facade";
@@ -438,7 +439,7 @@ async function collectGatedCandidatesReadOnly(
   },
 ): Promise<P76GatedCandidateDbRow[]> {
   const { viewerUserId, gatePref, viewerBinary, limit } = options;
-  const { relaxProfileGate, relaxGenderGate, relaxPreferenceGate } =
+  const { relaxProfileGate, relaxPreferenceGate } =
     readOnboardingPreviewPoolGateEnv();
 
   const out: P76GatedCandidateDbRow[] = [];
@@ -450,6 +451,9 @@ async function collectGatedCandidatesReadOnly(
         id: { not: viewerUserId },
         images: { some: {} },
         ...(relaxProfileGate ? {} : { relationProfile: { isNot: null } }),
+        ...(viewerBinary != null
+          ? oppositeBinaryGenderWhere(viewerBinary)
+          : { gender: "__viewer_gender_unknown__" }),
       },
       orderBy: { createdAt: "asc" },
       skip,
@@ -499,9 +503,8 @@ async function collectGatedCandidatesReadOnly(
         ? true
         : passesPreferenceHardGate(gatePref, prefCandidate);
 
-      const genderGatePassed = relaxGenderGate
-        ? true
-        : viewerBinary != null
+      const genderGatePassed =
+        viewerBinary != null
           ? candidatePassesOppositeBinaryGate(viewerBinary, row.gender)
           : false;
 

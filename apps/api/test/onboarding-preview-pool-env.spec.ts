@@ -10,7 +10,7 @@ describe("readOnboardingPreviewPoolGateEnv", () => {
     });
   });
 
-  it("reads individual relax flags", () => {
+  it("reads individual relax flags (gender relax env ignored)", () => {
     expect(
       readOnboardingPreviewPoolGateEnv({
         PEIMA_ONBOARDING_PREVIEW_RELAX_PROFILE_GATE: "1",
@@ -20,7 +20,7 @@ describe("readOnboardingPreviewPoolGateEnv", () => {
       }),
     ).toEqual({
       relaxProfileGate: true,
-      relaxGenderGate: true,
+      relaxGenderGate: false,
       relaxPreferenceGate: true,
       minSlots: 3,
     });

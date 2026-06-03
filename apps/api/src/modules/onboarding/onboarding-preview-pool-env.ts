@@ -22,7 +22,9 @@ function envFlag(env: NodeJS.ProcessEnv, key: string): boolean {
 export type OnboardingPreviewPoolGateEnv = {
   /** When true, candidates need photos but not `UserProfile` (questionnaire). */
   relaxProfileGate: boolean;
-  /** When true, skip opposite-gender requirement. */
+  /**
+   * Always false — opposite-gender gate cannot be relaxed (PEIMA_ONBOARDING_PREVIEW_RELAX_GENDER_GATE ignored).
+   */
   relaxGenderGate: boolean;
   /** When true, skip preference hard gate for preview candidates. */
   relaxPreferenceGate: boolean;
@@ -35,7 +37,7 @@ export function readOnboardingPreviewPoolGateEnv(
 ): OnboardingPreviewPoolGateEnv {
   return {
     relaxProfileGate: envFlag(env, "PEIMA_ONBOARDING_PREVIEW_RELAX_PROFILE_GATE"),
-    relaxGenderGate: envFlag(env, "PEIMA_ONBOARDING_PREVIEW_RELAX_GENDER_GATE"),
+    relaxGenderGate: false,
     relaxPreferenceGate: envFlag(
       env,
       "PEIMA_ONBOARDING_PREVIEW_RELAX_PREFERENCE_GATE",

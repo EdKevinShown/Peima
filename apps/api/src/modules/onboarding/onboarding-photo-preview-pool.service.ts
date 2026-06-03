@@ -73,7 +73,7 @@ export class OnboardingPhotoPreviewPoolService {
     }
 
     const viewerNorm = normalizeUserGenderForPreview(user.gender);
-    if (!gateEnv.relaxGenderGate && !isStrictBinaryPreviewGender(viewerNorm)) {
+    if (!isStrictBinaryPreviewGender(viewerNorm)) {
       throw new BadRequestException(
         "请先在个人资料中填写性别（男或女），系统才能为你匹配异性预览对象。",
       );
@@ -168,7 +168,7 @@ export class OnboardingPhotoPreviewPoolService {
     const genderLabel = ctx.viewerGenderNorm ?? "未填写";
     if (slots.length < gateEnv.minSlots) {
       const hints: string[] = [];
-      if (genderLabel === "未填写" && !gateEnv.relaxGenderGate) {
+      if (genderLabel === "未填写") {
         hints.push("在个人资料填写性别（男/女）");
       }
       if (gatedCount < gateEnv.minSlots) {

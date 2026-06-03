@@ -34,7 +34,8 @@ services:
     container_name: peima-beta-worker
     env_file: .env
     environment:
-      NODE_ENV: production
+      # staging：内测 VPS 上允许 PEIMA_TEST_MATCH_RESULT_WRITER_* 写入 MatchResult（NODE_ENV=production 会整批 blocked）
+      NODE_ENV: staging
       DATABASE_URL: ${DATABASE_URL}
       TZ: ${TZ:-Australia/Sydney}
       MATCH_CRON: ${MATCH_CRON:-0 */6 * * *}

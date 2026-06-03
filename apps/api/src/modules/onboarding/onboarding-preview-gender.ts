@@ -48,3 +48,17 @@ export function candidatePassesOppositeBinaryGate(
 export function genderStorageFromBinary(norm: "male" | "female"): string {
   return norm;
 }
+
+/** Prisma `where` clause: candidate gender must be opposite of viewer (binary only). */
+export function oppositeBinaryGenderWhere(
+  viewerBinary: "male" | "female",
+): { OR: Array<{ gender: string }> } {
+  const opposite = resolveOppositeGenderForPreview(viewerBinary);
+  if (!opposite) {
+    return { OR: [{ gender: "__no_opposite__" }] };
+  }
+  if (opposite === "female") {
+    return { OR: [{ gender: "female" }, { gender: "f" }, { gender: "女" }] };
+  }
+  return { OR: [{ gender: "male" }, { gender: "m" }, { gender: "男" }] };
+}
