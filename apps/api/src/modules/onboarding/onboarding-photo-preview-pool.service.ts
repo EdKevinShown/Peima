@@ -22,7 +22,13 @@ import {
 } from "./vision/p76-photovisual-first-pool-db-adapter";
 import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
 import { readOnboardingPreviewPoolGateEnv } from "./onboarding-preview-pool-env";
+import { ensureOnboardingSyntheticCandidate } from "./onboarding-preview-pool-synthetic";
+import {
+  isStrictBinaryPreviewGender,
+  normalizeUserGenderForPreview,
+} from "./onboarding-preview-gender";
 import type { OnboardingPhotoPreviewPoolBundle } from "./onboarding-photo-preview-pool.types";
+import type { ShadowCandidateInput } from "./vision/visual-ranking-shadow-scoring";
 
 const POOL_STATUS_ACTIVE = "active";
 const POOL_SOURCE_VERSION = "onboarding-photo-preview-v1";
@@ -36,9 +42,11 @@ export class OnboardingPhotoPreviewPoolService {
   ) {}
 
   private async assertReadyForGenerate(viewerUserId: string): Promise<void> {
+    const gateEnv = readOnboardingPreviewPoolGateEnv();
     const user = await this.prisma.user.findUnique({
       where: { id: viewerUserId },
       select: {
+        gender: true,
         onboardingPhotoAestheticCompletedAt: true,
         images: {
           select: { detectionStatus: true, reviewStatus: true },
@@ -65,6 +73,41 @@ export class OnboardingPhotoPreviewPoolService {
         "请先上传并通过审核至少一张照片，再生成第一印象预览。",
       );
     }
+
+    const viewerNorm = normalizeUserGenderForPreview(user.gender);
+    if (
+      !gateEnv.relaxGenderGate &&
+      !gateEnv.syntheticFallback &&
+      !isStrictBinaryPreviewGender(viewerNorm)
+    ) {
+      throw new BadRequestException(
+        "请先在个人资料中填写性别（男或女），系统才能为你匹配异性预览对象。",
+      );
+    }
+  }
+
+  private buildShadowCandidatesFromContext(
+    ctx: Awaited<ReturnType<typeof loadPhotoVisualPoolAuditContext>>,
+    visionByUserId: Map<string, UsableCandidateVision>,
+  ): ShadowCandidateInput[] {
+    const gatedForShadow = ctx.candidates.map((row) => {
+      const imgs = ctx.candidateImagesByUserId.get(row.candidateUserId) ?? [];
+      const first = imgs[0];
+      const pf = row.preferenceFields;
+      return {
+        id: row.candidateUserId,
+        createdAt: first?.createdAt ?? new Date(0),
+        firstImageStyleTags: row.candidateStyleTags,
+        firstImageUrl: first?.id ? `image://${first.id}` : null,
+        age: pf.age,
+        city: pf.city,
+        height: pf.height,
+        education: pf.education,
+        occupation: pf.occupation,
+        relationshipGoal: pf.relationshipGoal,
+      };
+    });
+    return buildShadowCandidatesFromGatedRows(gatedForShadow, visionByUserId);
   }
 
   private toViewerPreferenceLike(
@@ -122,24 +165,46 @@ export class OnboardingPhotoPreviewPoolService {
       };
     });
 
-    const shadowCandidates = buildShadowCandidatesFromGatedRows(
-      gatedForShadow,
-      visionByUserId,
-    );
-
     const viewerVision = pickViewerPassingPhotoVision(
       ctx.viewerImages as UserImageVisionSourceRow[],
     );
 
-    const slots = assignPreviewPoolTier3121Slots({
-      candidates: shadowCandidates,
+    const tierCtx = {
       viewerStyleTags: ctx.viewerStyleTags,
       viewerPhotoVisualTags: viewerVision?.photoVisualTags ?? null,
       viewerVisionAvailable: viewerVision != null,
       viewerPref: this.toViewerPreferenceLike({
         styleTags: ctx.viewerStyleTags,
       }),
+    };
+
+    let shadowCandidates = this.buildShadowCandidatesFromContext(
+      ctx,
+      visionByUserId,
+    );
+    let slots = assignPreviewPoolTier3121Slots({
+      candidates: shadowCandidates,
+      ...tierCtx,
     });
+
+    const gateEnv = readOnboardingPreviewPoolGateEnv();
+    if (gateEnv.syntheticFallback) {
+      for (let n = 1; slots.length < gateEnv.minSlots && n <= 12; n += 1) {
+        const synth = await ensureOnboardingSyntheticCandidate(
+          this.prisma,
+          viewerUserId,
+          ctx.viewerGenderNorm,
+          n,
+        );
+        if (!shadowCandidates.some((c) => c.userId === synth.userId)) {
+          shadowCandidates = [...shadowCandidates, synth];
+        }
+        slots = assignPreviewPoolTier3121Slots({
+          candidates: shadowCandidates,
+          ...tierCtx,
+        });
+      }
+    }
 
     return { slots, ctx, gatedForShadow };
   }
@@ -150,10 +215,22 @@ export class OnboardingPhotoPreviewPoolService {
     const { slots, ctx, gatedForShadow } =
       await this.buildTier3121Slots(viewerUserId);
 
-    const { minSlots } = readOnboardingPreviewPoolGateEnv();
-    if (slots.length < minSlots) {
+    const gateEnv = readOnboardingPreviewPoolGateEnv();
+    const gatedCount = ctx.candidates.length;
+    const genderLabel = ctx.viewerGenderNorm ?? "未填写";
+    if (slots.length < gateEnv.minSlots) {
+      const hints: string[] = [];
+      if (genderLabel === "未填写" && !gateEnv.relaxGenderGate) {
+        hints.push("在个人资料填写性别（男/女）");
+      }
+      if (gatedCount === 0) {
+        hints.push("或开启内测合成候选人（PEIMA_ONBOARDING_PREVIEW_SYNTHETIC_FALLBACK=1）");
+        hints.push("或注册更多异性测试账号并上传照片");
+      }
+      const hintSuffix =
+        hints.length > 0 ? `建议：${hints.join("；")}。` : "";
       throw new BadRequestException(
-        `内测候选人不足，暂时无法生成 ${minSlots} 人预览（当前 ${slots.length}/${minSlots}）。请让更多测试账号完成问卷/资料、上传照片（异性、性别填对）后再试。`,
+        `内测候选人不足，暂时无法生成 ${gateEnv.minSlots} 人预览（池位 ${slots.length}/${gateEnv.minSlots}，门闸通过 ${gatedCount} 人，你的性别：${genderLabel}）。${hintSuffix}`,
       );
     }
 

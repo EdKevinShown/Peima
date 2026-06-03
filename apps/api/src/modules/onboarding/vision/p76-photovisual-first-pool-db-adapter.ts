@@ -438,7 +438,8 @@ async function collectGatedCandidatesReadOnly(
   },
 ): Promise<P76GatedCandidateDbRow[]> {
   const { viewerUserId, gatePref, viewerBinary, limit } = options;
-  const { relaxProfileGate } = readOnboardingPreviewPoolGateEnv();
+  const { relaxProfileGate, relaxGenderGate, relaxPreferenceGate } =
+    readOnboardingPreviewPoolGateEnv();
 
   const out: P76GatedCandidateDbRow[] = [];
   let skip = 0;
@@ -494,13 +495,13 @@ async function collectGatedCandidatesReadOnly(
         relationshipGoal: row.relationshipGoal,
       };
 
-      const preferenceGatePassed = passesPreferenceHardGate(
-        gatePref,
-        prefCandidate,
-      );
+      const preferenceGatePassed = relaxPreferenceGate
+        ? true
+        : passesPreferenceHardGate(gatePref, prefCandidate);
 
-      const genderGatePassed =
-        viewerBinary != null
+      const genderGatePassed = relaxGenderGate
+        ? true
+        : viewerBinary != null
           ? candidatePassesOppositeBinaryGate(viewerBinary, row.gender)
           : false;
 
