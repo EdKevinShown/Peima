@@ -54,7 +54,7 @@ export default function AdminMatchTools({ userId = "", compact = false, classNam
       <p className="admin-match-tools__title">管理员 · 匹配</p>
       {!compact ? (
         <p className="admin-match-tools__hint">
-          用户点「开始匹配」会入队；你也可以直接触发后台跑一轮（处理全部 waiting）。
+          用户须先点「开始匹配」入队。管理员请用粉色「立即跑一轮」；灰色「测试跑一轮」与前者相同，仅权限不同。跑完后在「匹配监视器」可见 batch_match_* 事件。
         </p>
       ) : null}
       <div className="admin-match-tools__actions">

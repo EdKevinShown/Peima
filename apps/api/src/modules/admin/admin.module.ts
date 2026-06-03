@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { PrismaModule } from "../../common/prisma/prisma.module";
 import { AiPairwiseDecisionModule } from "../ai-pairwise-decision/ai-pairwise-decision.module";
 import { AiPairwiseDecisionAdminController } from "../ai-pairwise-decision/ai-pairwise-decision-admin.controller";
 import { AiSimulationV1Module } from "../ai-simulation-v1/ai-simulation-v1.module";
@@ -12,7 +13,13 @@ import { RrmEvalCollectorService } from "../rrm-eval";
 import { AdminMyAiRecordsService } from "./admin-my-ai-records.service";
 
 @Module({
-  imports: [PrescreenV0Module, PostPoolDeepScreenModule, AiSimulationV1Module, AiPairwiseDecisionModule],
+  imports: [
+    PrismaModule,
+    PrescreenV0Module,
+    PostPoolDeepScreenModule,
+    AiSimulationV1Module,
+    AiPairwiseDecisionModule,
+  ],
   controllers: [AdminController, AiPairwiseDecisionAdminController],
   providers: [
     AdminService,

@@ -50,7 +50,10 @@ export class TestController {
   async runBatchOnce(@Req() req: JwtReq): Promise<{ ok: true }> {
     const userId = req.user?.userId;
     assertCanTriggerTestMatch(userId);
-    await this.adminService.runBatchMatchSubprocess();
+    await this.adminService.runBatchMatchSubprocess({
+      triggeredByUserId: userId,
+      channel: "test_batch_match",
+    });
     return { ok: true };
   }
 

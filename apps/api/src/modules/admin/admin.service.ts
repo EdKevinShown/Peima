@@ -4,6 +4,11 @@ import {
   InternalServerErrorException,
   ServiceUnavailableException,
 } from "@nestjs/common";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import {
+  recordBatchMatchRunToTestingObservability,
+  type BatchMatchObservabilityChannel,
+} from "../testing-observability/batch-match-testing-observability";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -135,6 +140,8 @@ function spawnWithOutput(
 export class AdminService {
   private readonly allowlist = parseAdminUserIds();
 
+  constructor(private readonly prisma: PrismaService) {}
+
   isAdminUser(userId: string): boolean {
     return this.allowlist.has(userId);
   }
@@ -180,7 +187,12 @@ export class AdminService {
     this.assertIsAdminUserOrThrow(userId);
   }
 
-  async runBatchMatchSubprocess(): Promise<void> {
+  async runBatchMatchSubprocess(opts?: {
+    triggeredByUserId?: string;
+    channel?: BatchMatchObservabilityChannel;
+  }): Promise<void> {
+    let subprocessOk = false;
+    let subprocessError: string | undefined;
     const root = getMonorepoRoot();
     const workerMainJs = join(root, "apps", "worker", "dist", "main.js");
     const rawTimeout = parseInt(
@@ -200,6 +212,7 @@ export class AdminService {
       subprocessEnv.NODE_ENV = "staging";
     }
 
+    try {
     const plan = resolveBatchMatchSubprocessPlan({
       monorepoRoot: root,
       nodeExecPath: process.execPath,
@@ -215,9 +228,29 @@ export class AdminService {
 
     if (result.code !== 0) {
       const tail = (result.stderr + result.stdout).slice(-4000);
+      subprocessError = `exit ${result.code}: ${tail}`;
       throw new InternalServerErrorException(
         `batch-match exited with code ${result.code}. Output (tail):\n${tail}`,
       );
     }
+    subprocessOk = true;
+  } catch (e) {
+    if (!subprocessError) {
+      subprocessError =
+        e instanceof Error ? e.message : String(e);
+    }
+    throw e;
+  } finally {
+    const operatorId = opts?.triggeredByUserId?.trim();
+    const channel = opts?.channel;
+    if (operatorId && channel) {
+      await recordBatchMatchRunToTestingObservability(this.prisma, {
+        triggeredByUserId: operatorId,
+        channel,
+        subprocessOk,
+        subprocessError,
+      });
+    }
+  }
   }
 }

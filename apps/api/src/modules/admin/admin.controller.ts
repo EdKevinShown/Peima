@@ -203,7 +203,10 @@ export class AdminController {
       throw new UnauthorizedException("not authenticated");
     }
     this.adminService.assertCanTriggerBatchMatch(userId);
-    await this.adminService.runBatchMatchSubprocess();
+    await this.adminService.runBatchMatchSubprocess({
+      triggeredByUserId: userId,
+      channel: "admin_batch_match",
+    });
     return { ok: true };
   }
 
