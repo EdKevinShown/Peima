@@ -63,7 +63,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     };
   }
 
-  it("nextStep questionnaire when no profile even without images", async () => {
+  it("nextStep photo_upload when no passing photo", async () => {
     const prisma = {
       ...userPrisma(),
       userImage: { findMany: jest.fn().mockResolvedValue([]) },
@@ -73,7 +73,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
       hasPhoto: false,
       hasPassingPhoto: false,
       hasPhotoPreference: false,
-      nextStep: "questionnaire",
+      nextStep: "photo_upload",
       ...gateDefaults,
     });
   });
@@ -91,7 +91,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     const res = await svc.getPhotoStatus("u1");
     expect(res.hasPassingPhoto).toBe(true);
     expect(res.passingPhotoCount).toBe(1);
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_preference");
   });
 
   it("skipped + pending_review → passing and under review", async () => {
@@ -108,7 +108,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect(res.hasPassingPhoto).toBe(true);
     expect(res.hasPhotoUnderReview).toBe(true);
     expect(res.photoReviewStatusSummary).toBe("pending_review");
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_preference");
   });
 
   it("failed + not_required → hasPassingPhoto false", async () => {
@@ -124,7 +124,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     const res = await svc.getPhotoStatus("u1");
     expect(res.hasPhoto).toBe(true);
     expect(res.hasPassingPhoto).toBe(false);
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_upload");
   });
 
   it("failed + approved → hasPassingPhoto true", async () => {
@@ -139,10 +139,10 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     const svc = await createService(prisma);
     const res = await svc.getPhotoStatus("u1");
     expect(res.hasPassingPhoto).toBe(true);
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_preference");
   });
 
-  it("passed + rejected → nextStep questionnaire when no profile", async () => {
+  it("passed + rejected → nextStep photo_upload when no passing", async () => {
     const prisma = {
       ...userPrisma(),
       userImage: {
@@ -154,12 +154,12 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     const svc = await createService(prisma);
     const res = await svc.getPhotoStatus("u1");
     expect(res.hasPassingPhoto).toBe(false);
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_upload");
     expect(res.blockingPhotoReviewStatus).toBe("rejected");
     expect(res.photoGateMessageKey).toBe("photo_rejected");
   });
 
-  it("skipped + needs_reupload → nextStep questionnaire when no profile", async () => {
+  it("skipped + needs_reupload → nextStep photo_upload when no passing", async () => {
     const prisma = {
       ...userPrisma(),
       userImage: {
@@ -171,7 +171,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     const svc = await createService(prisma);
     const res = await svc.getPhotoStatus("u1");
     expect(res.hasPassingPhoto).toBe(false);
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_upload");
   });
 
   it("rejected + approved two images → hasPassingPhoto true", async () => {
@@ -200,7 +200,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect(res.passingPhotoId).toBe("ok");
     expect(res.hasBlockedPhoto).toBe(true);
     expect(res.photoGateMessageKey).toBeNull();
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_preference");
   });
 
   it("only needs_reupload → gate message and blocked summary", async () => {
@@ -224,7 +224,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect(res.photoGateMessageKey).toBe("photo_needs_reupload");
     expect(res.photoGateReasonCodes).toEqual(["NEEDS_REUPLOAD"]);
     expect(res.photoReviewStatusSummary).toBe("blocked_needs_reupload");
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_upload");
   });
 
   it("status does not return reviewNote", async () => {
@@ -241,7 +241,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect("reviewNote" in res).toBe(false);
   });
 
-  it("nextStep questionnaire when aesthetic done but relation profile missing", async () => {
+  it("nextStep photo_preview when aesthetic done but preview not ack", async () => {
     const prisma = {
       ...userPrisma({
         onboardingPhotoAestheticCompletedAt: new Date(),
@@ -256,7 +256,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     };
     const svc = await createService(prisma);
     const res = await svc.getPhotoStatus("u1");
-    expect(res.nextStep).toBe("questionnaire");
+    expect(res.nextStep).toBe("photo_preview");
     expect(res.hasPhotoPreference).toBe(true);
   });
 

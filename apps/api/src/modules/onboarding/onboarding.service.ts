@@ -168,16 +168,16 @@ export class OnboardingService {
     });
     const questionnaireDone = relationProfile != null;
 
-    // Questionnaire first: no photo / preview prerequisite (beta ops).
+    // Photo pipeline first: upload → aesthetic preference → preview → questionnaire.
     let nextStep: OnboardingPhotoNextStep;
-    if (!questionnaireDone) {
-      nextStep = "questionnaire";
-    } else if (!gate.hasPassingPhoto) {
+    if (!gate.hasPassingPhoto) {
       nextStep = "photo_upload";
     } else if (!aestheticDone) {
       nextStep = "photo_preference";
     } else if (!previewAck) {
       nextStep = "photo_preview";
+    } else if (!questionnaireDone) {
+      nextStep = "questionnaire";
     } else {
       nextStep = "questionnaire";
     }
