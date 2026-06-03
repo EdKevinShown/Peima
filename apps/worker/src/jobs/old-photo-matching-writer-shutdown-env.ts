@@ -201,12 +201,15 @@ export function readOldPhotoMatchingWriterGateForUser(
     return base;
   }
 
-  const allow = parseIds(env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
-  if (!allow.has(userId)) {
-    return {
-      ...base,
-      reason: TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON,
-    };
+  const openForAll = parseTruthy(env.PEIMA_TEST_MATCH_OPEN_FOR_ALL, false);
+  if (!openForAll) {
+    const allow = parseIds(env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
+    if (!allow.has(userId)) {
+      return {
+        ...base,
+        reason: TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON,
+      };
+    }
   }
 
   return {

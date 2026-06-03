@@ -100,6 +100,18 @@ describe("P7.10-r9 old photo matching writer shutdown env", () => {
     expect(gate.canWriteMatchResult).toBe(false);
     expect(gate.reason).toBe(TEST_MATCH_RESULT_WRITER_USER_NOT_ALLOWED_REASON);
   });
+
+  it("PEIMA_TEST_MATCH_OPEN_FOR_ALL permits any viewer when writer enabled", () => {
+    const gate = readOldPhotoMatchingWriterGateForUser("any-user", {
+      PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED: "1",
+      PEIMA_TEST_MATCH_OPEN_FOR_ALL: "1",
+      NODE_ENV: "development",
+      PEIMA_P76_PRODUCTION_PERCENT: "0",
+    });
+
+    expect(gate.canWriteMatchResult).toBe(true);
+    expect(gate.reason).toBe(TEST_MATCH_RESULT_WRITER_ALLOWED_REASON);
+  });
 });
 
 describe("writeLegacyPhotoMatchResultIfAllowed", () => {

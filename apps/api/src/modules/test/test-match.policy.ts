@@ -23,9 +23,19 @@ export function isTestMatchFeatureDisabled(): boolean {
   return isTruthy(process.env.PEIMA_TEST_MATCH_DISABLED);
 }
 
+/** Beta only: skip PEIMA_TEST_MATCH_*_USER_IDS allowlists when "1". */
+export function isTestMatchOpenForAll(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isTruthy(env.PEIMA_TEST_MATCH_OPEN_FOR_ALL);
+}
+
 export function canUserTriggerTestMatch(userId: string | undefined): boolean {
   if (!userId || !isTestMatchFeatureEnabled() || isTestMatchFeatureDisabled()) {
     return false;
+  }
+  if (isTestMatchOpenForAll()) {
+    return true;
   }
   const allow = parseIds(process.env.PEIMA_TEST_MATCH_USER_IDS);
   return allow.has(userId);
@@ -47,16 +57,18 @@ export function assertCanTriggerTestMatch(
       "test match trigger is disabled (PEIMA_TEST_MATCH_DISABLED)",
     );
   }
-  const allow = parseIds(process.env.PEIMA_TEST_MATCH_USER_IDS);
-  if (allow.size === 0) {
-    throw new ForbiddenException(
-      "set PEIMA_TEST_MATCH_USER_IDS to your user id (comma-separated)",
-    );
-  }
-  if (!allow.has(userId)) {
-    throw new ForbiddenException(
-      "test match: your user id is not in PEIMA_TEST_MATCH_USER_IDS",
-    );
+  if (!isTestMatchOpenForAll()) {
+    const allow = parseIds(process.env.PEIMA_TEST_MATCH_USER_IDS);
+    if (allow.size === 0) {
+      throw new ForbiddenException(
+        "set PEIMA_TEST_MATCH_USER_IDS to your user id (comma-separated), or PEIMA_TEST_MATCH_OPEN_FOR_ALL=1 for beta",
+      );
+    }
+    if (!allow.has(userId)) {
+      throw new ForbiddenException(
+        "test match: your user id is not in PEIMA_TEST_MATCH_USER_IDS",
+      );
+    }
   }
 }
 
@@ -94,6 +106,9 @@ export function canUserWriteMatchResultViaTestAllowlist(
 ): boolean {
   if (!userId || !isTestMatchResultWriterEnabled() || isTestMatchResultWriterDisabled()) {
     return false;
+  }
+  if (isTestMatchOpenForAll()) {
+    return true;
   }
   const allow = parseIds(process.env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
   return allow.has(userId);
