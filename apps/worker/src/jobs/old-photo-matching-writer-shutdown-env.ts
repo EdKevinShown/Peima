@@ -201,7 +201,9 @@ export function readOldPhotoMatchingWriterGateForUser(
     return base;
   }
 
-  const openForAll = parseTruthy(env.PEIMA_TEST_MATCH_OPEN_FOR_ALL, false);
+  const openForAll =
+    parseTruthy(env.PEIMA_TEST_MATCH_RESULT_WRITER_OPEN_FOR_ALL, false) ||
+    parseTruthy(env.PEIMA_TEST_MATCH_OPEN_FOR_ALL, false);
   if (!openForAll) {
     const allow = parseIds(env.PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS);
     if (!allow.has(userId)) {
