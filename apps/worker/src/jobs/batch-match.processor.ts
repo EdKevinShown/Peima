@@ -24,6 +24,7 @@ import {
 import {
   ensureBidirectionalFriendship,
   FRIENDSHIP_SOURCE_MATCH_AUTO,
+  type FriendshipPrismaClient,
 } from "./ensure-user-friendship.js";
 import { writeReciprocalMatchResultIfAbsent } from "./reciprocal-match-result-write.js";
 
@@ -412,7 +413,7 @@ export async function runBatchMatch(): Promise<void> {
       }
 
       const reciprocal = await writeReciprocalMatchResultIfAbsent(
-        prisma as Parameters<typeof writeReciprocalMatchResultIfAbsent>[0],
+        prisma as unknown as Parameters<typeof writeReciprocalMatchResultIfAbsent>[0],
         {
           viewerUserId: q.userId,
           candidateUserId: best.item.candidateUserId,
@@ -442,7 +443,7 @@ export async function runBatchMatch(): Promise<void> {
       });
       try {
         await ensureBidirectionalFriendship(
-          prisma as Parameters<typeof ensureBidirectionalFriendship>[0],
+          prisma as unknown as FriendshipPrismaClient,
           q.userId,
           best.item.candidateUserId,
           {

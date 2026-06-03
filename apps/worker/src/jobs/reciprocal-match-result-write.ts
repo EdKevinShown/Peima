@@ -1,5 +1,5 @@
 import type { Prisma } from "@peima/database";
-import type { MatchResultCreateClient } from "./old-photo-matching-writer-shutdown-env";
+import type { MatchResultCreateClient } from "./old-photo-matching-writer-shutdown-env.js";
 
 const RESULT_STATUS_READY = "ready";
 
