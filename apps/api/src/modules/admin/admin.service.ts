@@ -8,7 +8,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-function parseAdminUserIds(): Set<string> {
+export function parseAdminUserIds(): Set<string> {
   const raw = process.env.PEIMA_ADMIN_USER_IDS ?? "";
   const ids = raw
     .split(/[,\s]+/)

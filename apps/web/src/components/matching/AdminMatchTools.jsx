@@ -81,6 +81,9 @@ export default function AdminMatchTools({ userId = "", compact = false, classNam
         <Link to={`/matching-waiting${uidQs}`} className="admin-match-tools__link">
           匹配页
         </Link>
+        <Link to="/admin/testing-observability" className="admin-match-tools__link">
+          匹配监视器
+        </Link>
       </div>
       {hint ? (
         <p className="chat-status-ok admin-match-tools__msg" role="status">

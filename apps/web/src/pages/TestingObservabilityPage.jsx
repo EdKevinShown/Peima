@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getMatchingObservabilitySummary } from "../api/admin";
 import {
+  fetchTestingObservabilityMatches,
   fetchTestingObservabilityUserDetail,
   fetchTestingObservabilityUsers,
   getTestingObservabilityToken,
@@ -43,6 +44,7 @@ function timelineTone(status) {
 export default function TestingObservabilityPage() {
   const [token, setToken] = useState(() => getTestingObservabilityToken());
   const [users, setUsers] = useState([]);
+  const [recentMatches, setRecentMatches] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [detail, setDetail] = useState(null);
   const [matchSummary, setMatchSummary] = useState(null);
@@ -90,6 +92,16 @@ export default function TestingObservabilityPage() {
     [token],
   );
 
+  const loadRecentMatches = useCallback(async () => {
+    try {
+      setTestingObservabilityToken(token);
+      const data = await fetchTestingObservabilityMatches(token, 50);
+      setRecentMatches(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setRecentMatches([]);
+    }
+  }, [token]);
+
   const loadMatchObsSummary = useCallback(async () => {
     try {
       const data = await getMatchingObservabilitySummary({ limit: 500, sinceDays: 30 });
@@ -101,8 +113,9 @@ export default function TestingObservabilityPage() {
 
   useEffect(() => {
     void loadUsers();
+    void loadRecentMatches();
     void loadMatchObsSummary();
-  }, [loadUsers, loadMatchObsSummary]);
+  }, [loadUsers, loadRecentMatches, loadMatchObsSummary]);
 
   useEffect(() => {
     if (selectedUserId) {
@@ -160,7 +173,35 @@ export default function TestingObservabilityPage() {
   const onboarding = sections?.onboarding;
   const questionnaire = sections?.questionnaire;
   const match = sections?.match?.latest;
+  const matchHistory = sections?.match?.history ?? [];
   const timeline = sections?.timeline ?? [];
+
+  const matchColumns = useMemo(
+    () => [
+      {
+        key: "viewerUserId",
+        label: "viewer",
+        render: (row) => (
+          <button type="button" className="text-left" onClick={() => setSelectedUserId(row.viewerUserId)}>
+            <AdminIdPill id={row.viewerUserId} />
+          </button>
+        ),
+      },
+      {
+        key: "candidateUserId",
+        label: "candidate",
+        render: (row) => <AdminIdPill id={row.candidateUserId} />,
+      },
+      {
+        key: "displaySourceType",
+        label: "source",
+        render: (row) => <AdminStatusBadge status={row.displaySourceType} tone="applied" />,
+      },
+      { key: "finalScore", label: "score" },
+      { key: "createdAt", label: "created" },
+    ],
+    [],
+  );
 
   const submitFeedback = async () => {
     if (!selectedUserId) return;
@@ -184,22 +225,37 @@ export default function TestingObservabilityPage() {
   return (
     <AdminPageShell
       title="测试监视器"
-      subtitle="Local / staging 调试 · 流程状态 · 匹配来源 · 测试反馈（只读 + 测试反馈写入）"
+      subtitle="管理员 · 流程状态 · 匹配结果 · 测试反馈（只读 + 测试反馈写入）"
       actions={
         <>
-          <button type="button" className="btn-ghost text-sm" onClick={() => void loadUsers()} disabled={loading}>
+          <button
+            type="button"
+            className="btn-ghost text-sm"
+            onClick={() => {
+              void loadUsers();
+              void loadRecentMatches();
+            }}
+            disabled={loading}
+          >
             {loading ? "刷新中…" : "刷新"}
           </button>
         </>
       }
       maxWidth="max-w-7xl"
     >
-      <AdminNotice variant="internal" title="Local / Staging Only">
-        需 API 环境变量 <code className="text-white/80">PEIMA_TEST_OBSERVABILITY_ENABLED=1</code> 与可选{" "}
-        <code className="text-white/80">PEIMA_TEST_OBSERVABILITY_TOKEN</code>。不暴露原始照片、完整聊天或敏感画像原文。
+      <AdminNotice variant="internal" title="启用与登录">
+        线上需在 API 容器设置 <code className="text-white/80">PEIMA_TEST_OBSERVABILITY_ENABLED=1</code> 并重启。
+        用管理员账号登录即可（<code className="text-white/80">PEIMA_ADMIN_USER_IDS</code>）；本地可选{" "}
+        <code className="text-white/80">PEIMA_TEST_OBSERVABILITY_TOKEN</code> + 下方 debug token。
       </AdminNotice>
 
-      <AdminFilterPanel title="Debug Token">
+      <AdminNotice variant="warning" title="「测试跑一轮」≠ 你一定会有匹配">
+        该按钮只处理<strong>已在队列里 waiting</strong> 的用户；须先在自己的匹配页点「开始匹配」入队。
+        若预览池未 3-2-1、问卷未收敛、或 worker 未写入 MatchResult，这里会显示「尚无 MatchResult」。
+        测试环境写入结果还需 <code className="text-white/80">PEIMA_TEST_MATCH_RESULT_WRITER_USER_IDS</code> 包含你的 userId。
+      </AdminNotice>
+
+      <AdminFilterPanel title="Debug Token（可选）">
         <label className={adminLabel}>
           x-peima-debug-token
           <input
@@ -220,6 +276,15 @@ export default function TestingObservabilityPage() {
       ) : null}
 
       {loading ? <LoadingState label="加载测试用户…" /> : null}
+
+      <AdminSection title="最近匹配结果（全站）">
+        <AdminDataTable
+          columns={matchColumns}
+          rows={recentMatches}
+          rowKey="matchResultId"
+          emptyMessage="暂无 MatchResult，或监视器未启用 / 未登录管理员"
+        />
+      </AdminSection>
 
       <AdminSection title="最近测试用户">
         <AdminDataTable
@@ -351,6 +416,22 @@ export default function TestingObservabilityPage() {
                 ) : (
                   <AdminEmptyState message="该用户尚无 MatchResult" />
                 )}
+                {matchHistory.length > 1 ? (
+                  <div className="mt-4">
+                    <p className={`${adminMuted} mb-2`}>历史 MatchResult（最近 {matchHistory.length} 条）</p>
+                    <AdminDataTable
+                      columns={[
+                        { key: "matchResultId", label: "id" },
+                        { key: "displaySourceType", label: "source" },
+                        { key: "finalScore", label: "score" },
+                        { key: "createdAt", label: "at" },
+                      ]}
+                      rows={matchHistory}
+                      rowKey="matchResultId"
+                      emptyMessage=""
+                    />
+                  </div>
+                ) : null}
               </AdminSection>
 
               <AdminSection title="Recent Testing Events">

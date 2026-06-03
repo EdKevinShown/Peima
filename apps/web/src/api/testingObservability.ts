@@ -1,4 +1,4 @@
-import { baseUrl } from "./auth";
+import { authHeaders, baseUrl } from "./auth";
 
 const TOKEN_STORAGE_KEY = "peimaTestObservabilityToken";
 
@@ -12,10 +12,14 @@ export function setTestingObservabilityToken(token: string): void {
   sessionStorage.setItem(TOKEN_STORAGE_KEY, token.trim());
 }
 
-function debugHeaders(token: string): HeadersInit {
+function observabilityHeaders(debugToken: string): HeadersInit {
   const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) {
-    h["x-peima-debug-token"] = token;
+  const auth = authHeaders() as Record<string, string>;
+  if (auth.Authorization) {
+    h.Authorization = auth.Authorization;
+  }
+  if (debugToken) {
+    h["x-peima-debug-token"] = debugToken;
   }
   return h;
 }
@@ -27,7 +31,9 @@ async function handleJson(res: Response) {
     );
   }
   if (res.status === 401 || res.status === 403) {
-    throw new Error("Debug token 无效或缺失（x-peima-debug-token）");
+    throw new Error(
+      "未授权：请用管理员账号登录（PEIMA_ADMIN_USER_IDS），或填写正确的 x-peima-debug-token",
+    );
   }
   const text = await res.text();
   let data: unknown = null;
@@ -49,7 +55,7 @@ async function handleJson(res: Response) {
 export async function fetchTestingObservabilityUsers(token: string, limit = 50) {
   const res = await fetch(
     `${baseUrl}/admin/testing-observability/users?limit=${limit}`,
-    { headers: debugHeaders(token) },
+    { headers: observabilityHeaders(token) },
   );
   return handleJson(res);
 }
@@ -60,7 +66,18 @@ export async function fetchTestingObservabilityUserDetail(
 ) {
   const res = await fetch(
     `${baseUrl}/admin/testing-observability/users/${encodeURIComponent(userId)}`,
-    { headers: debugHeaders(token) },
+    { headers: observabilityHeaders(token) },
+  );
+  return handleJson(res);
+}
+
+export async function fetchTestingObservabilityMatches(
+  token: string,
+  limit = 50,
+) {
+  const res = await fetch(
+    `${baseUrl}/admin/testing-observability/matches?limit=${limit}`,
+    { headers: observabilityHeaders(token) },
   );
   return handleJson(res);
 }
@@ -74,7 +91,7 @@ export async function fetchTestingObservabilityEvents(
     : "?limit=50";
   const res = await fetch(
     `${baseUrl}/admin/testing-observability/events${qs}`,
-    { headers: debugHeaders(token) },
+    { headers: observabilityHeaders(token) },
   );
   return handleJson(res);
 }
@@ -91,7 +108,7 @@ export async function submitTestingMatchFeedback(
 ) {
   const res = await fetch(`${baseUrl}/admin/testing-observability/match-feedback`, {
     method: "POST",
-    headers: debugHeaders(token),
+    headers: observabilityHeaders(token),
     body: JSON.stringify(body),
   });
   return handleJson(res);

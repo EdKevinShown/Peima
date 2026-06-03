@@ -1,10 +1,12 @@
 import { NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { TestingObservabilityGuard } from "../../src/modules/testing-observability/testing-observability.guard";
 import { recordTestingEvent } from "../../src/modules/testing-observability/record-testing-event";
 import { TestingObservabilityService } from "../../src/modules/testing-observability/testing-observability.service";
 
 describe("TestingObservabilityGuard", () => {
-  const guard = new TestingObservabilityGuard();
+  const jwt = { verify: jest.fn() } as unknown as JwtService;
+  const guard = new TestingObservabilityGuard(jwt);
   const ctx = (headers: Record<string, string>) =>
     ({
       switchToHttp: () => ({
@@ -15,6 +17,8 @@ describe("TestingObservabilityGuard", () => {
   afterEach(() => {
     delete process.env.PEIMA_TEST_OBSERVABILITY_ENABLED;
     delete process.env.PEIMA_TEST_OBSERVABILITY_TOKEN;
+    delete process.env.PEIMA_ADMIN_USER_IDS;
+    jest.clearAllMocks();
   });
 
   it("returns 404 when flag off", () => {
@@ -33,6 +37,15 @@ describe("TestingObservabilityGuard", () => {
     process.env.PEIMA_TEST_OBSERVABILITY_TOKEN = "secret";
     expect(
       guard.canActivate(ctx({ "x-peima-debug-token": "secret" })),
+    ).toBe(true);
+  });
+
+  it("allows admin JWT when no debug token header", () => {
+    process.env.PEIMA_TEST_OBSERVABILITY_ENABLED = "1";
+    process.env.PEIMA_ADMIN_USER_IDS = "admin1";
+    (jwt.verify as jest.Mock).mockReturnValue({ sub: "admin1" });
+    expect(
+      guard.canActivate(ctx({ authorization: "Bearer fake.jwt" })),
     ).toBe(true);
   });
 });
