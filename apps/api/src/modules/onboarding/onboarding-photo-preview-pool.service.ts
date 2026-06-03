@@ -22,13 +22,11 @@ import {
 } from "./vision/p76-photovisual-first-pool-db-adapter";
 import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
 import { readOnboardingPreviewPoolGateEnv } from "./onboarding-preview-pool-env";
-import { ensureOnboardingSyntheticCandidate } from "./onboarding-preview-pool-synthetic";
 import {
   isStrictBinaryPreviewGender,
   normalizeUserGenderForPreview,
 } from "./onboarding-preview-gender";
 import type { OnboardingPhotoPreviewPoolBundle } from "./onboarding-photo-preview-pool.types";
-import type { ShadowCandidateInput } from "./vision/visual-ranking-shadow-scoring";
 
 const POOL_STATUS_ACTIVE = "active";
 const POOL_SOURCE_VERSION = "onboarding-photo-preview-v1";
@@ -75,39 +73,11 @@ export class OnboardingPhotoPreviewPoolService {
     }
 
     const viewerNorm = normalizeUserGenderForPreview(user.gender);
-    if (
-      !gateEnv.relaxGenderGate &&
-      !gateEnv.syntheticFallback &&
-      !isStrictBinaryPreviewGender(viewerNorm)
-    ) {
+    if (!gateEnv.relaxGenderGate && !isStrictBinaryPreviewGender(viewerNorm)) {
       throw new BadRequestException(
         "请先在个人资料中填写性别（男或女），系统才能为你匹配异性预览对象。",
       );
     }
-  }
-
-  private buildShadowCandidatesFromContext(
-    ctx: Awaited<ReturnType<typeof loadPhotoVisualPoolAuditContext>>,
-    visionByUserId: Map<string, UsableCandidateVision>,
-  ): ShadowCandidateInput[] {
-    const gatedForShadow = ctx.candidates.map((row) => {
-      const imgs = ctx.candidateImagesByUserId.get(row.candidateUserId) ?? [];
-      const first = imgs[0];
-      const pf = row.preferenceFields;
-      return {
-        id: row.candidateUserId,
-        createdAt: first?.createdAt ?? new Date(0),
-        firstImageStyleTags: row.candidateStyleTags,
-        firstImageUrl: first?.id ? `image://${first.id}` : null,
-        age: pf.age,
-        city: pf.city,
-        height: pf.height,
-        education: pf.education,
-        occupation: pf.occupation,
-        relationshipGoal: pf.relationshipGoal,
-      };
-    });
-    return buildShadowCandidatesFromGatedRows(gatedForShadow, visionByUserId);
   }
 
   private toViewerPreferenceLike(
@@ -169,42 +139,20 @@ export class OnboardingPhotoPreviewPoolService {
       ctx.viewerImages as UserImageVisionSourceRow[],
     );
 
-    const tierCtx = {
+    const shadowCandidates = buildShadowCandidatesFromGatedRows(
+      gatedForShadow,
+      visionByUserId,
+    );
+
+    const slots = assignPreviewPoolTier3121Slots({
+      candidates: shadowCandidates,
       viewerStyleTags: ctx.viewerStyleTags,
       viewerPhotoVisualTags: viewerVision?.photoVisualTags ?? null,
       viewerVisionAvailable: viewerVision != null,
       viewerPref: this.toViewerPreferenceLike({
         styleTags: ctx.viewerStyleTags,
       }),
-    };
-
-    let shadowCandidates = this.buildShadowCandidatesFromContext(
-      ctx,
-      visionByUserId,
-    );
-    let slots = assignPreviewPoolTier3121Slots({
-      candidates: shadowCandidates,
-      ...tierCtx,
     });
-
-    const gateEnv = readOnboardingPreviewPoolGateEnv();
-    if (gateEnv.syntheticFallback) {
-      for (let n = 1; slots.length < gateEnv.minSlots && n <= 12; n += 1) {
-        const synth = await ensureOnboardingSyntheticCandidate(
-          this.prisma,
-          viewerUserId,
-          ctx.viewerGenderNorm,
-          n,
-        );
-        if (!shadowCandidates.some((c) => c.userId === synth.userId)) {
-          shadowCandidates = [...shadowCandidates, synth];
-        }
-        slots = assignPreviewPoolTier3121Slots({
-          candidates: shadowCandidates,
-          ...tierCtx,
-        });
-      }
-    }
 
     return { slots, ctx, gatedForShadow };
   }
@@ -223,9 +171,8 @@ export class OnboardingPhotoPreviewPoolService {
       if (genderLabel === "未填写" && !gateEnv.relaxGenderGate) {
         hints.push("在个人资料填写性别（男/女）");
       }
-      if (gatedCount === 0) {
-        hints.push("或开启内测合成候选人（PEIMA_ONBOARDING_PREVIEW_SYNTHETIC_FALLBACK=1）");
-        hints.push("或注册更多异性测试账号并上传照片");
+      if (gatedCount < gateEnv.minSlots) {
+        hints.push("请注册更多异性测试账号：上传照片、填性别、完成问卷");
       }
       const hintSuffix =
         hints.length > 0 ? `建议：${hints.join("；")}。` : "";
