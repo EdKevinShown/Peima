@@ -20,12 +20,15 @@ docker run --rm \
   -v "$ROOT:/app" \
   -w /app/packages/database \
   --env-file "$ROOT/.env" \
+  -e NODE_ENV=development \
   node:20-bullseye-slim \
   bash -lc '
     set -euo pipefail
+    export CI=true
     npm i -g pnpm@9.15.0 >/dev/null
     cd /app
-    pnpm install --frozen-lockfile
+    pnpm config set confirmModulesPurge false
+    pnpm install --frozen-lockfile --ignore-scripts
     cd /app/packages/database
     pnpm exec prisma migrate deploy --schema=./prisma/schema.prisma
   '

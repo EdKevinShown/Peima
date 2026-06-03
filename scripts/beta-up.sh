@@ -4,7 +4,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-COMPOSE="docker compose -f docker-compose.beta.yml"
+if docker compose version &>/dev/null; then
+  COMPOSE="docker compose -f docker-compose.beta.yml"
+elif command -v docker-compose &>/dev/null; then
+  COMPOSE="docker-compose -f docker-compose.beta.yml"
+else
+  echo "Need docker compose or docker-compose" >&2
+  exit 1
+fi
 
 if [[ ! -f .env ]]; then
   echo "Missing .env — run: cp docs/ops/peima-beta.env.example .env" >&2
