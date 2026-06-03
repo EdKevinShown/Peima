@@ -189,16 +189,27 @@ export class AdminService {
     );
     const timeoutMs = Number.isFinite(rawTimeout) && rawTimeout > 0 ? rawTimeout : 180000;
 
+    const subprocessEnv: NodeJS.ProcessEnv = { ...process.env };
+    const batchNodeEnv = process.env.PEIMA_BATCH_MATCH_SUBPROCESS_NODE_ENV?.trim();
+    if (batchNodeEnv) {
+      subprocessEnv.NODE_ENV = batchNodeEnv;
+    } else if (
+      String(process.env.PEIMA_TEST_MATCH_RESULT_WRITER_ENABLED ?? "").trim() === "1"
+    ) {
+      // API container is often NODE_ENV=production; test writer allowlist needs non-production.
+      subprocessEnv.NODE_ENV = "staging";
+    }
+
     const plan = resolveBatchMatchSubprocessPlan({
       monorepoRoot: root,
       nodeExecPath: process.execPath,
       workerDistMainJsExists: existsSync(workerMainJs),
-      env: process.env,
+      env: subprocessEnv,
     });
 
     const result = await spawnWithOutput(plan.command, plan.args, {
       cwd: plan.cwd,
-      env: process.env,
+      env: subprocessEnv,
       shell: plan.shell,
     }, timeoutMs);
 
