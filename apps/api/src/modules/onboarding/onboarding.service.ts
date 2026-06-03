@@ -168,15 +168,14 @@ export class OnboardingService {
     });
     const questionnaireDone = relationProfile != null;
 
-    // P7.2 beta fix: questionnaire before photo preview so users can become
-    // gated candidates for others (preview pool requires relationProfile).
+    // Questionnaire first: no photo / preview prerequisite (beta ops).
     let nextStep: OnboardingPhotoNextStep;
-    if (!gate.hasPassingPhoto) {
+    if (!questionnaireDone) {
+      nextStep = "questionnaire";
+    } else if (!gate.hasPassingPhoto) {
       nextStep = "photo_upload";
     } else if (!aestheticDone) {
       nextStep = "photo_preference";
-    } else if (!questionnaireDone) {
-      nextStep = "questionnaire";
     } else if (!previewAck) {
       nextStep = "photo_preview";
     } else {

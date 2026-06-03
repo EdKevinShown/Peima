@@ -1,36 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   getQuestionnaireQuestions,
   submitQuestionnaire,
 } from "../../api/questionnaire";
-import { getToken } from "../../api/auth";
-import { getOnboardingPhotoStatus } from "../../api/onboarding";
 import LoadingState from "../common/LoadingState";
 import UserIdWithName from "../common/UserIdWithName";
 import { useAdminAccess } from "../../hooks/useAdminAccess";
 import { toFriendlyUserMessage } from "../../utils/friendlyErrors";
-
-const PENDING_PHOTO_STEP_LABEL = {
-  photo_upload: {
-    title: "你还没有上传照片",
-    body: "「填写问卷」之前需要先完成照片上传与审核。请先上传一张清晰的本人照片，再回来填写问卷。",
-    cta: "去上传照片 →",
-    href: "/onboarding/photo-upload",
-  },
-  photo_preference: {
-    title: "你还没有设置审美偏好",
-    body: "在填写问卷之前，请先选择你的审美偏好；系统会用这一步生成第一印象预览池。",
-    cta: "去设置审美偏好 →",
-    href: "/onboarding/photo-preference",
-  },
-  photo_preview: {
-    title: "你还可以查看第一印象预览",
-    body: "问卷已可填写；完成问卷后，可回到第一印象预览池查看 3+2+1 示例（需库里有足够异性测试账号）。",
-    cta: "去第一印象预览 →",
-    href: "/onboarding/photo-preview",
-  },
-};
 
 const WIZARD_SCOPED_CSS = `
 .q-wizard-progress {
@@ -168,51 +145,6 @@ export default function QuestionnairePanel({
   const [loadError, setLoadError] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [submitOk, setSubmitOk] = useState(false);
-  const [onboardingAllowed, setOnboardingAllowed] = useState(
-    () => skipOnboardingRedirect || !userId || !getToken(),
-  );
-  const [pendingPhotoStep, setPendingPhotoStep] = useState(null);
-
-  useEffect(() => {
-    if (skipOnboardingRedirect) {
-      setOnboardingAllowed(true);
-      setPendingPhotoStep(null);
-      return;
-    }
-    if (!userId || !getToken()) {
-      setOnboardingAllowed(true);
-      setPendingPhotoStep(null);
-      return;
-    }
-    let cancelled = false;
-    setOnboardingAllowed(false);
-    setPendingPhotoStep(null);
-    void (async () => {
-      try {
-        const st = await getOnboardingPhotoStatus();
-        if (cancelled) return;
-        if (st.nextStep === "questionnaire") {
-          setOnboardingAllowed(true);
-          return;
-        }
-        if (
-          st.nextStep === "photo_upload" ||
-          st.nextStep === "photo_preference" ||
-          st.nextStep === "photo_preview"
-        ) {
-          setPendingPhotoStep(st.nextStep);
-          return;
-        }
-        // Unknown state: fail open so the user still sees something.
-        setOnboardingAllowed(true);
-      } catch {
-        if (!cancelled) setOnboardingAllowed(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, skipOnboardingRedirect]);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,41 +285,14 @@ export default function QuestionnairePanel({
         </p>
       )}
 
-      {!onboardingAllowed && !pendingPhotoStep && (
-        <LoadingState label="校验入门流程…" />
-      )}
-      {!onboardingAllowed && pendingPhotoStep ? (
-        <div className="q-wizard-card space-y-4">
-          <p className="text-base font-semibold text-white">
-            {PENDING_PHOTO_STEP_LABEL[pendingPhotoStep].title}
-          </p>
-          <p className="text-sm text-white/65 leading-relaxed">
-            {PENDING_PHOTO_STEP_LABEL[pendingPhotoStep].body}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Link
-              to={`${PENDING_PHOTO_STEP_LABEL[pendingPhotoStep].href}?userId=${encodeURIComponent(userId)}`}
-              className="btn-primary inline-flex items-center justify-center text-sm py-2 px-5"
-            >
-              {PENDING_PHOTO_STEP_LABEL[pendingPhotoStep].cta}
-            </Link>
-            <Link
-              to="/home"
-              className="btn-ghost inline-flex items-center justify-center text-sm py-2 px-5"
-            >
-              稍后再来
-            </Link>
-          </div>
-        </div>
-      ) : null}
-      {onboardingAllowed && loadLoading && <LoadingState label="加载题目…" />}
-      {onboardingAllowed && loadError ? (
+      {loadLoading && <LoadingState label="加载题目…" />}
+      {loadError ? (
         <p className="text-sm text-pink-300" role="alert">
           {toFriendlyUserMessage(loadError.message)}
         </p>
       ) : null}
 
-      {onboardingAllowed && !loadLoading && !loadError && currentQuestion ? (
+      {!loadLoading && !loadError && currentQuestion ? (
         <>
           <div className="q-wizard-progress" aria-live="polite">
             <div className="q-wizard-progress__meta">

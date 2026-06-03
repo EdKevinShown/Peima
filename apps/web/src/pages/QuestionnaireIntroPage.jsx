@@ -112,7 +112,7 @@ export default function QuestionnaireIntroPage() {
                 border: "1px solid rgba(255,255,255,0.10)",
               }}
             >
-              你还没有填写过问卷。准备好之后点击下方按钮开始；如果尚未完成照片设置，系统会先引导你完成那一步。
+              你还没有填写过问卷。可直接开始填写，无需先完成照片或第一印象预览。
             </div>
             <button
               type="button"
