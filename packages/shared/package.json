@@ -6,8 +6,16 @@
   "types": "./types/index.ts",
   "exports": {
     "./types": "./types/index.ts",
-    "./matching/preference-hard-gate": "./matching/preference-hard-gate.ts",
-    "./matching/preference-score": "./matching/preference-score.ts",
+    "./matching/preference-hard-gate": {
+      "types": "./matching/preference-hard-gate.ts",
+      "require": "./dist/matching/preference-hard-gate.js",
+      "default": "./dist/matching/preference-hard-gate.js"
+    },
+    "./matching/preference-score": {
+      "types": "./matching/preference-score.ts",
+      "require": "./dist/matching/preference-score.js",
+      "default": "./dist/matching/preference-score.js"
+    },
     "./constants": {
       "types": "./constants/index.ts",
       "require": "./dist/constants/index.js",
@@ -15,7 +23,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.constants.json"
+    "build": "tsc -p tsconfig.constants.json && tsc -p tsconfig.matching.json"
   },
   "devDependencies": {
     "typescript": "~5.7.2"

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./dist/matching",
+    "rootDir": "./matching",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "lib": ["ES2022"]
+  },
+  "include": ["matching/**/*.ts"]
+}
