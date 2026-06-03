@@ -162,11 +162,21 @@ export class OnboardingService {
     const aestheticDone = user.onboardingPhotoAestheticCompletedAt != null;
     const previewAck = user.onboardingPhotoPreviewCompletedAt != null;
 
+    const relationProfile = await this.prisma.userProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    const questionnaireDone = relationProfile != null;
+
+    // P7.2 beta fix: questionnaire before photo preview so users can become
+    // gated candidates for others (preview pool requires relationProfile).
     let nextStep: OnboardingPhotoNextStep;
     if (!gate.hasPassingPhoto) {
       nextStep = "photo_upload";
     } else if (!aestheticDone) {
       nextStep = "photo_preference";
+    } else if (!questionnaireDone) {
+      nextStep = "questionnaire";
     } else if (!previewAck) {
       nextStep = "photo_preview";
     } else {

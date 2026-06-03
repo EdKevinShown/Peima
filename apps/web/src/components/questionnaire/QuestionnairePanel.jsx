@@ -25,9 +25,9 @@ const PENDING_PHOTO_STEP_LABEL = {
     href: "/onboarding/photo-preference",
   },
   photo_preview: {
-    title: "你还没有确认第一印象预览",
-    body: "在填写问卷之前，请先查看并确认你的第一印象预览池。确认后就可以填写问卷了。",
-    cta: "去查看第一印象 →",
+    title: "你还可以查看第一印象预览",
+    body: "问卷已可填写；完成问卷后，可回到第一印象预览池查看 3+2+1 示例（需库里有足够异性测试账号）。",
+    cta: "去第一印象预览 →",
     href: "/onboarding/photo-preview",
   },
 };

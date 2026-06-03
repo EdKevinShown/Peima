@@ -21,12 +21,12 @@ import {
   pickP76CandidateUsableVision,
 } from "./vision/p76-photovisual-first-pool-db-adapter";
 import { VisualRankingShadowService } from "./vision/visual-ranking-shadow.service";
+import { readOnboardingPreviewPoolGateEnv } from "./onboarding-preview-pool-env";
 import type { OnboardingPhotoPreviewPoolBundle } from "./onboarding-photo-preview-pool.types";
 
 const POOL_STATUS_ACTIVE = "active";
 const POOL_SOURCE_VERSION = "onboarding-photo-preview-v1";
 const MAX_GATED_CANDIDATES = 200;
-const SLOT_COUNT = 6;
 
 @Injectable()
 export class OnboardingPhotoPreviewPoolService {
@@ -150,9 +150,10 @@ export class OnboardingPhotoPreviewPoolService {
     const { slots, ctx, gatedForShadow } =
       await this.buildTier3121Slots(viewerUserId);
 
-    if (slots.length < SLOT_COUNT) {
+    const { minSlots } = readOnboardingPreviewPoolGateEnv();
+    if (slots.length < minSlots) {
       throw new BadRequestException(
-        `内测候选人不足，暂时无法生成 6 人预览（当前 ${slots.length}/${SLOT_COUNT}）。请让更多测试账号完成资料、上传照片并通过审核后再试。`,
+        `内测候选人不足，暂时无法生成 ${minSlots} 人预览（当前 ${slots.length}/${minSlots}）。请让更多测试账号完成问卷/资料、上传照片（异性、性别填对）后再试。`,
       );
     }
 

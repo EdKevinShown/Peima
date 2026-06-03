@@ -22,12 +22,21 @@ if grep -q 'YOUR_VPS_IP' .env 2>/dev/null; then
   echo "Warning: .env still contains YOUR_VPS_IP — update API_PUBLIC_BASE_URL and VITE_API_BASE_URL" >&2
 fi
 
-# shellcheck disable=SC1091
-set -a
-source .env
-set +a
+# Do not `source .env` — values like MATCH_CRON=0 20 * * * break bash.
+read_env_var() {
+  local key="$1"
+  local line val
+  line="$(grep -E "^${key}=" .env | tail -1 | tr -d '\r')" || true
+  val="${line#${key}=}"
+  val="${val%\"}"
+  val="${val#\"}"
+  val="${val%\'}"
+  val="${val#\'}"
+  printf '%s' "$val"
+}
 
-if [[ -z "${VITE_API_BASE_URL:-}" ]]; then
+VITE_API_BASE_URL="$(read_env_var VITE_API_BASE_URL)"
+if [[ -z "$VITE_API_BASE_URL" ]]; then
   echo "VITE_API_BASE_URL is empty in .env" >&2
   exit 1
 fi

@@ -57,6 +57,9 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
           ...overrides,
         }),
       },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
     };
   }
 
@@ -238,7 +241,7 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
     expect("reviewNote" in res).toBe(false);
   });
 
-  it("nextStep photo_preview when aesthetic done but preview not ack", async () => {
+  it("nextStep questionnaire when aesthetic done but relation profile missing", async () => {
     const prisma = {
       ...userPrisma({
         onboardingPhotoAestheticCompletedAt: new Date(),
@@ -246,6 +249,28 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
       }),
       userImage: {
         findMany: jest.fn().mockResolvedValue([img()]),
+      },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const svc = await createService(prisma);
+    const res = await svc.getPhotoStatus("u1");
+    expect(res.nextStep).toBe("questionnaire");
+    expect(res.hasPhotoPreference).toBe(true);
+  });
+
+  it("nextStep photo_preview when questionnaire done but preview not ack", async () => {
+    const prisma = {
+      ...userPrisma({
+        onboardingPhotoAestheticCompletedAt: new Date(),
+        onboardingPhotoPreviewCompletedAt: null,
+      }),
+      userImage: {
+        findMany: jest.fn().mockResolvedValue([img()]),
+      },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue({ id: "prof-1" }),
       },
     };
     const svc = await createService(prisma);
@@ -262,6 +287,9 @@ describe("OnboardingService (P7.2 + P7.4-r1e2 status)", () => {
       }),
       userImage: {
         findMany: jest.fn().mockResolvedValue([img()]),
+      },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue({ id: "prof-1" }),
       },
     };
     const svc = await createService(prisma);

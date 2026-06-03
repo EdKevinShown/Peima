@@ -25,7 +25,7 @@ model User {
   bio              String   @default("") @db.Text
   /// P7.2: set when user submits onboarding aesthetic tags (not inferred from legacy styleTags).
   onboardingPhotoAestheticCompletedAt DateTime?
-  /// P7.2: set when user acknowledges onboarding photo preview ("继续完成关系画像"); gates questionnaire.
+  /// P7.2: set when user acknowledges onboarding photo preview; gates return visits after questionnaire + preview.
   onboardingPhotoPreviewCompletedAt   DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

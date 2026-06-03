@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   acknowledgeOnboardingPhotoPreviewPool,
   generateOnboardingPhotoPreviewPool,
@@ -262,6 +262,16 @@ export default function PreviewPoolPage() {
           {error ? (
             <AlertBanner variant="warn" className="mb-2 text-sm">
               {error}
+              {!showQuestionnaire && userId ? (
+                <p className="mt-2">
+                  <Link
+                    to={`/questionnaire?userId=${encodeURIComponent(userId)}`}
+                    className="text-pink-200 underline underline-offset-2"
+                  >
+                    候选人不足时，可先填写问卷 →
+                  </Link>
+                </p>
+              ) : null}
             </AlertBanner>
           ) : null}
 

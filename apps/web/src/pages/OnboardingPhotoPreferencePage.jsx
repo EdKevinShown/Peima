@@ -105,7 +105,17 @@ export default function OnboardingPhotoPreferencePage() {
     setError(null);
     try {
       await postOnboardingPhotoPreferences(tags);
-      navigate(`/onboarding/photo-preview?userId=${encodeURIComponent(userId)}`);
+      const status = await getOnboardingPhotoStatus();
+      const q = `?userId=${encodeURIComponent(userId)}`;
+      if (status.nextStep === "questionnaire") {
+        navigate(`/questionnaire${q}`);
+        return;
+      }
+      if (status.nextStep === "photo_preview") {
+        navigate(`/onboarding/photo-preview${q}`);
+        return;
+      }
+      navigate(`/onboarding/photo-upload${q}`);
     } catch (e) {
       setError(new Error(mapAccountApiErrorMessage(e)));
     } finally {
@@ -156,7 +166,7 @@ export default function OnboardingPhotoPreferencePage() {
       {!loading && !needsPhotoFirst && userId ? (
         <div className="onboarding-soft-panel">
           <p className="text-sm text-white/55 leading-relaxed pb-4 mb-4 border-b border-white/[0.07]">
-            保存后进入第一印象预览池（3+2+1），确认后再填写问卷；不影响正式匹配主链。
+            保存后先填写关系画像问卷，完成后再查看第一印象预览池（3+2+1）；不影响正式匹配主链。
           </p>
 
           <div className="space-y-1 text-xs text-white/45 leading-relaxed mb-5">
@@ -210,7 +220,7 @@ export default function OnboardingPhotoPreferencePage() {
             onClick={() => void onSubmit()}
             disabled={submitting || selectedStyle.size < 1}
           >
-            {submitting ? "保存中…" : "保存并生成预览池"}
+            {submitting ? "保存中…" : "保存并继续"}
           </button>
 
           <p className="mt-5 pt-4 border-t border-white/[0.07] text-xs text-white/40 flex flex-wrap gap-x-2 gap-y-1">

@@ -16,6 +16,7 @@ import {
   isStrictBinaryPreviewGender,
   normalizeUserGenderForPreview,
 } from "../onboarding-preview-gender";
+import { readOnboardingPreviewPoolGateEnv } from "../onboarding-preview-pool-env";
 import { ONBOARDING_VISION_SOURCE_CLOUD_ZHIPU } from "./cloud-vision.facade";
 import type { OnboardingVisionProfileV1 } from "./onboarding-vision.types";
 import { buildPhotoFirstMutualMatchingShadowV1 } from "./p76-photovisual-first-pool-shadow";
@@ -437,6 +438,7 @@ async function collectGatedCandidatesReadOnly(
   },
 ): Promise<P76GatedCandidateDbRow[]> {
   const { viewerUserId, gatePref, viewerBinary, limit } = options;
+  const { relaxProfileGate } = readOnboardingPreviewPoolGateEnv();
 
   const out: P76GatedCandidateDbRow[] = [];
   let skip = 0;
@@ -446,7 +448,7 @@ async function collectGatedCandidatesReadOnly(
       where: {
         id: { not: viewerUserId },
         images: { some: {} },
-        relationProfile: { isNot: null },
+        ...(relaxProfileGate ? {} : { relationProfile: { isNot: null } }),
       },
       orderBy: { createdAt: "asc" },
       skip,
@@ -460,6 +462,9 @@ async function collectGatedCandidatesReadOnly(
         occupation: true,
         relationshipGoal: true,
         gender: true,
+        relationProfile: relaxProfileGate
+          ? { select: { id: true } }
+          : false,
         images: {
           orderBy: { createdAt: "asc" },
           take: 1,
@@ -507,8 +512,15 @@ async function collectGatedCandidatesReadOnly(
         preferenceGatePassed,
         firstImageReviewStatus: first?.reviewStatus ?? "",
         firstImageDetectionStatus: first?.detectionStatus ?? "",
-        missingProfile: false,
+        missingProfile: !relaxProfileGate && row.relationProfile == null,
       });
+
+      if (!genderGatePassed || !preferenceGatePassed) {
+        continue;
+      }
+      if (!gates.detectionUsable || !gates.reviewUsable) {
+        continue;
+      }
 
       out.push({
         candidateUserId: row.id,
