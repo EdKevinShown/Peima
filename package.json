@@ -7,7 +7,7 @@
     "prepare": "pnpm --filter @peima/database run db:generate",
     "dev:web": "pnpm --filter @peima/web dev",
     "dev:admin": "pnpm --filter @peima/admin dev",
-    "dev:api": "dotenv -e .env --override -- pnpm --filter @peima/api start:dev",
+    "dev:api": "dotenv -e .env --override -- pnpm --filter @peima/api dev",
     "dev:worker": "dotenv -e .env --override -- pnpm --filter @peima/worker run dev",
     "build": "pnpm -r run build",
     "build:web": "pnpm --filter @peima/web build",
