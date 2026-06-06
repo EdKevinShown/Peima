@@ -1,5 +1,4 @@
 import { useState } from "react";
-import UserIdWithName from "../common/UserIdWithName";
 import AuthenticatedUserImage from "../common/AuthenticatedUserImage";
 import { parseUserImageContentId } from "../../api/images";
 
@@ -117,6 +116,20 @@ function poolImageId(item) {
   );
 }
 
+/** Prefer viewer-safe labels from pool item meta; never fetch GET /users/:id. */
+export function resolvePreviewPoolCandidateDisplayName(item) {
+  const meta = item?.itemMeta ?? {};
+  for (const raw of [
+    meta.candidateDisplayName,
+    meta.displayName,
+    meta.nickname,
+  ]) {
+    const name = String(raw ?? "").trim();
+    if (name) return name;
+  }
+  return "候选人";
+}
+
 function CardPhoto({ item, imageId }) {
   const mode = item.displayMode;
   const [broken, setBroken] = useState(false);
@@ -199,7 +212,7 @@ function PreviewCard({ item, imageId }) {
 
       <div className="absolute bottom-0 left-0 right-0 z-10 p-2.5 pt-6 pointer-events-none">
         <p className="text-sm font-semibold text-white truncate leading-tight drop-shadow-sm">
-          <UserIdWithName userId={item.candidateUserId} variant="nameOnly" />
+          {resolvePreviewPoolCandidateDisplayName(item)}
         </p>
         <p className="mt-1 text-[11px] text-white/75 leading-snug">
           <span>{label}</span>

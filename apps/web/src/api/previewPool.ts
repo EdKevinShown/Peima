@@ -5,6 +5,12 @@ export type PreviewPoolItemMeta = {
   shortHint?: string;
   tags?: string[];
   candidateImageUrl?: string;
+  candidateImageId?: string;
+  reasonTags?: string[];
+  /** Viewer-safe display label when provided by the pool API (no GET /users/:id). */
+  candidateDisplayName?: string;
+  displayName?: string;
+  nickname?: string;
 };
 
 export type PreviewPoolItem = {
