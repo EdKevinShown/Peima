@@ -154,6 +154,9 @@ describe("OnboardingService review fields (P7.4-r1d-b)", () => {
           },
         ]),
       },
+      userProfile: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
     };
     const svc = await createService(prisma);
     await expect(svc.getPhotoStatus("u1")).resolves.toMatchObject({

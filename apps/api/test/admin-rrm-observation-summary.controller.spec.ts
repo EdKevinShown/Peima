@@ -11,6 +11,7 @@ import { AiSimulationV1Service } from "../src/modules/ai-simulation-v1/ai-simula
 import { MatchingObservabilitySummaryService } from "../src/modules/admin/matching-observability-summary.service";
 import { RrmObservationSummaryService } from "../src/modules/admin/rrm-observation-summary.service";
 import { RrmEvalCollectorService } from "../src/modules/rrm-eval";
+import { AdminMyAiRecordsService } from "../src/modules/admin/admin-my-ai-records.service";
 
 describe("AdminController rrmObservationSummary", () => {
   function createModule(summaryImpl?: { getSummary: jest.Mock }) {
@@ -44,6 +45,7 @@ describe("AdminController rrmObservationSummary", () => {
               }),
             } as any),
         },
+        { provide: AdminMyAiRecordsService, useValue: {} },
       ],
     }).compile();
   }

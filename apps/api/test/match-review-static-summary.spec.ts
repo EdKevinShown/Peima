@@ -24,6 +24,7 @@ function baseProfileView(
       primary: null,
       candidates: [],
       styleLabels: [],
+      rareLabel: null,
     },
     displayPrimary: overrides.displayPrimary ?? {
       id: "x",
