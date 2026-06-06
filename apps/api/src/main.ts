@@ -4,6 +4,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { AppModule } from "./app.module";
+import { buildNestCorsOptions } from "./common/config/cors.config";
 import { getJwtSecret } from "./common/config/jwt-secret.config";
 
 function collectExpressRouteLines(stack: unknown, prefix = ""): string[] {
@@ -37,7 +38,7 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.enableCors({ origin: true });
+  app.enableCors(buildNestCorsOptions());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

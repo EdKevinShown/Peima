@@ -1,18 +1,28 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { isProductionNodeEnv } from "../../common/config/jwt-secret.config";
 import { parseAdminUserIds } from "../admin/admin.service";
 import {
+  assertTestingObservabilityStartupConfig,
   isTestingObservabilityEnabled,
   readTestingObservabilityToken,
+  type TestingObservabilityAuthContext,
 } from "./testing-observability-env";
 
 type JwtPayload = { sub?: string };
+
+export type TestingObservabilityRequest = {
+  headers: Record<string, string | string[] | undefined>;
+  user?: { userId?: string };
+  testingObservabilityAuth?: TestingObservabilityAuthContext;
+};
 
 function readBearerToken(
   authorization: string | string[] | undefined,
@@ -21,6 +31,14 @@ function readBearerToken(
   if (!raw?.trim()) return null;
   const m = /^Bearer\s+(.+)$/i.exec(raw.trim());
   return m?.[1]?.trim() || null;
+}
+
+function readDebugTokenHeader(
+  headers: Record<string, string | string[] | undefined>,
+): string | null {
+  const raw = headers["x-peima-debug-token"];
+  const header = Array.isArray(raw) ? raw[0] : raw;
+  return header?.trim() || null;
 }
 
 @Injectable()
@@ -32,21 +50,46 @@ export class TestingObservabilityGuard implements CanActivate {
       throw new NotFoundException();
     }
 
-    const req = context.switchToHttp().getRequest<{
-      headers: Record<string, string | string[] | undefined>;
-    }>();
+    assertTestingObservabilityStartupConfig();
 
+    const req = context.switchToHttp().getRequest<TestingObservabilityRequest>();
     const expectedDebug = readTestingObservabilityToken();
-    if (expectedDebug) {
-      const raw = req.headers["x-peima-debug-token"];
-      const header = Array.isArray(raw) ? raw[0] : raw;
-      if (header === expectedDebug) {
-        return true;
+    const debugHeader = readDebugTokenHeader(req.headers);
+    const adminUserId = this.tryResolveAdminUserId(req);
+
+    if (isProductionNodeEnv()) {
+      if (!expectedDebug || debugHeader !== expectedDebug) {
+        throw new UnauthorizedException(
+          "invalid or missing x-peima-debug-token (required in production)",
+        );
       }
+      if (!adminUserId) {
+        throw new UnauthorizedException(
+          "admin JWT required in production (PEIMA_ADMIN_USER_IDS)",
+        );
+      }
+      this.attachAuth(req, { callerUserId: adminUserId, via: "admin_jwt" });
+      return true;
     }
 
-    if (this.isAdminJwt(req)) {
+    if (expectedDebug && debugHeader === expectedDebug) {
+      this.attachAuth(req, {
+        callerUserId: adminUserId,
+        via: adminUserId ? "admin_jwt" : "debug_token",
+      });
       return true;
+    }
+
+    if (adminUserId) {
+      this.attachAuth(req, { callerUserId: adminUserId, via: "admin_jwt" });
+      return true;
+    }
+
+    const bearer = readBearerToken(req.headers.authorization);
+    if (bearer) {
+      throw new ForbiddenException(
+        "admin only: add your user id to PEIMA_ADMIN_USER_IDS",
+      );
     }
 
     if (expectedDebug) {
@@ -59,23 +102,31 @@ export class TestingObservabilityGuard implements CanActivate {
     );
   }
 
-  private isAdminJwt(req: {
-    headers: Record<string, string | string[] | undefined>;
-  }): boolean {
+  private attachAuth(
+    req: TestingObservabilityRequest,
+    auth: TestingObservabilityAuthContext,
+  ): void {
+    req.testingObservabilityAuth = auth;
+    if (auth.callerUserId) {
+      req.user = { userId: auth.callerUserId };
+    }
+  }
+
+  private tryResolveAdminUserId(req: TestingObservabilityRequest): string | null {
     const admins = parseAdminUserIds();
     if (admins.size === 0) {
-      return false;
+      return null;
     }
     const bearer = readBearerToken(req.headers.authorization);
     if (!bearer) {
-      return false;
+      return null;
     }
     try {
       const payload = this.jwt.verify<JwtPayload>(bearer);
       const userId = payload?.sub?.trim();
-      return Boolean(userId && admins.has(userId));
+      return userId && admins.has(userId) ? userId : null;
     } catch {
-      return false;
+      return null;
     }
   }
 }

@@ -5,9 +5,11 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from "@nestjs/common";
 import { TestingObservabilityGuard } from "./testing-observability.guard";
+import type { TestingObservabilityRequest } from "./testing-observability.guard";
 import { TestingObservabilityService } from "./testing-observability.service";
 
 type MatchFeedbackBody = {
@@ -68,7 +70,10 @@ export class TestingObservabilityController {
   }
 
   @Post("match-feedback")
-  createFeedback(@Body() body: MatchFeedbackBody) {
-    return this.service.createMatchFeedback(body);
+  createFeedback(
+    @Req() req: TestingObservabilityRequest,
+    @Body() body: MatchFeedbackBody,
+  ) {
+    return this.service.createMatchFeedback(body, req.testingObservabilityAuth);
   }
 }

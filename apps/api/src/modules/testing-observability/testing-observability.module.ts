@@ -1,7 +1,8 @@
-import { Module } from "@nestjs/common";
+import { Module, OnModuleInit } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { getJwtSecret } from "../../common/config/jwt-secret.config";
 import { PrismaModule } from "../../common/prisma/prisma.module";
+import { assertTestingObservabilityStartupConfig } from "./testing-observability-env";
 import { TestingObservabilityController } from "./testing-observability.controller";
 import { TestingObservabilityGuard } from "./testing-observability.guard";
 import { TestingObservabilityService } from "./testing-observability.service";
@@ -17,4 +18,8 @@ import { TestingObservabilityService } from "./testing-observability.service";
   providers: [TestingObservabilityService, TestingObservabilityGuard],
   exports: [TestingObservabilityService],
 })
-export class TestingObservabilityModule {}
+export class TestingObservabilityModule implements OnModuleInit {
+  onModuleInit(): void {
+    assertTestingObservabilityStartupConfig();
+  }
+}

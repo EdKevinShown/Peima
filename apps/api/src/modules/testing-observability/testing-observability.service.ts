@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { isProductionNodeEnv } from "../../common/config/jwt-secret.config";
 import { G1R_PROFILE_KEYS } from "../questionnaire/questionnaire.scorer";
 import { getCanonicalQuestionKeys } from "../questionnaire/data/questions";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -11,6 +13,8 @@ import { enrichTestingMatchSummaries } from "./testing-observability-match-enric
 import {
   TESTING_MATCH_FEEDBACK_RATINGS,
   TESTING_OBSERVABILITY_SOURCE_VERSION,
+  formatTestingMatchFeedbackSource,
+  type TestingObservabilityAuthContext,
 } from "./testing-observability-env";
 import type {
   TestingEventRow,
@@ -547,17 +551,25 @@ export class TestingObservabilityService {
     };
   }
 
-  async createMatchFeedback(body: {
-    userId: string;
-    matchResultId?: string;
-    rating: string;
-    reasonCodes?: string[];
-    freeText?: string;
-    source?: string;
-  }) {
+  async createMatchFeedback(
+    body: {
+      userId: string;
+      matchResultId?: string;
+      rating: string;
+      reasonCodes?: string[];
+      freeText?: string;
+      source?: string;
+    },
+    auth?: TestingObservabilityAuthContext,
+  ) {
     const userId = body.userId?.trim();
     if (!userId) {
       throw new BadRequestException("userId is required");
+    }
+    if (isProductionNodeEnv() && !auth?.callerUserId) {
+      throw new ForbiddenException(
+        "match-feedback requires an authenticated admin caller in production",
+      );
     }
     const rating = body.rating?.trim();
     if (!rating || !TESTING_MATCH_FEEDBACK_RATINGS.includes(rating as never)) {
@@ -589,7 +601,11 @@ export class TestingObservabilityService {
         rating,
         reasonCodes: body.reasonCodes?.length ? body.reasonCodes : undefined,
         freeText: body.freeText?.trim().slice(0, 500) || null,
-        source: body.source?.trim() || "testing_monitor_ui",
+        source: formatTestingMatchFeedbackSource(
+          body.source,
+          auth ?? { callerUserId: null, via: "debug_token" },
+          userId,
+        ),
       },
     });
 
