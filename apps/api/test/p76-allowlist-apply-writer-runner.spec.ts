@@ -74,19 +74,23 @@ describe("p76 allowlist apply writer runner", () => {
   });
 
   it("requires --dryRun", async () => {
+    const prevExitCode = process.exitCode;
     const exit = jest.spyOn(process, "exit").mockImplementation((() => {
       throw new Error("exit");
     }) as never);
 
-    await expect(
-      runP76R8bAllowlistApplyWriterMain([
-        "--viewerUserId=viewer-1",
-        "--selectedCandidateId=cand-1",
-        "--stage1SelectedCandidateIds=cand-1",
-        "--stage2Top2CandidateIds=cand-1",
-      ]),
-    ).rejects.toThrow("exit");
-
-    exit.mockRestore();
+    try {
+      await expect(
+        runP76R8bAllowlistApplyWriterMain([
+          "--viewerUserId=viewer-1",
+          "--selectedCandidateId=cand-1",
+          "--stage1SelectedCandidateIds=cand-1",
+          "--stage2Top2CandidateIds=cand-1",
+        ]),
+      ).rejects.toThrow("exit");
+    } finally {
+      exit.mockRestore();
+      process.exitCode = prevExitCode;
+    }
   });
 });

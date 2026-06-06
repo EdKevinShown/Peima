@@ -51,6 +51,10 @@ describe("blaze-face-detector adapter helpers (P7.4-r1b-f1)", () => {
 });
 
 describe("BlazeFaceDetectorAdapter load/infer split (mocked)", () => {
+  afterAll(() => {
+    process.exitCode = undefined;
+  });
+
   const mockEstimateFaces = jest.fn();
   const mockLoad = jest.fn();
   const mockDispose = jest.fn();
@@ -108,7 +112,9 @@ describe("BlazeFaceDetectorAdapter load/infer split (mocked)", () => {
   it("infer timeout throws face detection timeout", async () => {
     mockLoad.mockResolvedValue({
       estimateFaces: mockEstimateFaces.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve([]), 200)),
+        () => new Promise(() => {
+          /* never resolves — timeout path only */
+        }),
       ),
     });
     process.env.FACE_DETECTION_INFER_TIMEOUT_MS = "30";

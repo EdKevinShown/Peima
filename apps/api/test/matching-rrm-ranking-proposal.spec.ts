@@ -3,8 +3,19 @@ import type { INestApplication } from "@nestjs/common";
 import { JwtModule, JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
 import request from "supertest";
+
+jest.mock("@tensorflow/tfjs", () => ({
+  tensor3d: jest.fn(() => ({ dispose: jest.fn() })),
+}));
+jest.mock("@tensorflow-models/blazeface", () => ({
+  load: jest.fn().mockResolvedValue({
+    estimateFaces: jest.fn().mockResolvedValue([]),
+  }),
+}));
+
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/common/prisma/prisma.service";
+import { BlazeFaceDetectorAdapter } from "../src/modules/images/blaze-face-detector.adapter";
 import { AiSimulationV1Service } from "../src/modules/ai-simulation-v1/ai-simulation-v1.service";
 import type { RrmSimMultiCandidateDiagnostic } from "../src/modules/ai-simulation-v1/ai-simulation-v1-rrm-multi-candidate-diagnostic";
 import type { RrmRankingProposal } from "../src/modules/ai-simulation-v1/ai-simulation-v1-rrm-ranking-proposal";
@@ -147,6 +158,7 @@ describeDb("GET /matching/rrm-ranking-proposal/:poolId (M4.0 contract)", () => {
       });
     }
     await app?.close();
+    process.exitCode = undefined;
   });
 
   it("returns readonly proposal with ranking array", async () => {
