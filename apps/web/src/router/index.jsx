@@ -41,7 +41,7 @@ import MainAppShell from "../components/layout/MainAppShell";
 import { resolveUserId } from "../utils/resolveUserId";
 import { getMe } from "../api/auth";
 import { getUserPreferencesOptional } from "../api/preferences";
-import { getAdminCapabilities } from "../api/admin";
+import { fetchAdminCapabilities } from "../api/admin";
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("peimaToken");
@@ -105,9 +105,9 @@ function DashboardPage() {
         setMissingProfileFields([...profileMissing, ...prefMissing]);
       })
       .catch(() => {});
-    getAdminCapabilities()
-      .then((c) => setIsAdmin(Boolean(c?.batchMatchTrigger)))
-      .catch(() => {});
+    fetchAdminCapabilities()
+      .then((r) => setIsAdmin(r.ok))
+      .catch(() => setIsAdmin(false));
   }, [navigate, userId]);
 
   const handleLogout = () => {

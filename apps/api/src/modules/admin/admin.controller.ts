@@ -13,7 +13,9 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
+import { Permission } from "@peima/shared/constants";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RbacGuard, RequirePermission } from "../../common/rbac/rbac.guard";
 import { PRESCREEN_V0_SCHEMA } from "../prescreen-v0/prescreen-v0.types";
 import { AI_SIMULATION_V1_ENQUEUE_HTTP_DEPRECATED_CODE } from "../ai-simulation-v1/ai-simulation-v1.constants";
 import { AiSimulationV1Service } from "../ai-simulation-v1/ai-simulation-v1.service";
@@ -47,6 +49,8 @@ export class AdminController {
   ) {}
 
   @Get("capabilities")
+  @UseGuards(RbacGuard)
+  @RequirePermission(Permission.VIEW_ADMIN_CAPABILITIES)
   capabilities(@Req() req: JwtReq): { batchMatchTrigger: boolean } {
     const userId = req.user?.userId;
     if (!userId) {

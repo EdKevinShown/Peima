@@ -31,6 +31,8 @@ export const Permission = {
   APPLY_P76_CANONICAL_REHEARSAL: "apply_p76_canonical_rehearsal",
   /** P7.10-r8f: hidden admin canonical Rollback mutation (env-gated; token required). */
   ROLLBACK_P76_CANONICAL_WRITE: "rollback_p76_canonical_write",
+  /** Read-only probe for admin UI capabilities (gates dashboard admin nav). */
+  VIEW_ADMIN_CAPABILITIES: "view_admin_capabilities",
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
@@ -70,6 +72,7 @@ export const ROLE_PERMISSIONS_MAP: Record<UserRole, Permission[]> = {
     Permission.VIEW_P76_CANONICAL_REHEARSAL,
     Permission.APPLY_P76_CANONICAL_REHEARSAL,
     Permission.ROLLBACK_P76_CANONICAL_WRITE,
+    Permission.VIEW_ADMIN_CAPABILITIES,
   ],
 };
 

@@ -1,4 +1,5 @@
 import { authHeaders, baseUrl, handleJson } from "./auth";
+import { resolveAdminCapabilitiesFetch } from "../utils/adminCapabilitiesFetch.js";
 
 export type AdminCapabilities = {
   batchMatchTrigger: boolean;
@@ -74,14 +75,36 @@ export type AdminPostPoolOrchestrationMvpBody = {
   candidateUserIdsOverride?: string[];
 };
 
-export async function getAdminCapabilities(): Promise<AdminCapabilities> {
+export type AdminCapabilitiesFetchResult =
+  | { ok: true; capabilities: AdminCapabilities }
+  | { ok: false; reason: "unauthorized" | "forbidden" | "error" };
+
+export { resolveAdminCapabilitiesFetch };
+
+/** Never throws on 401/403 — used to gate admin nav without console noise. */
+export async function fetchAdminCapabilities(): Promise<AdminCapabilitiesFetchResult> {
   const res = await fetch(`${baseUrl}/admin/capabilities`, {
     headers: authHeaders(),
   });
-  if (res.status === 401) {
-    return { batchMatchTrigger: false };
+  if (res.status === 401) return { ok: false, reason: "unauthorized" };
+  if (res.status === 403) return { ok: false, reason: "forbidden" };
+  if (!res.ok) return { ok: false, reason: "error" };
+  const text = await res.text();
+  let body: Partial<AdminCapabilities> = {};
+  if (text) {
+    try {
+      body = JSON.parse(text) as AdminCapabilities;
+    } catch {
+      return { ok: false, reason: "error" };
+    }
   }
-  return handleJson<AdminCapabilities>(res);
+  return resolveAdminCapabilitiesFetch(res.status, body);
+}
+
+export async function getAdminCapabilities(): Promise<AdminCapabilities> {
+  const result = await fetchAdminCapabilities();
+  if (result.ok) return result.capabilities;
+  return { batchMatchTrigger: false };
 }
 
 export async function runAdminBatchMatchOnce(): Promise<{ ok: true }> {

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../common/prisma/prisma.module";
+import { RbacModule } from "../../common/rbac/rbac.module";
 import { AiPairwiseDecisionModule } from "../ai-pairwise-decision/ai-pairwise-decision.module";
 import { AiPairwiseDecisionAdminController } from "../ai-pairwise-decision/ai-pairwise-decision-admin.controller";
 import { AiSimulationV1Module } from "../ai-simulation-v1/ai-simulation-v1.module";
@@ -15,6 +16,7 @@ import { AdminMyAiRecordsService } from "./admin-my-ai-records.service";
 @Module({
   imports: [
     PrismaModule,
+    RbacModule,
     PrescreenV0Module,
     PostPoolDeepScreenModule,
     AiSimulationV1Module,

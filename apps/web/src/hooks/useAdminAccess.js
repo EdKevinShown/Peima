@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { getAdminCapabilities } from "../api/admin";
+import { fetchAdminCapabilities } from "../api/admin";
 import { getTestMatchingCapabilities } from "../api/testMatch";
 
 /**
- * Admin = batch-match trigger capability (same gate as server admin tools).
- * Test flags are only exposed in UI when isAdmin (see AdminOnly).
+ * Admin nav/tools gate: user must have VIEW_ADMIN_CAPABILITIES (200 from /admin/capabilities).
+ * batchMatchTrigger inside capabilities is a separate flag for batch-match UI.
  */
 export function useAdminAccess() {
   const [loading, setLoading] = useState(true);
@@ -26,15 +26,15 @@ export function useAdminAccess() {
           }
           return;
         }
-        const [adminCap, testCap] = await Promise.all([
-          getAdminCapabilities().catch(() => ({ batchMatchTrigger: false })),
+        const [adminResult, testCap] = await Promise.all([
+          fetchAdminCapabilities(),
           getTestMatchingCapabilities().catch(() => ({
             testBatchMatchTrigger: false,
             testPreviewPoolSeed: false,
           })),
         ]);
         if (!cancelled) {
-          setIsAdmin(Boolean(adminCap?.batchMatchTrigger));
+          setIsAdmin(adminResult.ok);
           setTestCaps({
             testBatchMatchTrigger: Boolean(testCap?.testBatchMatchTrigger),
             testPreviewPoolSeed: Boolean(testCap?.testPreviewPoolSeed),
