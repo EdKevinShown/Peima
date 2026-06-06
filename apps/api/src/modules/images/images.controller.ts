@@ -9,6 +9,7 @@ import {
   Param,
   Post,
   Req,
+  Res,
   UnauthorizedException,
   UploadedFile,
   UseGuards,
@@ -16,10 +17,11 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { UserImagePublicDto } from "./user-image-public.dto";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateUserImageDto } from "./dto/create-user-image.dto";
 import { ImagesService } from "./images.service";
+import { UserImageContentService } from "./user-image-content.service";
 import type { MemoryUploadedFile } from "./memory-uploaded-file";
 
 type JwtReq = Request & { user?: { userId: string } };
@@ -42,7 +44,10 @@ function publicBaseUrl(req: Request): string {
 @Controller("images")
 @UseGuards(JwtAuthGuard)
 export class ImagesController {
-  constructor(private readonly imagesService: ImagesService) {}
+  constructor(
+    private readonly imagesService: ImagesService,
+    private readonly userImageContentService: UserImageContentService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateUserImageDto, @Req() req: JwtReq): Promise<UserImagePublicDto> {
@@ -86,6 +91,23 @@ export class ImagesController {
       throw new UnauthorizedException("userId mismatch");
     }
     return this.imagesService.findAllByUser(userId);
+  }
+
+  @Get(":id/content")
+  async getContent(
+    @Param("id") id: string,
+    @Req() req: JwtReq,
+    @Res() res: Response,
+  ): Promise<void> {
+    const tokenUserId = req.user?.userId;
+    if (!tokenUserId) {
+      throw new UnauthorizedException("not authenticated");
+    }
+    const { buffer, contentType } =
+      await this.userImageContentService.getImageContentForViewer(id, tokenUserId);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(buffer);
   }
 
   @Get(":id")

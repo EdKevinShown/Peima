@@ -17,14 +17,48 @@ export type UserImageRow = {
   reviewedByUserId?: string | null;
 };
 
-/**
- * Normalize stored image URLs for cross-device local dev.
- * If backend persisted localhost/127.0.0.1 but web runs on another host,
- * rewrite to the configured API base host so browser can reach the file.
- */
-export function resolveUserImageUrl(raw: string): string {
+/** Parse image id from `/images/:id/content` path or full API URL. */
+export function parseUserImageContentId(raw: string): string {
   const trimmed = String(raw ?? "").trim();
   if (!trimmed) return "";
+  const match = trimmed.match(/\/images\/([^/?#]+)\/content/);
+  return match?.[1] ? decodeURIComponent(match[1]) : "";
+}
+
+export function buildUserImageContentUrl(imageId: string): string {
+  const id = String(imageId ?? "").trim();
+  if (!id) return "";
+  return `${baseUrl.replace(/\/$/, "")}/images/${encodeURIComponent(id)}/content`;
+}
+
+/**
+ * Fetch protected image bytes with JWT; caller must revoke returned blob URL.
+ */
+export async function fetchUserImageContentBlobUrl(imageId: string): Promise<string> {
+  const id = String(imageId ?? "").trim();
+  if (!id) throw new Error("imageId required");
+  const res = await fetch(buildUserImageContentUrl(id), {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error(`image content ${res.status}`);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+/**
+ * Normalize stored image references for display.
+ * Legacy `/uploads/user-images/*` URLs are no longer publicly served — use image `id` with AuthenticatedUserImage.
+ */
+export function resolveUserImageUrl(raw: string, imageId?: string): string {
+  const id = imageId || parseUserImageContentId(raw);
+  if (id) return buildUserImageContentUrl(id);
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("/uploads/user-images/")) {
+    return "";
+  }
 
   try {
     const api = new URL(baseUrl);

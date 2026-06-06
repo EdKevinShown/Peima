@@ -7,7 +7,7 @@ import {
   needsReuploadAdminPhotoReviewItem,
   rejectAdminPhotoReviewItem,
 } from "../api/adminPhotoReview";
-import LoadingState from "../components/common/LoadingState";
+import AuthenticatedUserImage from "../components/common/AuthenticatedUserImage";
 import AdminPageShell from "../components/admin/AdminPageShell";
 import AdminNotice from "../components/admin/AdminNotice";
 import AdminFilterPanel from "../components/admin/AdminFilterPanel";
@@ -404,8 +404,8 @@ function ListSection({ items, listLoading, openDetail, nextCursor, onLoadMore })
               {items.map((row) => (
                 <tr key={row.imageId} className="hover:bg-white/5">
                   <td className={adminTd}>
-                    <img
-                      src={row.imageUrl}
+                    <AuthenticatedUserImage
+                      imageId={row.imageId}
                       alt=""
                       className="w-14 h-14 object-cover rounded-lg border border-white/15"
                     />
@@ -556,8 +556,8 @@ function DetailBody({ detail, showScoreJson, setShowScoreJson }) {
 function DetailContent({ detail, summary, showScoreJson, setShowScoreJson }) {
   return (
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-[minmax(140px,220px)_1fr] gap-4">
-      <img
-        src={detail.imageUrl}
+      <AuthenticatedUserImage
+        imageId={detail.imageId}
         alt=""
         className="w-full max-h-[280px] object-contain rounded-xl border border-white/15 bg-white/5"
       />

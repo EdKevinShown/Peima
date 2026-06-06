@@ -27,6 +27,7 @@ import {
   normalizeUserGenderForPreview,
 } from "./onboarding-preview-gender";
 import type { OnboardingPhotoPreviewPoolBundle } from "./onboarding-photo-preview-pool.types";
+import { buildUserImageContentPath } from "../images/user-image-stored-path";
 
 const POOL_STATUS_ACTIVE = "active";
 const POOL_SOURCE_VERSION = "onboarding-photo-preview-v1";
@@ -309,6 +310,7 @@ export class OnboardingPhotoPreviewPoolService {
     const items = await Promise.all(
       pool.items.map(async (it) => {
         let candidateImageUrl: string | undefined;
+        let candidateImageId: string | undefined;
         if (
           it.displayMode !== "hidden" &&
           isEligiblePreviewCandidate(it.candidateUserId, pool.userId)
@@ -322,16 +324,20 @@ export class OnboardingPhotoPreviewPoolService {
               ],
             },
             orderBy: { createdAt: "asc" },
-            select: { imageUrl: true },
+            select: { id: true, imageUrl: true },
           });
           const fallback = passing
             ? null
             : await this.prisma.userImage.findFirst({
                 where: { userId: it.candidateUserId },
                 orderBy: { createdAt: "asc" },
-                select: { imageUrl: true },
+                select: { id: true, imageUrl: true },
               });
-          candidateImageUrl = (passing ?? fallback)?.imageUrl ?? undefined;
+          const picked = passing ?? fallback;
+          candidateImageId = picked?.id;
+          candidateImageUrl = picked?.id
+            ? buildUserImageContentPath(picked.id)
+            : undefined;
         }
 
         return {
@@ -352,6 +358,7 @@ export class OnboardingPhotoPreviewPoolService {
                   ? "风格相似"
                   : "回流探索",
             tags: [...it.reasonTags, it.tier, it.displayMode],
+            candidateImageId,
             candidateImageUrl,
             reasonTags: it.reasonTags,
           },

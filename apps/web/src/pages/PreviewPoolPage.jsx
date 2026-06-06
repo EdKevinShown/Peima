@@ -17,7 +17,8 @@ import AlertBanner from "../components/ui/AlertBanner";
 import DataTable from "../components/ui/DataTable";
 import GlassCard from "../components/ui/GlassCard";
 import { useAdminAccess } from "../hooks/useAdminAccess";
-import { resolveUserImageUrl } from "../api/images";
+import AuthenticatedUserImage from "../components/common/AuthenticatedUserImage";
+import { parseUserImageContentId } from "../api/images";
 import { resolveUserId } from "../utils/resolveUserId";
 import UserIdWithName from "../components/common/UserIdWithName";
 
@@ -170,10 +171,12 @@ export default function PreviewPoolPage() {
       key: "photo",
       label: "照片",
       render: (item) => {
-        const imageUrl = resolveUserImageUrl(item.itemMeta?.candidateImageUrl ?? "");
-        return imageUrl ? (
-          <img
-            src={imageUrl}
+        const imageId =
+          item.itemMeta?.candidateImageId ||
+          parseUserImageContentId(item.itemMeta?.candidateImageUrl ?? "");
+        return imageId ? (
+          <AuthenticatedUserImage
+            imageId={imageId}
             alt=""
             className="w-[52px] h-[52px] object-cover rounded-lg border border-white/15"
           />
@@ -286,10 +289,7 @@ export default function PreviewPoolPage() {
           ) : null}
 
           {!showQuestionnaire && bundle?.items?.length ? (
-            <OnboardingPreviewPoolGallery
-              items={bundle.items}
-              resolveImageUrl={resolveUserImageUrl}
-            />
+            <OnboardingPreviewPoolGallery items={bundle.items} />
           ) : null}
 
           {!showQuestionnaire ? (

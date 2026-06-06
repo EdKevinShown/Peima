@@ -14,6 +14,7 @@ export type OnboardingPhotoPreviewPoolItemDto = {
     slotReason?: string;
     shortHint?: string;
     tags?: string[];
+    candidateImageId?: string;
     candidateImageUrl?: string;
     reasonTags?: string[];
   } | null;

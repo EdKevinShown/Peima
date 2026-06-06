@@ -3,10 +3,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
 import StandalonePage from "../components/layout/StandalonePage";
 import AlertBanner from "../components/ui/AlertBanner";
+import AuthenticatedUserImage from "../components/common/AuthenticatedUserImage";
 import {
   deleteUserImage,
   listUserImages,
-  resolveUserImageUrl,
   uploadUserImageFile,
 } from "../api/images";
 import { getMe } from "../api/auth";
@@ -371,8 +371,8 @@ export default function OnboardingPhotoUploadPage() {
                         暂时无法显示
                       </span>
                     ) : (
-                      <img
-                        src={resolveUserImageUrl(row.imageUrl)}
+                      <AuthenticatedUserImage
+                        imageId={row.id}
                         alt=""
                         className="w-full h-full object-cover"
                         onError={() => {

@@ -34,7 +34,6 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useStaticAssets(uploadDir, { prefix: "/uploads/user-images/" });
   app.enableCors({ origin: true });
   app.useGlobalPipes(
     new ValidationPipe({

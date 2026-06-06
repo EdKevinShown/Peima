@@ -1,5 +1,7 @@
 import { useState } from "react";
 import UserIdWithName from "../common/UserIdWithName";
+import AuthenticatedUserImage from "../common/AuthenticatedUserImage";
+import { parseUserImageContentId } from "../../api/images";
 
 const POOL_PLACEHOLDER = "/pool-silhouettes.png";
 
@@ -108,10 +110,17 @@ function SilhouetteFallback({ blurred }) {
   );
 }
 
-function CardPhoto({ item, imageUrl }) {
+function poolImageId(item) {
+  return (
+    item.itemMeta?.candidateImageId ||
+    parseUserImageContentId(item.itemMeta?.candidateImageUrl ?? "")
+  );
+}
+
+function CardPhoto({ item, imageId }) {
   const mode = item.displayMode;
   const [broken, setBroken] = useState(false);
-  const showPhoto = Boolean(imageUrl) && !broken;
+  const showPhoto = Boolean(imageId) && !broken;
 
   if (mode === "hidden") {
     return (
@@ -129,11 +138,10 @@ function CardPhoto({ item, imageUrl }) {
   return (
     <>
       {showPhoto ? (
-        <img
-          src={imageUrl}
+        <AuthenticatedUserImage
+          imageId={imageId}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
-          style={mode === "blurred" ? { filter: "blur(10px)", transform: "scale(1.05)" } : undefined}
           onError={() => setBroken(true)}
         />
       ) : (
@@ -152,7 +160,7 @@ function CardPhoto({ item, imageUrl }) {
   );
 }
 
-function PreviewCard({ item, imageUrl }) {
+function PreviewCard({ item, imageId }) {
   const styleTags = extractStyleTagsForDisplay(item);
   const label = tierLabel(item);
   const scoreText = fmtScore(item.baseScore);
@@ -166,7 +174,7 @@ function PreviewCard({ item, imageUrl }) {
   return (
     <article className="relative h-full min-h-0 rounded-2xl overflow-hidden">
       <div className="absolute inset-0">
-        <CardPhoto item={item} imageUrl={imageUrl} />
+        <CardPhoto item={item} imageId={imageId} />
       </div>
 
       {/* 与落地页一致的暗角，无硬边框 */}
@@ -217,7 +225,7 @@ function PreviewCard({ item, imageUrl }) {
 /**
  * 2×3 grid: photo-first tiles, text on gradient (no boxed chrome).
  */
-export default function OnboardingPreviewPoolGallery({ items, resolveImageUrl }) {
+export default function OnboardingPreviewPoolGallery({ items }) {
   const sorted = [...items].sort((a, b) => a.rankInPool - b.rankInPool);
 
   return (
@@ -231,11 +239,7 @@ export default function OnboardingPreviewPoolGallery({ items, resolveImageUrl })
       }}
     >
       {sorted.map((item) => (
-        <PreviewCard
-          key={item.id}
-          item={item}
-          imageUrl={resolveImageUrl(item.itemMeta?.candidateImageUrl ?? "")}
-        />
+        <PreviewCard key={item.id} item={item} imageId={poolImageId(item)} />
       ))}
     </div>
   );

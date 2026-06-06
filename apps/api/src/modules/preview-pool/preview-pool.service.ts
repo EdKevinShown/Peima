@@ -12,6 +12,7 @@ import type {
   UserProfile,
 } from "@peima/database";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { buildUserImageContentPath } from "../images/user-image-stored-path";
 import {
   buildPreviewPoolShortlistContractV0,
   type PreviewPoolShortlistContractV0,
@@ -164,18 +165,21 @@ export class PreviewPoolService {
     const latestCandidateImages = await this.prisma.userImage.findMany({
       where: { userId: { in: candidateIds } },
       orderBy: [{ userId: "asc" }, { createdAt: "desc" }],
-      select: { userId: true, imageUrl: true },
+      select: { userId: true, id: true },
     });
-    const imageUrlByCandidateId = new Map<string, string>();
+    const imageContentPathByCandidateId = new Map<string, string>();
     for (const row of latestCandidateImages) {
-      if (!imageUrlByCandidateId.has(row.userId)) {
-        imageUrlByCandidateId.set(row.userId, row.imageUrl);
+      if (!imageContentPathByCandidateId.has(row.userId)) {
+        imageContentPathByCandidateId.set(
+          row.userId,
+          buildUserImageContentPath(row.id),
+        );
       }
     }
     const enrichedItems = items.map((it) =>
       mergeItemMetaWithImageUrl(
         it,
-        imageUrlByCandidateId.get(it.candidateUserId) ?? null,
+        imageContentPathByCandidateId.get(it.candidateUserId) ?? null,
       ),
     );
     const shortlistContract = await this.attachShortlistContractV0(

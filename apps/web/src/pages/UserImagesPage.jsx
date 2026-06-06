@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import LoadingState from "../components/common/LoadingState";
+import AuthenticatedUserImage from "../components/common/AuthenticatedUserImage";
 import {
   createUserImage,
   deleteUserImage,
   listUserImages,
-  resolveUserImageUrl,
   uploadUserImageFile,
 } from "../api/images";
 import UserIdWithName from "../components/common/UserIdWithName";
@@ -242,13 +242,12 @@ export default function UserImagesPage() {
                   <code>{r.id}</code>
                 </div>
                 <div style={{ marginTop: "0.35rem" }}>
-                  <a href={resolveUserImageUrl(r.imageUrl)} target="_blank" rel="noreferrer">
-                    {resolveUserImageUrl(r.imageUrl)}
-                  </a>
+                  <code>/images/{r.id}/content</code>
+                  <span style={{ color: "#666" }}>（需登录 JWT）</span>
                 </div>
                 <div style={{ marginTop: "0.35rem" }}>
-                  <img
-                    src={resolveUserImageUrl(r.imageUrl)}
+                  <AuthenticatedUserImage
+                    imageId={r.id}
                     alt=""
                     style={{
                       maxWidth: "100%",
