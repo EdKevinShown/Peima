@@ -25,15 +25,6 @@ import OnboardingPage, {
 } from "../pages/OnboardingPage";
 import AccountPage from "../pages/AccountPage";
 import MyActivityPage from "../pages/MyActivityPage";
-import AiSimulationJobDiagnosticPage from "../pages/AiSimulationJobDiagnosticPage";
-import AiSimulationJobTriagePage from "../pages/AiSimulationJobTriagePage";
-import AdminPhotoReviewPage from "../pages/AdminPhotoReviewPage";
-import AdminMyAiRecordsPage from "../pages/AdminMyAiRecordsPage";
-import P76AllowlistApplyMetaPage from "../pages/P76AllowlistApplyMetaPage";
-import P76CanonicalRehearsalPage from "../pages/P76CanonicalRehearsalPage";
-import P76CanonicalSidecarPage from "../pages/P76CanonicalSidecarPage";
-import P76CanonicalSidecarApplyReviewPage from "../pages/P76CanonicalSidecarApplyReviewPage";
-import TestingObservabilityPage from "../pages/TestingObservabilityPage";
 import OnboardingPhotoUploadPage from "../pages/OnboardingPhotoUploadPage";
 import OnboardingPhotoPreferencePage from "../pages/OnboardingPhotoPreferencePage";
 import PersonalizedMatchmakerPage from "../pages/PersonalizedMatchmakerPage";
@@ -42,6 +33,18 @@ import { resolveUserId } from "../utils/resolveUserId";
 import { getMe } from "../api/auth";
 import { getUserPreferencesOptional } from "../api/preferences";
 import { fetchAdminCapabilities } from "../api/admin";
+import {
+  AdminMyAiRecordsPage,
+  AdminPhotoReviewPage,
+  AiSimulationJobDiagnosticPage,
+  AiSimulationJobTriagePage,
+  LegacyPreviewPoolPage,
+  P76AllowlistApplyMetaPage,
+  P76CanonicalRehearsalPage,
+  P76CanonicalSidecarApplyReviewPage,
+  P76CanonicalSidecarPage,
+  TestingObservabilityPage,
+} from "./lazyPages.jsx";
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("peimaToken");
@@ -411,7 +414,7 @@ export default function AppRoutes() {
         <Route path="/onboarding/photo-upload" element={<OnboardingPhotoUploadPage />} />
         <Route path="/onboarding/photo-preference" element={<OnboardingPhotoPreferencePage />} />
         <Route path="/onboarding/photo-preview" element={<PreviewPoolPage />} />
-        <Route path="/preview-pool" element={<PreviewPoolPage />} />
+        <Route path="/preview-pool" element={<LegacyPreviewPoolPage />} />
         <Route path="/admin/ai-sim-job-diagnostic" element={<AiSimulationJobDiagnosticPage />} />
         <Route path="/admin/ai-sim-job-triage" element={<AiSimulationJobTriagePage />} />
         <Route path="/admin/photo-review" element={<AdminPhotoReviewPage />} />
