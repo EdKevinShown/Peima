@@ -43,6 +43,118 @@ const fullViewerPref = {
   styleTags: ["清爽自然", "生活感"],
 };
 
+const sixGatedRows = [
+  {
+    id: "a",
+    createdAt: new Date("2020-01-01"),
+    firstImageStyleTags: ["清爽自然"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+  {
+    id: "b",
+    createdAt: new Date("2020-02-01"),
+    firstImageStyleTags: ["清爽自然", "生活感"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+  {
+    id: "c",
+    createdAt: new Date("2020-03-01"),
+    firstImageStyleTags: ["生活感"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+  {
+    id: "d",
+    createdAt: new Date("2020-04-01"),
+    firstImageStyleTags: ["成熟稳重"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+  {
+    id: "e",
+    createdAt: new Date("2020-05-01"),
+    firstImageStyleTags: ["运动阳光"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+  {
+    id: "f",
+    createdAt: new Date("2019-01-01"),
+    firstImageStyleTags: ["有个性"],
+    age: 28,
+    city: "上海",
+    height: 170,
+    education: "本科",
+    occupation: "工程师",
+    relationshipGoal: "认真恋爱",
+  },
+];
+
+const sixBaselineItems = [
+  { rankInPool: 1, tier: "aesthetic_fit", displayMode: "clear", candidateUserId: "a", score: 0.5 },
+  { rankInPool: 2, tier: "aesthetic_fit", displayMode: "clear", candidateUserId: "b", score: 0.4 },
+  { rankInPool: 3, tier: "aesthetic_fit", displayMode: "clear", candidateUserId: "c", score: 0.3 },
+  { rankInPool: 4, tier: "style_similar", displayMode: "blurred", candidateUserId: "d", score: 0.2 },
+  { rankInPool: 5, tier: "style_similar", displayMode: "blurred", candidateUserId: "e", score: 0.1 },
+  { rankInPool: 6, tier: "reflow", displayMode: "hidden", candidateUserId: "f", score: 0.4 },
+];
+
+function visionDetectionScoreJson(tags: string[], confidence = 0.8) {
+  return {
+    vision: {
+      schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
+      sourceVersion: "p7.5-r2-rules",
+      photoVisualTaxonomyVersion: "p7.5-v1",
+      provider: "rules" as const,
+      generatedAt: new Date().toISOString(),
+      visionStatus: "ok" as const,
+      fallbackUsed: false,
+      photoVisualTags: tags,
+      confidence,
+    },
+  };
+}
+
+function passingUserImage(
+  id: string,
+  userId: string,
+  createdAt: string,
+  tags: string[],
+) {
+  return {
+    id,
+    userId,
+    createdAt: new Date(createdAt),
+    detectionStatus: "passed",
+    reviewStatus: "not_required",
+    detectionScoreJson: visionDetectionScoreJson(tags),
+  };
+}
+
+const applyEnvDisabled = readOnboardingVisionApplyEnv({} as NodeJS.ProcessEnv);
+
 function visionProfile(tags: string[], confidence = 0.7) {
   return {
     schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
@@ -164,74 +276,7 @@ describe("visual-ranking-shadow vision input", () => {
 });
 
 describe("buildVisualRankingShadowV1", () => {
-  const gatedRows = [
-    {
-      id: "a",
-      createdAt: new Date("2020-01-01"),
-      firstImageStyleTags: ["清爽自然"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-    {
-      id: "b",
-      createdAt: new Date("2020-02-01"),
-      firstImageStyleTags: ["清爽自然", "生活感"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-    {
-      id: "c",
-      createdAt: new Date("2020-03-01"),
-      firstImageStyleTags: ["生活感"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-    {
-      id: "d",
-      createdAt: new Date("2020-04-01"),
-      firstImageStyleTags: ["成熟稳重"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-    {
-      id: "e",
-      createdAt: new Date("2020-05-01"),
-      firstImageStyleTags: ["运动阳光"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-    {
-      id: "f",
-      createdAt: new Date("2019-01-01"),
-      firstImageStyleTags: ["有个性"],
-      age: 28,
-      city: "上海",
-      height: 170,
-      education: "本科",
-      occupation: "工程师",
-      relationshipGoal: "认真恋爱",
-    },
-  ];
+  const gatedRows = sixGatedRows;
 
   it("shadow only: appliedToPool false; baseline slots preserved in comparison", () => {
     const visionByUser = new Map([
@@ -393,20 +438,17 @@ describe("VisualRankingShadowService", () => {
         score: 0.5,
       },
     ],
-    gatedCandidates: [
-      {
-        id: "a",
-        createdAt: new Date("2020-01-01"),
-        firstImageStyleTags: ["清爽自然"],
-        age: 28,
-        city: "上海",
-        height: 170,
-        education: "本科",
-        occupation: "工程师",
-        relationshipGoal: "认真恋爱",
-      },
-    ],
+    gatedCandidates: [sixGatedRows[0]],
     viewerStyleTags: ["清爽自然"],
+    viewerPref: fullViewerPref,
+  };
+
+  const computeInputWithSixPool = {
+    viewerUserId: "viewer-1",
+    poolId: "pool-1",
+    baselineItems: sixBaselineItems,
+    gatedCandidates: sixGatedRows,
+    viewerStyleTags: ["清爽自然", "生活感"],
     viewerPref: fullViewerPref,
   };
 
@@ -443,46 +485,13 @@ describe("VisualRankingShadowService", () => {
   it("computeShadow persists shadow when enabled", async () => {
     const upsert = jest.fn().mockResolvedValue({});
     const findMany = jest.fn().mockResolvedValue([
-      {
-        id: "img-v",
-        userId: "viewer-1",
-        createdAt: new Date("2021-01-01"),
-        detectionStatus: "passed",
-        reviewStatus: "not_required",
-        detectionScoreJson: {
-          vision: {
-            schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
-            sourceVersion: "p7.5-r2-rules",
-            photoVisualTaxonomyVersion: "p7.5-v1",
-            provider: "rules",
-            generatedAt: new Date().toISOString(),
-            visionStatus: "ok",
-            fallbackUsed: false,
-            photoVisualTags: ["清爽自然"],
-            confidence: 0.8,
-          },
-        },
-      },
-      {
-        id: "img-a",
-        userId: "a",
-        createdAt: new Date("2020-01-01"),
-        detectionStatus: "passed",
-        reviewStatus: "not_required",
-        detectionScoreJson: {
-          vision: {
-            schemaVersion: ONBOARDING_VISION_SCHEMA_VERSION,
-            sourceVersion: "p7.5-r2-rules",
-            photoVisualTaxonomyVersion: "p7.5-v1",
-            provider: "rules",
-            generatedAt: new Date().toISOString(),
-            visionStatus: "ok",
-            fallbackUsed: false,
-            photoVisualTags: ["清爽自然", "生活感"],
-            confidence: 0.9,
-          },
-        },
-      },
+      passingUserImage("img-v", "viewer-1", "2021-01-01", ["清爽自然"]),
+      passingUserImage("img-a", "a", "2020-01-01", ["清爽自然", "生活感"]),
+      passingUserImage("img-b", "b", "2020-02-01", ["清爽自然", "生活感"]),
+      passingUserImage("img-c", "c", "2020-03-01", ["生活感"]),
+      passingUserImage("img-d", "d", "2020-04-01", ["成熟稳重"]),
+      passingUserImage("img-e", "e", "2020-05-01", ["运动阳光"]),
+      passingUserImage("img-f", "f", "2019-01-01", ["有个性"]),
     ]);
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -497,12 +506,17 @@ describe("VisualRankingShadowService", () => {
       ],
     }).compile();
     const svc = moduleRef.get(VisualRankingShadowService);
-    const result = await svc.computeShadow(computeInput, baseEnv);
+    const result = await svc.computeShadow(
+      computeInputWithSixPool,
+      baseEnv,
+      applyEnvDisabled,
+    );
     expect(result.computed).toBe(true);
     if (result.computed) {
       expect(result.persist).toEqual({ persisted: true });
       expect(result.shadow.schemaVersion).toBe("visual-ranking-shadow-v1");
       expect(result.shadow.appliedToPool).toBe(false);
+      expect(result.shadow.slots).toHaveLength(6);
       expect(result.shadow.summary.applyDryRun?.evaluated).toBe(true);
       expect(result.shadow.summary.applyDryRun?.reason).toBe("env_disabled");
       expect(upsert).toHaveBeenCalled();

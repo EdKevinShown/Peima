@@ -12,6 +12,14 @@ import { MatchingObservabilitySummaryService } from "../src/modules/admin/matchi
 import { RrmObservationSummaryService } from "../src/modules/admin/rrm-observation-summary.service";
 import { RrmEvalCollectorService } from "../src/modules/rrm-eval";
 import { AdminMyAiRecordsService } from "../src/modules/admin/admin-my-ai-records.service";
+import { RbacService } from "../src/common/rbac/rbac.service";
+
+function mockRbacService() {
+  return {
+    checkPermission: jest.fn().mockResolvedValue(true),
+    hasPermission: jest.fn().mockReturnValue(true),
+  };
+}
 
 describe("AdminController rrmObservationSummary", () => {
   function createModule(summaryImpl?: { getSummary: jest.Mock }) {
@@ -46,6 +54,7 @@ describe("AdminController rrmObservationSummary", () => {
             } as any),
         },
         { provide: AdminMyAiRecordsService, useValue: {} },
+        { provide: RbacService, useValue: mockRbacService() },
       ],
     }).compile();
   }
