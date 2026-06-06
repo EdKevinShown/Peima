@@ -16,6 +16,7 @@ import { Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../../common/config/jwt-secret.config';
 import { NotificationService } from './notification.service';
 import { RbacService } from '../../common/rbac/rbac.service';
 import { UserRole } from '@peima/shared/constants';
@@ -61,7 +62,7 @@ export class NotificationGateway
         return;
       }
 
-      const secret = process.env.JWT_SECRET || 'change-me-in-production';
+      const secret = getJwtSecret();
       const payload = jwt.verify(token, secret) as { sub: string };
       const userId = payload.sub;
 

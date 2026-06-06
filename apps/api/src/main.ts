@@ -4,6 +4,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { AppModule } from "./app.module";
+import { getJwtSecret } from "./common/config/jwt-secret.config";
 
 function collectExpressRouteLines(stack: unknown, prefix = ""): string[] {
   if (!Array.isArray(stack)) {
@@ -27,6 +28,8 @@ function collectExpressRouteLines(stack: unknown, prefix = ""): string[] {
 }
 
 async function bootstrap() {
+  getJwtSecret();
+
   const uploadDir =
     process.env.UPLOAD_DIR ?? join(process.cwd(), "uploads", "user-images");
   if (!existsSync(uploadDir)) {
