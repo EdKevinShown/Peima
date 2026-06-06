@@ -15,7 +15,11 @@
     "build:api": "pnpm --filter @peima/api build",
     "lint": "pnpm -r run lint --if-present",
     "clean": "pnpm -r exec rimraf dist node_modules/.cache",
-    "db:migrate:deploy": "dotenv -e .env --override -- pnpm --filter @peima/database run db:migrate:deploy"
+    "db:migrate:deploy": "dotenv -e .env --override -- pnpm --filter @peima/database run db:migrate:deploy",
+    "test:e2e": "pnpm --filter @peima/e2e test",
+    "test:e2e:onboarding": "pnpm --filter @peima/e2e test:onboarding",
+    "test:e2e:final-match": "pnpm --filter @peima/e2e test:final-match",
+    "test:e2e:install": "pnpm --filter @peima/e2e install:browsers"
   },
   "engines": {
     "node": ">=20",

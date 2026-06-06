@@ -1,0 +1,15 @@
+{
+  "name": "@peima/e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:onboarding": "playwright test specs/onboarding-preview.e2e.spec.ts",
+    "test:final-match": "playwright test specs/final-match.e2e.spec.ts",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}
