@@ -1,4 +1,4 @@
-﻿import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+﻿import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { RegisterDto } from "./dto/register.dto";
@@ -7,8 +7,8 @@ import { LoginDto } from "./dto/login.dto";
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwt: JwtService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(JwtService) private readonly jwt: JwtService,
   ) {}
 
   private signToken(payload: { sub: string; phone: string }) {
