@@ -3,6 +3,7 @@
  */
 
 import type { P76ReadPathDisplayMeta } from "./p76-read-path-display-resolver";
+import { userMessageForNoResultReason } from "./matching-user-messages";
 
 export type MatchQueueStatus = "not_queued" | "waiting" | "processing" | "ready";
 
@@ -54,6 +55,8 @@ export type MatchResultResultStateFields = {
 export type MatchResultNoRowContractPayload = MatchResultResultStateFields & {
   resultState: "matching_pending" | "no_result";
   queue: { status: MatchQueueStatus };
+  /** Viewer-safe hint; never exposes internal reason codes. */
+  userMessage: string;
   noResult: {
     reason:
       | "no_match_result"
@@ -149,13 +152,15 @@ export function deriveNoRowResultState(
   queueStatus: MatchQueueStatus,
 ): MatchResultNoRowContractPayload {
   if (queueStatus === "waiting" || queueStatus === "processing") {
+    const reason = "no_match_result" as const;
     return {
       resultState: "matching_pending",
       contractVersion: P76_RESULT_STATE_CONTRACT_VERSION,
       displaySourceCategory: "pending",
       queue: { status: queueStatus },
+      userMessage: userMessageForNoResultReason(reason),
       noResult: {
-        reason: "no_match_result",
+        reason,
         recoverable: true,
         nextAction: "wait",
       },
@@ -163,26 +168,30 @@ export function deriveNoRowResultState(
   }
 
   if (queueStatus === "ready") {
+    const reason = "no_match_result" as const;
     return {
       resultState: "matching_pending",
       contractVersion: P76_RESULT_STATE_CONTRACT_VERSION,
       displaySourceCategory: "pending",
       queue: { status: queueStatus },
+      userMessage: userMessageForNoResultReason(reason),
       noResult: {
-        reason: "no_match_result",
+        reason,
         recoverable: true,
         nextAction: "wait",
       },
     };
   }
 
+  const reason = "not_queued" as const;
   return {
     resultState: "no_result",
     contractVersion: P76_RESULT_STATE_CONTRACT_VERSION,
     displaySourceCategory: "no_result",
     queue: { status: queueStatus },
+    userMessage: userMessageForNoResultReason(reason),
     noResult: {
-      reason: "not_queued",
+      reason,
       recoverable: true,
       nextAction: "start_matching",
     },

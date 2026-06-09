@@ -4,10 +4,21 @@ export type MatchingStatus =
   | "not_queued"
   | "waiting"
   | "processing"
-  | "ready";
+  | "ready"
+  | "failed";
 
 export type MatchingStatusResponse = {
   status: MatchingStatus;
+  /** Viewer-safe hint from API; optional for backward compatibility. */
+  userMessage?: string;
+};
+
+export type EnqueueMatchingResponse = {
+  id: string;
+  userId: string;
+  status: string;
+  userMessage: string;
+  alreadyQueued?: boolean;
 };
 
 /** M6.0-E：worker 写入的 shadow（旧行可能无）。 */
@@ -294,7 +305,7 @@ export async function enqueueMatching(userId: string) {
     },
     body: JSON.stringify({ userId }),
   });
-  return handleJson<unknown>(res);
+  return handleJson<EnqueueMatchingResponse>(res);
 }
 
 export async function getMatchingStatus(userId: string) {

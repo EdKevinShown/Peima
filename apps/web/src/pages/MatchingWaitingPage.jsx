@@ -22,6 +22,7 @@ import AlertBanner from "../components/ui/AlertBanner";
 import GlassCard from "../components/ui/GlassCard";
 import { useAdminAccess } from "../hooks/useAdminAccess";
 import { matchingWaitProgressLine, toFriendlyUserMessage } from "../utils/friendlyErrors";
+import { resolveMatchingStatusLine } from "../utils/matchingUserMessages";
 import {
   minimalPayloadFromOrchestrationEnvelope,
   storeFinalMatchConsumptionHintForJob,
@@ -661,9 +662,13 @@ export default function MatchingWaitingPage() {
     setEnqueueHint("");
     setError(null);
     try {
-      await enqueueMatching(userId);
-      setEnqueueHint("已加入匹配队列");
-      window.setTimeout(() => setEnqueueHint(""), 4000);
+      const res = await enqueueMatching(userId);
+      const hint =
+        typeof res?.userMessage === "string" && res.userMessage.trim()
+          ? res.userMessage.trim()
+          : "已加入匹配队列，系统会尽快为你安排匹配。";
+      setEnqueueHint(hint);
+      window.setTimeout(() => setEnqueueHint(""), 5000);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
@@ -672,26 +677,13 @@ export default function MatchingWaitingPage() {
     }
   }, [userId, load]);
 
-  const messageForStatus = (s) => {
-    switch (s) {
-      case "waiting":
-        return "已收到你的匹配请求，排队中…";
-      case "processing":
-        return "正在为你筛选合适的人选…";
-      case "ready":
-        return null;
-      case "not_queued":
-        return "还没有开始匹配，点下面按钮即可加入";
-      default:
-        return showDebug ? `未知状态：${s}` : "正在处理，请稍候";
-    }
-  };
-
   const st = statusPayload?.status;
   const primaryStatusLine =
     st === "ready" && isRematchMode && rematchAwaitingNewRow
       ? "上一轮结果仍显示为「已完成」；正在等待本轮新匹配写入…"
-      : messageForStatus(st);
+      : st === "ready"
+        ? null
+        : resolveMatchingStatusLine(statusPayload);
 
   const pairwisePrimaryLine = matchingWaitProgressLine(pairwiseStatus);
 
@@ -735,7 +727,12 @@ export default function MatchingWaitingPage() {
       ) : null}
 
       {!loading && statusPayload && primaryStatusLine && !showReadyHero ? (
-        <p className="text-base text-white/90 mt-4">{primaryStatusLine}</p>
+        <p
+          className={`text-base mt-4 ${st === "failed" ? "text-rose-200" : "text-white/90"}`}
+          role={st === "failed" ? "alert" : "status"}
+        >
+          {primaryStatusLine}
+        </p>
       ) : null}
 
       {showPairwiseProgress && pairwisePrimaryLine ? (
@@ -807,17 +804,25 @@ export default function MatchingWaitingPage() {
           <LoadingState label="正在打开结果页…" />
         ) : null}
 
-        {userId && statusPayload && st === "not_queued" ? (
+        {userId && statusPayload && (st === "not_queued" || st === "failed") ? (
           <button
             type="button"
             onClick={onEnqueue}
             disabled={enqueueing || !userId}
             className="btn-primary text-sm py-2.5 px-5 mt-3"
           >
-            {enqueueing ? "入队中…" : "开始匹配"}
+            {enqueueing ? "入队中…" : st === "failed" ? "重新匹配" : "开始匹配"}
           </button>
         ) : null}
-        {userId && statusPayload && st !== "ready" && st !== "not_queued" ? (
+        {st === "failed" ? (
+          <Link
+            to={`/preview-pool?userId=${encodeURIComponent(userId)}`}
+            className="btn-ghost inline-block text-sm py-2 px-4 mt-3 no-underline"
+          >
+            前往预览页
+          </Link>
+        ) : null}
+        {userId && statusPayload && st !== "ready" && st !== "not_queued" && st !== "failed" ? (
           <button
             type="button"
             className="btn-ghost text-sm py-2 px-4 mt-3"

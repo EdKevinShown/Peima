@@ -8,6 +8,7 @@ import type {
   MatchResultNoRowContractPayload,
   MatchQueueStatus,
 } from "./matching-result-state";
+import { userMessageForNoResultReason } from "./matching-user-messages";
 
 export const P710_R10_SAFE_FALLBACK_FINAL_POLICY_VERSION =
   "p7.10-r10-safe-fallback-final-v1" as const;
@@ -103,13 +104,15 @@ export function enrichNoRowResultForLegacyWriterShutdown(
 
   if (!waitingOrFailed) return payload;
 
+  const reason = "legacy_writer_disabled" as const;
   return {
     ...payload,
     resultState: "matching_pending",
     displaySourceCategory: "pending",
+    userMessage: userMessageForNoResultReason(reason),
     noResult: {
       ...payload.noResult,
-      reason: "legacy_writer_disabled",
+      reason,
       recoverable: false,
       nextAction: "contact_support",
     },

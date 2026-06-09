@@ -133,8 +133,10 @@ describe("Dev smoke hooks and matching read path (e2e)", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
-    expect(["not_queued", "waiting", "processing", "ready"]).toContain(
+    expect(["not_queued", "waiting", "processing", "ready", "failed"]).toContain(
       res.body.status,
     );
+    expect(typeof res.body.userMessage).toBe("string");
+    expect(res.body.userMessage.length).toBeGreaterThan(0);
   });
 });

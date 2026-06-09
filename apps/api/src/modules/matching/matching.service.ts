@@ -43,9 +43,20 @@ import {
   projectMatchResultForViewer,
   resolveLatestMatchResultAccess,
 } from "./matching-latest-result-access";
+import {
+  userMessageForEnqueue,
+  userMessageForQueueStatus,
+} from "./matching-user-messages";
 
 export type MatchStatusPayload = {
-  status: "not_queued" | "waiting" | "processing" | "ready";
+  status: "not_queued" | "waiting" | "processing" | "ready" | "failed";
+  /** Viewer-safe hint for the current queue / result state. */
+  userMessage: string;
+};
+
+export type EnqueueMatchResponse = BatchMatchQueue & {
+  userMessage: string;
+  alreadyQueued: boolean;
 };
 
 export type { MatchResultConsistencyWarning, ResolvedMatchProjectionFields } from "./matching-result-display";
@@ -87,7 +98,7 @@ export class MatchingService {
     }
   }
 
-  async enqueue(dto: EnqueueMatchDto): Promise<BatchMatchQueue> {
+  async enqueue(dto: EnqueueMatchDto): Promise<EnqueueMatchResponse> {
     await this.ensureUserExists(dto.userId);
 
     const profile = await this.prisma.userProfile.findUnique({
@@ -103,15 +114,24 @@ export class MatchingService {
       where: { userId: dto.userId, status: "waiting" },
     });
     if (existing) {
-      return existing;
+      return {
+        ...existing,
+        userMessage: userMessageForEnqueue({ alreadyQueued: true }),
+        alreadyQueued: true,
+      };
     }
 
-    return this.prisma.batchMatchQueue.create({
+    const created = await this.prisma.batchMatchQueue.create({
       data: {
         userId: dto.userId,
         status: "waiting",
       },
     });
+    return {
+      ...created,
+      userMessage: userMessageForEnqueue({ alreadyQueued: false }),
+      alreadyQueued: false,
+    };
   }
 
   async getStatusForUser(userId: string): Promise<MatchStatusPayload> {
@@ -125,23 +145,45 @@ export class MatchingService {
     });
 
     if (!latestQueue) {
-      return { status: latestAccess ? "ready" : "not_queued" };
+      const status = latestAccess ? "ready" : "not_queued";
+      return { status, userMessage: userMessageForQueueStatus(status) };
     }
 
     if (latestQueue.status === "waiting") {
-      return { status: "waiting" };
+      return {
+        status: "waiting",
+        userMessage: userMessageForQueueStatus("waiting"),
+      };
     }
     if (latestQueue.status === "processing") {
-      return { status: "processing" };
+      return {
+        status: "processing",
+        userMessage: userMessageForQueueStatus("processing"),
+      };
     }
     if (latestQueue.status === "matched") {
-      return { status: "ready" };
+      return {
+        status: "ready",
+        userMessage: userMessageForQueueStatus("ready"),
+      };
+    }
+    if (latestQueue.status === "failed") {
+      return {
+        status: "failed",
+        userMessage: userMessageForQueueStatus("failed"),
+      };
     }
 
     if (latestAccess) {
-      return { status: "ready" };
+      return {
+        status: "ready",
+        userMessage: userMessageForQueueStatus("ready"),
+      };
     }
-    return { status: "not_queued" };
+    return {
+      status: "not_queued",
+      userMessage: userMessageForQueueStatus("not_queued"),
+    };
   }
 
   async getLatestResultForUser(userId: string): Promise<GetMatchResultResponse> {
@@ -154,15 +196,29 @@ export class MatchingService {
       if (!resultStateContract.enabled) {
         throw new NotFoundException(`No match result for user ${userId}`);
       }
-      const { status } = await this.getStatusForUser(userId);
+      const statusPayload = await this.getStatusForUser(userId);
       const latestQueue = await this.prisma.batchMatchQueue.findFirst({
         where: { userId },
         orderBy: { createdAt: "desc" },
         select: { status: true },
       });
-      const base = deriveNoRowResultState(status);
+      const contractQueueStatus =
+        statusPayload.status === "failed" ? "not_queued" : statusPayload.status;
+      const base =
+        statusPayload.status === "failed"
+          ? {
+              ...deriveNoRowResultState("not_queued"),
+              resultState: "no_result" as const,
+              userMessage: statusPayload.userMessage,
+              noResult: {
+                reason: "unknown" as const,
+                recoverable: true,
+                nextAction: "start_matching" as const,
+              },
+            }
+          : deriveNoRowResultState(statusPayload.status);
       return enrichNoRowResultForLegacyWriterShutdown(base, {
-        queueStatus: status,
+        queueStatus: contractQueueStatus,
         latestQueueRowStatus: latestQueue?.status ?? null,
       });
     }

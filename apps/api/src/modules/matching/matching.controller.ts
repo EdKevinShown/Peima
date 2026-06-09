@@ -8,13 +8,13 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import type { BatchMatchQueue } from "@peima/database";
 import { EnqueueMatchDto } from "./dto/enqueue-match.dto";
 import { FinalizeWithPairwiseDto } from "./dto/finalize-with-pairwise.dto";
 import { MatchingDecisionComparisonService } from "./matching-decision-comparison.service";
 import { MatchingFinalizePairwiseService } from "./matching-finalize-pairwise.service";
 import { MatchingRrmRankingProposalService } from "./matching-rrm-ranking-proposal.service";
 import type {
+  EnqueueMatchResponse,
   GetMatchResultResponse,
   MatchStatusPayload,
 } from "./matching.service";
@@ -39,7 +39,7 @@ export class MatchingController {
   enqueue(
     @Body() dto: EnqueueMatchDto,
     @Req() req: JwtReq,
-  ): Promise<BatchMatchQueue> {
+  ): Promise<EnqueueMatchResponse> {
     const tokenUserId = req.user?.userId;
     if (!tokenUserId || dto.userId !== tokenUserId) {
       throw new UnauthorizedException("userId mismatch");

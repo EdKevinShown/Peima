@@ -10,7 +10,10 @@ describe("MatchingController auth and delegation", () => {
   async function createController() {
     const matchingService = {
       enqueue: jest.fn().mockResolvedValue({ id: "q1", status: "waiting" }),
-      getStatusForUser: jest.fn().mockResolvedValue({ status: "ready" }),
+      getStatusForUser: jest.fn().mockResolvedValue({
+        status: "ready",
+        userMessage: "匹配已完成，正在为你打开结果…",
+      }),
       getLatestResultForUser: jest.fn().mockResolvedValue({
         id: "mr-1",
         userId: "u1",
