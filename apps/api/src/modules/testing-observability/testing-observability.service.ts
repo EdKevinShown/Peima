@@ -513,13 +513,27 @@ export class TestingObservabilityService {
         },
         orderBy: { createdAt: "desc" },
         take: Math.min(limit * 3, MAX_LIMIT),
+        select: {
+          userId: true,
+          errorCode: true,
+          message: true,
+          meta: true,
+        },
       });
       for (const row of failedRows) {
-        const ev = events.find(
-          (e) =>
-            e.userId === row.userId &&
-            (e.message?.includes(row.id) ?? false),
-        );
+        const ev = events.find((e) => {
+          if (e.userId !== row.userId) return false;
+          const meta = e.meta;
+          if (
+            meta != null &&
+            typeof meta === "object" &&
+            !Array.isArray(meta) &&
+            (meta as { queueId?: string }).queueId === row.id
+          ) {
+            return true;
+          }
+          return e.message?.includes(row.id) ?? false;
+        });
         failureByQueueId.set(
           row.id,
           ev?.errorCode?.trim() || ev?.message?.trim() || null,

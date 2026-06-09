@@ -11,6 +11,7 @@
     "start:dev": "pnpm run dev",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "pretest": "pnpm --filter @peima/shared build",
     "test": "jest --config ./jest.config.cjs",
     "test:e2e": "jest --config ./jest-e2e.config.cjs --runInBand",
     "test:e2e:orch-anchor": "jest --config ./jest-e2e.config.cjs --runInBand --testPathPattern=run-orchestration-mvp",
