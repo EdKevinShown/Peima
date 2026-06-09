@@ -36,7 +36,7 @@ function toBrief(row: {
   };
 }
 
-function fallbackBrief(userId: string): TestingMatchUserBrief {
+export function fallbackUserBrief(userId: string): TestingMatchUserBrief {
   return {
     userId,
     nickname: null,
@@ -70,6 +70,25 @@ export type TestingMatchDebugSummaryEnriched = TestingMatchDebugSummary & {
   isMutualMatch: boolean;
   displayCandidateDiffers: boolean;
 };
+
+export async function loadUserBriefsByIds(
+  prisma: PrismaService,
+  userIds: string[],
+): Promise<Map<string, TestingMatchUserBrief>> {
+  if (userIds.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: {
+      id: true,
+      nickname: true,
+      gender: true,
+      age: true,
+      city: true,
+      phone: true,
+    },
+  });
+  return new Map(users.map((u) => [u.id, toBrief(u)]));
+}
 
 export async function enrichTestingMatchSummaries(
   prisma: PrismaService,
@@ -120,13 +139,13 @@ export async function enrichTestingMatchSummaries(
   );
 
   return items.map((it) => {
-    const viewer = byId.get(it.viewerUserId) ?? fallbackBrief(it.viewerUserId);
+    const viewer = byId.get(it.viewerUserId) ?? fallbackUserBrief(it.viewerUserId);
     const candidate =
-      byId.get(it.candidateUserId) ?? fallbackBrief(it.candidateUserId);
+      byId.get(it.candidateUserId) ?? fallbackUserBrief(it.candidateUserId);
     const displayId = it.displayCandidateUserId?.trim() || it.candidateUserId;
     const displayCandidateDiffers = displayId !== it.candidateUserId;
     const displayCandidate = displayCandidateDiffers
-      ? (byId.get(displayId) ?? fallbackBrief(displayId))
+      ? (byId.get(displayId) ?? fallbackUserBrief(displayId))
       : null;
 
     const viewerLabel = formatTestingMatchUserLabel(viewer);

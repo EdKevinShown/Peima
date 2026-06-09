@@ -9,7 +9,11 @@ import { G1R_PROFILE_KEYS } from "../questionnaire/questionnaire.scorer";
 import { getCanonicalQuestionKeys } from "../questionnaire/data/questions";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { buildTestingMatchDebugSummary } from "./testing-observability-match-debug";
-import { enrichTestingMatchSummaries } from "./testing-observability-match-enrichment";
+import {
+  enrichTestingMatchSummaries,
+  fallbackUserBrief,
+  loadUserBriefsByIds,
+} from "./testing-observability-match-enrichment";
 import {
   TESTING_MATCH_FEEDBACK_RATINGS,
   TESTING_OBSERVABILITY_SOURCE_VERSION,
@@ -19,6 +23,7 @@ import {
 import type {
   TestingEventRow,
   TestingFeedbackRow,
+  TestingMatchingQueueItem,
   TestingMatchDebugSummary,
   TestingOnboardingSummary,
   TestingQuestionnaireSummary,
@@ -29,6 +34,12 @@ import type {
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+const MATCHING_QUEUE_STATUSES = [
+  "waiting",
+  "processing",
+  "failed",
+  "matched",
+] as const;
 
 function clampLimit(raw: string | undefined): number {
   if (!raw?.trim()) return DEFAULT_LIMIT;
@@ -466,6 +477,74 @@ export class TestingObservabilityService {
     }
     const enriched = await enrichTestingMatchSummaries(this.prisma, history);
     return { latest: enriched[0] ?? null, history: enriched };
+  }
+
+  async listMatchingQueue(query: { status?: string; limit?: string }) {
+    const limit = clampLimit(query.limit);
+    const statusRaw = (query.status?.trim().toLowerCase() || "waiting") as
+      | (typeof MATCHING_QUEUE_STATUSES)[number]
+      | "all";
+    if (
+      statusRaw !== "all" &&
+      !MATCHING_QUEUE_STATUSES.includes(statusRaw as never)
+    ) {
+      throw new BadRequestException(
+        `status must be one of: ${[...MATCHING_QUEUE_STATUSES, "all"].join(", ")}`,
+      );
+    }
+
+    const rows = await this.prisma.batchMatchQueue.findMany({
+      where: statusRaw === "all" ? undefined : { status: statusRaw },
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+    });
+
+    const userIds = [...new Set(rows.map((r) => r.userId))];
+    const briefs = await loadUserBriefsByIds(this.prisma, userIds);
+
+    const failedRows = rows.filter((r) => r.status === "failed");
+    const failureByQueueId = new Map<string, string | null>();
+    if (failedRows.length > 0) {
+      const events = await this.prisma.testingObservabilityEvent.findMany({
+        where: {
+          eventType: "batch_match_queue",
+          status: "failed",
+          userId: { in: failedRows.map((r) => r.userId) },
+        },
+        orderBy: { createdAt: "desc" },
+        take: Math.min(limit * 3, MAX_LIMIT),
+      });
+      for (const row of failedRows) {
+        const ev = events.find(
+          (e) =>
+            e.userId === row.userId &&
+            (e.message?.includes(row.id) ?? false),
+        );
+        failureByQueueId.set(
+          row.id,
+          ev?.errorCode?.trim() || ev?.message?.trim() || null,
+        );
+      }
+    }
+
+    const items: TestingMatchingQueueItem[] = rows.map((r) => ({
+      queueId: r.id,
+      userId: r.userId,
+      user: briefs.get(r.userId) ?? fallbackUserBrief(r.userId),
+      status: r.status,
+      batchId: r.batchId,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      failureReason:
+        r.status === "failed" ? (failureByQueueId.get(r.id) ?? null) : null,
+    }));
+
+    return {
+      sourceVersion: TESTING_OBSERVABILITY_SOURCE_VERSION,
+      generatedAt: new Date().toISOString(),
+      statusFilter: statusRaw,
+      items,
+    };
   }
 
   async listMatches(limitRaw?: string) {

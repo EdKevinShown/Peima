@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getMatchingObservabilitySummary } from "../api/admin";
 import {
   fetchTestingObservabilityMatches,
+  fetchTestingObservabilityMatchingQueue,
   fetchTestingObservabilityUserDetail,
   fetchTestingObservabilityUsers,
   getTestingObservabilityToken,
@@ -49,6 +50,9 @@ function timelineTone(status) {
 export default function TestingObservabilityPage() {
   const [token, setToken] = useState(() => getTestingObservabilityToken());
   const [users, setUsers] = useState([]);
+  const [matchingQueue, setMatchingQueue] = useState([]);
+  const [queueStatusFilter, setQueueStatusFilter] = useState("waiting");
+  const [queueLoading, setQueueLoading] = useState(false);
   const [recentMatches, setRecentMatches] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [detail, setDetail] = useState(null);
@@ -97,6 +101,23 @@ export default function TestingObservabilityPage() {
     [token],
   );
 
+  const loadMatchingQueue = useCallback(async () => {
+    setQueueLoading(true);
+    try {
+      setTestingObservabilityToken(token);
+      const data = await fetchTestingObservabilityMatchingQueue(
+        token,
+        queueStatusFilter,
+        100,
+      );
+      setMatchingQueue(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setMatchingQueue([]);
+    } finally {
+      setQueueLoading(false);
+    }
+  }, [token, queueStatusFilter]);
+
   const loadRecentMatches = useCallback(async () => {
     try {
       setTestingObservabilityToken(token);
@@ -127,6 +148,10 @@ export default function TestingObservabilityPage() {
       void loadDetail(selectedUserId);
     }
   }, [selectedUserId, loadDetail]);
+
+  useEffect(() => {
+    void loadMatchingQueue();
+  }, [loadMatchingQueue]);
 
   const userColumns = useMemo(
     () => [
@@ -265,6 +290,72 @@ export default function TestingObservabilityPage() {
 
   const matchColumns = matchDetailColumns;
 
+  const queueStatusLabel = (status) => {
+    if (status === "waiting") return "等待中";
+    if (status === "processing") return "处理中";
+    if (status === "failed") return "失败";
+    if (status === "matched") return "已匹配";
+    return status;
+  };
+
+  const queueColumns = useMemo(
+    () => [
+      {
+        key: "user",
+        label: "用户",
+        render: (row) => (
+          <TestingMatchUserCell
+            brief={row.user ?? { userId: row.userId, nickname: null }}
+            onSelectUserId={setSelectedUserId}
+          />
+        ),
+      },
+      {
+        key: "nickname",
+        label: "昵称",
+        render: (row) => row.user?.nickname?.trim() || "—",
+      },
+      {
+        key: "gender",
+        label: "性别",
+        render: (row) => row.user?.gender || "—",
+      },
+      {
+        key: "status",
+        label: "队列状态",
+        render: (row) => (
+          <AdminStatusBadge
+            status={queueStatusLabel(row.status)}
+            tone={
+              row.status === "failed"
+                ? "failed"
+                : row.status === "waiting" || row.status === "processing"
+                  ? "pending"
+                  : "success"
+            }
+          />
+        ),
+      },
+      { key: "createdAt", label: "入队时间" },
+      {
+        key: "batchId",
+        label: "批次",
+        render: (row) =>
+          row.batchId ? (
+            <AdminIdPill id={row.batchId} truncate={12} title={row.batchId} />
+          ) : (
+            "—"
+          ),
+      },
+      {
+        key: "failureReason",
+        label: "失败原因",
+        render: (row) => row.failureReason || "—",
+      },
+    ],
+    [],
+  );
+
   const submitFeedback = async () => {
     if (!selectedUserId) return;
     setFeedbackMsg("");
@@ -295,11 +386,12 @@ export default function TestingObservabilityPage() {
             className="btn-ghost text-sm"
             onClick={() => {
               void loadUsers();
+              void loadMatchingQueue();
               void loadRecentMatches();
             }}
-            disabled={loading}
+            disabled={loading || queueLoading}
           >
-            {loading ? "刷新中…" : "刷新"}
+            {loading || queueLoading ? "刷新中…" : "刷新"}
           </button>
         </>
       }
@@ -338,6 +430,43 @@ export default function TestingObservabilityPage() {
       ) : null}
 
       {loading ? <LoadingState label="加载测试用户…" /> : null}
+
+      <AdminSection title="匹配队列">
+        <div className="flex flex-wrap items-end gap-3 mb-3">
+          <label className={`${adminLabel} flex items-center gap-2`}>
+            状态
+            <select
+              className={adminInput}
+              value={queueStatusFilter}
+              onChange={(e) => setQueueStatusFilter(e.target.value)}
+            >
+              <option value="waiting">等待中</option>
+              <option value="processing">处理中</option>
+              <option value="failed">失败</option>
+              <option value="matched">已匹配</option>
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="btn-ghost text-sm"
+            onClick={() => void loadMatchingQueue()}
+            disabled={queueLoading}
+          >
+            {queueLoading ? "刷新中…" : "刷新队列"}
+          </button>
+        </div>
+        <p className={`${adminMuted} mb-3`}>
+          查看 <code className="text-white/80">batch_match_queue</code> 中的用户；默认仅显示等待中。
+        </p>
+        {queueLoading ? <LoadingState label="加载匹配队列…" /> : null}
+        <AdminDataTable
+          columns={queueColumns}
+          rows={matchingQueue}
+          rowKey="queueId"
+          emptyMessage="当前筛选下无队列记录，或监视器未启用 / 未登录管理员"
+        />
+      </AdminSection>
 
       <AdminSection title="最近匹配结果（全站）">
         <AdminDataTable

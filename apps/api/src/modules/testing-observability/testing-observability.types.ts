@@ -137,6 +137,17 @@ export type TestingFeedbackRow = {
   createdAt: string;
 };
 
+export type TestingMatchingQueueItem = {
+  queueId: string;
+  userId: string;
+  user: TestingMatchUserBrief;
+  status: string;
+  batchId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  failureReason: string | null;
+};
+
 export type RecordTestingEventInput = {
   userId?: string | null;
   matchResultId?: string | null;

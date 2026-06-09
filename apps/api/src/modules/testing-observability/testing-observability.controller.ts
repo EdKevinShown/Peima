@@ -51,6 +51,14 @@ export class TestingObservabilityController {
     return this.service.getUserMatch(userId);
   }
 
+  @Get("matching-queue")
+  listMatchingQueue(
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.service.listMatchingQueue({ status, limit });
+  }
+
   @Get("matches")
   listMatches(@Query("limit") limit?: string) {
     return this.service.listMatches(limit);

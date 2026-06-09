@@ -71,6 +71,19 @@ export async function fetchTestingObservabilityUserDetail(
   return handleJson(res);
 }
 
+export async function fetchTestingObservabilityMatchingQueue(
+  token: string,
+  status = "waiting",
+  limit = 50,
+) {
+  const params = new URLSearchParams({ status, limit: String(limit) });
+  const res = await fetch(
+    `${baseUrl}/admin/testing-observability/matching-queue?${params}`,
+    { headers: observabilityHeaders(token) },
+  );
+  return handleJson(res);
+}
+
 export async function fetchTestingObservabilityMatches(
   token: string,
   limit = 50,
