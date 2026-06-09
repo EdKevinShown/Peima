@@ -4,7 +4,7 @@ export default function NavCard({ to, Icon, title, desc }) {
   return (
     <Link
       to={to}
-      className="glass rounded-2xl p-4 flex items-start gap-3 transition-all duration-200 hover:scale-[1.02] group no-underline"
+      className="glass rounded-2xl p-4 flex items-start gap-3 transition-colors duration-200 hover:bg-white/[0.12] group no-underline"
     >
       <span
         className="flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center"

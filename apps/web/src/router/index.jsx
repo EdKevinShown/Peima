@@ -153,7 +153,7 @@ function DashboardPage() {
         {needsOnboarding ? (
           <Link
             to="/onboarding"
-            className="glass rounded-2xl p-4 flex items-center gap-3 mb-6 transition-all duration-200 hover:scale-[1.01] animate-fade-in"
+            className="glass rounded-2xl p-4 flex items-center gap-3 mb-6 transition-colors duration-200 hover:bg-white/[0.12] animate-fade-in"
             style={{
               background:
                 "linear-gradient(135deg, rgba(255,107,157,0.14) 0%, rgba(196,77,255,0.10) 100%)",
@@ -243,7 +243,7 @@ function DashboardPage() {
               <Link
                 key={to}
                 to={to}
-                className="glass rounded-2xl p-4 flex items-center gap-4 transition-all duration-200 hover:scale-[1.01] group"
+                className="glass rounded-2xl p-4 flex items-center gap-4 transition-colors duration-200 hover:bg-white/[0.12] group"
                 style={{ textDecoration: "none" }}
               >
                 <span
