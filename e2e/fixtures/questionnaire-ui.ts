@@ -1,7 +1,16 @@
 import type { Page } from "@playwright/test";
 
-/** Walk the 30-question wizard: pick first option, next, submit. */
+/** Walk the 30-question wizard: gender step, pick first option, next, submit. */
 export async function completeQuestionnaireWizard(page: Page): Promise<void> {
+  const startBtn = page.getByRole("button", { name: "开始答题" });
+  if (await startBtn.isVisible().catch(() => false)) {
+    const genderBtn = page.getByRole("button", { name: "男" });
+    if (await genderBtn.isVisible().catch(() => false)) {
+      await genderBtn.click();
+    }
+    await startBtn.click();
+  }
+
   await page.getByRole("progressbar", { name: "问卷进度" }).waitFor({
     timeout: 60_000,
   });

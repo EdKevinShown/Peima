@@ -137,7 +137,7 @@ export class QuestionnaireService {
         })),
       });
 
-      return tx.userProfile.upsert({
+      const profile = await tx.userProfile.upsert({
         where: { userId: dto.userId },
         create: {
           userId: dto.userId,
@@ -149,6 +149,15 @@ export class QuestionnaireService {
           confidence: scored.confidence,
         },
       });
+
+      if (dto.gender) {
+        await tx.user.update({
+          where: { id: dto.userId },
+          data: { gender: dto.gender },
+        });
+      }
+
+      return profile;
     });
 
     void import("../testing-observability/record-testing-event").then(({ recordTestingEvent }) =>

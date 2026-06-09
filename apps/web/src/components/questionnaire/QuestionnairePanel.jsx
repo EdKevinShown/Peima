@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ACCOUNT_DISPLAY_GENDER,
+  ACCOUNT_GENDER_VALUES,
+} from "@peima/shared/constants";
+import { getMe } from "../../api/auth";
+import {
   getQuestionnaireQuestions,
   submitQuestionnaire,
 } from "../../api/questionnaire";
@@ -114,6 +119,32 @@ const WIZARD_SCOPED_CSS = `
   color: rgba(255, 255, 255, 0.35);
   font-family: ui-monospace, monospace;
 }
+.q-wizard-gender-row {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+.q-wizard-gender-btn {
+  flex: 1;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.q-wizard-gender-btn:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.09);
+}
+.q-wizard-gender-btn--on {
+  border-color: rgba(255, 107, 157, 0.45);
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.28), rgba(196, 77, 255, 0.22));
+  color: #fff;
+}
 `;
 
 /**
@@ -139,6 +170,9 @@ export default function QuestionnairePanel({
   const [questions, setQuestions] = useState([]);
   const [version, setVersion] = useState("");
   const [answers, setAnswers] = useState({});
+  const [gender, setGender] = useState("");
+  const [genderReady, setGenderReady] = useState(false);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadLoading, setLoadLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -152,13 +186,28 @@ export default function QuestionnairePanel({
       setLoadLoading(true);
       setLoadError(null);
       try {
-        const res = await getQuestionnaireQuestions();
+        const [res, me] = await Promise.all([
+          getQuestionnaireQuestions(),
+          userId ? getMe().catch(() => null) : Promise.resolve(null),
+        ]);
         if (cancelled) return;
         setVersion(res.version);
         setQuestions(res.questions ?? []);
         setAnswers({});
         setCurrentIndex(0);
         setSubmitOk(false);
+        setShowQuestions(false);
+
+        if (me?.gender) {
+          const gRaw = String(me.gender).trim().toLowerCase();
+          if (me.gender === "男" || gRaw === "m") setGender("male");
+          else if (me.gender === "女" || gRaw === "f") setGender("female");
+          else if (ACCOUNT_GENDER_VALUES.includes(me.gender)) setGender(me.gender);
+          else setGender("");
+        } else {
+          setGender("");
+        }
+        setGenderReady(true);
       } catch (e) {
         if (!cancelled) {
           setLoadError(e instanceof Error ? e : new Error(String(e)));
@@ -171,7 +220,7 @@ export default function QuestionnairePanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const answeredCount = useMemo(
     () => Object.keys(answers).filter((k) => answers[k]).length,
@@ -179,7 +228,11 @@ export default function QuestionnairePanel({
   );
   const total = questions.length;
   const formComplete =
-    !!userId && total > 0 && answeredCount === total && !submitLoading;
+    !!userId &&
+    !!gender &&
+    total > 0 &&
+    answeredCount === total &&
+    !submitLoading;
 
   const currentQuestion = total > 0 ? questions[currentIndex] : null;
   const currentAnswered = currentQuestion
@@ -216,12 +269,17 @@ export default function QuestionnairePanel({
       setSubmitError(new Error("请答完全部题目后再提交"));
       return;
     }
+    if (!gender) {
+      setSubmitError(new Error("请选择性别后再提交"));
+      return;
+    }
     setSubmitLoading(true);
     setSubmitError(null);
     setSubmitOk(false);
     try {
       await submitQuestionnaire({
         userId,
+        gender,
         answers: questions.map((q) => ({
           questionKey: q.key,
           answerValue: answers[q.key],
@@ -234,7 +292,7 @@ export default function QuestionnairePanel({
     } finally {
       setSubmitLoading(false);
     }
-  }, [userId, questions, answers, answeredCount, total, onSubmitted]);
+  }, [userId, gender, questions, answers, answeredCount, total, onSubmitted]);
 
   const subtitleClass = embedded ? "text-xs text-white/50 mt-1" : "text-sm text-white/50 mt-1.5";
 
@@ -292,7 +350,45 @@ export default function QuestionnairePanel({
         </p>
       ) : null}
 
-      {!loadLoading && !loadError && currentQuestion ? (
+      {!loadLoading && !loadError && genderReady && !showQuestions ? (
+        <div className="q-wizard-card">
+          <h3 className="q-wizard-card__title">你的性别</h3>
+          <p className="q-wizard-hint" style={{ marginTop: 0, marginBottom: "0.75rem" }}>
+            用于匹配与预览门闸，会同步到你的个人资料。
+          </p>
+          <div className="q-wizard-gender-row" role="group" aria-label="性别">
+            {ACCOUNT_GENDER_VALUES.map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={`q-wizard-gender-btn${gender === v ? " q-wizard-gender-btn--on" : ""}`}
+                aria-pressed={gender === v}
+                onClick={() => setGender(v)}
+              >
+                {ACCOUNT_DISPLAY_GENDER[v]}
+              </button>
+            ))}
+          </div>
+          {!gender ? (
+            <p className="q-wizard-hint">请选择后再开始答题</p>
+          ) : null}
+          <div className="q-wizard-nav">
+            <button
+              type="button"
+              className="btn-primary text-sm py-2.5 px-5"
+              onClick={() => setShowQuestions(true)}
+              disabled={!gender || !userId}
+            >
+              开始答题
+            </button>
+          </div>
+          {!userId ? (
+            <p className="q-wizard-hint">请先登录后再填写问卷</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!loadLoading && !loadError && showQuestions && currentQuestion ? (
         <>
           <div className="q-wizard-progress" aria-live="polite">
             <div className="q-wizard-progress__meta">

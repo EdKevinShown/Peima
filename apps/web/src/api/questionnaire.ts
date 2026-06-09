@@ -46,6 +46,8 @@ export type QuestionnaireQuestionsResponse = {
 export type SubmitQuestionnairePayload = {
   userId: string;
   answers: { questionKey: string; answerValue: string }[];
+  /** male | female — synced to User.gender on submit */
+  gender?: string;
 };
 
 /** 与 API `UserProfile`（G1-R v2 + 并存旧五维）JSON 对齐。 */
